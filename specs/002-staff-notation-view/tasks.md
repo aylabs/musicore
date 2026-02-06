@@ -117,15 +117,15 @@
 
 ### Tests for User Story 3 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T042 [P] [US3] Integration test for note click handling in frontend/src/components/notation/NotationRenderer.test.tsx - simulate click on note SVG element, verify onNoteClick callback fires with correct note ID
-- [ ] T043 [P] [US3] Integration test for note highlighting in frontend/src/components/notation/NotationRenderer.test.tsx - pass selectedNoteId prop, verify selected note rendered with fill="blue", unselected with fill="black"
-- [ ] T044 [P] [US3] Integration test for selection state in frontend/src/components/notation/StaffNotation.test.tsx - click note, verify selectedNoteId state updates, click another note, verify previous deselected
+- [X] T042 [P] [US3] Integration test for note click handling in frontend/src/components/notation/NotationRenderer.test.tsx - simulate click on note SVG element, verify onNoteClick callback fires with correct note ID
+- [X] T043 [P] [US3] Integration test for note highlighting in frontend/src/components/notation/NotationRenderer.test.tsx - pass selectedNoteId prop, verify selected note rendered with fill="blue", unselected with fill="black"
+- [X] T044 [P] [US3] Integration test for selection state in frontend/src/components/notation/StaffNotation.test.tsx - click note, verify selectedNoteId state updates, click another note, verify previous deselected
 
 ### Implementation for User Story 3
 
-- [ ] T045 [P] [US3] Add selectedNoteId state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState<string | null>(null), handleNoteClick callback to toggle selection
-- [ ] T046 [US3] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - accept onNoteClick and selectedNoteId props, add onClick handler to note <text> elements, set fill={selectedNoteId === note.id ? 'blue' : 'black'}
-- [ ] T047 [US3] Connect selection state in StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - pass selectedNoteId and handleNoteClick to NotationRenderer (depends on T045, T046)
+- [X] T045 [P] [US3] Add selectedNoteId state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState<string | null>(null), handleNoteClick callback to toggle selection
+- [X] T046 [US3] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - accept onNoteClick and selectedNoteId props, add onClick handler to note <text> elements, set fill={selectedNoteId === note.id ? 'blue' : 'black'}
+- [X] T047 [US3] Connect selection state in StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - pass selectedNoteId and handleNoteClick to NotationRenderer (depends on T045, T046)
 
 **Checkpoint**: All user stories 1-3 should now work independently - notes can be clicked and highlighted
 
