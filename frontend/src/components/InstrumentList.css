@@ -1,0 +1,154 @@
+.instrument-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.instrument-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s;
+}
+
+.instrument-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.instrument-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.instrument-header:hover {
+  background: #e9ecef;
+}
+
+.expand-icon {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.instrument-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.3em;
+  color: #333;
+}
+
+.badge {
+  padding: 4px 12px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.instrument-body {
+  padding: 20px;
+  background: #fafafa;
+}
+
+.staff-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.staff-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.staff-header h4 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #555;
+}
+
+.staff-info {
+  display: flex;
+  gap: 10px;
+  font-size: 0.85em;
+  margin-left: auto;
+}
+
+.staff-info span {
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  color: #666;
+}
+
+.voice-section {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  border-left: 3px solid #4CAF50;
+}
+
+.voice-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.voice-header h5 {
+  margin: 0;
+  font-size: 0.95em;
+  color: #666;
+}
+
+.add-voice-btn,
+.add-staff-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background: #f0f0f0;
+  color: #666;
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+.add-voice-btn:hover:not(:disabled),
+.add-staff-btn:hover:not(:disabled) {
+  background: #e3f2fd;
+  border-color: #1976d2;
+  color: #1976d2;
+}
+
+.add-voice-btn:disabled,
+.add-staff-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  padding: 12px;
+  margin-bottom: 15px;
+  background: #ffebee;
+  color: #c62828;
+  border-left: 4px solid #c62828;
+  border-radius: 4px;
+  font-size: 0.9em;
+}

@@ -1,0 +1,174 @@
+.note-display {
+  margin-top: 10px;
+}
+
+.no-notes {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.note-item {
+  padding: 10px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.note-item:hover {
+  border-color: #4CAF50;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.note-pitch {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.note-pitch strong {
+  font-size: 1.1em;
+  color: #333;
+}
+
+.midi-number {
+  font-size: 0.75em;
+  color: #999;
+}
+
+.note-timing {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8em;
+  color: #666;
+}
+
+.add-note-btn {
+  width: 100%;
+  padding: 8px;
+  background: #f0f0f0;
+  color: #666;
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+
+.add-note-btn:hover {
+  background: #e8f5e9;
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.add-note-form {
+  padding: 15px;
+  background: white;
+  border: 2px solid #4CAF50;
+  border-radius: 4px;
+}
+
+.add-note-form h6 {
+  margin: 0 0 10px 0;
+  font-size: 0.9em;
+  color: #4CAF50;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.form-row input {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95em;
+  transition: border-color 0.2s;
+}
+
+.form-row input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.form-row input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.form-row small {
+  font-size: 0.85em;
+  color: #999;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions button {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background 0.2s;
+}
+
+.form-actions button:first-child {
+  background: #4CAF50;
+  color: white;
+}
+
+.form-actions button:first-child:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.form-actions button:last-child {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.form-actions button:last-child:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.form-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #ffebee;
+  color: #c62828;
+  border-left: 3px solid #c62828;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
