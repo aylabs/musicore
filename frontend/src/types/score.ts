@@ -90,7 +90,8 @@ export type StaffStructuralEvent =
 
 /** Note event */
 export interface Note {
-  tick: Tick;
+  id: string; // UUID
+  start_tick: Tick;
   duration_ticks: number;
   pitch: Pitch;
 }
