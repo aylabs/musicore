@@ -14,46 +14,40 @@ export type BPM = number;
 export type Pitch = number;
 
 /** Clef types */
-export enum ClefType {
-  Treble = "Treble",
-  Bass = "Bass",
-  Alto = "Alto",
-  Tenor = "Tenor",
-}
+export type ClefType = "Treble" | "Bass" | "Alto" | "Tenor";
 
 /** Key signature types */
-export enum KeySignature {
-  CMajor = "CMajor",
-  GMajor = "GMajor",
-  DMajor = "DMajor",
-  AMajor = "AMajor",
-  EMajor = "EMajor",
-  BMajor = "BMajor",
-  FSharpMajor = "FSharpMajor",
-  CSharpMajor = "CSharpMajor",
-  FMajor = "FMajor",
-  BFlatMajor = "BFlatMajor",
-  EFlatMajor = "EFlatMajor",
-  AFlatMajor = "AFlatMajor",
-  DFlatMajor = "DFlatMajor",
-  GFlatMajor = "GFlatMajor",
-  CFlatMajor = "CFlatMajor",
-  AMinor = "AMinor",
-  EMinor = "EMinor",
-  BMinor = "BMinor",
-  FSharpMinor = "FSharpMinor",
-  CSharpMinor = "CSharpMinor",
-  GSharpMinor = "GSharpMinor",
-  DSharpMinor = "DSharpMinor",
-  ASharpMinor = "ASharpMinor",
-  DMinor = "DMinor",
-  GMinor = "GMinor",
-  CMinor = "CMinor",
-  FMinor = "FMinor",
-  BFlatMinor = "BFlatMinor",
-  EFlatMinor = "EFlatMinor",
-  AFlatMinor = "AFlatMinor",
-}
+export type KeySignature =
+  | "CMajor"
+  | "GMajor"
+  | "DMajor"
+  | "AMajor"
+  | "EMajor"
+  | "BMajor"
+  | "FSharpMajor"
+  | "CSharpMajor"
+  | "FMajor"
+  | "BFlatMajor"
+  | "EFlatMajor"
+  | "AFlatMajor"
+  | "DFlatMajor"
+  | "GFlatMajor"
+  | "CFlatMajor"
+  | "AMinor"
+  | "EMinor"
+  | "BMinor"
+  | "FSharpMinor"
+  | "CSharpMinor"
+  | "GSharpMinor"
+  | "DSharpMinor"
+  | "ASharpMinor"
+  | "DMinor"
+  | "GMinor"
+  | "CMinor"
+  | "FMinor"
+  | "BFlatMinor"
+  | "EFlatMinor"
+  | "AFlatMinor";
 
 // ============================================================================
 // Events

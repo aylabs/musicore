@@ -19,9 +19,9 @@ RUN cargo build --release
 # Stage 2: Runtime
 FROM debian:bookworm-slim
 
-# Install OpenSSL (required for some Rust crates)
+# Install OpenSSL and curl (for healthcheck)
 RUN apt-get update && \
-    apt-get install -y ca-certificates libssl3 && \
+    apt-get install -y ca-certificates libssl3 curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
