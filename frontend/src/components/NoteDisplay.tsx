@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { Note } from "../types/score";
+import type { Note, ClefType } from "../types/score";
 import { apiClient } from "../services/score-api";
+import { StaffNotation } from "./notation/StaffNotation";
 import "./NoteDisplay.css";
 
 interface NoteDisplayProps {
@@ -10,6 +11,7 @@ interface NoteDisplayProps {
   instrumentId: string;
   scoreId: string;
   onUpdate: () => void;
+  clef: string;
 }
 
 /**
@@ -40,9 +42,11 @@ export function NoteDisplay({
   staffId, 
   instrumentId, 
   scoreId, 
-  onUpdate 
+  onUpdate,
+  clef 
 }: NoteDisplayProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [tick, setTick] = useState("0");
   const [duration, setDuration] = useState("960");
   const [pitch, setPitch] = useState("60");
@@ -121,9 +125,30 @@ export function NoteDisplay({
 
   return (
     <div className="note-display">
-      {sortedNotes.length === 0 ? (
-        <div className="no-notes">No notes yet</div>
-      ) : (
+      {/* Staff Notation Visualization */}
+      {notes.length > 0 && (
+        <div className="staff-notation-container">
+          <StaffNotation
+            notes={notes}
+            clef={clef as ClefType}
+            viewportWidth={800}
+            viewportHeight={200}
+          />
+        </div>
+      )}
+
+      {/* Note Details Toggle */}
+      {notes.length > 0 && (
+        <button 
+          className="toggle-details-btn"
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {showDetails ? "Hide Note Details" : "Show Note Details"}
+        </button>
+      )}
+
+      {/* Note Grid Details */}
+      {showDetails && (
         <div className="notes-grid">
           {sortedNotes.map((note, idx) => (
             <div key={idx} className="note-item">
@@ -139,6 +164,8 @@ export function NoteDisplay({
           ))}
         </div>
       )}
+
+      {sortedNotes.length === 0 && <div className="no-notes">No notes yet</div>}
 
       {!showAddForm ? (
         <button 
