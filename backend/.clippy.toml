@@ -1,0 +1,13 @@
+# Clippy configuration for musicore-backend
+# Enable pedantic lints for code quality
+msrv = "1.75"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+enum_glob_use = "deny"
+pedantic = "warn"
+nursery = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
