@@ -1,0 +1,22 @@
+# Rust
+target/
+Cargo.lock
+*.rs.bk
+*.rlib
+*.prof*
+
+# Build artifacts
+debug/
+release/
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example

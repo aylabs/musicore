@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# Logs
+*.log
+*.log.*
+
+# Environment
+.env
+.env.*
+!.env.example

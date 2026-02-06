@@ -1,0 +1,758 @@
+openapi: 3.0.3
+info:
+  title: Musicore Score API
+  description: REST API for hierarchical music score management following DDD and hexagonal architecture
+  version: 1.0.0
+  contact:
+    name: Musicore Development Team
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+tags:
+  - name: scores
+    description: Score aggregate root operations
+  - name: instruments
+    description: Instrument entity operations
+  - name: staves
+    description: Staff entity operations
+  - name: voices
+    description: Voice entity operations
+  - name: notes
+    description: Note interval event operations
+  - name: structural-events
+    description: Structural event operations (tempo, time signature, clef, key)
+
+paths:
+  /scores:
+    post:
+      tags: [scores]
+      summary: Create a new score
+      description: Creates a new score with default global structural events (tempo 120 BPM, 4/4 time signature) at tick 0
+      operationId: createScore
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Optional score name
+              example:
+                name: "Symphony No. 1"
+      responses:
+        '201':
+          description: Score created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [scores]
+      summary: List all scores
+      description: Retrieves IDs of all scores in the system
+      operationId: listScores
+      responses:
+        '200':
+          description: List of score IDs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scores:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                example:
+                  scores:
+                    - "550e8400-e29b-41d4-a716-446655440000"
+                    - "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}:
+    get:
+      tags: [scores]
+      summary: Retrieve a score by ID
+      description: Retrieves complete score hierarchy including all instruments, staves, voices, and events
+      operationId: getScore
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+      responses:
+        '200':
+          description: Score retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [scores]
+      summary: Delete a score
+      description: Deletes entire score including all instruments, staves, voices, and events
+      operationId: deleteScore
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+      responses:
+        '204':
+          description: Score deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments:
+    post:
+      tags: [instruments]
+      summary: Add an instrument to a score
+      description: Creates a new instrument with one default staff containing default structural events
+      operationId: addInstrument
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Instrument name (e.g., "Piano", "Violin")
+              example:
+                name: "Piano"
+      responses:
+        '201':
+          description: Instrument created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instrument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments/{instrumentId}/staves:
+    post:
+      tags: [staves]
+      summary: Add a staff to an instrument
+      description: Creates a new staff with default structural events (treble clef, C major key) at tick 0
+      operationId: addStaff
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+      responses:
+        '201':
+          description: Staff created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments/{instrumentId}/staves/{staffId}/voices:
+    post:
+      tags: [voices]
+      summary: Add a voice to a staff
+      description: Creates a new empty voice for polyphonic notation
+      operationId: addVoice
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+        - $ref: '#/components/parameters/StaffId'
+      responses:
+        '201':
+          description: Voice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Voice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments/{instrumentId}/staves/{staffId}/voices/{voiceId}/notes:
+    post:
+      tags: [notes]
+      summary: Add a note to a voice
+      description: Creates a note with validated timing and pitch. Rejects overlapping notes with same pitch (FR-023).
+      operationId: addNote
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+        - $ref: '#/components/parameters/StaffId'
+        - $ref: '#/components/parameters/VoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_tick
+                - duration_ticks
+                - pitch
+              properties:
+                start_tick:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Start position in ticks (0 = start of score)
+                duration_ticks:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  description: Note duration in ticks (must be > 0)
+                pitch:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  maximum: 127
+                  description: MIDI note number (60 = Middle C)
+              example:
+                start_tick: 0
+                duration_ticks: 960
+                pitch: 60
+      responses:
+        '201':
+          description: Note created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - overlapping note with same pitch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Overlapping notes with same pitch 60 at ticks 0-960"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [notes]
+      summary: Query notes in a voice
+      description: Retrieves notes within an optional tick range
+      operationId: getNotes
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+        - $ref: '#/components/parameters/StaffId'
+        - $ref: '#/components/parameters/VoiceId'
+        - name: start_tick
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+          description: Filter notes starting at or after this tick
+        - name: end_tick
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+          description: Filter notes starting before this tick
+      responses:
+        '200':
+          description: Notes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Note'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/structural-events/tempo:
+    post:
+      tags: [structural-events]
+      summary: Add a tempo event
+      description: Adds a tempo change at specified tick. Rejects duplicate tempo events at same tick (FR-019).
+      operationId: addTempoEvent
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tick
+                - bpm
+              properties:
+                tick:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Tick position for tempo change
+                bpm:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 400
+                  description: Tempo in beats per minute
+              example:
+                tick: 3840
+                bpm: 80
+      responses:
+        '201':
+          description: Tempo event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TempoEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - duplicate tempo event at same tick
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Duplicate structural event of type Tempo at tick 3840"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/structural-events/time-signature:
+    post:
+      tags: [structural-events]
+      summary: Add a time signature event
+      description: Adds a time signature change at specified tick. Rejects duplicate time signature events at same tick (FR-019).
+      operationId: addTimeSignatureEvent
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tick
+                - numerator
+                - denominator
+              properties:
+                tick:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Tick position for time signature change
+                numerator:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  description: Top number (beats per measure)
+                denominator:
+                  type: integer
+                  format: int32
+                  enum: [1, 2, 4, 8, 16]
+                  description: Bottom number (note value for beat, must be power of 2)
+              example:
+                tick: 7680
+                numerator: 3
+                denominator: 4
+      responses:
+        '201':
+          description: Time signature event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSignatureEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - duplicate time signature event at same tick
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments/{instrumentId}/staves/{staffId}/structural-events/clef:
+    post:
+      tags: [structural-events]
+      summary: Add a clef event to a staff
+      description: Adds a clef change at specified tick for this staff only. Rejects duplicate clef events at same tick (FR-019).
+      operationId: addClefEvent
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+        - $ref: '#/components/parameters/StaffId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tick
+                - clef
+              properties:
+                tick:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Tick position for clef change
+                clef:
+                  type: string
+                  enum: [Treble, Bass, Alto, Tenor]
+                  description: Clef type
+              example:
+                tick: 1920
+                clef: "Bass"
+      responses:
+        '201':
+          description: Clef event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClefEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - duplicate clef event at same tick
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scores/{scoreId}/instruments/{instrumentId}/staves/{staffId}/structural-events/key-signature:
+    post:
+      tags: [structural-events]
+      summary: Add a key signature event to a staff
+      description: Adds a key signature change at specified tick for this staff only. Rejects duplicate key signature events at same tick (FR-019).
+      operationId: addKeySignatureEvent
+      parameters:
+        - $ref: '#/components/parameters/ScoreId'
+        - $ref: '#/components/parameters/InstrumentId'
+        - $ref: '#/components/parameters/StaffId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tick
+                - sharps
+              properties:
+                tick:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Tick position for key signature change
+                sharps:
+                  type: integer
+                  format: int32
+                  minimum: -7
+                  maximum: 7
+                  description: Number of sharps (positive) or flats (negative)
+              example:
+                tick: 0
+                sharps: 2
+      responses:
+        '201':
+          description: Key signature event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeySignatureEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - duplicate key signature event at same tick
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    ScoreId:
+      name: scoreId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Score unique identifier
+      
+    InstrumentId:
+      name: instrumentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Instrument unique identifier
+      
+    StaffId:
+      name: staffId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Staff unique identifier
+      
+    VoiceId:
+      name: voiceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Voice unique identifier
+
+  schemas:
+    Score:
+      type: object
+      required:
+        - id
+        - global_structural_events
+        - instruments
+      properties:
+        id:
+          type: string
+          format: uuid
+        global_structural_events:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/TempoEvent'
+              - $ref: '#/components/schemas/TimeSignatureEvent'
+        instruments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Instrument'
+
+    Instrument:
+      type: object
+      required:
+        - id
+        - name
+        - staves
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        staves:
+          type: array
+          items:
+            $ref: '#/components/schemas/Staff'
+
+    Staff:
+      type: object
+      required:
+        - id
+        - staff_structural_events
+        - voices
+      properties:
+        id:
+          type: string
+          format: uuid
+        staff_structural_events:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/ClefEvent'
+              - $ref: '#/components/schemas/KeySignatureEvent'
+        voices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Voice'
+
+    Voice:
+      type: object
+      required:
+        - id
+        - interval_events
+      properties:
+        id:
+          type: string
+          format: uuid
+        interval_events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+
+    Note:
+      type: object
+      required:
+        - id
+        - start_tick
+        - duration_ticks
+        - pitch
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_tick:
+          type: integer
+          format: int32
+          minimum: 0
+        duration_ticks:
+          type: integer
+          format: int32
+          minimum: 1
+        pitch:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 127
+
+    TempoEvent:
+      type: object
+      required:
+        - tick
+        - bpm
+      properties:
+        tick:
+          type: integer
+          format: int32
+          minimum: 0
+        bpm:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 400
+
+    TimeSignatureEvent:
+      type: object
+      required:
+        - tick
+        - numerator
+        - denominator
+      properties:
+        tick:
+          type: integer
+          format: int32
+          minimum: 0
+        numerator:
+          type: integer
+          format: int32
+          minimum: 1
+        denominator:
+          type: integer
+          format: int32
+          enum: [1, 2, 4, 8, 16]
+
+    ClefEvent:
+      type: object
+      required:
+        - tick
+        - clef
+      properties:
+        tick:
+          type: integer
+          format: int32
+          minimum: 0
+        clef:
+          type: string
+          enum: [Treble, Bass, Alto, Tenor]
+
+    KeySignatureEvent:
+      type: object
+      required:
+        - tick
+        - sharps
+      properties:
+        tick:
+          type: integer
+          format: int32
+          minimum: 0
+        sharps:
+          type: integer
+          format: int32
+          minimum: -7
+          maximum: 7
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or validation failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid note duration: must be > 0"
+
+    NotFound:
+      description: Entity not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Entity not found: Score with id 550e8400-e29b-41d4-a716-446655440000"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
