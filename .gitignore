@@ -16,3 +16,16 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# Node.js/TypeScript (frontend)
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Rust (backend)
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+*.prof*

@@ -22,12 +22,12 @@
 
 **Purpose**: Project initialization and basic structure for staff notation feature
 
-- [ ] T001 Download Bravura font WOFF2 file to frontend/public/fonts/Bravura.woff2 from https://github.com/steinbergmedia/bravura/releases
-- [ ] T002 Add @font-face declaration for Bravura font in frontend/src/index.css with font-display: block
-- [ ] T003 Create directory structure: frontend/src/types/notation/, frontend/src/services/notation/, frontend/src/components/notation/
-- [ ] T004 [P] Create barrel export frontend/src/types/notation/index.ts
-- [ ] T005 [P] Create barrel export frontend/src/services/notation/index.ts
-- [ ] T006 [P] Create barrel export frontend/src/components/notation/index.ts
+- [X] T001 Download Bravura font WOFF2 file to frontend/public/fonts/Bravura.woff2 from https://github.com/steinbergmedia/bravura/releases
+- [X] T002 Add @font-face declaration for Bravura font in frontend/src/index.css with font-display: block
+- [X] T003 Create directory structure: frontend/src/types/notation/, frontend/src/services/notation/, frontend/src/components/notation/
+- [X] T004 [P] Create barrel export frontend/src/types/notation/index.ts
+- [X] T005 [P] Create barrel export frontend/src/services/notation/index.ts
+- [X] T006 [P] Create barrel export frontend/src/components/notation/index.ts
 
 ---
 
@@ -37,15 +37,15 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 [P] Create StaffConfig interface and DEFAULT_STAFF_CONFIG constant in frontend/src/types/notation/config.ts (12 properties: staffSpace, pixelsPerTick, minNoteSpacing, viewportWidth, viewportHeight, scrollX, marginLeft, clefWidth, keySignatureWidthPerAccidental, barlineWidth, renderBuffer, glyphFontSizeMultiplier)
-- [ ] T008 [P] Create LayoutGeometry interface in frontend/src/types/notation/layout.ts with properties: notes, staffLines, barlines, ledgerLines, clef, keySignatureAccidentals, totalWidth, totalHeight, marginLeft, visibleNoteIndices
-- [ ] T009 [P] Create NotePosition interface in frontend/src/types/notation/layout.ts with properties: id, x, y, pitch, start_tick, duration_ticks, staffPosition, glyphCodepoint, fontSize
-- [ ] T010 [P] Create StaffLine interface in frontend/src/types/notation/layout.ts with properties: y, x1, x2, lineNumber, strokeWidth
-- [ ] T011 [P] Create Barline interface in frontend/src/types/notation/layout.ts with properties: id, x, tick, y1, y2, measureNumber, strokeWidth
-- [ ] T012 [P] Create LedgerLine interface in frontend/src/types/notation/layout.ts with properties: id, x1, x2, y, noteId, strokeWidth
-- [ ] T013 [P] Create ClefPosition interface in frontend/src/types/notation/layout.ts with properties: type, x, y, glyphCodepoint, fontSize
-- [ ] T014 [P] Create AccidentalPosition interface in frontend/src/types/notation/layout.ts with properties: type, x, y, staffPosition, glyphCodepoint, fontSize
-- [ ] T015 [P] Create LayoutInput interface in frontend/src/types/notation/layout.ts with properties: notes, clef, keySignature, timeSignature, config
+- [X] T007 [P] Create StaffConfig interface and DEFAULT_STAFF_CONFIG constant in frontend/src/types/notation/config.ts (12 properties: staffSpace, pixelsPerTick, minNoteSpacing, viewportWidth, viewportHeight, scrollX, marginLeft, clefWidth, keySignatureWidthPerAccidental, barlineWidth, renderBuffer, glyphFontSizeMultiplier)
+- [X] T008 [P] Create LayoutGeometry interface in frontend/src/types/notation/layout.ts with properties: notes, staffLines, barlines, ledgerLines, clef, keySignatureAccidentals, totalWidth, totalHeight, marginLeft, visibleNoteIndices
+- [X] T009 [P] Create NotePosition interface in frontend/src/types/notation/layout.ts with properties: id, x, y, pitch, start_tick, duration_ticks, staffPosition, glyphCodepoint, fontSize
+- [X] T010 [P] Create StaffLine interface in frontend/src/types/notation/layout.ts with properties: y, x1, x2, lineNumber, strokeWidth
+- [X] T011 [P] Create Barline interface in frontend/src/types/notation/layout.ts with properties: id, x, tick, y1, y2, measureNumber, strokeWidth
+- [X] T012 [P] Create LedgerLine interface in frontend/src/types/notation/layout.ts with properties: id, x1, x2, y, noteId, strokeWidth
+- [X] T013 [P] Create ClefPosition interface in frontend/src/types/notation/layout.ts with properties: type, x, y, glyphCodepoint, fontSize
+- [X] T014 [P] Create AccidentalPosition interface in frontend/src/types/notation/layout.ts with properties: type, x, y, staffPosition, glyphCodepoint, fontSize
+- [X] T015 [P] Create LayoutInput interface in frontend/src/types/notation/layout.ts with properties: notes, clef, keySignature, timeSignature, config
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -59,27 +59,27 @@
 
 ### Tests for User Story 1 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T016 [P] [US1] Unit test for midiPitchToStaffPosition() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify middle C (60) maps to staffPosition -3.5 in treble clef, 5.0 in bass clef
-- [ ] T017 [P] [US1] Unit test for staffPositionToY() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify staffPosition 2 (middle line) at y=70px with STAFF_TOP=50, staffPosition 4 (top line) at y=50px
-- [ ] T018 [P] [US1] Unit test for calculateStaffLines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns 5 lines with correct y coordinates (50, 60, 70, 80, 90 for staffSpace=10)
-- [ ] T019 [P] [US1] Unit test for calculateClefPosition() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify treble clef uses U+E050, bass clef uses U+E062, positioned at x=marginLeft+20
-- [ ] T020 [P] [US1] Unit test for calculateNotePositions() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify notes sorted by start_tick, positioned with correct x/y coordinates
-- [ ] T021 [P] [US1] Unit test for calculateLedgerLines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify ledger lines generated for staffPosition < 0 or > 4, extend 1.5x note head width
-- [ ] T022 [P] [US1] Integration test for NotationRenderer component in frontend/src/components/notation/NotationRenderer.test.tsx - render mock LayoutGeometry, verify 5 staff lines, 1 clef, N note heads rendered in SVG
-- [ ] T023 [P] [US1] Integration test for StaffNotation component in frontend/src/components/notation/StaffNotation.test.tsx - pass notes array, verify layout calculated and passed to renderer
+- [X] T016 [P] [US1] Unit test for midiPitchToStaffPosition() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify middle C (60) maps to staffPosition -3.5 in treble clef, 5.0 in bass clef
+- [X] T017 [P] [US1] Unit test for staffPositionToY() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify staffPosition 2 (middle line) at y=70px with STAFF_TOP=50, staffPosition 4 (top line) at y=50px
+- [X] T018 [P] [US1] Unit test for calculateStaffLines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns 5 lines with correct y coordinates (50, 60, 70, 80, 90 for staffSpace=10)
+- [X] T019 [P] [US1] Unit test for calculateClefPosition() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify treble clef uses U+E050, bass clef uses U+E062, positioned at x=marginLeft+20
+- [X] T020 [P] [US1] Unit test for calculateNotePositions() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify notes sorted by start_tick, positioned with correct x/y coordinates
+- [X] T021 [P] [US1] Unit test for calculateLedgerLines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify ledger lines generated for staffPosition < 0 or > 4, extend 1.5x note head width
+- [X] T022 [P] [US1] Integration test for NotationRenderer component in frontend/src/components/notation/NotationRenderer.test.tsx - render mock LayoutGeometry, verify 5 staff lines, 1 clef, N note heads rendered in SVG
+- [X] T023 [P] [US1] Integration test for StaffNotation component in frontend/src/components/notation/StaffNotation.test.tsx - pass notes array, verify layout calculated and passed to renderer
 
 ### Implementation for User Story 1
 
-- [ ] T024 [P] [US1] Implement midiPitchToStaffPosition() helper function in frontend/src/services/notation/NotationLayoutEngine.ts - take MIDI pitch and clef, return staffPosition number (reference: treble line 2 = B4/MIDI 71, bass line 2 = D3/MIDI 50)
-- [ ] T025 [P] [US1] Implement staffPositionToY() helper function in frontend/src/services/notation/NotationLayoutEngine.ts - convert staffPosition to pixel Y-coordinate (y = STAFF_TOP + (4 - staffPosition) * staffSpace)
-- [ ] T026 [P] [US1] Implement calculateStaffLines() method in frontend/src/services/notation/NotationLayoutEngine.ts - generate 5 StaffLine objects at y positions 0, 1, 2, 3, 4 * staffSpace, x1=0 to x2=totalWidth
-- [ ] T027 [P] [US1] Implement calculateClefPosition() method in frontend/src/services/notation/NotationLayoutEngine.ts - return ClefPosition with correct SMuFL codepoint (U+E050 treble, U+E062 bass), x=marginLeft+20, y=70
-- [ ] T028 [US1] Implement calculateNotePositions() method in frontend/src/services/notation/NotationLayoutEngine.ts - sort notes by start_tick, calculate x using proportional spacing (tick * pixelsPerTick), calculate y using midiPitchToStaffPosition + staffPositionToY, ensure minimum spacing (depends on T024, T025)
-- [ ] T029 [US1] Implement calculateLedgerLines() method in frontend/src/services/notation/NotationLayoutEngine.ts - iterate NotePosition array, for each note with staffPosition < 0 or > 4, generate LedgerLine objects at even positions (depends on T028)
-- [ ] T030 [US1] Implement calculateLayout() main method in frontend/src/services/notation/NotationLayoutEngine.ts - orchestrate all calculation methods, return complete LayoutGeometry (depends on T026, T027, T028, T029)
-- [ ] T031 [US1] Create NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - accept layout prop, render SVG with staff lines, clef text (className="music-glyph"), note head text elements
-- [ ] T032 [US1] Create StaffNotation coordinator component in frontend/src/components/notation/StaffNotation.tsx - accept notes, clef, timeSignature props, use useMemo to call NotationLayoutEngine.calculateLayout(), render NotationRenderer with layout (depends on T030, T031)
-- [ ] T033 [US1] Integrate StaffNotation into MusicTimeline component in frontend/src/components/MusicTimeline.tsx - extract voice notes, pass to StaffNotation component below existing note list display
+- [X] T024 [P] [US1] Implement midiPitchToStaffPosition() helper function in frontend/src/services/notation/NotationLayoutEngine.ts - take MIDI pitch and clef, return staffPosition number (reference: treble line 2 = B4/MIDI 71, bass line 2 = D3/MIDI 50)
+- [X] T025 [P] [US1] Implement staffPositionToY() helper function in frontend/src/services/notation/NotationLayoutEngine.ts - convert staffPosition to pixel Y-coordinate (y = STAFF_TOP + (4 - staffPosition) * staffSpace)
+- [X] T026 [P] [US1] Implement calculateStaffLines() method in frontend/src/services/notation/NotationLayoutEngine.ts - generate 5 StaffLine objects at y positions 0, 1, 2, 3, 4 * staffSpace, x1=0 to x2=totalWidth
+- [X] T027 [P] [US1] Implement calculateClefPosition() method in frontend/src/services/notation/NotationLayoutEngine.ts - return ClefPosition with correct SMuFL codepoint (U+E050 treble, U+E062 bass), x=marginLeft+20, y=70
+- [X] T028 [US1] Implement calculateNotePositions() method in frontend/src/services/notation/NotationLayoutEngine.ts - sort notes by start_tick, calculate x using proportional spacing (tick * pixelsPerTick), calculate y using midiPitchToStaffPosition + staffPositionToY, ensure minimum spacing (depends on T024, T025)
+- [X] T029 [US1] Implement calculateLedgerLines() method in frontend/src/services/notation/NotationLayoutEngine.ts - iterate NotePosition array, for each note with staffPosition < 0 or > 4, generate LedgerLine objects at even positions (depends on T028)
+- [X] T030 [US1] Implement calculateLayout() main method in frontend/src/services/notation/NotationLayoutEngine.ts - orchestrate all calculation methods, return complete LayoutGeometry (depends on T026, T027, T028, T029)
+- [X] T031 [US1] Create NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - accept layout prop, render SVG with staff lines, clef text (className="music-glyph"), note head text elements
+- [X] T032 [US1] Create StaffNotation coordinator component in frontend/src/components/notation/StaffNotation.tsx - accept notes, clef, timeSignature props, use useMemo to call NotationLayoutEngine.calculateLayout(), render NotationRenderer with layout (depends on T030, T031)
+- [X] T033 [US1] Integrate StaffNotation into MusicTimeline component in frontend/src/components/MusicTimeline.tsx - extract voice notes, pass to StaffNotation component below existing note list display
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - five-line staff with clef and note heads visible and positioned correctly
 

@@ -1,3 +1,19 @@
+/* Load Bravura music font */
+@font-face {
+  font-family: 'Bravura';
+  src: url('/fonts/Bravura.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block; /* Wait for font before rendering */
+}
+
+/* Apply to all music glyphs */
+.music-glyph {
+  font-family: 'Bravura', serif;
+  font-size: 40px; /* Default: 4x staff space */
+  line-height: 1;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
