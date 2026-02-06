@@ -523,4 +523,177 @@ describe('NotationLayoutEngine', () => {
       expect(uniqueIds.size).toBe(ids.length); // All IDs are unique
     });
   });
+
+  /**
+   * T034: Unit test for calculateBarlines()
+   * 
+   * Barlines divide music into measures. Position is determined by:
+   * ticksPerMeasure = PPQ * (4/denominator) * numerator
+   * For 4/4 time at 960 PPQ: 960 * (4/4) * 4 = 3840 ticks per measure
+   * For 3/4 time at 960 PPQ: 960 * (4/4) * 3 = 2880 ticks per measure
+   */
+  describe('calculateBarlines', () => {
+    const PPQ = 960; // Pulses Per Quarter note (MIDI standard)
+    const config = { ...DEFAULT_STAFF_CONFIG };
+
+    it('should generate barlines at correct intervals for 4/4 time', () => {
+      const timeSignature = { numerator: 4, denominator: 4 };
+      const maxTick = 10000; // About 2.6 measures
+      
+      const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
+      
+      // Expected barlines at ticks: 0, 3840, 7680
+      expect(barlines.length).toBe(3);
+      expect(barlines[0].tick).toBe(0);
+      expect(barlines[0].measureNumber).toBe(0);
+      expect(barlines[1].tick).toBe(3840);
+      expect(barlines[1].measureNumber).toBe(1);
+      expect(barlines[2].tick).toBe(7680);
+      expect(barlines[2].measureNumber).toBe(2);
+    });
+
+    it('should generate barlines at correct intervals for 3/4 time', () => {
+      const timeSignature = { numerator: 3, denominator: 4 };
+      const maxTick = 7000; // About 2.4 measures
+      
+      const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
+      
+      // Expected: ticksPerMeasure = 960 * (4/4) * 3 = 2880
+      // Barlines at: 0, 2880, 5760
+      expect(barlines.length).toBe(3);
+      expect(barlines[0].tick).toBe(0);
+      expect(barlines[1].tick).toBe(2880);
+      expect(barlines[2].tick).toBe(5760);
+    });
+
+    it('should calculate correct X coordinates from ticks', () => {
+      const timeSignature = { numerator: 4, denominator: 4 };
+      const maxTick = 5000;
+      
+      const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
+      
+      // X coord = marginLeft + clefWidth + (tick * pixelsPerTick)
+      const expectedX0 = config.marginLeft + config.clefWidth + (0 * config.pixelsPerTick);
+      const expectedX1 = config.marginLeft + config.clefWidth + (3840 * config.pixelsPerTick);
+      
+      expect(barlines[0].x).toBe(expectedX0);
+      expect(barlines[1].x).toBe(expectedX1);
+    });
+
+    it('should set correct Y coordinates spanning staff height', () => {
+      const timeSignature = { numerator: 4, denominator: 4 };
+      const maxTick = 5000;
+      
+      const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
+      
+      // Y coordinates should span from top line to bottom line
+      const centerY = config.viewportHeight / 2;
+      const expectedY1 = centerY - 2 * config.staffSpace; // Top line
+      const expectedY2 = centerY + 2 * config.staffSpace; // Bottom line
+      
+      barlines.forEach(barline => {
+        expect(barline.y1).toBe(expectedY1);
+        expect(barline.y2).toBe(expectedY2);
+      });
+    });
+
+    it('should assign unique IDs to each barline', () => {
+      const timeSignature = { numerator: 4, denominator: 4 };
+      const maxTick = 10000;
+      
+      const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
+      
+      const ids = barlines.map(b => b.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(ids.length);
+    });
+  });
+
+  /**
+   * T035: Unit test for proportional spacing
+   * 
+   * Notes should be spaced proportionally by their tick positions:
+   * - Note at tick 960 should be at baseX + 96px (960 * 0.1)
+   * - Note at tick 1920 should be at baseX + 192px (1920 * 0.1)
+   * - Gap between them should be roughly 2x the gap from 0 to 960
+   */
+  describe('proportional spacing', () => {
+    it('should space notes proportionally by tick position', () => {
+      const notes = [
+        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: '2', start_tick: 960, duration_ticks: 960, pitch: 64 },
+        { id: '3', start_tick: 1920, duration_ticks: 960, pitch: 67 },
+        { id: '4', start_tick: 3840, duration_ticks: 960, pitch: 72 },
+      ];
+
+      const positions = NotationLayoutEngine.calculateNotePositions(
+        notes,
+        'Treble',
+        DEFAULT_STAFF_CONFIG
+      );
+
+      const baseX = DEFAULT_STAFF_CONFIG.marginLeft + DEFAULT_STAFF_CONFIG.clefWidth;
+      
+      // Verify proportional spacing
+      expect(positions[0].x).toBe(baseX + 0 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      expect(positions[1].x).toBe(baseX + 960 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      expect(positions[2].x).toBe(baseX + 1920 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      expect(positions[3].x).toBe(baseX + 3840 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      
+      // Verify gap ratios
+      const gap1 = positions[1].x - positions[0].x; // 0 to 960
+      const gap2 = positions[2].x - positions[1].x; // 960 to 1920
+      const gap3 = positions[3].x - positions[2].x; // 1920 to 3840
+      
+      expect(gap1).toBe(gap2); // Equal tick intervals = equal gaps
+      expect(gap3).toBe(gap1 * 2); // 3840-1920 gap is 2x the 960 gap
+    });
+  });
+
+  /**
+   * T036: Unit test for minimum spacing enforcement
+   * 
+   * Even when proportional spacing would place notes very close together,
+   * the minNoteSpacing (default 15px) should be enforced to prevent overlap.
+   */
+  describe('minimum spacing enforcement', () => {
+    it('should enforce minimum spacing for closely-timed notes', () => {
+      const notes = [
+        { id: '1', start_tick: 0, duration_ticks: 10, pitch: 60 },
+        { id: '2', start_tick: 10, duration_ticks: 10, pitch: 64 },
+      ];
+
+      const positions = NotationLayoutEngine.calculateNotePositions(
+        notes,
+        'Treble',
+        DEFAULT_STAFF_CONFIG
+      );
+
+      const gap = positions[1].x - positions[0].x;
+      
+      // Proportional spacing would be 10 * 0.1 = 1px
+      // But minNoteSpacing (15px) should be enforced
+      expect(gap).toBeGreaterThanOrEqual(DEFAULT_STAFF_CONFIG.minNoteSpacing);
+    });
+
+    it('should not affect notes that naturally have enough spacing', () => {
+      const notes = [
+        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: '2', start_tick: 1000, duration_ticks: 960, pitch: 64 },
+      ];
+
+      const positions = NotationLayoutEngine.calculateNotePositions(
+        notes,
+        'Treble',
+        DEFAULT_STAFF_CONFIG
+      );
+
+      const baseX = DEFAULT_STAFF_CONFIG.marginLeft + DEFAULT_STAFF_CONFIG.clefWidth;
+      
+      // Proportional spacing is 1000 * 0.1 = 100px (already > minNoteSpacing)
+      // So positions should be exactly proportional
+      expect(positions[0].x).toBe(baseX);
+      expect(positions[1].x).toBe(baseX + 1000 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+    });
+  });
 });

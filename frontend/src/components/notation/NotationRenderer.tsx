@@ -105,7 +105,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
         </text>
       ))}
 
-      {/* Barlines (User Story 2 - not yet implemented) */}
+      {/* Barlines (User Story 2) */}
       {layout.barlines.map((barline) => (
         <line
           key={barline.id}

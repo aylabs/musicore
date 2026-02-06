@@ -93,17 +93,17 @@
 
 ### Tests for User Story 2 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T034 [P] [US2] Unit test for calculateBarlines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify barlines generated at correct tick intervals (3840 for 4/4, 2880 for 3/4), positioned at correct x coordinates
-- [ ] T035 [P] [US2] Unit test for proportional spacing in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify note at tick 1920 has x approximately twice that of note at tick 960
-- [ ] T036 [P] [US2] Unit test for minimum spacing enforcement in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify notes at tick 0 and tick 10 are at least minNoteSpacing (15px) apart despite proportional spacing being only 1px
-- [ ] T037 [P] [US2] Integration test for barline rendering in frontend/src/components/notation/NotationRenderer.test.tsx - verify barline SVG <line> elements rendered with correct x coordinates matching tick positions
+- [X] T034 [P] [US2] Unit test for calculateBarlines() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify barlines generated at correct tick intervals (3840 for 4/4, 2880 for 3/4), positioned at correct x coordinates
+- [X] T035 [P] [US2] Unit test for proportional spacing in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify note at tick 1920 has x approximately twice that of note at tick 960
+- [X] T036 [P] [US2] Unit test for minimum spacing enforcement in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify notes at tick 0 and tick 10 are at least minNoteSpacing (15px) apart despite proportional spacing being only 1px
+- [X] T037 [P] [US2] Integration test for barline rendering in frontend/src/components/notation/NotationRenderer.test.tsx - verify barline SVG <line> elements rendered with correct x coordinates matching tick positions
 
 ### Implementation for User Story 2
 
-- [ ] T038 [P] [US2] Implement calculateBarlines() method in frontend/src/services/notation/NotationLayoutEngine.ts - calculate ticksPerMeasure from timeSignature (PPQ * (4/denominator) * numerator), generate Barline objects at measure boundaries from 0 to maxTick
-- [ ] T039 [US2] Update calculateNotePositions() in frontend/src/services/notation/NotationLayoutEngine.ts - add proportional spacing logic: baseX = marginLeft + clefWidth, x = baseX + (tick * pixelsPerTick), enforce minimum spacing from previous note
-- [ ] T040 [US2] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateBarlines() and include barlines in returned LayoutGeometry (depends on T038)
-- [ ] T041 [US2] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - add barline rendering: map layout.barlines to SVG <line> elements with x1=x2=barline.x, y1=barline.y1, y2=barline.y2, stroke="black"
+- [X] T038 [P] [US2] Implement calculateBarlines() method in frontend/src/services/notation/NotationLayoutEngine.ts - calculate ticksPerMeasure from timeSignature (PPQ * (4/denominator) * numerator), generate Barline objects at measure boundaries from 0 to maxTick
+- [X] T039 [US2] Update calculateNotePositions() in frontend/src/services/notation/NotationLayoutEngine.ts - add proportional spacing logic: baseX = marginLeft + clefWidth, x = baseX + (tick * pixelsPerTick), enforce minimum spacing from previous note
+- [X] T040 [US2] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateBarlines() and include barlines in returned LayoutGeometry (depends on T038)
+- [X] T041 [US2] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - add barline rendering: map layout.barlines to SVG <line> elements with x1=x2=barline.x, y1=barline.y1, y2=barline.y2, stroke="black"
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - notes spaced proportionally with measure barlines visible
 

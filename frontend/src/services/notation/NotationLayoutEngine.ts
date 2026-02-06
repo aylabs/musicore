@@ -5,6 +5,7 @@ import type {
   StaffLine,
   ClefPosition,
   LedgerLine,
+  Barline,
   LayoutGeometry,
   LayoutInput,
 } from '../../types/notation/layout';
@@ -200,9 +201,10 @@ export const NotationLayoutEngine = {
    * Algorithm:
    * 1. Sort notes by start_tick (earliest first)
    * 2. Convert each note's pitch to staff position
-   * 3. Calculate X position from tick (with clef offset)
-   * 4. Calculate Y position from staff position
-   * 5. Assign SMuFL note head glyph (U+E0A4 for quarter note)
+   * 3. Calculate X position from tick (with clef offset) - PROPORTIONAL
+   * 4. Enforce minimum spacing between consecutive notes
+   * 5. Calculate Y position from staff position
+   * 6. Assign SMuFL note head glyph (U+E0A4 for quarter note)
    * 
    * @param notes - Array of Note objects from the score
    * @param clef - Clef type for pitch-to-position mapping
@@ -221,12 +223,19 @@ export const NotationLayoutEngine = {
     // Sort notes by start_tick
     const sortedNotes = [...notes].sort((a, b) => a.start_tick - b.start_tick);
     
+    const baseX = config.marginLeft + config.clefWidth;
+    let previousX = baseX - config.minNoteSpacing; // Initialize to allow first note at baseX
+    
     const positioned: NotePosition[] = sortedNotes.map((note) => {
       // Convert pitch to staff position
       const staffPosition = this.midiPitchToStaffPosition(note.pitch, clef);
       
-      // Calculate X position from tick
-      const x = config.marginLeft + config.clefWidth + note.start_tick * config.pixelsPerTick;
+      // Calculate proportional X position from tick
+      const proportionalX = baseX + note.start_tick * config.pixelsPerTick;
+      
+      // Enforce minimum spacing: ensure at least minNoteSpacing from previous note
+      const x = Math.max(proportionalX, previousX + config.minNoteSpacing);
+      previousX = x;
       
       // Calculate Y position from staff position
       const y = this.staffPositionToY(staffPosition, config);
@@ -316,6 +325,61 @@ export const NotationLayoutEngine = {
   },
 
   /**
+   * Calculate barline positions to divide music into measures
+   * 
+   * Barlines are vertical lines that separate measures. Position is determined by:
+   * - ticksPerMeasure = PPQ * (4/denominator) * numerator
+   * - For 4/4 time at 960 PPQ: 960 * (4/4) * 4 = 3840 ticks per measure
+   * - For 3/4 time at 960 PPQ: 960 * (4/4) * 3 = 2880 ticks per measure
+   * 
+   * @param timeSignature - Time signature (numerator and denominator)
+   * @param maxTick - Maximum tick value in the score (to determine how many barlines)
+   * @param config - Staff configuration
+   * @returns Array of Barline objects at measure boundaries
+   */
+  calculateBarlines(
+    timeSignature: { numerator: number; denominator: number },
+    maxTick: number,
+    config: StaffConfig
+  ): Barline[] {
+    const PPQ = 960; // MIDI standard: Pulses Per Quarter note
+    
+    // Calculate ticks per measure
+    // Formula: PPQ * (4/denominator) * numerator
+    // Example 4/4: 960 * (4/4) * 4 = 3840 ticks
+    // Example 3/4: 960 * (4/4) * 3 = 2880 ticks
+    const ticksPerMeasure = PPQ * (4 / timeSignature.denominator) * timeSignature.numerator;
+    
+    const barlines: Barline[] = [];
+    
+    // Y coordinates span from top line to bottom line
+    const centerY = config.viewportHeight / 2;
+    const y1 = centerY - 2 * config.staffSpace; // Top line (staffPosition 4)
+    const y2 = centerY + 2 * config.staffSpace; // Bottom line (staffPosition -4)
+    
+    // Generate barlines at measure boundaries
+    let measureNumber = 0;
+    for (let tick = 0; tick <= maxTick; tick += ticksPerMeasure) {
+      // Calculate X position from tick
+      const x = config.marginLeft + config.clefWidth + tick * config.pixelsPerTick;
+      
+      barlines.push({
+        id: `barline-${measureNumber}`,
+        x,
+        tick,
+        y1,
+        y2,
+        measureNumber,
+        strokeWidth: config.barlineWidth,
+      });
+      
+      measureNumber++;
+    }
+    
+    return barlines;
+  },
+
+  /**
    * Main orchestration function - calculates complete layout geometry
    * 
    * This ties all the layout algorithms together to produce a complete
@@ -325,15 +389,16 @@ export const NotationLayoutEngine = {
    * 1. Calculate staff lines (horizontal lines)
    * 2. Calculate clef position (left margin)
    * 3. Position all notes (pitch → Y, tick → X)
-   * 4. Generate ledger lines for notes outside staff range
-   * 5. Calculate total dimensions
-   * 6. Identify visible notes (for virtual scrolling in US4)
+   * 4. Calculate barlines (measure boundaries) - User Story 2
+   * 5. Generate ledger lines for notes outside staff range
+   * 6. Calculate total dimensions
+   * 7. Identify visible notes (for virtual scrolling in US4)
    * 
    * @param input - LayoutInput with notes, clef, time signature, and config
    * @returns Complete LayoutGeometry with all positioned elements
    */
   calculateLayout(input: LayoutInput): LayoutGeometry {
-    const { notes, clef, config } = input;
+    const { notes, clef, timeSignature, config } = input;
     
     // Find maximum tick to determine total width
     const maxTick = notes.length > 0
@@ -347,6 +412,7 @@ export const NotationLayoutEngine = {
     const staffLines = this.calculateStaffLines(totalWidth, config);
     const clefPosition = this.calculateClefPosition(clef as ClefType, config);
     const notePositions = this.calculateNotePositions(notes, clef as ClefType, config);
+    const barlines = this.calculateBarlines(timeSignature, maxTick, config);
     const ledgerLines = this.calculateLedgerLines(notePositions, config);
     
     // For MVP, all notes are "visible" (virtual scrolling implemented in US4)
@@ -358,7 +424,7 @@ export const NotationLayoutEngine = {
     return {
       notes: notePositions,
       staffLines,
-      barlines: [], // Barlines implemented in User Story 2 (T038-T041)
+      barlines,
       ledgerLines,
       clef: clefPosition,
       keySignatureAccidentals: [], // Key signatures implemented in User Story 5 (T058-T062)
