@@ -1,50 +1,162 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT - Constitution v1.0.0
+Generated: 2026-02-06
+
+VERSION CHANGE: Initial constitution → 1.0.0
+BUMP RATIONALE: First formal ratification of project principles
+
+PRINCIPLES ESTABLISHED:
+  ✓ I. Domain-Driven Design
+  ✓ II. Hexagonal Architecture  
+  ✓ III. API-First Development
+  ✓ IV. Precision & Fidelity
+  ✓ V. Test-First Development (NON-NEGOTIABLE)
+
+NEW SECTIONS ADDED:
+  ✓ Technical Standards
+  ✓ Development Workflow
+
+TEMPLATE CONSISTENCY STATUS:
+  ✅ plan-template.md - Constitution Check aligned (Phase gates)
+  ✅ spec-template.md - Requirement structure supports DDD/API-first
+  ✅ tasks-template.md - Test-first workflow integrated (tests before impl)
+  ✅ checklist-template.md - To verify alignment
+  ✅ agent-file-template.md - To verify alignment
+
+FOLLOW-UP TODOS:
+  - None - all placeholders filled with project-specific values
+-->
+
+# Musicore Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Domain-Driven Design
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The Music Timeline and all music entities MUST be modeled using Domain-Driven Design principles:
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- **Ubiquitous Language**: All code, documentation, and discussions use consistent music domain terminology (Timeline, Event, Structural Event, Interval Event, PPQ, etc.)
+- **Bounded Contexts**: Clear separation between music engine core domain and infrastructure concerns
+- **Aggregates**: Timeline acts as the aggregate root; all event modifications go through the Timeline
+- **Entity Modeling**: Music concepts are first-class domain entities, not data structures
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Music editing requires deep domain understanding; technical abstractions must not leak into the problem space. DDD ensures the codebase speaks the language of musicians and music theory.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+---
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### II. Hexagonal Architecture
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+The backend MUST follow hexagonal (ports & adapters) architecture:
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- **Core Domain**: Music Timeline logic is independent of frameworks, databases, and UI
+- **Ports**: Define interfaces for what the domain needs (persistence, events) and offers (commands, queries)
+- **Adapters**: External systems (HTTP API, storage) connect via adapters implementing ports
+- **Dependency Rule**: Dependencies flow inward—core domain has zero external dependencies
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**Rationale**: Music engine core must be technology-agnostic and testable in isolation. Architecture enables library-first development and prevents framework coupling.
+
+---
+
+### III. API-First Development
+
+Backend and frontend are developed independently with contracts as the integration point:
+
+- **Backend Exposes API**: Music Timeline operations exposed via well-defined REST/GraphQL endpoints
+- **Frontend Consumes API**: React frontend retrieves score data exclusively through backend API
+- **Contract Tests**: API contracts validated before implementation (consumer/provider pattern)
+- **API Versioning**: Breaking changes require MAJOR version bump; backward compatibility preferred
+
+**Rationale**: Monorepo does not mean monolith. Clear API boundaries enable parallel development, independent testing, and future client diversity (CLI, mobile, etc.).
+
+---
+
+### IV. Precision & Fidelity
+
+Music Timeline MUST operate at 960 PPQ (pulses per quarter note) resolution without precision loss:
+
+- **Fixed Resolution**: 960 PPQ is immutable; no runtime resolution changes allowed
+- **Integer Arithmetic**: All timing calculations use integer pulse counts—no floating-point timing
+- **Structural Events**: Events without duration (time signature, tempo changes) anchored at exact pulse positions
+- **Interval Events**: Events with duration (notes, chords) span exact pulse ranges
+
+**Rationale**: Music timing is non-negotiable. Floating-point errors accumulate and destroy rhythmic accuracy. 960 PPQ is a MIDI standard that supports common musical subdivisions (triplets, 16th notes, 32nds).
+
+---
+
+### V. Test-First Development (NON-NEGOTIABLE)
+
+All features follow strict Test-Driven Development:
+
+- **Red-Green-Refactor**: Write test → Verify it fails → Implement → Verify it passes → Clean up
+- **No Code Without Tests**: Implementation PRs without corresponding tests are rejected
+- **Contract Tests**: API endpoints require contract tests (backend provides what frontend expects)
+- **Domain Tests**: Core music logic tested in isolation without infrastructure dependencies
+
+**Rationale**: Music editor correctness is critical—wrong timing or event handling breaks user trust. Tests document behavior, prevent regressions, and validate hexagonal boundaries.
+
+---
+
+## Technical Standards
+
+### Technology Stack
+
+- **Backend**: Rust (latest stable), Cargo workspace
+- **Frontend**: React 18+, TypeScript, modern bundler (Vite/Webpack)
+- **Repository**: Monorepo with `backend/` and `frontend/` directories
+- **Package Management**: Cargo for Rust, npm/pnpm/yarn for JavaScript
+- **Commit Conventions**: Conventional Commits (feat, fix, docs, refactor, test, chore)
+
+### Code Quality
+
+- **Rust**: Clippy lints enforced; `cargo fmt` on save; no `unsafe` without justification
+- **React**: ESLint + Prettier configured; prop types or TypeScript strict mode
+- **Documentation**: Public API surfaces documented (Rust doc comments, JSDoc/TSDoc)
+- **Error Handling**: Rust `Result` types propagated; frontend errors shown with actionable messages
+
+### Performance Constraints
+
+- **Frontend Responsiveness**: User edits MUST reflect UI feedback within 16ms (60fps target)
+- **API Latency**: Backend operations SHOULD complete within 100ms for simple queries
+- **Timeline Size**: Backend MUST handle scores with 10,000+ events without degradation
+
+---
+
+## Development Workflow
+
+### Branching Strategy
+
+- **Main Branch**: `main` is always deployable; protected with required reviews
+- **Feature Branches**: All work happens in `feature/###-short-description` branches
+- **PR Requirements**: Pull requests MUST include tests, pass CI, and update relevant specs
+
+### Review Process
+
+- **Code Reviews**: All PRs require at least one approval before merge
+- **Constitution Compliance**: Reviewers verify adherence to principles (DDD, hexagonal, test-first)
+- **Breaking Changes**: Any API contract changes flagged in PR description and require team discussion
+
+### Quality Gates
+
+- **CI Pipeline**: Tests (unit, integration, contract), lints, format checks
+- **Test Coverage**: Not a hard threshold, but all critical paths MUST have test coverage
+- **Benchmarks**: Performance-sensitive code includes benchmarks where applicable
+
+---
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices. Amendments require:
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+1. Documentation of proposed change with rationale
+2. Team review and approval via PR to constitution file
+3. Migration plan for affected code/specs if principle changes impact existing features
+
+**Compliance Verification**: All PRs and code reviews MUST verify adherence to principles. Violations require explicit justification in commit messages or PR descriptions.
+
+**Complexity Budget**: Introducing complexity (new dependencies, architecture patterns) requires demonstrating alignment with constitution or requesting an amendment.
+
+**Runtime Guidance**: For implementation-specific guidance during feature development, refer to `.github/agents/` files (e.g., `speckit.implement.agent.md`).
+
+---
+
+**Version**: 1.0.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-06
