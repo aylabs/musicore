@@ -150,6 +150,7 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
                         instrumentId={instrument.id}
                         scoreId={scoreId}
                         onUpdate={onUpdate}
+                        clef={getStaffClef(instrument, staffIdx)}
                       />
                     </div>
                   ))}

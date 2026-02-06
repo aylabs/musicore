@@ -533,7 +533,6 @@ describe('NotationLayoutEngine', () => {
    * For 3/4 time at 960 PPQ: 960 * (4/4) * 3 = 2880 ticks per measure
    */
   describe('calculateBarlines', () => {
-    const PPQ = 960; // Pulses Per Quarter note (MIDI standard)
     const config = { ...DEFAULT_STAFF_CONFIG };
 
     it('should generate barlines at correct intervals for 4/4 time', () => {

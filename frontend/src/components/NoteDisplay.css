@@ -172,3 +172,32 @@
   border-radius: 4px;
   font-size: 0.85em;
 }
+
+/* Staff Notation Visualization */
+.staff-notation-container {
+  margin: 15px 0;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.toggle-details-btn {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  background: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+
+.toggle-details-btn:hover {
+  background: #e8f5e9;
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
