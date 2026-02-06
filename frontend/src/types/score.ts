@@ -142,7 +142,7 @@ export interface AddInstrumentRequest {
 
 /** Request to add a note */
 export interface AddNoteRequest {
-  tick: Tick;
+  start_tick: Tick;
   duration_ticks: number;
   pitch: Pitch;
 }

@@ -101,7 +101,7 @@ export function NoteDisplay({
     setError(null);
     try {
       await apiClient.addNote(scoreId, instrumentId, staffId, voiceId, {
-        tick: tickNum,
+        start_tick: tickNum,
         duration_ticks: durationNum,
         pitch: pitchNum,
       });
