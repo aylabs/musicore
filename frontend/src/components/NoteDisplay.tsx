@@ -101,7 +101,7 @@ export function NoteDisplay({
     setError(null);
     try {
       await apiClient.addNote(scoreId, instrumentId, staffId, voiceId, {
-        tick: tickNum,
+        start_tick: tickNum,
         duration_ticks: durationNum,
         pitch: pitchNum,
       });
@@ -117,7 +117,7 @@ export function NoteDisplay({
   };
 
   // Sort notes by tick
-  const sortedNotes = [...notes].sort((a, b) => a.tick - b.tick);
+  const sortedNotes = [...notes].sort((a, b) => a.start_tick - b.start_tick);
 
   return (
     <div className="note-display">
@@ -132,7 +132,7 @@ export function NoteDisplay({
                 <span className="midi-number">(MIDI {note.pitch})</span>
               </div>
               <div className="note-timing">
-                <span>Tick: {formatTick(note.tick)}</span>
+                <span>Tick: {formatTick(note.start_tick)}</span>
                 <span>Duration: {note.duration_ticks}</span>
               </div>
             </div>
