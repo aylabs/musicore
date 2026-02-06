@@ -1,16 +1,18 @@
 use crate::domain::{errors::PersistenceError, ids::ScoreId, score::Score};
 use crate::ports::persistence::ScoreRepository;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-/// In-memory implementation of ScoreRepository using HashMap
+/// In-memory implementation of ScoreRepository using HashMap with thread-safe access
+#[derive(Clone)]
 pub struct InMemoryScoreRepository {
-    scores: HashMap<ScoreId, Score>,
+    scores: Arc<Mutex<HashMap<ScoreId, Score>>>,
 }
 
 impl InMemoryScoreRepository {
     pub fn new() -> Self {
         Self {
-            scores: HashMap::new(),
+            scores: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -22,21 +24,29 @@ impl Default for InMemoryScoreRepository {
 }
 
 impl ScoreRepository for InMemoryScoreRepository {
-    fn save(&mut self, score: Score) -> Result<(), PersistenceError> {
-        self.scores.insert(score.id, score);
+    fn save(&self, score: Score) -> Result<(), PersistenceError> {
+        let mut scores = self.scores.lock()
+            .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
+        scores.insert(score.id, score);
         Ok(())
     }
 
     fn find_by_id(&self, id: ScoreId) -> Result<Option<Score>, PersistenceError> {
-        Ok(self.scores.get(&id).cloned())
+        let scores = self.scores.lock()
+            .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
+        Ok(scores.get(&id).cloned())
     }
 
-    fn delete(&mut self, id: ScoreId) -> Result<(), PersistenceError> {
-        self.scores.remove(&id);
+    fn delete(&self, id: ScoreId) -> Result<(), PersistenceError> {
+        let mut scores = self.scores.lock()
+            .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
+        scores.remove(&id);
         Ok(())
     }
 
     fn list_all(&self) -> Result<Vec<Score>, PersistenceError> {
-        Ok(self.scores.values().cloned().collect())
+        let scores = self.scores.lock()
+            .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
+        Ok(scores.values().cloned().collect())
     }
 }
