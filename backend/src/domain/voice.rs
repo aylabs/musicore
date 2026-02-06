@@ -34,6 +34,13 @@ impl Voice {
         self.interval_events.push(note);
         Ok(())
     }
+
+    /// Check if a note with a specific pitch overlaps with any existing notes
+    pub fn has_overlapping_note(&self, note: &Note) -> bool {
+        self.interval_events
+            .iter()
+            .any(|existing| existing.pitch == note.pitch && existing.overlaps_with(note))
+    }
 }
 
 impl Default for Voice {

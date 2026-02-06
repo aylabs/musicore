@@ -9,6 +9,10 @@ impl ScoreId {
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
     }
+
+    pub fn parse(s: &str) -> Result<Self, uuid::Error> {
+        Ok(Self(uuid::Uuid::parse_str(s)?))
+    }
 }
 
 impl Default for ScoreId {
@@ -30,6 +34,10 @@ pub struct InstrumentId(uuid::Uuid);
 impl InstrumentId {
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn parse(s: &str) -> Result<Self, uuid::Error> {
+        Ok(Self(uuid::Uuid::parse_str(s)?))
     }
 }
 
@@ -53,6 +61,10 @@ impl StaffId {
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
     }
+
+    pub fn parse(s: &str) -> Result<Self, uuid::Error> {
+        Ok(Self(uuid::Uuid::parse_str(s)?))
+    }
 }
 
 impl Default for StaffId {
@@ -75,6 +87,10 @@ impl VoiceId {
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
     }
+
+    pub fn parse(s: &str) -> Result<Self, uuid::Error> {
+        Ok(Self(uuid::Uuid::parse_str(s)?))
+    }
 }
 
 impl Default for VoiceId {
@@ -96,6 +112,10 @@ pub struct NoteId(uuid::Uuid);
 impl NoteId {
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn parse(s: &str) -> Result<Self, uuid::Error> {
+        Ok(Self(uuid::Uuid::parse_str(s)?))
     }
 }
 

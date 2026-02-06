@@ -1,4 +1,4 @@
-use crate::domain::{ids::InstrumentId, staff::Staff};
+use crate::domain::{errors::DomainError, ids::{InstrumentId, StaffId}, staff::Staff};
 use serde::{Deserialize, Serialize};
 
 /// Instrument contains one or more staves
@@ -17,5 +17,26 @@ impl Instrument {
             name,
             staves: vec![Staff::new()],
         }
+    }
+
+    /// Add an additional staff to the instrument
+    pub fn add_staff(&mut self, staff: Staff) {
+        self.staves.push(staff);
+    }
+
+    /// Get a staff by ID (immutable)
+    pub fn get_staff(&self, id: StaffId) -> Result<&Staff, DomainError> {
+        self.staves
+            .iter()
+            .find(|s| s.id == id)
+            .ok_or_else(|| DomainError::NotFound(format!("Staff with id {} not found", id)))
+    }
+
+    /// Get a staff by ID (mutable)
+    pub fn get_staff_mut(&mut self, id: StaffId) -> Result<&mut Staff, DomainError> {
+        self.staves
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or_else(|| DomainError::NotFound(format!("Staff with id {} not found", id)))
     }
 }

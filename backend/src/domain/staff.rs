@@ -5,7 +5,7 @@ use crate::domain::{
         key_signature::KeySignatureEvent,
         staff::StaffStructuralEvent,
     },
-    ids::StaffId,
+    ids::{StaffId, VoiceId},
     value_objects::{Clef, KeySignature, Tick},
     voice::Voice,
 };
@@ -74,6 +74,107 @@ impl Staff {
 
         self.staff_structural_events.push(StaffStructuralEvent::KeySignature(event));
         Ok(())
+    }
+
+    /// Add an additional voice to the staff
+    pub fn add_voice(&mut self, voice: Voice) {
+        self.voices.push(voice);
+    }
+
+    /// Get a voice by ID (immutable)
+    pub fn get_voice(&self, id: VoiceId) -> Result<&Voice, DomainError> {
+        self.voices
+            .iter()
+            .find(|v| v.id == id)
+            .ok_or_else(|| DomainError::NotFound(format!("Voice with id {} not found", id)))
+    }
+
+    /// Get a voice by ID (mutable)
+    pub fn get_voice_mut(&mut self, id: VoiceId) -> Result<&mut Voice, DomainError> {
+        self.voices
+            .iter_mut()
+            .find(|v| v.id == id)
+            .ok_or_else(|| DomainError::NotFound(format!("Voice with id {} not found", id)))
+    }
+
+    /// Get the active clef at a specific tick
+    pub fn get_clef_at(&self, tick: Tick) -> Option<&ClefEvent> {
+        self.staff_structural_events
+            .iter()
+            .filter_map(|e| match e {
+                StaffStructuralEvent::Clef(ce) if ce.tick <= tick => Some(ce),
+                _ => None,
+            })
+            .max_by_key(|ce| ce.tick)
+    }
+
+    /// Get the active key signature at a specific tick
+    pub fn get_key_signature_at(&self, tick: Tick) -> Option<&KeySignatureEvent> {
+        self.staff_structural_events
+            .iter()
+            .filter_map(|e| match e {
+                StaffStructuralEvent::KeySignature(ke) if ke.tick <= tick => Some(ke),
+                _ => None,
+            })
+            .max_by_key(|ke| ke.tick)
+    }
+
+    /// Remove a clef event at a specific tick
+    pub fn remove_clef_event(&mut self, tick: Tick) -> Result<(), DomainError> {
+        if tick == Tick::new(0) {
+            return Err(DomainError::ConstraintViolation(
+                "Cannot delete required clef event at tick 0".to_string()
+            ));
+        }
+
+        let len_before = self.staff_structural_events.len();
+        self.staff_structural_events.retain(|e| {
+            !matches!(e, StaffStructuralEvent::Clef(ce) if ce.tick == tick)
+        });
+
+        if self.staff_structural_events.len() == len_before {
+            return Err(DomainError::NotFound(
+                format!("Clef event not found at tick {}", tick.value())
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Remove a key signature event at a specific tick
+    pub fn remove_key_signature_event(&mut self, tick: Tick) -> Result<(), DomainError> {
+        if tick == Tick::new(0) {
+            return Err(DomainError::ConstraintViolation(
+                "Cannot delete required key signature event at tick 0".to_string()
+            ));
+        }
+
+        let len_before = self.staff_structural_events.len();
+        self.staff_structural_events.retain(|e| {
+            !matches!(e, StaffStructuralEvent::KeySignature(ke) if ke.tick == tick)
+        });
+
+        if self.staff_structural_events.len() == len_before {
+            return Err(DomainError::NotFound(
+                format!("Key signature event not found at tick {}", tick.value())
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Query structural events within a tick range
+    pub fn query_structural_events_in_range(&self, start_tick: Tick, end_tick: Tick) -> Vec<&StaffStructuralEvent> {
+        self.staff_structural_events
+            .iter()
+            .filter(|e| {
+                let event_tick = match e {
+                    StaffStructuralEvent::Clef(ce) => ce.tick,
+                    StaffStructuralEvent::KeySignature(ke) => ke.tick,
+                };
+                event_tick >= start_tick && event_tick <= end_tick
+            })
+            .collect()
     }
 }
 

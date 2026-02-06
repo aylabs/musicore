@@ -103,10 +103,10 @@ feature: "001-score-model"
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] Implement Instrument::add_staff() method to add additional staves in backend/src/domain/instrument/mod.rs
-- [ ] T038 [US2] Implement Instrument::get_staff() method to retrieve staff by ID in backend/src/domain/instrument/mod.rs
-- [ ] T039 [US2] Implement Instrument::get_staff_mut() method for mutable staff access in backend/src/domain/instrument/mod.rs
-- [ ] T040 [US2] Add validation to ensure Staff structural events are independent per staff in backend/src/domain/staff/mod.rs
+- [X] T037 [US2] Implement Instrument::add_staff() method to add additional staves in backend/src/domain/instrument/mod.rs
+- [X] T038 [US2] Implement Instrument::get_staff() method to retrieve staff by ID in backend/src/domain/instrument/mod.rs
+- [X] T039 [US2] Implement Instrument::get_staff_mut() method for mutable staff access in backend/src/domain/instrument/mod.rs
+- [X] T040 [US2] Add validation to ensure Staff structural events are independent per staff in backend/src/domain/staff/mod.rs
 
 **Checkpoint**: User Story 2 complete - Multi-staff instruments functional
 
@@ -120,11 +120,11 @@ feature: "001-score-model"
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Implement Staff::add_voice() method to add additional voices in backend/src/domain/staff/mod.rs
-- [ ] T042 [US3] Implement Staff::get_voice() method to retrieve voice by ID in backend/src/domain/staff/mod.rs
-- [ ] T043 [US3] Implement Staff::get_voice_mut() method for mutable voice access in backend/src/domain/staff/mod.rs
-- [ ] T044 [US3] Enhance Voice::add_note() validation to allow different-pitch overlaps (chords) in backend/src/domain/voice/mod.rs
-- [ ] T045 [US3] Add helper method Voice::has_overlapping_note() for pitch-specific overlap checks in backend/src/domain/voice/mod.rs
+- [X] T041 [US3] Implement Staff::add_voice() method to add additional voices in backend/src/domain/staff/mod.rs
+- [X] T042 [US3] Implement Staff::get_voice() method to retrieve voice by ID in backend/src/domain/staff/mod.rs
+- [X] T043 [US3] Implement Staff::get_voice_mut() method for mutable voice access in backend/src/domain/staff/mod.rs
+- [X] T044 [US3] Enhance Voice::add_note() validation to allow different-pitch overlaps (chords) in backend/src/domain/voice/mod.rs
+- [X] T045 [US3] Add helper method Voice::has_overlapping_note() for pitch-specific overlap checks in backend/src/domain/voice/mod.rs
 
 **Checkpoint**: User Story 3 complete - Polyphonic voices functional
 
@@ -138,10 +138,10 @@ feature: "001-score-model"
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Implement Score::get_tempo_at() to retrieve active tempo at given tick in backend/src/domain/score/mod.rs
-- [ ] T047 [US4] Implement Score::get_time_signature_at() to retrieve active time signature at tick in backend/src/domain/score/mod.rs
-- [ ] T048 [US4] Add validation to prevent deletion of required tick 0 events in backend/src/domain/score/mod.rs
-- [ ] T049 [US4] Implement helper to query structural events by tick range in backend/src/domain/score/mod.rs
+- [X] T046 [US4] Implement Score::get_tempo_at() to retrieve active tempo at given tick in backend/src/domain/score/mod.rs
+- [X] T047 [US4] Implement Score::get_time_signature_at() to retrieve active time signature at tick in backend/src/domain/score/mod.rs
+- [X] T048 [US4] Add validation to prevent deletion of required tick 0 events in backend/src/domain/score/mod.rs
+- [X] T049 [US4] Implement helper to query structural events by tick range in backend/src/domain/score/mod.rs
 
 **Checkpoint**: User Story 4 complete - Global structural event management functional
 
@@ -155,10 +155,10 @@ feature: "001-score-model"
 
 ### Implementation for User Story 5
 
-- [ ] T050 [US5] Implement Staff::get_clef_at() to retrieve active clef at given tick in backend/src/domain/staff/mod.rs
-- [ ] T051 [US5] Implement Staff::get_key_signature_at() to retrieve active key signature at tick in backend/src/domain/staff/mod.rs
-- [ ] T052 [US5] Add validation to prevent deletion of required tick 0 staff events in backend/src/domain/staff/mod.rs
-- [ ] T053 [US5] Implement helper to query staff structural events by tick range in backend/src/domain/staff/mod.rs
+- [X] T050 [US5] Implement Staff::get_clef_at() to retrieve active clef at given tick in backend/src/domain/staff/mod.rs
+- [X] T051 [US5] Implement Staff::get_key_signature_at() to retrieve active key signature at tick in backend/src/domain/staff/mod.rs
+- [X] T052 [US5] Add validation to prevent deletion of required tick 0 staff events in backend/src/domain/staff/mod.rs
+- [X] T053 [US5] Implement helper to query staff structural events by tick range in backend/src/domain/staff/mod.rs
 
 **Checkpoint**: User Story 5 complete - Staff-scoped structural event management functional
 
@@ -170,26 +170,26 @@ feature: "001-score-model"
 
 **Note**: API implementation follows all user stories - implements contracts from contracts/score-api.yaml
 
-- [ ] T054 Evaluate and choose web framework (axum vs actix-web) based on research.md recommendations in backend/Cargo.toml
-- [ ] T055 Add chosen web framework dependency to backend/Cargo.toml
-- [ ] T056 Create API adapter structure in backend/src/adapters/api/mod.rs
-- [ ] T057 [P] Implement POST /scores endpoint (create score) in backend/src/adapters/api/scores.rs
-- [ ] T058 [P] Implement GET /scores endpoint (list scores) in backend/src/adapters/api/scores.rs
-- [ ] T059 [P] Implement GET /scores/{id} endpoint (retrieve score) in backend/src/adapters/api/scores.rs
-- [ ] T060 [P] Implement DELETE /scores/{id} endpoint in backend/src/adapters/api/scores.rs
-- [ ] T061 [P] Implement POST /scores/{id}/instruments endpoint (add instrument) in backend/src/adapters/api/instruments.rs
-- [ ] T062 [P] Implement POST /scores/{id}/instruments/{id}/staves endpoint (add staff) in backend/src/adapters/api/staves.rs
-- [ ] T063 [P] Implement POST /scores/{id}/instruments/{id}/staves/{id}/voices endpoint (add voice) in backend/src/adapters/api/voices.rs
-- [ ] T064 [P] Implement POST /scores/{id}/.../notes endpoint (add note) in backend/src/adapters/api/notes.rs
-- [ ] T065 [P] Implement GET /scores/{id}/.../notes endpoint (query notes) in backend/src/adapters/api/notes.rs
-- [ ] T066 [P] Implement POST /scores/{id}/structural-events/tempo endpoint in backend/src/adapters/api/structural_events.rs
-- [ ] T067 [P] Implement POST /scores/{id}/structural-events/time-signature endpoint in backend/src/adapters/api/structural_events.rs
-- [ ] T068 [P] Implement POST /scores/{id}/.../structural-events/clef endpoint in backend/src/adapters/api/structural_events.rs
-- [ ] T069 [P] Implement POST /scores/{id}/.../structural-events/key-signature endpoint in backend/src/adapters/api/structural_events.rs
-- [ ] T070 Create error mapping layer (DomainError → HTTP status codes) in backend/src/adapters/api/errors.rs
-- [ ] T071 Implement request validation middleware in backend/src/adapters/api/middleware.rs
-- [ ] T072 Create main.rs entry point with server initialization in backend/src/main.rs
-- [ ] T073 Configure API server with routes and middleware in backend/src/adapters/api/routes.rs
+- [X] T054 Evaluate and choose web framework (axum vs actix-web) based on research.md recommendations in backend/Cargo.toml
+- [X] T055 Add chosen web framework dependency to backend/Cargo.toml
+- [X] T056 Create API adapter structure in backend/src/adapters/api/mod.rs
+- [X] T057 [P] Implement POST /scores endpoint (create score) in backend/src/adapters/api/scores.rs
+- [X] T058 [P] Implement GET /scores endpoint (list scores) in backend/src/adapters/api/scores.rs
+- [X] T059 [P] Implement GET /scores/{id} endpoint (retrieve score) in backend/src/adapters/api/scores.rs
+- [X] T060 [P] Implement DELETE /scores/{id} endpoint in backend/src/adapters/api/scores.rs
+- [X] T061 [P] Implement POST /scores/{id}/instruments endpoint (add instrument) in backend/src/adapters/api/instruments.rs
+- [X] T062 [P] Implement POST /scores/{id}/instruments/{id}/staves endpoint (add staff) in backend/src/adapters/api/staves.rs
+- [X] T063 [P] Implement POST /scores/{id}/instruments/{id}/staves/{id}/voices endpoint (add voice) in backend/src/adapters/api/voices.rs
+- [X] T064 [P] Implement POST /scores/{id}/.../notes endpoint (add note) in backend/src/adapters/api/notes.rs
+- [X] T065 [P] Implement GET /scores/{id}/.../notes endpoint (query notes) in backend/src/adapters/api/notes.rs
+- [X] T066 [P] Implement POST /scores/{id}/structural-events/tempo endpoint in backend/src/adapters/api/structural_events.rs
+- [X] T067 [P] Implement POST /scores/{id}/structural-events/time-signature endpoint in backend/src/adapters/api/structural_events.rs
+- [X] T068 [P] Implement POST /scores/{id}/.../structural-events/clef endpoint in backend/src/adapters/api/structural_events.rs
+- [X] T069 [P] Implement POST /scores/{id}/.../structural-events/key-signature endpoint in backend/src/adapters/api/structural_events.rs
+- [X] T070 Create error mapping layer (DomainError → HTTP status codes) in backend/src/adapters/api/errors.rs
+- [X] T071 Implement request validation middleware in backend/src/adapters/api/middleware.rs
+- [X] T072 Create main.rs entry point with server initialization in backend/src/main.rs
+- [X] T073 Configure API server with routes and middleware in backend/src/adapters/api/routes.rs
 
 **Checkpoint**: API layer complete - Backend exposing all domain operations via REST
 
@@ -335,9 +335,9 @@ While this feature does not explicitly require tests in the specification, the c
 
 ### Code Review Checkpoints
 
-- [ ] Phase 2 complete: Review value objects and domain errors
-- [ ] Phase 3 complete: Review US1 domain model (Score, Instrument, Staff, Voice, Note)
-- [ ] Phase 8 complete: Review API adapter implementation
+- [X] Phase 2 complete: Review value objects and domain errors
+- [X] Phase 3 complete: Review US1 domain model (Score, Instrument, Staff, Voice, Note)
+- [X] Phase 8 complete: Review API adapter implementation (✅ 94 tests passing: 76 unit + 18 integration)
 - [ ] Phase 9 complete: Review frontend integration
 - [ ] Phase 10 complete: Final code review and documentation
 
