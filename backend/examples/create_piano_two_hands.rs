@@ -3,7 +3,7 @@ use musicore_backend::domain::{
     instrument::Instrument,
     score::Score,
     staff::Staff,
-    value_objects::{BPM, Clef, Pitch, Tick},
+    value_objects::{BPM, Pitch, Tick},
 };
 
 /// Example: Create a piano score with treble and bass clefs playing a C major chord
@@ -28,7 +28,7 @@ fn main() {
 
     // Add a second staff for bass clef (default is treble)
     let bass_staff = Staff::new();
-    piano.add_staff(bass_staff).unwrap();
+    piano.add_staff(bass_staff);
     println!("  Added treble clef staff (default)");
     println!("  Added bass clef staff\n");
 
