@@ -111,7 +111,7 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
     <div className="instrument-list">
       {error && <div className="error">{error}</div>}
       
-      {instruments.map((instrument, instIdx) => (
+      {instruments.map((instrument) => (
         <div key={instrument.id} className="instrument-card">
           <div 
             className="instrument-header" 
