@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { NotationRenderer } from './NotationRenderer';
 import type { LayoutGeometry } from '../../types/notation/layout';
 
@@ -174,7 +174,7 @@ describe('NotationRenderer', () => {
       const noteElements = container.querySelectorAll('text[font-family="Bravura"]');
       
       // Filter out clef (first element) to get only notes
-      const notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      const notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       expect(notes.length).toBe(2);
       
@@ -218,7 +218,7 @@ describe('NotationRenderer', () => {
       const { container } = render(<NotationRenderer layout={mockLayout} />);
       
       const noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      const notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       // Should not throw error when clicking
       expect(() => fireEvent.click(notes[0])).not.toThrow();
@@ -253,7 +253,7 @@ describe('NotationRenderer', () => {
       const { container } = render(<NotationRenderer layout={mockLayout} />);
       
       const noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      const notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       expect(notes[0]).toHaveStyle({ cursor: 'pointer' });
     });
@@ -306,7 +306,7 @@ describe('NotationRenderer', () => {
       const { container } = render(<NotationRenderer layout={mockLayout} selectedNoteId="note-1" />);
       
       const noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      const notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       // First note (selected) should be blue
       expect(notes[0].getAttribute('fill')).toBe('blue');
@@ -355,7 +355,7 @@ describe('NotationRenderer', () => {
       const { container } = render(<NotationRenderer layout={mockLayout} selectedNoteId={null} />);
       
       const noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      const notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       // Both notes should be black
       expect(notes[0].getAttribute('fill')).toBe('black');
@@ -403,7 +403,7 @@ describe('NotationRenderer', () => {
       const { container, rerender } = render(<NotationRenderer layout={mockLayout} selectedNoteId="note-1" />);
       
       let noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      let notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      let notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       expect(notes[0].getAttribute('fill')).toBe('blue');
       expect(notes[1].getAttribute('fill')).toBe('black');
@@ -412,7 +412,7 @@ describe('NotationRenderer', () => {
       rerender(<NotationRenderer layout={mockLayout} selectedNoteId="note-2" />);
       
       noteElements = container.querySelectorAll('text[font-family="Bravura"]');
-      notes = Array.from(noteElements).filter((el, idx) => idx > 0);
+      notes = Array.from(noteElements).filter((_el, idx) => idx > 0);
       
       expect(notes[0].getAttribute('fill')).toBe('black');
       expect(notes[1].getAttribute('fill')).toBe('blue');

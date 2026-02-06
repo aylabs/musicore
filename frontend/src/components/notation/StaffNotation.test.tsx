@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent, screen } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { StaffNotation } from './StaffNotation';
 import type { Note } from '../../types/score';
 
@@ -24,14 +24,12 @@ describe('StaffNotation', () => {
           pitch: 60,
           start_tick: 0,
           duration_ticks: 960,
-          velocity: 64,
         },
         {
           id: 'note-2',
           pitch: 62,
           start_tick: 960,
           duration_ticks: 960,
-          velocity: 64,
         },
       ];
 
@@ -39,7 +37,7 @@ describe('StaffNotation', () => {
       
       // Get note elements (filter out clef which is also a text element)
       const textElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const noteElements = Array.from(textElements).filter((el, idx) => idx > 0); // Skip clef
+      const noteElements = Array.from(textElements).filter((_el, idx) => idx > 0); // Skip clef
       
       // Initially, no note should be selected (all black)
       expect(noteElements[0].getAttribute('fill')).toBe('black');
@@ -60,14 +58,13 @@ describe('StaffNotation', () => {
           pitch: 60,
           start_tick: 0,
           duration_ticks: 960,
-          velocity: 64,
         },
       ];
 
       const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
       
       const textElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const noteElements = Array.from(textElements).filter((el, idx) => idx > 0);
+      const noteElements = Array.from(textElements).filter((_el, idx) => idx > 0);
       
       // Initially black
       expect(noteElements[0].getAttribute('fill')).toBe('black');
@@ -88,28 +85,25 @@ describe('StaffNotation', () => {
           pitch: 60,
           start_tick: 0,
           duration_ticks: 960,
-          velocity: 64,
         },
         {
           id: 'note-2',
           pitch: 62,
           start_tick: 960,
           duration_ticks: 960,
-          velocity: 64,
         },
         {
           id: 'note-3',
           pitch: 64,
           start_tick: 1920,
           duration_ticks: 960,
-          velocity: 64,
         },
       ];
 
       const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
       
       const textElements = container.querySelectorAll('text[font-family="Bravura"]');
-      const noteElements = Array.from(textElements).filter((el, idx) => idx > 0);
+      const noteElements = Array.from(textElements).filter((_el, idx) => idx > 0);
       
       // Click first note
       fireEvent.click(noteElements[0]);
@@ -137,21 +131,19 @@ describe('StaffNotation', () => {
           pitch: 60,
           start_tick: 0,
           duration_ticks: 960,
-          velocity: 64,
         },
         {
           id: 'note-2',
           pitch: 62,
           start_tick: 960,
           duration_ticks: 960,
-          velocity: 64,
         },
       ];
 
       const { container, rerender } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
       
       let textElements = container.querySelectorAll('text[font-family="Bravura"]');
-      let noteElements = Array.from(textElements).filter((el, idx) => idx > 0);
+      let noteElements = Array.from(textElements).filter((_el, idx) => idx > 0);
       
       // Click first note to select
       fireEvent.click(noteElements[0]);
@@ -162,7 +154,7 @@ describe('StaffNotation', () => {
       
       // Selection should persist
       textElements = container.querySelectorAll('text[font-family="Bravura"]');
-      noteElements = Array.from(textElements).filter((el, idx) => idx > 0);
+      noteElements = Array.from(textElements).filter((_el, idx) => idx > 0);
       expect(noteElements[0].getAttribute('fill')).toBe('blue');
     });
 
