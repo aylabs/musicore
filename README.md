@@ -1,0 +1,276 @@
+# 🎵 Musicore - Music Score Editor
+
+A full-stack music score editor built with Domain-Driven Design and Hexagonal Architecture.
+
+[![Rust](https://img.shields.io/badge/Rust-1.93-orange)](https://www.rust-lang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev/)
+[![Axum](https://img.shields.io/badge/Axum-0.7-green)](https://github.com/tokio-rs/axum)
+
+## Overview
+
+Musicore is a music score editor implementing a hierarchical domain model with precise timing (960 PPQ) and comprehensive validation. Built following constitutional principles of domain-driven design, API-first development, and test-first practices.
+
+### Features
+
+✅ **Domain Model**
+- Hierarchical score structure: Score → Instrument → Staff → Voice → Note
+- Global structural events: Tempo, Time Signature
+- Staff-scoped structural events: Clef, Key Signature
+- Multi-staff instruments (e.g., piano with treble and bass clefs)
+- Polyphonic voices with overlap validation
+- 960 PPQ (Pulses Per Quarter note) precision
+
+✅ **REST API** (Backend)
+- 13 endpoints for complete score management
+- Axum web framework with Tokio async runtime
+- Thread-safe in-memory repository
+- Error handling with proper HTTP status codes
+- CORS and tracing middleware
+
+✅ **React Frontend**
+- TypeScript with strict type checking
+- Component-based UI (ScoreViewer, InstrumentList, NoteDisplay)
+- Real-time API integration
+- Note display with MIDI pitch and note names
+- Complete CRUD operations for scores, instruments, and notes
+
+✅ **Testing**
+- 94 tests passing (76 unit + 18 integration)
+- 100% pass rate
+- Test-first development approach
+
+## Quick Start
+
+### Option 1: Docker Compose (Recommended)
+
+```bash
+# Build and start both backend and frontend
+docker-compose up --build
+
+# Access the application
+# Frontend: http://localhost
+# Backend API: http://localhost:8080/api/v1
+```
+
+### Option 2: Local Development
+
+**Prerequisites:**
+- Rust 1.75+ ([install](https://rustup.rs/))
+- Node.js 18+ ([install](https://nodejs.org/))
+
+**Start Backend:**
+```bash
+cd backend
+cargo run
+# Runs on http://localhost:8080
+```
+
+**Start Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+# Runs on http://localhost:5173
+```
+
+## Project Structure
+
+```
+musicore/
+├── backend/                # Rust API server
+│   ├── src/
+│   │   ├── domain/         # Core domain logic (DDD)
+│   │   ├── ports/          # Repository traits
+│   │   ├── adapters/       # API & persistence implementations
+│   │   └── main.rs         # Server entry point
+│   ├── tests/              # Unit & integration tests
+│   ├── examples/           # Example usage scripts
+│   ├── Dockerfile
+│   └── README.md           # Backend documentation
+├── frontend/               # React + TypeScript UI
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── services/       # API client
+│   │   ├── types/          # TypeScript types
+│   │   └── App.tsx         # Main app
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── README.md           # Frontend documentation
+├── specs/                  # Specifications & docs
+│   └── 001-score-model/
+│       ├── spec.md         # Feature specification
+│       ├── data-model.md   # Domain entities
+│       ├── contracts/      # OpenAPI specs
+│       └── tasks.md        # Implementation tasks
+├── docker-compose.yml      # Full stack orchestration
+└── README.md               # This file
+```
+
+## Architecture
+
+### Hexagonal Architecture (Ports & Adapters)
+
+```
+┌─────────────────────────────────────────┐
+│           Frontend (React)               │
+│  ┌────────────────────────────────────┐ │
+│  │   Components   │   API Client      │ │
+│  └────────────────┴───────────────────┘ │
+└────────────────┬────────────────────────┘
+                 │ HTTP/JSON
+                 ▼
+┌─────────────────────────────────────────┐
+│         Backend (Rust + Axum)            │
+│  ┌────────────────────────────────────┐ │
+│  │  Adapters (API │ Persistence)      │ │
+│  ├────────────────────────────────────┤ │
+│  │           Ports (Traits)            │ │
+│  ├────────────────────────────────────┤ │
+│  │       Domain Logic (DDD)            │ │
+│  │  Score │ Instrument │ Staff │ Voice │ │
+│  └────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+### Domain Model (DDD)
+
+- **Aggregate Root**: `Score` controls all mutations
+- **Entities**: `Instrument`, `Staff`, `Voice` with UUID identity
+- **Value Objects**: `Tick`, `BPM`, `Pitch`, `Clef`, `KeySignature` (immutable)
+- **Events**: `TempoEvent`, `TimeSignatureEvent`, `ClefEvent`, `KeySignatureEvent`, `Note`
+- **Validation**: 11 invariants enforced (overlap, duplicates, required defaults)
+
+## API Endpoints
+
+**Base URL**: `http://localhost:8080/api/v1`
+
+### Score Management
+- `POST /scores` - Create score
+- `GET /scores` - List all scores
+- `GET /scores/{id}` - Get score with full hierarchy
+- `DELETE /scores/{id}` - Delete score
+
+### Domain Entities
+- `POST /scores/{id}/instruments` - Add instrument
+- `POST /scores/{id}/instruments/{id}/staves` - Add staff
+- `POST /scores/{id}/instruments/{id}/staves/{id}/voices` - Add voice
+- `POST /scores/{id}/.../voices/{id}/notes` - Add note
+
+### Structural Events
+- `POST /scores/{id}/structural-events/tempo` - Add tempo change
+- `POST /scores/{id}/structural-events/time-signature` - Add time signature
+- `POST /scores/{id}/.../staves/{id}/structural-events/clef` - Add clef change
+- `POST /scores/{id}/.../staves/{id}/structural-events/key-signature` - Add key signature
+
+See [backend/README.md](backend/README.md) for full API documentation.
+
+## Development
+
+### Running Tests
+
+```bash
+# Backend tests (94 tests)
+cd backend
+cargo test
+
+# Frontend type checking
+cd frontend
+npm run tsc
+
+# Integration tests only
+cd backend
+cargo test --test api_integration_test
+```
+
+### Running Examples
+
+```bash
+cd backend
+
+# C major scale example
+cargo run --example create_c_major_scale
+
+# Two-hand piano example
+cargo run --example create_piano_two_hands
+```
+
+### Code Quality
+
+```bash
+# Backend
+cd backend
+cargo clippy          # Linting
+cargo fmt            # Formatting
+
+# Frontend
+cd frontend
+npm run lint         # ESLint
+```
+
+## Implementation Progress
+
+**Overall: 70/93 tasks (75.3%)**
+
+- ✅ Phase 1: Setup (7/7)
+- ✅ Phase 2: Foundational (5/5)
+- ✅ Phase 3: User Story 1 MVP (24/24)
+- ✅ Phase 4: User Story 2 (4/4) - Multi-staff
+- ✅ Phase 5: User Story 3 (5/5) - Polyphony
+- ✅ Phase 6: User Story 4 (4/4) - Global events
+- ✅ Phase 7: User Story 5 (4/4) - Staff events
+- ✅ Phase 8: API Layer (20/20)
+- ✅ Phase 9: Frontend Integration (10/10)
+- 🚧 Phase 10: Polish (7/10) - In progress
+
+## Technology Stack
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Backend API | Rust + Axum | 1.93 / 0.7 |
+| Runtime | Tokio | 1.0 |
+| Frontend | React + TypeScript | 18 / 5.0 |
+| Build Tool | Vite | 6.0 |
+| Serialization | Serde | 1.0 |
+| HTTP Client | Fetch API | Native |
+| Testing | Cargo Test | Built-in |
+| Containerization | Docker | 20+ |
+
+## Constitutional Principles
+
+This project follows five core principles:
+
+1. ✅ **Domain-Driven Design** - Ubiquitous language, aggregate roots, bounded contexts
+2. ✅ **Hexagonal Architecture** - Domain independent of infrastructure
+3. ✅ **API-First Development** - OpenAPI contracts define interfaces
+4. ✅ **Precision & Fidelity** - 960 PPQ integer arithmetic
+5. ✅ **Test-First Development** - 94 tests, TDD workflow
+
+## Documentation
+
+- **Backend**: [backend/README.md](backend/README.md)
+- **Frontend**: [frontend/README.md](frontend/README.md)
+- **Specification**: [specs/001-score-model/spec.md](specs/001-score-model/spec.md)
+- **Data Model**: [specs/001-score-model/data-model.md](specs/001-score-model/data-model.md)
+- **API Contracts**: [specs/001-score-model/contracts/score-api.yaml](specs/001-score-model/contracts/score-api.yaml)
+
+## Contributing
+
+All changes must:
+- Include tests (unit and/or integration)
+- Pass `cargo test` (backend)
+- Pass `npm run tsc` and `npm run lint` (frontend)
+- Follow hexagonal architecture boundaries
+- Maintain domain model purity
+- Update documentation
+
+## License
+
+See repository root for license information.
+
+---
+
+**Version**: 0.1.0  
+**Last Updated**: 2026-02-06  
+**Status**: ✅ Phase 1-9 Complete, Phase 10 In Progress  
+**Test Coverage**: 94 tests passing (100% pass rate)

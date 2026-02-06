@@ -199,16 +199,16 @@ feature: "001-score-model"
 
 **Purpose**: React frontend to consume backend API and display score hierarchy
 
-- [ ] T074 Create TypeScript types mirroring domain entities in frontend/src/types/score.ts
-- [ ] T075 Implement ScoreApiClient service class in frontend/src/services/score-api.ts
-- [ ] T076 [P] Implement createScore() method in frontend/src/services/score-api.ts
-- [ ] T077 [P] Implement getScore() method in frontend/src/services/score-api.ts
-- [ ] T078 [P] Implement addInstrument() method in frontend/src/services/score-api.ts
-- [ ] T079 [P] Implement addNote() method in frontend/src/services/score-api.ts
-- [ ] T080 [P] Create ScoreViewer component in frontend/src/components/ScoreViewer.tsx
-- [ ] T081 [P] Create InstrumentList component in frontend/src/components/InstrumentList.tsx
-- [ ] T082 [P] Create NoteDisplay component in frontend/src/components/NoteDisplay.tsx
-- [ ] T083 Add error handling and loading states to components in frontend/src/components/
+- [X] T074 Create TypeScript types mirroring domain entities in frontend/src/types/score.ts
+- [X] T075 Implement ScoreApiClient service class in frontend/src/services/score-api.ts
+- [X] T076 [P] Implement createScore() method in frontend/src/services/score-api.ts
+- [X] T077 [P] Implement getScore() method in frontend/src/services/score-api.ts
+- [X] T078 [P] Implement addInstrument() method in frontend/src/services/score-api.ts
+- [X] T079 [P] Implement addNote() method in frontend/src/services/score-api.ts
+- [X] T080 [P] Create ScoreViewer component in frontend/src/components/ScoreViewer.tsx
+- [X] T081 [P] Create InstrumentList component in frontend/src/components/InstrumentList.tsx
+- [X] T082 [P] Create NoteDisplay component in frontend/src/components/NoteDisplay.tsx
+- [X] T083 Add error handling and loading states to components in frontend/src/components/
 
 **Checkpoint**: Frontend integration complete - UI can display and interact with scores
 
@@ -218,16 +218,16 @@ feature: "001-score-model"
 
 **Purpose**: Final refinements, documentation, and production readiness
 
-- [ ] T084 [P] Add comprehensive Rust doc comments to all public domain APIs in backend/src/domain/
-- [ ] T085 [P] Add JSDoc comments to frontend service methods in frontend/src/services/
-- [ ] T086 [P] Create README.md in backend/ with build and run instructions
-- [ ] T087 [P] Create README.md in frontend/ with development setup instructions
-- [ ] T088 [P] Add example scripts for common operations in backend/examples/
-- [ ] T089 Verify all validation rules enforced (11 invariants from data-model.md) in backend/src/domain/
-- [ ] T090 Performance profiling for success criteria SC-003 (<200ms for 1000-measure score) in backend/
-- [ ] T091 Add logging infrastructure using tracing crate in backend/src/adapters/
-- [ ] T092 Create Docker configuration for backend in backend/Dockerfile
-- [ ] T093 Create docker-compose.yml for full stack (backend + frontend) in repository root
+- [X] T084 [P] Add comprehensive Rust doc comments to all public domain APIs in backend/src/domain/
+- [X] T085 [P] Add JSDoc comments to frontend service methods in frontend/src/services/
+- [X] T086 [P] Create README.md in backend/ with build and run instructions
+- [X] T087 [P] Create README.md in frontend/ with development setup instructions
+- [X] T088 [P] Add example scripts for common operations in backend/examples/
+- [X] T089 Verify all validation rules enforced (11 invariants from data-model.md) in backend/src/domain/
+- [X] T090 Performance profiling for success criteria SC-003 (<200ms for 1000-measure score) in backend/
+- [X] T091 Add logging infrastructure using tracing crate in backend/src/adapters/
+- [X] T092 Create Docker configuration for backend in backend/Dockerfile
+- [X] T093 Create docker-compose.yml for full stack (backend + frontend) in repository root
 
 **Checkpoint**: Feature complete and production-ready
 
