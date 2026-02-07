@@ -1,5 +1,6 @@
 import type { ClefType, Note } from '../../types/score';
 import type { StaffConfig } from '../../types/notation/config';
+import { SMUFL_CODEPOINTS } from '../../types/notation/config';
 import type {
   NotePosition,
   StaffLine,
@@ -178,10 +179,10 @@ export const NotationLayoutEngine = {
   calculateClefPosition(clef: ClefType, config: StaffConfig): ClefPosition {
     // SMuFL codepoints for clefs
     const codepoints: Record<ClefType, string> = {
-      Treble: '\uE050',
-      Bass: '\uE062',
-      Alto: '\uE05C',
-      Tenor: '\uE05C',
+      Treble: SMUFL_CODEPOINTS.TREBLE_CLEF,
+      Bass: SMUFL_CODEPOINTS.BASS_CLEF,
+      Alto: SMUFL_CODEPOINTS.ALTO_CLEF,
+      Tenor: SMUFL_CODEPOINTS.TENOR_CLEF,
     };
     
     const centerY = config.viewportHeight / 2;
@@ -248,7 +249,7 @@ export const NotationLayoutEngine = {
         start_tick: note.start_tick,
         duration_ticks: note.duration_ticks,
         staffPosition,
-        glyphCodepoint: '\uE0A4', // Quarter note head (SMuFL)
+        glyphCodepoint: SMUFL_CODEPOINTS.QUARTER_NOTE, // Quarter note head (SMuFL)
         fontSize: config.staffSpace * config.glyphFontSizeMultiplier,
       };
     });

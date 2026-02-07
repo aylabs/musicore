@@ -21,6 +21,16 @@ Musicore is a music score editor implementing a hierarchical domain model with p
 - Polyphonic voices with overlap validation
 - 960 PPQ (Pulses Per Quarter note) precision
 
+✅ **Staff Notation View** (Frontend)
+- Five-line staff rendering with SMuFL music font (Bravura)
+- Accurate pitch-to-position mapping for treble and bass clefs
+- Proportional spacing based on MIDI ticks
+- Interactive note selection (click to highlight)
+- Virtual scrolling for long scores (1000+ notes at 60fps)
+- Responsive viewport with auto-resizing
+- Ledger lines for notes outside staff range
+- Barlines at measure boundaries
+
 ✅ **REST API** (Backend)
 - 13 endpoints for complete score management
 - Axum web framework with Tokio async runtime
@@ -30,7 +40,7 @@ Musicore is a music score editor implementing a hierarchical domain model with p
 
 ✅ **React Frontend**
 - TypeScript with strict type checking
-- Component-based UI (ScoreViewer, InstrumentList, NoteDisplay)
+- Component-based UI (ScoreViewer, InstrumentList, NoteDisplay, StaffNotation)
 - Real-time API integration
 - Note display with MIDI pitch and note names
 - Complete CRUD operations for scores, instruments, and notes
@@ -73,6 +83,40 @@ npm install
 npm run dev
 # Runs on http://localhost:5173
 ```
+
+## Usage
+
+### Staff Notation Component
+
+The `StaffNotation` component renders notes on a five-line musical staff with SMuFL glyphs:
+
+```tsx
+import { StaffNotation } from './components/notation/StaffNotation';
+
+const notes = [
+  { id: 'note-1', pitch: 60, start_tick: 0, duration_ticks: 960 },    // Middle C
+  { id: 'note-2', pitch: 64, start_tick: 960, duration_ticks: 960 },  // E4
+  { id: 'note-3', pitch: 67, start_tick: 1920, duration_ticks: 960 }, // G4
+];
+
+function App() {
+  return (
+    <StaffNotation 
+      notes={notes} 
+      clef="Treble" 
+      viewportWidth={1200}  // Optional, auto-detects by default
+      viewportHeight={200}
+    />
+  );
+}
+```
+
+**Features:**
+- **Pitch Accuracy**: MIDI pitch 60 (Middle C) → C4 (1 ledger line below treble staff)
+- **Proportional Spacing**: Notes positioned by `start_tick * 0.1 pixels/tick`
+- **Interactive**: Click notes to select (blue highlight)
+- **Virtual Scrolling**: Handles 1000+ notes efficiently
+- **Responsive**: Adapts to container width automatically
 
 ## Project Structure
 

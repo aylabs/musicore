@@ -30,7 +30,11 @@ export interface NotationRendererProps {
   scrollX?: number;
 }
 
-export const NotationRenderer: React.FC<NotationRendererProps> = ({
+/**
+ * NotationRenderer (Internal) - Pure presentational component
+ * Wrapped with React.memo for performance optimization (T066)
+ */
+const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
@@ -47,6 +51,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       width={layout.totalWidth}
       height={layout.totalHeight}
       xmlns="http://www.w3.org/2000/svg"
+      data-testid="notation-svg"
       style={{
         display: 'block',
         userSelect: 'none',
@@ -56,6 +61,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.staffLines.map((line) => (
         <line
           key={`staff-line-${line.lineNumber}`}
+          data-testid={`staff-line-${line.lineNumber}`}
           x1={line.x1}
           x2={line.x2}
           y1={line.y}
@@ -69,6 +75,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.ledgerLines.map((ledger) => (
         <line
           key={ledger.id}
+          data-testid={ledger.id}
           x1={ledger.x1}
           x2={ledger.x2}
           y1={ledger.y}
@@ -81,6 +88,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {/* Clef symbol (SMuFL glyph) */}
       {/* T057: Fixed clef margin - add scrollX to keep clef visible while scrolling */}
       <text
+        data-testid={`clef-${layout.clef.type}`}
         x={layout.clef.x + scrollX}
         y={layout.clef.y}
         fontSize={layout.clef.fontSize}
@@ -99,6 +107,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
         .map((note) => (
         <text
           key={note.id}
+          data-testid={note.id}
           x={note.x}
           y={note.y}
           fontSize={note.fontSize}
@@ -117,6 +126,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.barlines.map((barline) => (
         <line
           key={barline.id}
+          data-testid={barline.id}
           x1={barline.x}
           x2={barline.x}
           y1={barline.y1}
@@ -130,6 +140,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.keySignatureAccidentals.map((accidental, index) => (
         <text
           key={`accidental-${index}`}
+          data-testid={`accidental-${index}`}
           x={accidental.x}
           y={accidental.y}
           fontSize={accidental.fontSize}
@@ -144,3 +155,11 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
     </svg>
   );
 };
+
+/**
+ * NotationRenderer - Memoized version for performance
+ * 
+ * T066: Wrapped with React.memo to prevent unnecessary re-renders
+ * Only re-renders when props actually change (layout, selectedNoteId, scrollX)
+ */
+export const NotationRenderer = React.memo(NotationRendererComponent);

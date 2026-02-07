@@ -1,6 +1,45 @@
 /**
  * Configuration for staff notation rendering
  */
+
+/**
+ * SMuFL (Standard Music Font Layout) codepoint constants
+ * Reference: https://www.smufl.org/
+ */
+export const SMUFL_CODEPOINTS = {
+  // Clefs
+  TREBLE_CLEF: '\uE050',
+  BASS_CLEF: '\uE062',
+  ALTO_CLEF: '\uE05C',
+  TENOR_CLEF: '\uE05D',
+  
+  // Notes and rests
+  QUARTER_NOTE: '\uE0A4',
+  HALF_NOTE: '\uE0A3',
+  WHOLE_NOTE: '\uE0A2',
+  EIGHTH_NOTE: '\uE0A5',
+  SIXTEENTH_NOTE: '\uE0A6',
+  
+  // Accidentals
+  SHARP: '\uE262',
+  FLAT: '\uE260',
+  NATURAL: '\uE261',
+  DOUBLE_SHARP: '\uE263',
+  DOUBLE_FLAT: '\uE264',
+  
+  // Time signatures
+  TIME_SIG_0: '\uE080',
+  TIME_SIG_1: '\uE081',
+  TIME_SIG_2: '\uE082',
+  TIME_SIG_3: '\uE083',
+  TIME_SIG_4: '\uE084',
+  TIME_SIG_5: '\uE085',
+  TIME_SIG_6: '\uE086',
+  TIME_SIG_7: '\uE087',
+  TIME_SIG_8: '\uE088',
+  TIME_SIG_9: '\uE089',
+} as const;
+
 export interface StaffConfig {
   /** Distance between staff lines in pixels (default: 10) */
   staffSpace: number;
