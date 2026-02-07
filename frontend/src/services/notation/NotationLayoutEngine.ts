@@ -307,7 +307,7 @@ export const NotationLayoutEngine = {
       const stemUp = staffPosition < 0;
       
       // Select note glyph based on duration (PPQ = 960)
-      // Quarter note = 960 ticks, Half note = 1920 ticks, Whole note = 3840+ ticks
+      // Whole = 3840, Half = 1920, Quarter = 960, Eighth = 480, Sixteenth = 240
       let glyphCodepoint: string;
       const PPQ = 960;
       
@@ -319,11 +319,21 @@ export const NotationLayoutEngine = {
         glyphCodepoint = stemUp 
           ? SMUFL_CODEPOINTS.HALF_NOTE_UP 
           : SMUFL_CODEPOINTS.HALF_NOTE_DOWN;
-      } else {
+      } else if (note.duration_ticks >= PPQ) {
         // Quarter note (1 beat) - black note with stem
         glyphCodepoint = stemUp 
           ? SMUFL_CODEPOINTS.QUARTER_NOTE_UP 
           : SMUFL_CODEPOINTS.QUARTER_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ / 2) {
+        // Eighth note (1/2 beat) - black note with stem and 1 flag
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.EIGHTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.EIGHTH_NOTE_DOWN;
+      } else {
+        // Sixteenth note (1/4 beat or less) - black note with stem and 2 flags
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.SIXTEENTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.SIXTEENTH_NOTE_DOWN;
       }
       
       return {

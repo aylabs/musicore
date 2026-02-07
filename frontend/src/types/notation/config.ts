@@ -22,6 +22,14 @@ export const SMUFL_CODEPOINTS = {
   QUARTER_NOTE_UP: '\uE1D5',    // Stem up (for notes below middle line)
   QUARTER_NOTE_DOWN: '\uE1D6',  // Stem down (for notes on/above middle line)
   
+  // Eighth notes (black notes with stems and 1 flag) - duration 480 ticks
+  EIGHTH_NOTE_UP: '\uE1D7',     // Stem up with flag
+  EIGHTH_NOTE_DOWN: '\uE1D8',   // Stem down with flag
+  
+  // Sixteenth notes (black notes with stems and 2 flags) - duration 240 ticks
+  SIXTEENTH_NOTE_UP: '\uE1D9',  // Stem up with double flag
+  SIXTEENTH_NOTE_DOWN: '\uE1DA', // Stem down with double flag
+  
   // Half notes (white/hollow notes with stems) - duration 1920 ticks
   HALF_NOTE_UP: '\uE1D3',       // Stem up
   HALF_NOTE_DOWN: '\uE1D4',     // Stem down
