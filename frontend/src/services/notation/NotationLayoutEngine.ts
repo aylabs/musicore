@@ -239,32 +239,41 @@ export const NotationLayoutEngine = {
   },
 
   /**
-   * Calculate minimum visual width needed for a note glyph
-   * Very short notes (32nd, 64th, 128th) have multiple flags and need more horizontal space
-   * to render properly without being cut off or cramped.
+   * Calculate actual glyph width needed for a note based on its duration
+   * Very short notes (32nd, 64th, 128th) have multiple flags that extend horizontally
+   * and need more width than standard notes to render without being cut off.
    * 
    * @param duration_ticks - Note duration in MIDI ticks
    * @param config - Staff configuration
-   * @returns Minimum width in pixels for this note
+   * @returns Minimum width in pixels that this note's glyph occupies
    */
-  getMinimumNoteWidth(duration_ticks: number, config: StaffConfig): number {
+  getNoteGlyphWidth(duration_ticks: number, config: StaffConfig): number {
     const PPQ = 960;
+    const baseWidth = config.minNoteSpacing * 0.8; // Standard note width
     
-    // 128th notes (5 flags) need 4x standard spacing
+    // 128th notes (5 flags) need extra width for flags
     if (duration_ticks < PPQ / 16) {
-      return config.minNoteSpacing * 4.0;
+      return baseWidth + (config.minNoteSpacing * 1.2);
     }
-    // 64th notes (4 flags) need 3.5x standard spacing
+    // 64th notes (4 flags) need extra width for flags
     else if (duration_ticks < PPQ / 8) {
-      return config.minNoteSpacing * 3.5;
+      return baseWidth + (config.minNoteSpacing * 1.0);
     }
-    // 32nd notes (3 flags) need 2.5x standard spacing
+    // 32nd notes (3 flags) need extra width for flags
     else if (duration_ticks < PPQ / 4) {
-      return config.minNoteSpacing * 2.5;
+      return baseWidth + (config.minNoteSpacing * 0.7);
+    }
+    // Sixteenth notes (2 flags)
+    else if (duration_ticks < PPQ / 2) {
+      return baseWidth + (config.minNoteSpacing * 0.4);
+    }
+    // Eighth notes (1 flag)
+    else if (duration_ticks < PPQ) {
+      return baseWidth + (config.minNoteSpacing * 0.2);
     }
     
-    // All other notes use standard minimum spacing
-    return config.minNoteSpacing;
+    // Quarter, half, whole notes - standard width
+    return baseWidth;
   },
 
   /**
@@ -299,7 +308,13 @@ export const NotationLayoutEngine = {
     const sortedNotes = [...notes].sort((a, b) => a.start_tick - b.start_tick);
     
     const baseX = config.marginLeft + config.clefWidth;
-    let previousX = baseX - config.minNoteSpacing; // Initialize to allow first note at baseX
+    
+    // Initialize previous position: calculate where previous "virtual" note would be
+    // so that first real note lands at baseX. Since spacing = glyphWidth + gap,
+    // we need previousX such that: previousX + glyphWidth + gap = baseX
+    const standardGap = config.minNoteSpacing * 0.5;
+    const typicalGlyphWidth = config.minNoteSpacing * 0.8; // Assume quarter note for init
+    let previousX = baseX - typicalGlyphWidth - standardGap;
     let previousDuration = 960; // Track previous note's duration for spacing calculation
     
     // Calculate barline positions to avoid collisions
@@ -322,13 +337,12 @@ export const NotationLayoutEngine = {
         proportionalX += barlineNoteSpacing;
       }
       
-      // Enforce minimum spacing: consider BOTH previous and current note's space requirements
-      // Use the maximum of: previous note's trailing space OR current note's leading space
-      // Very short notes (32nd, 64th, 128th) with many flags need more horizontal space to render
-      const prevNoteWidth = this.getMinimumNoteWidth(previousDuration, config);
-      const currNoteWidth = this.getMinimumNoteWidth(note.duration_ticks, config);
-      const minWidth = Math.max(prevNoteWidth, currNoteWidth);
-      const x = Math.max(proportionalX, previousX + minWidth);
+      // Enforce minimum spacing: previous note's glyph width + standard gap between notes
+      // Complex glyphs (many flags) need more horizontal space, but we maintain consistent gaps
+      const prevGlyphWidth = this.getNoteGlyphWidth(previousDuration, config);
+      const standardGap = config.minNoteSpacing * 0.5; // Gap between notes
+      const minimumX = previousX + prevGlyphWidth + standardGap;
+      const x = Math.max(proportionalX, minimumX);
       previousX = x;
       previousDuration = note.duration_ticks;
       
