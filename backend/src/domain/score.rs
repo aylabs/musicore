@@ -21,11 +21,12 @@ pub struct Score {
 
 impl Score {
     /// Create a new score with default tempo (120 BPM) and time signature (4/4) at tick 0
+    /// Feature 003: Also initializes with a default piano instrument for playback
     pub fn new() -> Self {
         let mut score = Self {
             id: ScoreId::new(),
             global_structural_events: Vec::new(),
-            instruments: Vec::new(),
+            instruments: vec![Instrument::new("Default Piano".to_string())],
         };
 
         // Add default tempo (120 BPM) at tick 0

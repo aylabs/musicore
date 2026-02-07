@@ -1,0 +1,28 @@
+# Git files
+.git/
+.gitignore
+.github/
+
+# Rust build artifacts
+target/
+debug/
+release/
+
+# Logs
+*.log
+
+# Environment variables
+.env*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+coverage/
+
+# Misc
+*.tmp

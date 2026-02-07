@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import type { Score } from "../types/score";
+import { useState, useEffect, useMemo } from "react";
+import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
 import { InstrumentList } from "./InstrumentList";
+import { PlaybackControls } from "./playback/PlaybackControls";
+import { usePlayback } from "../services/playback/MusicTimeline";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -121,6 +123,32 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
     return "4/4";
   };
 
+  /**
+   * Extract all notes from score for playback
+   * Feature 003 - Music Playback: US1 T025
+   */
+  const allNotes = useMemo((): Note[] => {
+    if (!score) return [];
+
+    const notes: Note[] = [];
+    for (const instrument of score.instruments) {
+      for (const staff of instrument.staves) {
+        for (const voice of staff.voices) {
+          // interval_events is already an array of Notes
+          notes.push(...voice.interval_events);
+        }
+      }
+    }
+    return notes;
+  }, [score]);
+
+  /**
+   * Initialize playback hook
+   * Feature 003 - Music Playback: US1 T025
+   */
+  const initialTempo = getInitialTempo();
+  const playbackState = usePlayback(allNotes, initialTempo);
+
   // Render loading state
   if (loading && !score) {
     return (
@@ -158,6 +186,15 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
       </div>
 
       {error && <div className="error">{error}</div>}
+
+      {/* Feature 003 - Music Playback: US1 T025 - Playback Controls */}
+      <PlaybackControls
+        status={playbackState.status}
+        hasNotes={allNotes.length > 0}
+        onPlay={playbackState.play}
+        onPause={playbackState.pause}
+        onStop={playbackState.stop}
+      />
 
       <div className="add-instrument">
         <input
