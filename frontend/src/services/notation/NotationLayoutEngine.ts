@@ -307,6 +307,33 @@ export const NotationLayoutEngine = {
     // Sort notes by start_tick
     const sortedNotes = [...notes].sort((a, b) => a.start_tick - b.start_tick);
     
+    // Calculate minimum gap between consecutive notes in ticks
+    const PPQ = 960;
+    let minTickGap = PPQ; // Default to quarter note
+    for (let i = 1; i < sortedNotes.length; i++) {
+      const gap = sortedNotes[i].start_tick - sortedNotes[i - 1].start_tick;
+      if (gap > 0) {
+        minTickGap = Math.min(minTickGap, gap);
+      }
+    }
+    
+    // Also consider the shortest note duration (a note occupies space)
+    const minDuration = Math.min(...sortedNotes.map(n => n.duration_ticks));
+    const minTimeUnit = Math.min(minTickGap, minDuration);
+    
+    // Calculate adjusted pixelsPerTick to ensure short notes have adequate visual space
+    // For very short notes (< 240), we need to expand the horizontal space
+    let adjustedPixelsPerTick = config.pixelsPerTick;
+    
+    if (minTimeUnit < PPQ / 4) { // Less than sixteenth note (240 ticks)
+      // Calculate minimum pixel width needed for the shortest note
+      const minRequiredWidth = this.getNoteGlyphWidth(minDuration, config) + config.minNoteSpacing * 0.5;
+      // Calculate what pixelsPerTick value would give us that width for minTimeUnit ticks
+      const requiredPixelsPerTick = minRequiredWidth / minTimeUnit;
+      // Use the larger of the original or required value
+      adjustedPixelsPerTick = Math.max(config.pixelsPerTick, requiredPixelsPerTick);
+    }
+    
     const baseX = config.marginLeft + config.clefWidth;
     
     // Initialize previous position: calculate where previous "virtual" note would be
@@ -318,7 +345,6 @@ export const NotationLayoutEngine = {
     let previousDuration = 960; // Track previous note's duration for spacing calculation
     
     // Calculate barline positions to avoid collisions
-    const PPQ = 960; // MIDI standard: Pulses Per Quarter note
     const ticksPerMeasure = timeSignature 
       ? PPQ * (4 / timeSignature.denominator) * timeSignature.numerator 
       : 3840; // Default 4/4 time
@@ -328,8 +354,9 @@ export const NotationLayoutEngine = {
       // Convert pitch to staff position
       const staffPosition = this.midiPitchToStaffPosition(note.pitch, clef);
       
-      // Calculate proportional X position from tick
-      let proportionalX = baseX + note.start_tick * config.pixelsPerTick;
+      // Calculate proportional X position from tick using adjusted spacing
+      // For very short notes, adjustedPixelsPerTick will be larger to provide adequate visual space
+      let proportionalX = baseX + note.start_tick * adjustedPixelsPerTick;
       
       // Check if note would collide with a barline (at measure boundaries)
       // If note starts exactly at a measure boundary, add extra spacing
@@ -337,10 +364,11 @@ export const NotationLayoutEngine = {
         proportionalX += barlineNoteSpacing;
       }
       
-      // Enforce minimum spacing: previous note's glyph width + standard gap between notes
-      // Complex glyphs (many flags) need more horizontal space, but we maintain consistent gaps
+      // Enforce minimum spacing as a safety check
+      // With adjusted pixelsPerTick, proportional spacing should be sufficient for most cases
+      // This mainly prevents overlap when notes are at the exact same tick
       const prevGlyphWidth = this.getNoteGlyphWidth(previousDuration, config);
-      const standardGap = config.minNoteSpacing * 0.5; // Gap between notes
+      const standardGap = config.minNoteSpacing * 0.3; // Reduced gap since proportional does heavy lifting
       const minimumX = previousX + prevGlyphWidth + standardGap;
       const x = Math.max(proportionalX, minimumX);
       previousX = x;
