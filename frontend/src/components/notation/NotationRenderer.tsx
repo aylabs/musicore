@@ -110,9 +110,9 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           {note.accidental && (
             <text
               data-testid={`${note.id}-accidental`}
-              x={note.x - note.fontSize * 0.5} // Position to the left of note head
+              x={note.x - note.fontSize * 0.35} // Position closer to note head (avoids barline collisions)
               y={note.y}
-              fontSize={note.fontSize * 0.9} // Slightly smaller than note head
+              fontSize={note.fontSize * 0.65} // Smaller to fit between barline and note
               fontFamily="Bravura"
               fill={selectedNoteId === note.id ? 'blue' : 'black'}
               textAnchor="middle"
