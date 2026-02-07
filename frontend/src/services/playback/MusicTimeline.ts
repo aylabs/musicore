@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { ToneAdapter } from './ToneAdapter';
-import { PlaybackScheduler } from './PlaybackScheduler';
+import { PlaybackScheduler, secondsToTicks } from './PlaybackScheduler';
 import type { Note } from '../../types/score';
 import type { PlaybackStatus } from '../../types/playback';
 
@@ -10,6 +10,7 @@ import type { PlaybackStatus } from '../../types/playback';
 export interface PlaybackState {
   status: PlaybackStatus;
   currentTick: number;
+  error: string | null; // US3 T052: Error message for autoplay policy failures
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
@@ -38,6 +39,7 @@ export interface PlaybackState {
 export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const [status, setStatus] = useState<PlaybackStatus>('stopped');
   const [currentTick, setCurrentTick] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null); // US3 T052: Track autoplay errors
   
   // Refs to track timing information
   const startTimeRef = useRef<number>(0);
@@ -52,12 +54,17 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   /**
    * US1 T021: Implement play() - Initialize audio and transition to 'playing'
    * US2 T037: Integrate PlaybackScheduler to schedule notes
+   * US3 T052: Handle browser autoplay policy errors with user-friendly message
    * 
    * Initializes Tone.js audio context (if not already initialized) and
    * transitions playback status to 'playing'. Handles resume from paused state.
+   * Catches autoplay policy errors and displays user-friendly message.
    */
   const play = useCallback(async () => {
     try {
+      // Clear any previous errors
+      setError(null);
+
       // Initialize audio context (required for browser autoplay policy)
       // US1 T021: Call ToneAdapter.init()
       await adapter.init();
@@ -72,6 +79,18 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // US1 T021: Transition status to 'playing'
       setStatus('playing');
     } catch (error) {
+      // US3 T052: Handle browser autoplay policy errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if this is an autoplay policy error
+      if (errorMessage.includes('autoplay') || 
+          errorMessage.includes('user interaction') ||
+          errorMessage.includes('gesture')) {
+        setError('Audio playback requires user interaction. Please try clicking Play again.');
+      } else {
+        setError('Failed to initialize audio playback. Please refresh the page and try again.');
+      }
+      
       console.error('Failed to initialize audio:', error);
       // Stay in stopped/paused state if initialization fails
       throw error;
@@ -90,19 +109,24 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       return; // Only pause if currently playing
     }
 
-    // Preserve current playback position for resume
+    // Calculate elapsed time since playback started
     const currentTime = adapter.getCurrentTime();
+    const elapsedTime = currentTime - startTimeRef.current;
+    
+    // Convert elapsed time to ticks and add to currentTick to get new position
+    const elapsedTicks = secondsToTicks(elapsedTime, tempo);
+    const newCurrentTick = currentTick + elapsedTicks;
     
     // US2 T038: Clear all scheduled notes
     scheduler.clearSchedule();
 
-    // Convert elapsed time to ticks (US2: will use real conversion)
-    // For US1, we preserve currentTick value
+    // Update currentTick for resume
+    setCurrentTick(newCurrentTick);
     pausedAtRef.current = currentTime;
 
     // US1 T022: Transition status to 'paused'
     setStatus('paused');
-  }, [status, adapter, scheduler]);
+  }, [status, adapter, scheduler, tempo, currentTick]);
 
   /**
    * US1 T023: Implement stop() - Stop playback, reset to initial state
@@ -135,6 +159,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   return {
     status,
     currentTick,
+    error, // US3 T052: Expose error message for UI display
     play,
     pause,
     stop,

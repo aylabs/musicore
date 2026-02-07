@@ -10,6 +10,8 @@ export interface PlaybackControlsProps {
   status: PlaybackStatus;
   /** Whether the score has notes to play */
   hasNotes?: boolean;
+  /** Error message for autoplay policy or audio initialization failures (US3 T052) */
+  error?: string | null;
   /** Handler for Play button click */
   onPlay: () => void;
   /** Handler for Pause button click */
@@ -48,6 +50,7 @@ export interface PlaybackControlsProps {
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   status,
   hasNotes = true,
+  error = null, // US3 T052: Accept error message prop
   onPlay,
   onPause,
   onStop,
@@ -120,6 +123,13 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       {!hasNotes && (
         <div className="no-notes-message">
           No notes to play
+        </div>
+      )}
+
+      {/* US3 T052: Show autoplay policy error message */}
+      {error && (
+        <div className="playback-error-message" role="alert">
+          {error}
         </div>
       )}
     </div>

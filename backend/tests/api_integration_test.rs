@@ -590,11 +590,87 @@ async fn test_complete_score_workflow() {
     assert_eq!(status, StatusCode::OK);
 
     // Verify structure
-    assert_eq!(final_score["instruments"].as_array().unwrap().len(), 2); // Feature 003: Default instrument + added instrument
+    assert_eq!(final_score["instruments"].as_array().unwrap().len(), 1); // Added instrument only
     assert_eq!(final_score["global_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 added
     
-    let instrument = &final_score["instruments"][1]; // Feature 003: Access added instrument (index 1, default is at 0)
+    let instrument = &final_score["instruments"][0]; // Access added instrument
     assert_eq!(instrument["name"], "Piano");
     assert_eq!(instrument["staves"][0]["staff_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 clef
     assert_eq!(instrument["staves"][0]["voices"][0]["interval_events"].as_array().unwrap().len(), 1);
+}
+
+/// T050: Test polyphonic playback with 10 simultaneous notes
+/// Feature 003 - Music Playback: User Story 3
+/// 
+/// Tests that the system can handle 10 notes starting at the same time (a 10-note chord)
+/// to validate maxPolyphony settings and ensure no notes are dropped.
+/// Success criteria: All 10 notes should be stored and retrievable for playback.
+#[tokio::test]
+async fn test_polyphonic_chord_10_notes() {
+    let app = setup_app().await;
+
+    // Create full hierarchy
+    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({
+        "name": "Polyphony Test Score"
+    }))).await;
+    let score_id = score_body["id"].as_str().unwrap();
+
+    let (_, inst_body) = make_request(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/scores/{}/instruments", score_id),
+        Some(json!({"name": "Grand Piano"})),
+    )
+    .await;
+    let instrument_id = inst_body["id"].as_str().unwrap();
+    let staff_id = inst_body["staves"][0]["id"].as_str().unwrap();
+    let voice_id = inst_body["staves"][0]["voices"][0]["id"].as_str().unwrap();
+
+    // Add 10 notes starting at the same time (tick 0) with different pitches
+    // Pitches: C4, D4, E4, F4, G4, A4, B4, C5, D5, E5 (60, 62, 64, 65, 67, 69, 71, 72, 74, 76)
+    let pitches = vec![60, 62, 64, 65, 67, 69, 71, 72, 74, 76];
+    let start_tick = 960; // Start at beat 1 (assuming 960 PPQN)
+    let duration_ticks = 1920; // 2 beats duration
+
+    for pitch in &pitches {
+        let (status, body) = make_request(
+            app.clone(),
+            "POST",
+            &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
+                     score_id, instrument_id, staff_id, voice_id),
+            Some(json!({
+                "start_tick": start_tick,
+                "duration_ticks": duration_ticks,
+                "pitch": pitch
+            })),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::CREATED, "Failed to add note with pitch {}", pitch);
+        assert_eq!(body["pitch"], *pitch as i64);
+        assert_eq!(body["start_tick"], start_tick);
+    }
+
+    // Retrieve the score and verify all 10 notes are present
+    let (status, final_score) = make_request(
+        app,
+        "GET",
+        &format!("/api/v1/scores/{}", score_id),
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    
+    let instrument = &final_score["instruments"][0];
+    let notes = instrument["staves"][0]["voices"][0]["interval_events"].as_array().unwrap();
+    
+    assert_eq!(notes.len(), 10, "Should have exactly 10 simultaneous notes");
+    
+    // Verify all notes start at the same tick
+    for (i, note) in notes.iter().enumerate() {
+        assert_eq!(note["start_tick"], start_tick, "Note {} should start at tick {}", i, start_tick);
+        assert!(pitches.contains(&note["pitch"].as_i64().unwrap()), 
+                "Note pitch {} should be in expected pitches", note["pitch"]);
+    }
 }

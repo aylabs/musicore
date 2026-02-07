@@ -191,6 +191,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
       <PlaybackControls
         status={playbackState.status}
         hasNotes={allNotes.length > 0}
+        error={playbackState.error} // US3 T052: Pass autoplay error message
         onPlay={playbackState.play}
         onPause={playbackState.pause}
         onStop={playbackState.stop}
