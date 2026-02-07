@@ -380,6 +380,60 @@ export const NotationLayoutEngine = {
   },
 
   /**
+   * Calculate which notes are visible in the current viewport (User Story 4)
+   * 
+   * Virtual scrolling optimization: only render notes within viewport + buffer.
+   * Uses binary search to efficiently find the start and end indices of notes
+   * within the visible X range.
+   * 
+   * Algorithm:
+   * 1. Calculate visible X range: [scrollX - buffer, scrollX + viewportWidth + buffer]
+   * 2. Binary search for first note with x >= minX
+   * 3. Linear scan forward to find last note with x <= maxX
+   * 4. Return {startIdx, endIdx} for array slicing
+   * 
+   * Performance: O(log n) binary search + O(m) linear scan where m = visible notes
+   * 
+   * @param notePositions - Array of positioned notes (must be sorted by x)
+   * @param config - Staff configuration with scrollX, viewportWidth, renderBuffer
+   * @returns Object with startIdx and endIdx for slicing notePositions array
+   */
+  calculateVisibleNoteIndices(
+    notePositions: NotePosition[],
+    config: StaffConfig
+  ): { startIdx: number; endIdx: number } {
+    if (notePositions.length === 0) {
+      return { startIdx: 0, endIdx: 0 };
+    }
+
+    const minX = config.scrollX - config.renderBuffer;
+    const maxX = config.scrollX + config.viewportWidth + config.renderBuffer;
+
+    // Binary search for first visible note (first note with x >= minX)
+    let startIdx = 0;
+    let left = 0;
+    let right = notePositions.length;
+
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (notePositions[mid].x < minX) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    startIdx = left;
+
+    // Linear scan forward from startIdx to find last visible note
+    let endIdx = startIdx;
+    while (endIdx < notePositions.length && notePositions[endIdx].x <= maxX) {
+      endIdx++;
+    }
+
+    return { startIdx, endIdx };
+  },
+
+  /**
    * Main orchestration function - calculates complete layout geometry
    * 
    * This ties all the layout algorithms together to produce a complete
@@ -415,11 +469,8 @@ export const NotationLayoutEngine = {
     const barlines = this.calculateBarlines(timeSignature, maxTick, config);
     const ledgerLines = this.calculateLedgerLines(notePositions, config);
     
-    // For MVP, all notes are "visible" (virtual scrolling implemented in US4)
-    const visibleNoteIndices = {
-      startIdx: 0,
-      endIdx: notePositions.length,
-    };
+    // Calculate visible note indices for virtual scrolling (User Story 4 - T052)
+    const visibleNoteIndices = this.calculateVisibleNoteIndices(notePositions, config);
     
     return {
       notes: notePositions,

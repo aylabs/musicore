@@ -42,15 +42,21 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   // Selection state (User Story 3)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   
-  // Scroll state (User Story 4 - not yet fully implemented)
-  const [scrollX] = useState(0);
+  // Scroll state (User Story 4 - T053)
+  const [scrollX, setScrollX] = useState(0);
 
   // Handle note click - toggle selection
   const handleNoteClick = (noteId: string) => {
     setSelectedNoteId((prevId) => (prevId === noteId ? null : noteId));
   };
 
+  // Handle scroll event - update scrollX state (User Story 4 - T053)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollX(e.currentTarget.scrollLeft);
+  };
+
   // Calculate layout geometry (memoized for performance)
+  // T054: scrollX is already in dependencies, layout recalculates on scroll
   const layout = useMemo(() => {
     return NotationLayoutEngine.calculateLayout({
       notes,
@@ -69,19 +75,23 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     });
   }, [notes, clef, viewportWidth, viewportHeight, scrollX]);
 
+  // T056: Add scrollable container with onScroll handler
   return (
     <div
       style={{
         width: viewportWidth,
         height: viewportHeight,
-        overflow: 'hidden',
+        overflowX: 'auto',  // Enable horizontal scrolling
+        overflowY: 'hidden',  // Disable vertical scrolling
         border: '1px solid #ccc',
       }}
+      onScroll={handleScroll}  // Wire up scroll handler
     >
       <NotationRenderer
         layout={layout}
         selectedNoteId={selectedNoteId}
         onNoteClick={handleNoteClick}
+        scrollX={scrollX}  // T057: Pass scrollX to renderer for fixed clef
       />
     </div>
   );

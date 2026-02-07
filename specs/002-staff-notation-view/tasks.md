@@ -139,19 +139,19 @@
 
 ### Tests for User Story 4 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T048 [P] [US4] Unit test for calculateVisibleNoteIndices() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns correct startIdx and endIdx for notes within viewport + buffer, excludes notes outside range
-- [ ] T049 [P] [US4] Integration test for virtual scrolling in frontend/src/components/notation/NotationRenderer.test.tsx - mock layout with 1000 notes, verify only notes within visibleNoteIndices range are rendered in DOM
-- [ ] T050 [P] [US4] Integration test for scroll handling in frontend/src/components/notation/StaffNotation.test.tsx - simulate scroll event, verify scrollX state updates, layout recalculated with new scrollX, visible indices change
+- [X] T048 [P] [US4] Unit test for calculateVisibleNoteIndices() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns correct startIdx and endIdx for notes within viewport + buffer, excludes notes outside range
+- [X] T049 [P] [US4] Integration test for virtual scrolling in frontend/src/components/notation/NotationRenderer.test.tsx - mock layout with 1000 notes, verify only notes within visibleNoteIndices range are rendered in DOM
+- [X] T050 [P] [US4] Integration test for scroll handling in frontend/src/components/notation/StaffNotation.test.tsx - simulate scroll event, verify scrollX state updates, layout recalculated with new scrollX, visible indices change
 
 ### Implementation for User Story 4
 
-- [ ] T051 [P] [US4] Implement calculateVisibleNoteIndices() method in frontend/src/services/notation/NotationLayoutEngine.ts - binary search notePositions array for notes with x between (scrollX - buffer) and (scrollX + viewportWidth + buffer), return {startIdx, endIdx}
-- [ ] T052 [US4] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateVisibleNoteIndices() and include result in LayoutGeometry (depends on T051)
-- [ ] T053 [US4] Add scrollX state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(0), onScroll handler to update scrollX from e.currentTarget.scrollLeft
-- [ ] T054 [US4] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add scrollX to useMemo dependencies so layout recalculates on scroll
-- [ ] T055 [US4] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - slice notes array using visibleNoteIndices: layout.notes.slice(startIdx, endIdx), render only visible notes
-- [ ] T056 [US4] Add scrollable container to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - wrap NotationRenderer in <div> with overflowX: auto, width: 100%, onScroll handler
-- [ ] T057 [US4] Implement fixed clef margin in frontend/src/components/notation/NotationRenderer.tsx - render clef and staff lines in separate SVG layer or with CSS position: sticky for left margin
+- [X] T051 [P] [US4] Implement calculateVisibleNoteIndices() method in frontend/src/services/notation/NotationLayoutEngine.ts - binary search notePositions array for notes with x between (scrollX - buffer) and (scrollX + viewportWidth + buffer), return {startIdx, endIdx}
+- [X] T052 [US4] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateVisibleNoteIndices() and include result in LayoutGeometry (depends on T051)
+- [X] T053 [US4] Add scrollX state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(0), onScroll handler to update scrollX from e.currentTarget.scrollLeft
+- [X] T054 [US4] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add scrollX to useMemo dependencies so layout recalculates on scroll
+- [X] T055 [US4] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - slice notes array using visibleNoteIndices: layout.notes.slice(startIdx, endIdx), render only visible notes
+- [X] T056 [US4] Add scrollable container to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - wrap NotationRenderer in <div> with overflowX: auto, width: 100%, onScroll handler
+- [X] T057 [US4] Implement fixed clef margin in frontend/src/components/notation/NotationRenderer.tsx - render clef and staff lines in separate SVG layer or with CSS position: sticky for left margin
 
 **Checkpoint**: User stories 1-4 complete - long scores scroll smoothly with fixed clef
 

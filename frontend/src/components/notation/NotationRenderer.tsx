@@ -25,12 +25,16 @@ export interface NotationRendererProps {
   
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
+  
+  /** Current horizontal scroll position (User Story 4 - T057) */
+  scrollX?: number;
 }
 
 export const NotationRenderer: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
+  scrollX = 0,
 }) => {
   const handleNoteClick = (noteId: string) => {
     if (onNoteClick) {
@@ -75,8 +79,9 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       ))}
 
       {/* Clef symbol (SMuFL glyph) */}
+      {/* T057: Fixed clef margin - add scrollX to keep clef visible while scrolling */}
       <text
-        x={layout.clef.x}
+        x={layout.clef.x + scrollX}
         y={layout.clef.y}
         fontSize={layout.clef.fontSize}
         fontFamily="Bravura"
@@ -88,7 +93,10 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       </text>
 
       {/* Note heads (positioned SMuFL glyphs) */}
-      {layout.notes.map((note) => (
+      {/* T055: Virtual scrolling - render only notes within visibleNoteIndices range */}
+      {layout.notes
+        .slice(layout.visibleNoteIndices.startIdx, layout.visibleNoteIndices.endIdx)
+        .map((note) => (
         <text
           key={note.id}
           x={note.x}

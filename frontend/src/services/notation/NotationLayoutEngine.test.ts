@@ -695,4 +695,99 @@ describe('NotationLayoutEngine', () => {
       expect(positions[1].x).toBe(baseX + 1000 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
     });
   });
+
+  /**
+   * T048: Unit test for calculateVisibleNoteIndices()
+   * 
+   * Virtual scrolling optimization: only render notes visible in viewport.
+   * Uses binary search to find notes within scrollX to scrollX + viewportWidth.
+   * Includes renderBuffer on both sides to prevent pop-in during scrolling.
+   */
+  describe('calculateVisibleNoteIndices', () => {
+    it('should return all notes when viewport covers entire score', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 200, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 300, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 0,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // All notes should be visible (x: 100-300, viewport: 0-1200)
+      expect(result.startIdx).toBe(0);
+      expect(result.endIdx).toBe(3);
+    });
+
+    it('should exclude notes outside visible range', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 500, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 1000, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '4', x: 1500, y: 70, pitch: 60, start_tick: 2880, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '5', x: 2000, y: 70, pitch: 60, start_tick: 3840, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 800,  // Scrolled to middle of score
+        viewportWidth: 600,  // Visible range: 800-1400 (+ buffer: 600-1600)
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // Should include notes within scrollX - buffer to scrollX + viewportWidth + buffer
+      // Range: 800 - 200 to 800 + 600 + 200 = 600 to 1600
+      // Notes in range: x=1000 (idx 2), x=1500 (idx 3)
+      // Note at x=500 (idx 1) is outside (< 600)
+      // Note at x=2000 (idx 4) is outside (> 1600)
+      expect(result.startIdx).toBe(2);
+      expect(result.endIdx).toBe(4);
+    });
+
+    it('should handle scrolled to end of score', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 2000, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 2500, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 2000,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // Visible range: 2000 - 200 to 2000 + 1200 + 200 = 1800 to 3400
+      // Notes in range: x=2000 (idx 1), x=2500 (idx 2)
+      expect(result.startIdx).toBe(1);
+      expect(result.endIdx).toBe(3);
+    });
+
+    it('should return empty range for empty notes array', () => {
+      const notePositions: any[] = [];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 0,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      expect(result.startIdx).toBe(0);
+      expect(result.endIdx).toBe(0);
+    });
+  });
 });
