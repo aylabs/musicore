@@ -165,9 +165,12 @@ export class ToneAdapter {
    * Play a single note with specified pitch, duration, and timing
    * 
    * US2 T034: Implement playNote() for actual note playback
-   * US1 T018: Stubbed for User Story 1 (implemented in US2)
+   * US3 T046: Uses piano samples for realistic sound
+   * US3 T048: Validates MIDI pitch range (21-108 standard piano)
+   * US3 T051: Handles out-of-range notes gracefully
    * 
    * @param pitch - MIDI pitch number (0-127, where 60 = middle C)
+   *                Standard piano range: 21 (A0) to 108 (C8)
    * @param duration - Duration in seconds
    * @param time - Absolute time to play the note (seconds since audio context start)
    * 
@@ -181,6 +184,17 @@ export class ToneAdapter {
     if (!this.initialized || (!this.sampler && !this.polySynth)) {
       console.warn('ToneAdapter not initialized. Call init() first.');
       return;
+    }
+
+    // US3 T048 & T051: Validate MIDI pitch range (21-108 = standard piano)
+    const PIANO_MIN_PITCH = 21; // A0
+    const PIANO_MAX_PITCH = 108; // C8
+    
+    if (pitch < PIANO_MIN_PITCH || pitch > PIANO_MAX_PITCH) {
+      console.warn(
+        `MIDI pitch ${pitch} is out of piano range (${PIANO_MIN_PITCH}-${PIANO_MAX_PITCH}). Skipping playback.`
+      );
+      return; // Skip playback silently without crashing
     }
 
     // Convert MIDI pitch to note name (e.g., 60 -> "C4")

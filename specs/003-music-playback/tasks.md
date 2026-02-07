@@ -120,16 +120,16 @@
 
 - [ ] T043 [P] [US3] Write unit test for ToneAdapter MIDI pitch mapping in `frontend/src/services/playback/ToneAdapter.test.ts` (MIDI 60 maps to "C4", MIDI 69 to "A4")
 - [ ] T044 [P] [US3] Write unit test for ToneAdapter out-of-range pitches in `frontend/src/services/playback/ToneAdapter.test.ts` (MIDI <21 or >108 logs warning, skips playback)
-- [ ] T045 [P] [US3] Write manual test checklist in `specs/003-music-playback/checklists/manual-tests.md` for piano sound quality (SC-007: harmonically rich tone, SC-005: 10 simultaneous notes)
+- [x] T045 [P] [US3] Write manual test checklist in `specs/003-music-playback/checklists/manual-tests.md` for piano sound quality (SC-007: harmonically rich tone, SC-005: 10 simultaneous notes)
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] Configure PolySynth ADSR envelope in ToneAdapter.init() with attack=0.005s, decay=0.3s, sustain=0.5, release=1.0s for piano-like timbre
-- [ ] T047 [US3] Add oscillator configuration to PolySynth (consider triangle+sine blend for richer harmonics per research decision)
-- [ ] T048 [US3] Implement MIDI pitch validation in ToneAdapter.playNote() to check range 21-108 (standard piano), skip or clamp out-of-range notes
-- [ ] T049 [US3] Add pitch mapping conversion in ToneAdapter.playNote() using Tone.Frequency(midiPitch, 'midi').toNote()
+- [x] T046 [US3] Configure PolySynth ADSR envelope in ToneAdapter.init() with attack=0.005s, decay=0.3s, sustain=0.5, release=1.0s for piano-like timbre - **COMPLETED via Salamander Grand Piano samples**
+- [x] T047 [US3] Add oscillator configuration to PolySynth (consider triangle+sine blend for richer harmonics per research decision) - **COMPLETED via Salamander Grand Piano samples (real piano sound)**
+- [x] T048 [US3] Implement MIDI pitch validation in ToneAdapter.playNote() to check range 21-108 (standard piano), skip or clamp out-of-range notes
+- [x] T049 [US3] Add pitch mapping conversion in ToneAdapter.playNote() using Tone.Frequency(midiPitch, 'midi').toNote() - **COMPLETED via Salamander sampler integration**
 - [ ] T050 [US3] Test polyphonic playback with 10 simultaneous notes (create test score with chord) to verify maxPolyphony setting
-- [ ] T051 [US3] Handle edge case: notes outside piano range - log warning and skip silently (don't crash)
+- [x] T051 [US3] Handle edge case: notes outside piano range - log warning and skip silently (don't crash)
 - [ ] T052 [US3] Add browser autoplay policy error handling with user-friendly message in PlaybackControls
 
 **Checkpoint**: All user stories should now be independently functional - Playback has piano-like sound quality with accurate timing and responsive controls.
