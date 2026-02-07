@@ -65,7 +65,13 @@ vi.mock('tone', () => {
       }
     })),
     Transport: {
+      start: vi.fn(),
       cancel: vi.fn(),
+      clear: vi.fn(),
+      schedule: vi.fn((_callback, _time) => {
+        // Return a mock event ID
+        return Math.floor(Math.random() * 10000);
+      }),
     },
     context: {
       state: 'suspended',

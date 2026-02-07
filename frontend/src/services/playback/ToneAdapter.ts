@@ -24,6 +24,7 @@ export class ToneAdapter {
   private sampler: Tone.Sampler | null = null;
   private initialized = false;
   private useSampler = true; // Use piano samples for realistic sound
+  private scheduledEventIds: number[] = []; // Track Transport event IDs for cancellation
 
   /**
    * Private constructor - use getInstance() instead
@@ -68,6 +69,9 @@ export class ToneAdapter {
     try {
       // Start Tone.js audio context (required for browser autoplay policy)
       await Tone.start();
+      
+      // Start Tone.Transport for scheduling (required for Transport.schedule)
+      Tone.Transport.start();
 
       if (this.useSampler) {
         // US3: Use Salamander Grand Piano samples for realistic sound
@@ -151,13 +155,20 @@ export class ToneAdapter {
    * Safe to call even if not initialized.
    */
   public stopAll(): void {
+    // Cancel all scheduled events by ID
+    for (const eventId of this.scheduledEventIds) {
+      Tone.Transport.clear(eventId);
+    }
+    this.scheduledEventIds = [];
+
+    // Stop currently playing notes
     if (this.sampler) {
       this.sampler.releaseAll();
     } else if (this.polySynth) {
       this.polySynth.releaseAll();
     }
 
-    // Cancel all scheduled events on Tone.Transport
+    // Cancel any remaining scheduled events on Tone.Transport
     Tone.Transport.cancel();
   }
 
@@ -200,13 +211,19 @@ export class ToneAdapter {
     // Convert MIDI pitch to note name (e.g., 60 -> "C4")
     const noteName = Tone.Frequency(pitch, 'midi').toNote();
     
-    if (this.sampler) {
-      // Use sampler for realistic piano sound
-      this.sampler.triggerAttackRelease(noteName, duration, time);
-    } else if (this.polySynth) {
-      // Fallback to synthesizer
-      this.polySynth.triggerAttackRelease(noteName, duration, time);
-    }
+    // Schedule the note using Transport.schedule so it can be cancelled
+    const eventId = Tone.Transport.schedule((scheduleTime) => {
+      if (this.sampler) {
+        // Use sampler for realistic piano sound
+        this.sampler.triggerAttackRelease(noteName, duration, scheduleTime);
+      } else if (this.polySynth) {
+        // Fallback to synthesizer
+        this.polySynth.triggerAttackRelease(noteName, duration, scheduleTime);
+      }
+    }, time);
+    
+    // Track the event ID so we can cancel it later
+    this.scheduledEventIds.push(eventId);
   }
 
   /**
