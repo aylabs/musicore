@@ -9,6 +9,13 @@ vi.mock('tone', () => {
     releaseAll: vi.fn(),
   };
 
+  const mockSampler = {
+    toDestination: vi.fn().mockReturnThis(),
+    triggerAttackRelease: vi.fn(),
+    releaseAll: vi.fn(), // US3: Add releaseAll() for stopAll() support
+    loaded: true,
+  };
+
   // Create a proper constructor function
   class MockPolySynth {
     toDestination() {
@@ -23,12 +30,40 @@ vi.mock('tone', () => {
     }
   }
 
+  // US3: Mock Sampler for piano sound
+  class MockSampler {
+    toDestination() {
+      mockSampler.toDestination();
+      return this;
+    }
+    triggerAttackRelease(...args: any[]) {
+      mockSampler.triggerAttackRelease(...args);
+    }
+    releaseAll() {
+      mockSampler.releaseAll();
+    }
+    get loaded() {
+      return mockSampler.loaded;
+    }
+  }
+
   return {
     start: vi.fn().mockResolvedValue(undefined),
+    loaded: vi.fn().mockResolvedValue(undefined), // US3: Mock Tone.loaded() for sampler
     now: vi.fn(() => 0),
     PolySynth: MockPolySynth,
+    Sampler: MockSampler, // US3: Add Sampler mock
     Synth: vi.fn(),
-    Frequency: vi.fn((pitch: number) => ({ toFrequency: () => pitch * 10 })),
+    Frequency: vi.fn((pitch: number) => ({
+      toFrequency: () => pitch * 10,
+      toNote: () => {
+        // US3 T043: Mock MIDI to note name conversion
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const octave = Math.floor((pitch - 12) / 12);
+        const noteIndex = pitch % 12;
+        return `${noteNames[noteIndex]}${octave}`;
+      }
+    })),
     Transport: {
       cancel: vi.fn(),
     },

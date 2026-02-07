@@ -136,3 +136,15 @@
   color: #666;
   font-style: italic;
 }
+
+/* Playback error message - US3 T052 */
+.playback-error-message {
+  text-align: center;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #d32f2f;
+  background-color: #ffebee;
+  border: 1px solid #ef5350;
+  border-radius: 6px;
+  font-weight: 500;
+}
