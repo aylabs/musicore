@@ -250,17 +250,17 @@ export const NotationLayoutEngine = {
   getMinimumNoteWidth(duration_ticks: number, config: StaffConfig): number {
     const PPQ = 960;
     
-    // 128th notes (5 flags) need 2.5x standard spacing
+    // 128th notes (5 flags) need 4x standard spacing
     if (duration_ticks < PPQ / 16) {
-      return config.minNoteSpacing * 2.5;
+      return config.minNoteSpacing * 4.0;
     }
-    // 64th notes (4 flags) need 2x standard spacing
+    // 64th notes (4 flags) need 3.5x standard spacing
     else if (duration_ticks < PPQ / 8) {
-      return config.minNoteSpacing * 2.0;
+      return config.minNoteSpacing * 3.5;
     }
-    // 32nd notes (3 flags) need 1.5x standard spacing
+    // 32nd notes (3 flags) need 2.5x standard spacing
     else if (duration_ticks < PPQ / 4) {
-      return config.minNoteSpacing * 1.5;
+      return config.minNoteSpacing * 2.5;
     }
     
     // All other notes use standard minimum spacing
