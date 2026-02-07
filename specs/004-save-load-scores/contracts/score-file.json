@@ -1,0 +1,149 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "global_structural_events": [
+    {
+      "Tempo": {
+        "tick": 0,
+        "bpm": 120
+      }
+    },
+    {
+      "TimeSignature": {
+        "tick": 0,
+        "numerator": 4,
+        "denominator": 4
+      }
+    },
+    {
+      "Tempo": {
+        "tick": 3840,
+        "bpm": 140
+      }
+    }
+  ],
+  "instruments": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "name": "Piano",
+      "staves": [
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440002",
+          "clef_events": [
+            {
+              "tick": 0,
+              "clef": "Treble"
+            }
+          ],
+          "key_signature_events": [
+            {
+              "tick": 0,
+              "sharps": 0
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440003",
+              "notes": [
+                {
+                  "start_tick": 0,
+                  "duration_ticks": 960,
+                  "pitch": 60
+                },
+                {
+                  "start_tick": 960,
+                  "duration_ticks": 960,
+                  "pitch": 62
+                },
+                {
+                  "start_tick": 1920,
+                  "duration_ticks": 960,
+                  "pitch": 64
+                },
+                {
+                  "start_tick": 2880,
+                  "duration_ticks": 960,
+                  "pitch": 65
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440004",
+          "clef_events": [
+            {
+              "tick": 0,
+              "clef": "Bass"
+            }
+          ],
+          "key_signature_events": [
+            {
+              "tick": 0,
+              "sharps": 0
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440005",
+              "notes": [
+                {
+                  "start_tick": 0,
+                  "duration_ticks": 3840,
+                  "pitch": 48
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440006",
+      "name": "Violin",
+      "staves": [
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440007",
+          "clef_events": [
+            {
+              "tick": 0,
+              "clef": "Treble"
+            }
+          ],
+          "key_signature_events": [
+            {
+              "tick": 0,
+              "sharps": 2
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440008",
+              "notes": [
+                {
+                  "start_tick": 1920,
+                  "duration_ticks": 480,
+                  "pitch": 74
+                },
+                {
+                  "start_tick": 2400,
+                  "duration_ticks": 480,
+                  "pitch": 76
+                },
+                {
+                  "start_tick": 2880,
+                  "duration_ticks": 480,
+                  "pitch": 74
+                },
+                {
+                  "start_tick": 3360,
+                  "duration_ticks": 480,
+                  "pitch": 71
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
