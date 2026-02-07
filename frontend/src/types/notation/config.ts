@@ -18,13 +18,18 @@ export const SMUFL_CODEPOINTS = {
   NOTEHEAD_HALF: '\uE0A3',
   NOTEHEAD_WHOLE: '\uE0A2',
   
-  // Quarter notes with stems
+  // Quarter notes (black notes with stems) - duration 960 ticks
   QUARTER_NOTE_UP: '\uE1D5',    // Stem up (for notes below middle line)
   QUARTER_NOTE_DOWN: '\uE1D6',  // Stem down (for notes on/above middle line)
   
-  // Other notes
-  HALF_NOTE: '\uE0A3',
+  // Half notes (white/hollow notes with stems) - duration 1920 ticks
+  HALF_NOTE_UP: '\uE1D3',       // Stem up
+  HALF_NOTE_DOWN: '\uE1D4',     // Stem down
+  
+  // Whole notes (white/hollow round notes, no stems) - duration 3840+ ticks
   WHOLE_NOTE: '\uE0A2',
+  
+  // Other notes
   EIGHTH_NOTE: '\uE0A5',
   SIXTEENTH_NOTE: '\uE0A6',
   

@@ -305,9 +305,26 @@ export const NotationLayoutEngine = {
       // Determine stem direction: notes below middle line get stem up, others get stem down
       // SMuFL convention: stem up for low notes, stem down for high notes
       const stemUp = staffPosition < 0;
-      const glyphCodepoint = stemUp 
-        ? SMUFL_CODEPOINTS.QUARTER_NOTE_UP 
-        : SMUFL_CODEPOINTS.QUARTER_NOTE_DOWN;
+      
+      // Select note glyph based on duration (PPQ = 960)
+      // Quarter note = 960 ticks, Half note = 1920 ticks, Whole note = 3840+ ticks
+      let glyphCodepoint: string;
+      const PPQ = 960;
+      
+      if (note.duration_ticks >= PPQ * 4) {
+        // Whole note (4 beats or more) - no stem
+        glyphCodepoint = SMUFL_CODEPOINTS.WHOLE_NOTE;
+      } else if (note.duration_ticks >= PPQ * 2) {
+        // Half note (2 beats) - white note with stem
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.HALF_NOTE_UP 
+          : SMUFL_CODEPOINTS.HALF_NOTE_DOWN;
+      } else {
+        // Quarter note (1 beat) - black note with stem
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.QUARTER_NOTE_UP 
+          : SMUFL_CODEPOINTS.QUARTER_NOTE_DOWN;
+      }
       
       return {
         id: note.id,
