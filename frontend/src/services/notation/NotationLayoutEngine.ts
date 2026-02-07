@@ -107,6 +107,35 @@ export const NotationLayoutEngine = {
   },
 
   /**
+   * Determine if a MIDI pitch needs an accidental (sharp/flat)
+   * 
+   * @param pitch - MIDI pitch number (0-127)
+   * @param clef - Current clef type
+   * @returns Accidental type or undefined if natural note
+   */
+  getAccidental(pitch: number, clef: ClefType): 'sharp' | 'flat' | undefined {
+    // Diatonic (white key) pitches in treble clef
+    const trebleDiatonicPitches = [71, 72, 74, 76, 77, 79, 81, 69, 67, 65, 64, 62, 60, 57, 55];
+    
+    // Diatonic (white key) pitches in bass clef
+    const bassDiatonicPitches = [50, 52, 53, 55, 57, 59, 60, 48, 47, 45, 43, 41, 40, 36];
+    
+    const diatonicPitches = clef === 'Treble' ? trebleDiatonicPitches : bassDiatonicPitches;
+    
+    // If pitch is in the diatonic set, no accidental needed
+    if (diatonicPitches.includes(pitch)) {
+      return undefined;
+    }
+    
+    // For chromatic notes, determine if sharp or flat
+    // Using the "circle of fifths" convention: sharps for C#, D#, F#, G#, A#
+    const pitchClass = pitch % 12;
+    const sharpPitchClasses = [1, 3, 6, 8, 10]; // C#, D#, F#, G#, A#
+    
+    return sharpPitchClasses.includes(pitchClass) ? 'sharp' : 'flat';
+  },
+
+  /**
    * Convert staff position to Y pixel coordinate
    * 
    * In our coordinate system:
@@ -245,6 +274,9 @@ export const NotationLayoutEngine = {
       // Calculate Y position from staff position
       const y = this.staffPositionToY(staffPosition, config);
       
+      // Determine if this note needs an accidental (sharp/flat)
+      const accidental = this.getAccidental(note.pitch, clef);
+      
       return {
         id: note.id,
         x,
@@ -255,6 +287,7 @@ export const NotationLayoutEngine = {
         staffPosition,
         glyphCodepoint: SMUFL_CODEPOINTS.QUARTER_NOTE, // Quarter note head (SMuFL)
         fontSize: config.staffSpace * config.glyphFontSizeMultiplier,
+        accidental,
       };
     });
     

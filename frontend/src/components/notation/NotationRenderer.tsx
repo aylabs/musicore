@@ -105,21 +105,39 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
       {layout.notes
         .slice(layout.visibleNoteIndices.startIdx, layout.visibleNoteIndices.endIdx)
         .map((note) => (
-        <text
-          key={note.id}
-          data-testid={note.id}
-          x={note.x}
-          y={note.y}
-          fontSize={note.fontSize}
-          fontFamily="Bravura"
-          fill={selectedNoteId === note.id ? 'blue' : 'black'}
-          textAnchor="middle"
-          dominantBaseline="central"
-          onClick={() => handleNoteClick(note.id)}
-          style={{ cursor: 'pointer' }}
-        >
-          {note.glyphCodepoint}
-        </text>
+        <React.Fragment key={note.id}>
+          {/* Accidental (sharp/flat) if needed - positioned before note head */}
+          {note.accidental && (
+            <text
+              data-testid={`${note.id}-accidental`}
+              x={note.x - note.fontSize * 0.5} // Position to the left of note head
+              y={note.y}
+              fontSize={note.fontSize * 0.9} // Slightly smaller than note head
+              fontFamily="Bravura"
+              fill={selectedNoteId === note.id ? 'blue' : 'black'}
+              textAnchor="middle"
+              dominantBaseline="central"
+            >
+              {note.accidental === 'sharp' ? '\uE262' : '\uE260'}
+            </text>
+          )}
+          
+          {/* Note head */}
+          <text
+            data-testid={note.id}
+            x={note.x}
+            y={note.y}
+            fontSize={note.fontSize}
+            fontFamily="Bravura"
+            fill={selectedNoteId === note.id ? 'blue' : 'black'}
+            textAnchor="middle"
+            dominantBaseline="central"
+            onClick={() => handleNoteClick(note.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            {note.glyphCodepoint}
+          </text>
+        </React.Fragment>
       ))}
 
       {/* Barlines (User Story 2) */}

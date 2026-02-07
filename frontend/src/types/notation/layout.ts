@@ -30,6 +30,9 @@ export interface NotePosition {
   
   /** Font size for this glyph in pixels */
   fontSize: number;
+  
+  /** Accidental type if this note needs one (sharp/flat/natural) */
+  accidental?: 'sharp' | 'flat' | 'natural';
 }
 
 /**
