@@ -87,17 +87,23 @@ export const NotationLayoutEngine = {
       if (bassDiatonicMap[pitch] !== undefined) return bassDiatonicMap[pitch];
     }
     
-    // Fallback: use chromatic approximation for unlisted pitches
-    const middleLinePitch: Record<ClefType, number> = {
-      Treble: 71, // B4
-      Bass: 50,   // D3
-      Alto: 60,   // C4
-      Tenor: 57,  // A3
-    };
+    // Fallback: For chromatic notes (sharps/flats), find the nearest diatonic note
+    // Chromatic notes should be positioned at the same staff position as their natural note
+    const diatonicMap = clef === 'Treble' ? trebleDiatonicMap : bassDiatonicMap;
+    const diatonicPitches = Object.keys(diatonicMap).map(Number).sort((a, b) => a - b);
     
-    const referencePitch = middleLinePitch[clef];
-    const semitoneOffset = pitch - referencePitch;
-    return semitoneOffset / 2;
+    // Find the closest diatonic note at or below this pitch
+    let closestPitch = diatonicPitches[0];
+    for (const diatonicPitch of diatonicPitches) {
+      if (diatonicPitch <= pitch) {
+        closestPitch = diatonicPitch;
+      } else {
+        break;
+      }
+    }
+    
+    // Use the staff position of the closest natural note
+    return diatonicMap[closestPitch];
   },
 
   /**
