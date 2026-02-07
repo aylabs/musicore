@@ -51,7 +51,16 @@ export const NotationLayoutEngine = {
       76: 3,   // E5 (space)
       77: 4,   // F5 (top line)
       79: 5,   // G5 (space above)
-      81: 8,   // A5 (ledger line) - 4 half-steps above F5 = staffPosition 8
+      81: 6,   // A5 (first ledger line above)
+      83: 7,   // B5 (space above first ledger)
+      84: 8,   // C6 (second ledger line above)
+      86: 9,   // D6 (space above second ledger)
+      88: 10,  // E6 (third ledger line above)
+      89: 11,  // F6 (space above third ledger)
+      91: 12,  // G6 (fourth ledger line above)
+      93: 13,  // A6
+      95: 14,  // B6
+      96: 15,  // C7
       69: -1,  // A4 (space below middle)
       67: -2,  // G4 (line 2)
       65: -3,  // F4 (space)
@@ -115,10 +124,10 @@ export const NotationLayoutEngine = {
    */
   getAccidental(pitch: number, clef: ClefType): 'sharp' | 'flat' | undefined {
     // Diatonic (white key) pitches in treble clef
-    const trebleDiatonicPitches = [71, 72, 74, 76, 77, 79, 81, 69, 67, 65, 64, 62, 60, 57, 55];
+    const trebleDiatonicPitches = [55, 57, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96];
     
     // Diatonic (white key) pitches in bass clef
-    const bassDiatonicPitches = [50, 52, 53, 55, 57, 59, 60, 48, 47, 45, 43, 41, 40, 36];
+    const bassDiatonicPitches = [36, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
     
     const diatonicPitches = clef === 'Treble' ? trebleDiatonicPitches : bassDiatonicPitches;
     

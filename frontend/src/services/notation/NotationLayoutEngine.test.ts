@@ -71,9 +71,9 @@ describe('NotationLayoutEngine', () => {
     it('should handle notes requiring ledger lines above treble staff', () => {
       // A5 (MIDI 81) is above the treble staff
       // F5 (77) is on top line at staffPosition 4
-      // A5 is 4 half-steps above F5, so staffPosition 4 + 4 = 8
+      // A5 is 2 diatonic steps above F5 (F→G→A), so staffPosition 4 + 2 = 6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(81, 'Treble');
-      expect(result).toBe(8);
+      expect(result).toBe(6);
     });
 
     it('should handle notes requiring ledger lines below bass staff', () => {
