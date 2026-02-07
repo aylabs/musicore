@@ -72,6 +72,35 @@ export function ticksToSeconds(ticks: number, tempo: number): number {
 }
 
 /**
+ * Convert real time (seconds) to musical time (ticks)
+ * 
+ * Feature 003 - Music Playback: Pause/Resume
+ * 
+ * Formula: ticks = seconds * (tempo/60 * PPQ)
+ * 
+ * @param seconds - Time in seconds
+ * @param tempo - Tempo in beats per minute (BPM)
+ * @returns Musical time in ticks
+ * 
+ * @example
+ * ```typescript
+ * // 0.5 seconds at 120 BPM = quarter note
+ * secondsToTicks(0.5, 120); // 960 ticks
+ * ```
+ */
+export function secondsToTicks(seconds: number, tempo: number): number {
+  // Apply tempo fallback for invalid values
+  const validTempo = tempo > 0 && tempo <= 400 ? tempo : DEFAULT_TEMPO;
+  
+  // Convert seconds to ticks using PPQ constant
+  const beatsPerSecond = validTempo / 60;
+  const ticksPerSecond = beatsPerSecond * PPQ;
+  const ticks = seconds * ticksPerSecond;
+  
+  return Math.round(ticks); // Round to nearest tick
+}
+
+/**
  * PlaybackScheduler - Manages note scheduling and timing
  * 
  * Feature 003 - Music Playback: US2 T032

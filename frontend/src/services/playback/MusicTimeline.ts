@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { ToneAdapter } from './ToneAdapter';
-import { PlaybackScheduler } from './PlaybackScheduler';
+import { PlaybackScheduler, secondsToTicks } from './PlaybackScheduler';
 import type { Note } from '../../types/score';
 import type { PlaybackStatus } from '../../types/playback';
 
@@ -109,19 +109,24 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       return; // Only pause if currently playing
     }
 
-    // Preserve current playback position for resume
+    // Calculate elapsed time since playback started
     const currentTime = adapter.getCurrentTime();
+    const elapsedTime = currentTime - startTimeRef.current;
+    
+    // Convert elapsed time to ticks and add to currentTick to get new position
+    const elapsedTicks = secondsToTicks(elapsedTime, tempo);
+    const newCurrentTick = currentTick + elapsedTicks;
     
     // US2 T038: Clear all scheduled notes
     scheduler.clearSchedule();
 
-    // Convert elapsed time to ticks (US2: will use real conversion)
-    // For US1, we preserve currentTick value
+    // Update currentTick for resume
+    setCurrentTick(newCurrentTick);
     pausedAtRef.current = currentTime;
 
     // US1 T022: Transition status to 'paused'
     setStatus('paused');
-  }, [status, adapter, scheduler]);
+  }, [status, adapter, scheduler, tempo, currentTick]);
 
   /**
    * US1 T023: Implement stop() - Stop playback, reset to initial state
