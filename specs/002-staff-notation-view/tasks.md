@@ -182,14 +182,14 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T063 [P] Add SMuFL codepoint constants in frontend/src/types/notation/config.ts - TREBLE_CLEF = '\uE050', BASS_CLEF = '\uE062', QUARTER_NOTE = '\uE0A4', etc.
-- [ ] T064 [P] Add JSDoc comments to all NotationLayoutEngine methods in frontend/src/services/notation/NotationLayoutEngine.ts
-- [ ] T065 [P] Add data-testid attributes to all SVG elements in frontend/src/components/notation/NotationRenderer.tsx for easier testing
-- [ ] T066 [P] Performance optimization: add React.memo to NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx
-- [ ] T067 [P] Performance optimization: add shouldComponentUpdate logic for note elements in frontend/src/components/notation/NotationRenderer.tsx
-- [ ] T068 [P] Update README.md with feature description, screenshot, usage example
-- [ ] T069 Validate all success criteria from spec.md - SC-001 (identify pitches <5s), SC-002 (render 100 notes <500ms), SC-003 (positioning <1px error), SC-004 (selection <50ms), SC-005 (1000 measures 60fps)
-- [ ] T070 Run through quickstart.md validation checklist - verify font loads, notes positioned correctly, interactions work, performance targets met
+- [X] T063 [P] Add SMuFL codepoint constants in frontend/src/types/notation/config.ts - TREBLE_CLEF = '\uE050', BASS_CLEF = '\uE062', QUARTER_NOTE = '\uE0A4', etc.
+- [X] T064 [P] Add JSDoc comments to all NotationLayoutEngine methods in frontend/src/services/notation/NotationLayoutEngine.ts
+- [X] T065 [P] Add data-testid attributes to all SVG elements in frontend/src/components/notation/NotationRenderer.tsx for easier testing
+- [X] T066 [P] Performance optimization: add React.memo to NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx
+- [X] T067 [P] Performance optimization: add shouldComponentUpdate logic for note elements in frontend/src/components/notation/NotationRenderer.tsx
+- [X] T068 [P] Update README.md with feature description, screenshot, usage example
+- [X] T069 Validate all success criteria from spec.md - SC-001 (identify pitches <5s), SC-002 (render 100 notes <500ms), SC-003 (positioning <1px error), SC-004 (selection <50ms), SC-005 (1000 measures 60fps)
+- [X] T070 Run through quickstart.md validation checklist - verify font loads, notes positioned correctly, interactions work, performance targets met
 
 ---
 
