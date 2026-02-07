@@ -1,0 +1,370 @@
+openapi: 3.0.3
+info:
+  title: Musicore Score API
+  description: |
+    API contract for Score entity with Instrument support (Feature 003: Music Playback).
+    This contract extends Feature 001 (score-model) API with the instruments field.
+  version: 1.1.0
+  contact:
+    name: Musicore API Team
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+
+paths:
+  /scores/{scoreId}:
+    get:
+      summary: Retrieve a score by ID
+      description: |
+        Returns a complete score including instruments, voices, notes, and structural events.
+        As of v1.1.0, includes the `instruments` array (added in Feature 003).
+      operationId: getScore
+      tags:
+        - scores
+      parameters:
+        - name: scoreId
+          in: path
+          required: true
+          description: Unique identifier for the score
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Successfully retrieved score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+              examples:
+                simpleScore:
+                  summary: Simple scale with piano instrument
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "C Major Scale"
+                    tempo: 120
+                    time_signature: [4, 4]
+                    instruments:
+                      - id: "inst-001"
+                        instrument_type: "piano"
+                    voices:
+                      - id: "voice-001"
+                        staff_id: "staff-001"
+                        notes:
+                          - id: "note-001"
+                            pitch: 60
+                            start_tick: 0
+                            duration_ticks: 960
+                          - id: "note-002"
+                            pitch: 62
+                            start_tick: 960
+                            duration_ticks: 960
+                    structural_events: []
+                legacyScore:
+                  summary: Score without instruments (backward compatibility)
+                  value:
+                    id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    title: "Legacy Score"
+                    tempo: 120
+                    time_signature: [4, 4]
+                    instruments: []
+                    voices: []
+                    structural_events: []
+        '404':
+          description: Score not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Score not found"
+                message: "No score exists with ID 550e8400-e29b-41d4-a716-446655440000"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /scores:
+    post:
+      summary: Create a new score
+      description: |
+        Creates a new score with default piano instrument if instruments array is empty or omitted.
+      operationId: createScore
+      tags:
+        - scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScoreRequest'
+            examples:
+              withInstrument:
+                summary: Create score with piano instrument
+                value:
+                  title: "New Composition"
+                  tempo: 120
+                  time_signature: [4, 4]
+                  instruments:
+                    - instrument_type: "piano"
+              withoutInstrument:
+                summary: Create score without instruments (gets default piano)
+                value:
+                  title: "Another Composition"
+                  tempo: 90
+                  time_signature: [3, 4]
+                  instruments: []
+      responses:
+        '201':
+          description: Score created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Validation failed"
+                message: "tempo must be between 40 and 300 BPM"
+
+components:
+  schemas:
+    Score:
+      type: object
+      description: |
+        A musical score containing instruments, voices, notes, and structural events.
+        Core aggregate root in the domain model.
+      required:
+        - id
+        - title
+        - tempo
+        - time_signature
+        - instruments
+        - voices
+        - structural_events
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the score
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Human-readable title of the score
+          example: "Symphony No. 1"
+        tempo:
+          type: integer
+          minimum: 40
+          maximum: 300
+          description: Tempo in beats per minute (BPM)
+          example: 120
+        time_signature:
+          type: array
+          description: Time signature as [numerator, denominator]
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+          example: [4, 4]
+        instruments:
+          type: array
+          description: |
+            Array of instruments associated with this score.
+            Added in v1.1.0 (Feature 003). Empty array for legacy scores.
+            MVP: Only first instrument is used for playback.
+          items:
+            $ref: '#/components/schemas/Instrument'
+          maxItems: 10
+          example:
+            - id: "inst-001"
+              instrument_type: "piano"
+        voices:
+          type: array
+          description: Array of voices containing notes
+          items:
+            $ref: '#/components/schemas/Voice'
+        structural_events:
+          type: array
+          description: Array of structural events (tempo changes, clef changes, etc.)
+          items:
+            $ref: '#/components/schemas/StructuralEvent'
+
+    Instrument:
+      type: object
+      description: |
+        Represents a musical instrument for playback.
+        Feature 003: MVP supports "piano" only.
+      required:
+        - id
+        - instrument_type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the instrument
+          example: "inst-001"
+        instrument_type:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: |
+            Type of instrument. MVP constraint: Must be "piano".
+            Future versions may support "guitar", "violin", etc.
+          enum:
+            - piano
+          example: "piano"
+
+    Voice:
+      type: object
+      description: A voice containing a sequence of notes
+      required:
+        - id
+        - staff_id
+        - notes
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the voice
+          example: "voice-001"
+        staff_id:
+          type: string
+          description: ID of the staff this voice belongs to
+          example: "staff-001"
+        notes:
+          type: array
+          description: Array of notes in this voice
+          items:
+            $ref: '#/components/schemas/Note'
+
+    Note:
+      type: object
+      description: A single musical note with pitch, timing, and duration
+      required:
+        - id
+        - pitch
+        - start_tick
+        - duration_ticks
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the note
+          example: "note-001"
+        pitch:
+          type: integer
+          minimum: 21
+          maximum: 108
+          description: |
+            MIDI pitch number (21 = A0, 108 = C8).
+            Standard piano range.
+          example: 60
+        start_tick:
+          type: integer
+          minimum: 0
+          description: |
+            Starting position in ticks (960 PPQ resolution).
+            0 = beginning of score.
+          example: 0
+        duration_ticks:
+          type: integer
+          minimum: 1
+          description: |
+            Duration in ticks (960 PPQ resolution).
+            Example: 960 ticks = 1 quarter note at 960 PPQ.
+          example: 960
+
+    StructuralEvent:
+      type: object
+      description: |
+        Structural events like tempo changes, clef changes, key signatures.
+        Not directly used by Feature 003 (playback uses fixed tempo from Score.tempo).
+      required:
+        - id
+        - event_type
+        - tick
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the event
+        event_type:
+          type: string
+          enum:
+            - tempo_change
+            - time_signature_change
+            - clef_change
+            - key_signature_change
+          description: Type of structural event
+        tick:
+          type: integer
+          minimum: 0
+          description: Position in ticks where event occurs
+
+    CreateScoreRequest:
+      type: object
+      description: Request body for creating a new score
+      required:
+        - title
+        - tempo
+        - time_signature
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "New Composition"
+        tempo:
+          type: integer
+          minimum: 40
+          maximum: 300
+          example: 120
+        time_signature:
+          type: array
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+          example: [4, 4]
+        instruments:
+          type: array
+          description: |
+            Optional instruments array. If empty or omitted, score gets default piano.
+          items:
+            type: object
+            required:
+              - instrument_type
+            properties:
+              instrument_type:
+                type: string
+                enum:
+                  - piano
+                example: "piano"
+          maxItems: 10
+
+    Error:
+      type: object
+      description: Error response object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Short error code or category
+          example: "Validation failed"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Field 'tempo' must be between 40 and 300 BPM"
+
+tags:
+  - name: scores
+    description: Operations on musical scores
