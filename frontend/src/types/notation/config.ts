@@ -30,6 +30,18 @@ export const SMUFL_CODEPOINTS = {
   SIXTEENTH_NOTE_UP: '\uE1D9',  // Stem up with double flag
   SIXTEENTH_NOTE_DOWN: '\uE1DA', // Stem down with double flag
   
+  // 32nd notes (black notes with stems and 3 flags) - duration 120 ticks
+  THIRTYSECOND_NOTE_UP: '\uE1DB',   // Stem up with triple flag
+  THIRTYSECOND_NOTE_DOWN: '\uE1DC', // Stem down with triple flag
+  
+  // 64th notes (black notes with stems and 4 flags) - duration 60 ticks
+  SIXTYFOURTH_NOTE_UP: '\uE1DD',    // Stem up with quad flag
+  SIXTYFOURTH_NOTE_DOWN: '\uE1DE',  // Stem down with quad flag
+  
+  // 128th notes (black notes with stems and 5 flags) - duration 30 ticks
+  ONETWENTYEIGHTH_NOTE_UP: '\uE1DF',   // Stem up with 5 flags
+  ONETWENTYEIGHTH_NOTE_DOWN: '\uE1E0', // Stem down with 5 flags
+  
   // Half notes (white/hollow notes with stems) - duration 1920 ticks
   HALF_NOTE_UP: '\uE1D3',       // Stem up
   HALF_NOTE_DOWN: '\uE1D4',     // Stem down
