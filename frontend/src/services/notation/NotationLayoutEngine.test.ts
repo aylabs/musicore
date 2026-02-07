@@ -25,28 +25,19 @@ describe('NotationLayoutEngine', () => {
   describe('midiPitchToStaffPosition', () => {
     it('should place middle C (MIDI 60) correctly in treble clef', () => {
       // Middle C is on a ledger line below the treble staff
-      // Treble staff: E4 (64) on line 1, so C4 (60) is 4 half-steps below
-      // Line 1 is at staffPosition -4, so C4 is at -4 - 4 = -8 half-steps
-      // Wait, let me recalculate based on the staff position system:
-      // Middle line (line 3) in treble clef is B4 (MIDI 71)
-      // staffPosition 0 = B4 (71)
-      // C4 (60) is 11 half-steps below B4
-      // So C4 should be at staffPosition -11
-      // But data-model.md says C4 in treble = -3.5 staff spaces
-      // Let me check: if staffPosition is in staff spaces (where 2 half-steps = 1 staff space):
-      // 11 half-steps / 2 = 5.5 staff spaces below
-      // Actually, let me trust the spec from data-model.md:
+      // Treble staff bottom line: E4 (64) at staffPosition -4
+      // Space below: D4 (62) at staffPosition -5
+      // Ledger line below: C4 (60) at staffPosition -6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(60, 'Treble');
-      expect(result).toBe(-3.5);
+      expect(result).toBe(-6);
     });
 
     it('should place middle C (MIDI 60) correctly in bass clef', () => {
-      // Bass clef: middle line (line 3) = D3 (MIDI 50)
+      // Bass clef: middle line = D3 (MIDI 50) at staffPosition 0
       // C4 (60) is 10 half-steps above D3
-      // 10 half-steps / 2 = 5 staff spaces above
-      // From data-model.md: C4 in bass = 5 staff spaces
+      // Diatonic: C4 is on ledger line above staff at staffPosition 6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(60, 'Bass');
-      expect(result).toBe(5);
+      expect(result).toBe(6);
     });
 
     it('should place E4 (MIDI 64) on bottom line in treble clef', () => {
@@ -138,10 +129,10 @@ describe('NotationLayoutEngine', () => {
       expect(result).toBe(centerY + 2 * config.staffSpace);
     });
 
-    it('should handle fractional staff positions', () => {
-      // staffPosition -3.5 = 1.75 staff spaces below middle line
-      const result = NotationLayoutEngine.staffPositionToY(-3.5, config);
-      expect(result).toBe(centerY + 1.75 * config.staffSpace);
+    it('should handle ledger line positions below staff', () => {
+      // staffPosition -6 = 3 staff spaces below middle line (ledger line)
+      const result = NotationLayoutEngine.staffPositionToY(-6, config);
+      expect(result).toBe(centerY + 3 * config.staffSpace);
     });
 
     it('should handle ledger line positions above staff', () => {
@@ -329,14 +320,14 @@ describe('NotationLayoutEngine', () => {
         'Treble',
         config
       );
-      expect(treblePositioned[0].staffPosition).toBe(-3.5);
+      expect(treblePositioned[0].staffPosition).toBe(-6);
 
       const bassPositioned = NotationLayoutEngine.calculateNotePositions(
         notes,
         'Bass',
         config
       );
-      expect(bassPositioned[0].staffPosition).toBe(5);
+      expect(bassPositioned[0].staffPosition).toBe(6);
     });
 
     it('should calculate Y position from staff position', () => {
@@ -704,9 +695,9 @@ describe('NotationLayoutEngine', () => {
   describe('calculateVisibleNoteIndices', () => {
     it('should return all notes when viewport covers entire score', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 200, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 300, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 200, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 300, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
       ];
 
       const config = {
@@ -725,11 +716,11 @@ describe('NotationLayoutEngine', () => {
 
     it('should exclude notes outside visible range', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 500, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 1000, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '4', x: 1500, y: 70, pitch: 60, start_tick: 2880, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '5', x: 2000, y: 70, pitch: 60, start_tick: 3840, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 1000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '4', x: 1500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '5', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
       ];
 
       const config = {
@@ -752,9 +743,9 @@ describe('NotationLayoutEngine', () => {
 
     it('should handle scrolled to end of score', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 70, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 2000, y: 70, pitch: 60, start_tick: 960, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 2500, y: 70, pitch: 60, start_tick: 1920, duration_ticks: 960, staffPosition: -3.5, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 2500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
       ];
 
       const config = {

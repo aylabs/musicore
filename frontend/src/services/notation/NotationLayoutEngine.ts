@@ -57,7 +57,7 @@ export const NotationLayoutEngine = {
       65: -3,  // F4 (space)
       64: -4,  // E4 (bottom line)
       62: -5,  // D4 (space below)
-      60: -6,  // C4 (ledger line below) - but test expects -3.5?
+      60: -6,  // C4 (ledger line below)
       57: -7,  // A3
       55: -8,  // G3
     };
@@ -70,7 +70,7 @@ export const NotationLayoutEngine = {
       55: 3,   // G3 (space)
       57: 4,   // A3 (top line)
       59: 5,   // B3 (space above)
-      60: 6,   // C4 (ledger line) - but test expects 5?
+      60: 6,   // C4 (ledger line above staff)
       48: -1,  // C3 (space below)
       47: -2,  // B2 (line 2)
       45: -3,  // A2 (space)
@@ -80,12 +80,10 @@ export const NotationLayoutEngine = {
       36: -11, // C2 (ledger line)
     };
     
-    // Handle special test cases that don't follow pure diatonic rules
+    // Use diatonic mappings
     if (clef === 'Treble') {
-      if (pitch === 60) return -3.5; // Middle C test expectation from data-model.md
       if (trebleDiatonicMap[pitch] !== undefined) return trebleDiatonicMap[pitch];
     } else if (clef === 'Bass') {
-      if (pitch === 60) return 5; // Middle C test expectation
       if (bassDiatonicMap[pitch] !== undefined) return bassDiatonicMap[pitch];
     }
     
