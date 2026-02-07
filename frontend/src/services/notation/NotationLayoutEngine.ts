@@ -358,9 +358,9 @@ export const NotationLayoutEngine = {
     const y1 = centerY - 2 * config.staffSpace; // Top line (staffPosition 4)
     const y2 = centerY + 2 * config.staffSpace; // Bottom line (staffPosition -4)
     
-    // Generate barlines at measure boundaries
-    let measureNumber = 0;
-    for (let tick = 0; tick <= maxTick; tick += ticksPerMeasure) {
+    // Generate barlines at measure boundaries (start at first measure END, not at tick 0)
+    let measureNumber = 1;
+    for (let tick = ticksPerMeasure; tick <= maxTick; tick += ticksPerMeasure) {
       // Calculate X position from tick
       const x = config.marginLeft + config.clefWidth + tick * config.pixelsPerTick;
       

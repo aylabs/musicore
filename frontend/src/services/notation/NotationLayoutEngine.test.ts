@@ -541,14 +541,13 @@ describe('NotationLayoutEngine', () => {
       
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
-      // Expected barlines at ticks: 0, 3840, 7680
-      expect(barlines.length).toBe(3);
-      expect(barlines[0].tick).toBe(0);
-      expect(barlines[0].measureNumber).toBe(0);
-      expect(barlines[1].tick).toBe(3840);
-      expect(barlines[1].measureNumber).toBe(1);
-      expect(barlines[2].tick).toBe(7680);
-      expect(barlines[2].measureNumber).toBe(2);
+      // Expected barlines at ticks: 3840 (end of measure 1), 7680 (end of measure 2)
+      // No barline at tick 0
+      expect(barlines.length).toBe(2);
+      expect(barlines[0].tick).toBe(3840);
+      expect(barlines[0].measureNumber).toBe(1);
+      expect(barlines[1].tick).toBe(7680);
+      expect(barlines[1].measureNumber).toBe(2);
     });
 
     it('should generate barlines at correct intervals for 3/4 time', () => {
@@ -558,11 +557,11 @@ describe('NotationLayoutEngine', () => {
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
       // Expected: ticksPerMeasure = 960 * (4/4) * 3 = 2880
-      // Barlines at: 0, 2880, 5760
-      expect(barlines.length).toBe(3);
-      expect(barlines[0].tick).toBe(0);
-      expect(barlines[1].tick).toBe(2880);
-      expect(barlines[2].tick).toBe(5760);
+      // Barlines at: 2880 (end of measure 1), 5760 (end of measure 2)
+      // No barline at tick 0
+      expect(barlines.length).toBe(2);
+      expect(barlines[0].tick).toBe(2880);
+      expect(barlines[1].tick).toBe(5760);
     });
 
     it('should calculate correct X coordinates from ticks', () => {
@@ -572,11 +571,10 @@ describe('NotationLayoutEngine', () => {
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
       // X coord = marginLeft + clefWidth + (tick * pixelsPerTick)
-      const expectedX0 = config.marginLeft + config.clefWidth + (0 * config.pixelsPerTick);
-      const expectedX1 = config.marginLeft + config.clefWidth + (3840 * config.pixelsPerTick);
+      // First barline at end of measure 1 (tick 3840)
+      const expectedX0 = config.marginLeft + config.clefWidth + (3840 * config.pixelsPerTick);
       
       expect(barlines[0].x).toBe(expectedX0);
-      expect(barlines[1].x).toBe(expectedX1);
     });
 
     it('should set correct Y coordinates spanning staff height', () => {

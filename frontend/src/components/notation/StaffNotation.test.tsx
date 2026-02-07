@@ -310,7 +310,11 @@ describe('StaffNotation', () => {
       const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
 
       // Simulate window resize
-      global.innerWidth = 1024;
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 1024,
+      });
       fireEvent(window, new Event('resize'));
 
       // Component should still render without errors
