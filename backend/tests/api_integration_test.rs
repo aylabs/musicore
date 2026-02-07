@@ -590,10 +590,10 @@ async fn test_complete_score_workflow() {
     assert_eq!(status, StatusCode::OK);
 
     // Verify structure
-    assert_eq!(final_score["instruments"].as_array().unwrap().len(), 2); // Feature 003: Default instrument + added instrument
+    assert_eq!(final_score["instruments"].as_array().unwrap().len(), 1); // Added instrument only
     assert_eq!(final_score["global_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 added
     
-    let instrument = &final_score["instruments"][1]; // Feature 003: Access added instrument (index 1, default is at 0)
+    let instrument = &final_score["instruments"][0]; // Access added instrument
     assert_eq!(instrument["name"], "Piano");
     assert_eq!(instrument["staves"][0]["staff_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 clef
     assert_eq!(instrument["staves"][0]["voices"][0]["interval_events"].as_array().unwrap().len(), 1);
