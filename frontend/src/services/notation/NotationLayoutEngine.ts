@@ -239,6 +239,35 @@ export const NotationLayoutEngine = {
   },
 
   /**
+   * Calculate minimum visual width needed for a note glyph
+   * Very short notes (32nd, 64th, 128th) have multiple flags and need more horizontal space
+   * to render properly without being cut off or cramped.
+   * 
+   * @param duration_ticks - Note duration in MIDI ticks
+   * @param config - Staff configuration
+   * @returns Minimum width in pixels for this note
+   */
+  getMinimumNoteWidth(duration_ticks: number, config: StaffConfig): number {
+    const PPQ = 960;
+    
+    // 128th notes (5 flags) need 2.5x standard spacing
+    if (duration_ticks < PPQ / 16) {
+      return config.minNoteSpacing * 2.5;
+    }
+    // 64th notes (4 flags) need 2x standard spacing
+    else if (duration_ticks < PPQ / 8) {
+      return config.minNoteSpacing * 2.0;
+    }
+    // 32nd notes (3 flags) need 1.5x standard spacing
+    else if (duration_ticks < PPQ / 4) {
+      return config.minNoteSpacing * 1.5;
+    }
+    
+    // All other notes use standard minimum spacing
+    return config.minNoteSpacing;
+  },
+
+  /**
    * Position note heads based on pitch and timing
    * 
    * Algorithm:
@@ -246,7 +275,7 @@ export const NotationLayoutEngine = {
    * 2. Convert each note's pitch to staff position
    * 3. Calculate X position from tick (with clef offset) - PROPORTIONAL
    * 4. Avoid barline collisions (notes at measure boundaries get extra spacing)
-   * 5. Enforce minimum spacing between consecutive notes
+   * 5. Enforce minimum spacing between consecutive notes (duration-aware for complex glyphs)
    * 6. Calculate Y position from staff position
    * 7. Assign SMuFL note head glyph (U+E0A4 for quarter note)
    * 
@@ -292,8 +321,10 @@ export const NotationLayoutEngine = {
         proportionalX += barlineNoteSpacing;
       }
       
-      // Enforce minimum spacing: ensure at least minNoteSpacing from previous note
-      const x = Math.max(proportionalX, previousX + config.minNoteSpacing);
+      // Enforce minimum spacing: use duration-based width for notes with complex glyphs (many flags)
+      // Very short notes (64th, 128th) need more horizontal space to render properly
+      const minWidth = this.getMinimumNoteWidth(note.duration_ticks, config);
+      const x = Math.max(proportionalX, previousX + minWidth);
       previousX = x;
       
       // Calculate Y position from staff position
