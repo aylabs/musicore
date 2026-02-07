@@ -1,5 +1,6 @@
 import type { ClefType, Note } from '../../types/score';
 import type { StaffConfig } from '../../types/notation/config';
+import { SMUFL_CODEPOINTS } from '../../types/notation/config';
 import type {
   NotePosition,
   StaffLine,
@@ -50,13 +51,22 @@ export const NotationLayoutEngine = {
       76: 3,   // E5 (space)
       77: 4,   // F5 (top line)
       79: 5,   // G5 (space above)
-      81: 8,   // A5 (ledger line) - 4 half-steps above F5 = staffPosition 8
+      81: 6,   // A5 (first ledger line above)
+      83: 7,   // B5 (space above first ledger)
+      84: 8,   // C6 (second ledger line above)
+      86: 9,   // D6 (space above second ledger)
+      88: 10,  // E6 (third ledger line above)
+      89: 11,  // F6 (space above third ledger)
+      91: 12,  // G6 (fourth ledger line above)
+      93: 13,  // A6
+      95: 14,  // B6
+      96: 15,  // C7
       69: -1,  // A4 (space below middle)
       67: -2,  // G4 (line 2)
       65: -3,  // F4 (space)
       64: -4,  // E4 (bottom line)
       62: -5,  // D4 (space below)
-      60: -6,  // C4 (ledger line below) - but test expects -3.5?
+      60: -6,  // C4 (ledger line below)
       57: -7,  // A3
       55: -8,  // G3
     };
@@ -69,36 +79,70 @@ export const NotationLayoutEngine = {
       55: 3,   // G3 (space)
       57: 4,   // A3 (top line)
       59: 5,   // B3 (space above)
-      60: 6,   // C4 (ledger line) - but test expects 5?
+      60: 6,   // C4 (ledger line above staff)
       48: -1,  // C3 (space below)
       47: -2,  // B2 (line 2)
       45: -3,  // A2 (space)
       43: -4,  // G2 (bottom line)
       41: -5,  // F2 (space below)
       40: -6,  // E2 (ledger line)
-      36: -11, // C2 (ledger line)
+      38: -7,  // D2 (space below ledger)
+      36: -8,  // C2 (second ledger line below)
     };
     
-    // Handle special test cases that don't follow pure diatonic rules
+    // Use diatonic mappings
     if (clef === 'Treble') {
-      if (pitch === 60) return -3.5; // Middle C test expectation from data-model.md
       if (trebleDiatonicMap[pitch] !== undefined) return trebleDiatonicMap[pitch];
     } else if (clef === 'Bass') {
-      if (pitch === 60) return 5; // Middle C test expectation
       if (bassDiatonicMap[pitch] !== undefined) return bassDiatonicMap[pitch];
     }
     
-    // Fallback: use chromatic approximation for unlisted pitches
-    const middleLinePitch: Record<ClefType, number> = {
-      Treble: 71, // B4
-      Bass: 50,   // D3
-      Alto: 60,   // C4
-      Tenor: 57,  // A3
-    };
+    // Fallback: For chromatic notes (sharps/flats), find the nearest diatonic note
+    // Chromatic notes should be positioned at the same staff position as their natural note
+    const diatonicMap = clef === 'Treble' ? trebleDiatonicMap : bassDiatonicMap;
+    const diatonicPitches = Object.keys(diatonicMap).map(Number).sort((a, b) => a - b);
     
-    const referencePitch = middleLinePitch[clef];
-    const semitoneOffset = pitch - referencePitch;
-    return semitoneOffset / 2;
+    // Find the closest diatonic note at or below this pitch
+    let closestPitch = diatonicPitches[0];
+    for (const diatonicPitch of diatonicPitches) {
+      if (diatonicPitch <= pitch) {
+        closestPitch = diatonicPitch;
+      } else {
+        break;
+      }
+    }
+    
+    // Use the staff position of the closest natural note
+    return diatonicMap[closestPitch];
+  },
+
+  /**
+   * Determine if a MIDI pitch needs an accidental (sharp/flat)
+   * 
+   * @param pitch - MIDI pitch number (0-127)
+   * @param clef - Current clef type
+   * @returns Accidental type or undefined if natural note
+   */
+  getAccidental(pitch: number, clef: ClefType): 'sharp' | 'flat' | undefined {
+    // Diatonic (white key) pitches in treble clef
+    const trebleDiatonicPitches = [55, 57, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96];
+    
+    // Diatonic (white key) pitches in bass clef
+    const bassDiatonicPitches = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
+    
+    const diatonicPitches = clef === 'Treble' ? trebleDiatonicPitches : bassDiatonicPitches;
+    
+    // If pitch is in the diatonic set, no accidental needed
+    if (diatonicPitches.includes(pitch)) {
+      return undefined;
+    }
+    
+    // For chromatic notes, determine if sharp or flat
+    // Using the "circle of fifths" convention: sharps for C#, D#, F#, G#, A#
+    const pitchClass = pitch % 12;
+    const sharpPitchClasses = [1, 3, 6, 8, 10]; // C#, D#, F#, G#, A#
+    
+    return sharpPitchClasses.includes(pitchClass) ? 'sharp' : 'flat';
   },
 
   /**
@@ -178,10 +222,10 @@ export const NotationLayoutEngine = {
   calculateClefPosition(clef: ClefType, config: StaffConfig): ClefPosition {
     // SMuFL codepoints for clefs
     const codepoints: Record<ClefType, string> = {
-      Treble: '\uE050',
-      Bass: '\uE062',
-      Alto: '\uE05C',
-      Tenor: '\uE05C',
+      Treble: SMUFL_CODEPOINTS.TREBLE_CLEF,
+      Bass: SMUFL_CODEPOINTS.BASS_CLEF,
+      Alto: SMUFL_CODEPOINTS.ALTO_CLEF,
+      Tenor: SMUFL_CODEPOINTS.TENOR_CLEF,
     };
     
     const centerY = config.viewportHeight / 2;
@@ -196,25 +240,66 @@ export const NotationLayoutEngine = {
   },
 
   /**
+   * Calculate actual glyph width needed for a note based on its duration
+   * Very short notes (32nd, 64th, 128th) have multiple flags that extend horizontally
+   * and need more width than standard notes to render without being cut off.
+   * 
+   * @param duration_ticks - Note duration in MIDI ticks
+   * @param config - Staff configuration
+   * @returns Minimum width in pixels that this note's glyph occupies
+   */
+  getNoteGlyphWidth(duration_ticks: number, config: StaffConfig): number {
+    const PPQ = 960;
+    const baseWidth = config.minNoteSpacing * 0.8; // Standard note width
+    
+    // 128th notes (5 flags) need extra width for flags
+    if (duration_ticks < PPQ / 16) {
+      return baseWidth + (config.minNoteSpacing * 1.2);
+    }
+    // 64th notes (4 flags) need extra width for flags
+    else if (duration_ticks < PPQ / 8) {
+      return baseWidth + (config.minNoteSpacing * 1.0);
+    }
+    // 32nd notes (3 flags) need extra width for flags
+    else if (duration_ticks < PPQ / 4) {
+      return baseWidth + (config.minNoteSpacing * 0.7);
+    }
+    // Sixteenth notes (2 flags)
+    else if (duration_ticks < PPQ / 2) {
+      return baseWidth + (config.minNoteSpacing * 0.4);
+    }
+    // Eighth notes (1 flag)
+    else if (duration_ticks < PPQ) {
+      return baseWidth + (config.minNoteSpacing * 0.2);
+    }
+    
+    // Quarter, half, whole notes - standard width
+    return baseWidth;
+  },
+
+  /**
    * Position note heads based on pitch and timing
    * 
    * Algorithm:
    * 1. Sort notes by start_tick (earliest first)
    * 2. Convert each note's pitch to staff position
    * 3. Calculate X position from tick (with clef offset) - PROPORTIONAL
-   * 4. Enforce minimum spacing between consecutive notes
-   * 5. Calculate Y position from staff position
-   * 6. Assign SMuFL note head glyph (U+E0A4 for quarter note)
+   * 4. Avoid barline collisions (notes at measure boundaries get extra spacing)
+   * 5. Enforce minimum spacing between consecutive notes (duration-aware for complex glyphs)
+   * 6. Calculate Y position from staff position
+   * 7. Assign SMuFL note head glyph (U+E0A4 for quarter note)
    * 
    * @param notes - Array of Note objects from the score
    * @param clef - Clef type for pitch-to-position mapping
    * @param config - Staff configuration
+   * @param timeSignature - Time signature for barline collision detection
    * @returns Array of NotePosition objects with calculated x, y coordinates
    */
   calculateNotePositions(
     notes: Note[],
     clef: ClefType,
-    config: StaffConfig
+    config: StaffConfig,
+    timeSignature?: { numerator: number; denominator: number }
   ): NotePosition[] {
     if (notes.length === 0) {
       return [];
@@ -224,21 +309,116 @@ export const NotationLayoutEngine = {
     const sortedNotes = [...notes].sort((a, b) => a.start_tick - b.start_tick);
     
     const baseX = config.marginLeft + config.clefWidth;
-    let previousX = baseX - config.minNoteSpacing; // Initialize to allow first note at baseX
+    const PPQ = 960;
+    
+    // Initialize previous position
+    const standardGap = config.minNoteSpacing * 0.5;
+    const typicalGlyphWidth = config.minNoteSpacing * 0.8;
+    let previousX = baseX - typicalGlyphWidth - standardGap;
+    let previousDuration = 960;
+    let previousTick = 0;
+    
+    // Calculate barline positions to avoid collisions
+    const ticksPerMeasure = timeSignature 
+      ? PPQ * (4 / timeSignature.denominator) * timeSignature.numerator 
+      : 3840; // Default 4/4 time
+    const barlineNoteSpacing = config.minNoteSpacing * 1.5;
     
     const positioned: NotePosition[] = sortedNotes.map((note) => {
       // Convert pitch to staff position
       const staffPosition = this.midiPitchToStaffPosition(note.pitch, clef);
       
-      // Calculate proportional X position from tick
-      const proportionalX = baseX + note.start_tick * config.pixelsPerTick;
+      // Calculate proportional X position from tick using standard proportional spacing
+      let proportionalX = baseX + note.start_tick * config.pixelsPerTick;
       
-      // Enforce minimum spacing: ensure at least minNoteSpacing from previous note
-      const x = Math.max(proportionalX, previousX + config.minNoteSpacing);
+      // Check if note would collide with a barline (at measure boundaries)
+      // If note starts exactly at a measure boundary, add extra spacing
+      if (note.start_tick > 0 && note.start_tick % ticksPerMeasure === 0) {
+        proportionalX += barlineNoteSpacing;
+      }
+      
+      // Calculate minimum spacing needed: previous glyph width + gap + current glyph leading space
+      // For very short notes (< 240 ticks), the proportional spacing may be insufficient
+      const prevGlyphWidth = this.getNoteGlyphWidth(previousDuration, config);
+      const currGlyphWidth = this.getNoteGlyphWidth(note.duration_ticks, config);
+      
+      // Calculate tick gap and what the proportional spacing would give us
+      const tickGap = note.start_tick - previousTick;
+      const proportionalSpacing = tickGap * config.pixelsPerTick;
+      
+      // For very short tick gaps (< 240), proportional spacing may be too tight
+      // Calculate minimum pixel width needed for the current note to render properly
+      let gap = standardGap;
+      if (tickGap > 0 && tickGap < PPQ / 4) {
+        // Short tick gap - need more visual space relative to time
+        // Minimum space = previous glyph + adequate gap + space for current glyph to start
+        const minRequiredSpacing = prevGlyphWidth + config.minNoteSpacing + (currGlyphWidth * 0.3);
+        // If proportional spacing is insufficient, enforce minimum
+        if (proportionalSpacing < minRequiredSpacing) {
+          gap = minRequiredSpacing - prevGlyphWidth;
+        }
+      }
+      
+      const minimumX = previousX + prevGlyphWidth + gap;
+      const x = Math.max(proportionalX, minimumX);
+      
       previousX = x;
+      previousDuration = note.duration_ticks;
+      previousTick = note.start_tick;
       
       // Calculate Y position from staff position
       const y = this.staffPositionToY(staffPosition, config);
+      
+      // Determine if this note needs an accidental (sharp/flat)
+      const accidental = this.getAccidental(note.pitch, clef);
+      
+      // Determine stem direction: notes below middle line get stem up, others get stem down
+      // SMuFL convention: stem up for low notes, stem down for high notes
+      const stemUp = staffPosition < 0;
+      
+      // Select note glyph based on duration (PPQ = 960)
+      // Whole = 3840, Half = 1920, Quarter = 960, Eighth = 480, 16th = 240, 32nd = 120, 64th = 60, 128th = 30
+      let glyphCodepoint: string;
+      
+      if (note.duration_ticks >= PPQ * 4) {
+        // Whole note (4 beats or more) - no stem
+        glyphCodepoint = SMUFL_CODEPOINTS.WHOLE_NOTE;
+      } else if (note.duration_ticks >= PPQ * 2) {
+        // Half note (2 beats) - white note with stem
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.HALF_NOTE_UP 
+          : SMUFL_CODEPOINTS.HALF_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ) {
+        // Quarter note (1 beat) - black note with stem
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.QUARTER_NOTE_UP 
+          : SMUFL_CODEPOINTS.QUARTER_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ / 2) {
+        // Eighth note (1/2 beat) - black note with stem and 1 flag
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.EIGHTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.EIGHTH_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ / 4) {
+        // Sixteenth note (1/4 beat) - black note with stem and 2 flags
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.SIXTEENTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.SIXTEENTH_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ / 8) {
+        // 32nd note (1/8 beat) - black note with stem and 3 flags
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.THIRTYSECOND_NOTE_UP 
+          : SMUFL_CODEPOINTS.THIRTYSECOND_NOTE_DOWN;
+      } else if (note.duration_ticks >= PPQ / 16) {
+        // 64th note (1/16 beat) - black note with stem and 4 flags
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.SIXTYFOURTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.SIXTYFOURTH_NOTE_DOWN;
+      } else {
+        // 128th note (1/32 beat or less) - black note with stem and 5 flags
+        glyphCodepoint = stemUp 
+          ? SMUFL_CODEPOINTS.ONETWENTYEIGHTH_NOTE_UP 
+          : SMUFL_CODEPOINTS.ONETWENTYEIGHTH_NOTE_DOWN;
+      }
       
       return {
         id: note.id,
@@ -248,8 +428,9 @@ export const NotationLayoutEngine = {
         start_tick: note.start_tick,
         duration_ticks: note.duration_ticks,
         staffPosition,
-        glyphCodepoint: '\uE0A4', // Quarter note head (SMuFL)
+        glyphCodepoint,
         fontSize: config.staffSpace * config.glyphFontSizeMultiplier,
+        accidental,
       };
     });
     
@@ -262,7 +443,8 @@ export const NotationLayoutEngine = {
    * Ledger lines are needed when:
    * - staffPosition > 4 (above top line)
    * - staffPosition < -4 (below bottom line)
-   * - staffPosition is even (on a line position, not in a space)
+   * - Ledger lines are always on line positions (even staff positions)
+   * - Notes in spaces need ledger lines up to the nearest line toward the staff
    * 
    * @param notes - Array of positioned notes
    * @param config - Staff configuration
@@ -281,24 +463,25 @@ export const NotationLayoutEngine = {
         continue; // Note is within staff range
       }
       
-      // Only generate for notes on line positions (even staff positions)
-      // Spaces (odd positions) don't get ledger lines
-      const isOnLine = note.staffPosition % 2 === 0;
-      if (!isOnLine) {
-        continue;
-      }
-      
       // Determine ledger line positions
       const ledgerLinePositions: number[] = [];
       
       if (note.staffPosition < -4) {
         // Below staff - generate ledger lines from -6 down to note position
-        for (let pos = -6; pos >= note.staffPosition; pos -= 2) {
+        // If note is in a space (odd), stop at the line below it (round up to nearest even)
+        const endPosition = note.staffPosition % 2 === 0 
+          ? note.staffPosition  // Note on line: include this line
+          : note.staffPosition + 1; // Note in space: stop at line below
+        for (let pos = -6; pos >= endPosition; pos -= 2) {
           ledgerLinePositions.push(pos);
         }
       } else if (note.staffPosition > 4) {
         // Above staff - generate ledger lines from 6 up to note position
-        for (let pos = 6; pos <= note.staffPosition; pos += 2) {
+        // If note is in a space (odd), stop at the line below it (round down to nearest even)
+        const endPosition = note.staffPosition % 2 === 0 
+          ? note.staffPosition  // Note on line: include this line
+          : note.staffPosition - 1; // Note in space: stop at line below
+        for (let pos = 6; pos <= endPosition; pos += 2) {
           ledgerLinePositions.push(pos);
         }
       }
@@ -357,9 +540,9 @@ export const NotationLayoutEngine = {
     const y1 = centerY - 2 * config.staffSpace; // Top line (staffPosition 4)
     const y2 = centerY + 2 * config.staffSpace; // Bottom line (staffPosition -4)
     
-    // Generate barlines at measure boundaries
-    let measureNumber = 0;
-    for (let tick = 0; tick <= maxTick; tick += ticksPerMeasure) {
+    // Generate barlines at measure boundaries (start at first measure END, not at tick 0)
+    let measureNumber = 1;
+    for (let tick = ticksPerMeasure; tick <= maxTick; tick += ticksPerMeasure) {
       // Calculate X position from tick
       const x = config.marginLeft + config.clefWidth + tick * config.pixelsPerTick;
       
@@ -377,6 +560,60 @@ export const NotationLayoutEngine = {
     }
     
     return barlines;
+  },
+
+  /**
+   * Calculate which notes are visible in the current viewport (User Story 4)
+   * 
+   * Virtual scrolling optimization: only render notes within viewport + buffer.
+   * Uses binary search to efficiently find the start and end indices of notes
+   * within the visible X range.
+   * 
+   * Algorithm:
+   * 1. Calculate visible X range: [scrollX - buffer, scrollX + viewportWidth + buffer]
+   * 2. Binary search for first note with x >= minX
+   * 3. Linear scan forward to find last note with x <= maxX
+   * 4. Return {startIdx, endIdx} for array slicing
+   * 
+   * Performance: O(log n) binary search + O(m) linear scan where m = visible notes
+   * 
+   * @param notePositions - Array of positioned notes (must be sorted by x)
+   * @param config - Staff configuration with scrollX, viewportWidth, renderBuffer
+   * @returns Object with startIdx and endIdx for slicing notePositions array
+   */
+  calculateVisibleNoteIndices(
+    notePositions: NotePosition[],
+    config: StaffConfig
+  ): { startIdx: number; endIdx: number } {
+    if (notePositions.length === 0) {
+      return { startIdx: 0, endIdx: 0 };
+    }
+
+    const minX = config.scrollX - config.renderBuffer;
+    const maxX = config.scrollX + config.viewportWidth + config.renderBuffer;
+
+    // Binary search for first visible note (first note with x >= minX)
+    let startIdx = 0;
+    let left = 0;
+    let right = notePositions.length;
+
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (notePositions[mid].x < minX) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    startIdx = left;
+
+    // Linear scan forward from startIdx to find last visible note
+    let endIdx = startIdx;
+    while (endIdx < notePositions.length && notePositions[endIdx].x <= maxX) {
+      endIdx++;
+    }
+
+    return { startIdx, endIdx };
   },
 
   /**
@@ -411,15 +648,12 @@ export const NotationLayoutEngine = {
     // Calculate all layout components
     const staffLines = this.calculateStaffLines(totalWidth, config);
     const clefPosition = this.calculateClefPosition(clef as ClefType, config);
-    const notePositions = this.calculateNotePositions(notes, clef as ClefType, config);
+    const notePositions = this.calculateNotePositions(notes, clef as ClefType, config, timeSignature);
     const barlines = this.calculateBarlines(timeSignature, maxTick, config);
     const ledgerLines = this.calculateLedgerLines(notePositions, config);
     
-    // For MVP, all notes are "visible" (virtual scrolling implemented in US4)
-    const visibleNoteIndices = {
-      startIdx: 0,
-      endIdx: notePositions.length,
-    };
+    // Calculate visible note indices for virtual scrolling (User Story 4 - T052)
+    const visibleNoteIndices = this.calculateVisibleNoteIndices(notePositions, config);
     
     return {
       notes: notePositions,

@@ -25,28 +25,19 @@ describe('NotationLayoutEngine', () => {
   describe('midiPitchToStaffPosition', () => {
     it('should place middle C (MIDI 60) correctly in treble clef', () => {
       // Middle C is on a ledger line below the treble staff
-      // Treble staff: E4 (64) on line 1, so C4 (60) is 4 half-steps below
-      // Line 1 is at staffPosition -4, so C4 is at -4 - 4 = -8 half-steps
-      // Wait, let me recalculate based on the staff position system:
-      // Middle line (line 3) in treble clef is B4 (MIDI 71)
-      // staffPosition 0 = B4 (71)
-      // C4 (60) is 11 half-steps below B4
-      // So C4 should be at staffPosition -11
-      // But data-model.md says C4 in treble = -3.5 staff spaces
-      // Let me check: if staffPosition is in staff spaces (where 2 half-steps = 1 staff space):
-      // 11 half-steps / 2 = 5.5 staff spaces below
-      // Actually, let me trust the spec from data-model.md:
+      // Treble staff bottom line: E4 (64) at staffPosition -4
+      // Space below: D4 (62) at staffPosition -5
+      // Ledger line below: C4 (60) at staffPosition -6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(60, 'Treble');
-      expect(result).toBe(-3.5);
+      expect(result).toBe(-6);
     });
 
     it('should place middle C (MIDI 60) correctly in bass clef', () => {
-      // Bass clef: middle line (line 3) = D3 (MIDI 50)
+      // Bass clef: middle line = D3 (MIDI 50) at staffPosition 0
       // C4 (60) is 10 half-steps above D3
-      // 10 half-steps / 2 = 5 staff spaces above
-      // From data-model.md: C4 in bass = 5 staff spaces
+      // Diatonic: C4 is on ledger line above staff at staffPosition 6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(60, 'Bass');
-      expect(result).toBe(5);
+      expect(result).toBe(6);
     });
 
     it('should place E4 (MIDI 64) on bottom line in treble clef', () => {
@@ -80,17 +71,17 @@ describe('NotationLayoutEngine', () => {
     it('should handle notes requiring ledger lines above treble staff', () => {
       // A5 (MIDI 81) is above the treble staff
       // F5 (77) is on top line at staffPosition 4
-      // A5 is 4 half-steps above F5, so staffPosition 4 + 4 = 8
+      // A5 is 2 diatonic steps above F5 (F→G→A), so staffPosition 4 + 2 = 6
       const result = NotationLayoutEngine.midiPitchToStaffPosition(81, 'Treble');
-      expect(result).toBe(8);
+      expect(result).toBe(6);
     });
 
     it('should handle notes requiring ledger lines below bass staff', () => {
       // C2 (MIDI 36) is below the bass staff
       // G2 (43) is on bottom line at staffPosition -4
-      // C2 is 7 half-steps below G2, so staffPosition -4 - 7 = -11
+      // C2 is 4 diatonic steps below G2 (G→F→E→D→C), so staffPosition -4 - 4 = -8
       const result = NotationLayoutEngine.midiPitchToStaffPosition(36, 'Bass');
-      expect(result).toBe(-11);
+      expect(result).toBe(-8);
     });
   });
 
@@ -138,10 +129,10 @@ describe('NotationLayoutEngine', () => {
       expect(result).toBe(centerY + 2 * config.staffSpace);
     });
 
-    it('should handle fractional staff positions', () => {
-      // staffPosition -3.5 = 1.75 staff spaces below middle line
-      const result = NotationLayoutEngine.staffPositionToY(-3.5, config);
-      expect(result).toBe(centerY + 1.75 * config.staffSpace);
+    it('should handle ledger line positions below staff', () => {
+      // staffPosition -6 = 3 staff spaces below middle line (ledger line)
+      const result = NotationLayoutEngine.staffPositionToY(-6, config);
+      expect(result).toBe(centerY + 3 * config.staffSpace);
     });
 
     it('should handle ledger line positions above staff', () => {
@@ -329,14 +320,14 @@ describe('NotationLayoutEngine', () => {
         'Treble',
         config
       );
-      expect(treblePositioned[0].staffPosition).toBe(-3.5);
+      expect(treblePositioned[0].staffPosition).toBe(-6);
 
       const bassPositioned = NotationLayoutEngine.calculateNotePositions(
         notes,
         'Bass',
         config
       );
-      expect(bassPositioned[0].staffPosition).toBe(5);
+      expect(bassPositioned[0].staffPosition).toBe(6);
     });
 
     it('should calculate Y position from staff position', () => {
@@ -354,9 +345,10 @@ describe('NotationLayoutEngine', () => {
       expect(positioned[0].y).toBe(centerY);
     });
 
-    it('should use quarter note head glyph (U+E0A4)', () => {
+    it('should use quarter note glyph with correct stem direction', () => {
       const notes = [
-        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },  // C4 (below middle) - stem up
+        { id: '2', start_tick: 960, duration_ticks: 960, pitch: 71 }, // B4 (middle line) - stem down
       ];
 
       const positioned = NotationLayoutEngine.calculateNotePositions(
@@ -365,7 +357,10 @@ describe('NotationLayoutEngine', () => {
         config
       );
 
-      expect(positioned[0].glyphCodepoint).toBe('\uE0A4');
+      // C4 at staffPosition -6 (below middle) gets stem up
+      expect(positioned[0].glyphCodepoint).toBe('\uE1D5');
+      // B4 at staffPosition 0 (middle line) gets stem down
+      expect(positioned[1].glyphCodepoint).toBe('\uE1D6');
     });
 
     it('should preserve note properties', () => {
@@ -541,14 +536,13 @@ describe('NotationLayoutEngine', () => {
       
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
-      // Expected barlines at ticks: 0, 3840, 7680
-      expect(barlines.length).toBe(3);
-      expect(barlines[0].tick).toBe(0);
-      expect(barlines[0].measureNumber).toBe(0);
-      expect(barlines[1].tick).toBe(3840);
-      expect(barlines[1].measureNumber).toBe(1);
-      expect(barlines[2].tick).toBe(7680);
-      expect(barlines[2].measureNumber).toBe(2);
+      // Expected barlines at ticks: 3840 (end of measure 1), 7680 (end of measure 2)
+      // No barline at tick 0
+      expect(barlines.length).toBe(2);
+      expect(barlines[0].tick).toBe(3840);
+      expect(barlines[0].measureNumber).toBe(1);
+      expect(barlines[1].tick).toBe(7680);
+      expect(barlines[1].measureNumber).toBe(2);
     });
 
     it('should generate barlines at correct intervals for 3/4 time', () => {
@@ -558,11 +552,11 @@ describe('NotationLayoutEngine', () => {
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
       // Expected: ticksPerMeasure = 960 * (4/4) * 3 = 2880
-      // Barlines at: 0, 2880, 5760
-      expect(barlines.length).toBe(3);
-      expect(barlines[0].tick).toBe(0);
-      expect(barlines[1].tick).toBe(2880);
-      expect(barlines[2].tick).toBe(5760);
+      // Barlines at: 2880 (end of measure 1), 5760 (end of measure 2)
+      // No barline at tick 0
+      expect(barlines.length).toBe(2);
+      expect(barlines[0].tick).toBe(2880);
+      expect(barlines[1].tick).toBe(5760);
     });
 
     it('should calculate correct X coordinates from ticks', () => {
@@ -572,11 +566,10 @@ describe('NotationLayoutEngine', () => {
       const barlines = NotationLayoutEngine.calculateBarlines(timeSignature, maxTick, config);
       
       // X coord = marginLeft + clefWidth + (tick * pixelsPerTick)
-      const expectedX0 = config.marginLeft + config.clefWidth + (0 * config.pixelsPerTick);
-      const expectedX1 = config.marginLeft + config.clefWidth + (3840 * config.pixelsPerTick);
+      // First barline at end of measure 1 (tick 3840)
+      const expectedX0 = config.marginLeft + config.clefWidth + (3840 * config.pixelsPerTick);
       
       expect(barlines[0].x).toBe(expectedX0);
-      expect(barlines[1].x).toBe(expectedX1);
     });
 
     it('should set correct Y coordinates spanning staff height', () => {
@@ -625,27 +618,29 @@ describe('NotationLayoutEngine', () => {
         { id: '4', start_tick: 3840, duration_ticks: 960, pitch: 72 },
       ];
 
+      const timeSignature = { numerator: 4, denominator: 4 };
       const positions = NotationLayoutEngine.calculateNotePositions(
         notes,
         'Treble',
-        DEFAULT_STAFF_CONFIG
+        DEFAULT_STAFF_CONFIG,
+        timeSignature
       );
 
       const baseX = DEFAULT_STAFF_CONFIG.marginLeft + DEFAULT_STAFF_CONFIG.clefWidth;
+      const barlineNoteSpacing = DEFAULT_STAFF_CONFIG.minNoteSpacing * 1.5; // Extra spacing after barlines
       
       // Verify proportional spacing
       expect(positions[0].x).toBe(baseX + 0 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
       expect(positions[1].x).toBe(baseX + 960 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
       expect(positions[2].x).toBe(baseX + 1920 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
-      expect(positions[3].x).toBe(baseX + 3840 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      // Note at tick 3840 (measure boundary) gets extra spacing after barline
+      expect(positions[3].x).toBe(baseX + 3840 * DEFAULT_STAFF_CONFIG.pixelsPerTick + barlineNoteSpacing);
       
-      // Verify gap ratios
+      // Verify gap ratios (except for measure boundary)
       const gap1 = positions[1].x - positions[0].x; // 0 to 960
       const gap2 = positions[2].x - positions[1].x; // 960 to 1920
-      const gap3 = positions[3].x - positions[2].x; // 1920 to 3840
       
       expect(gap1).toBe(gap2); // Equal tick intervals = equal gaps
-      expect(gap3).toBe(gap1 * 2); // 3840-1920 gap is 2x the 960 gap
     });
   });
 
@@ -693,6 +688,101 @@ describe('NotationLayoutEngine', () => {
       // So positions should be exactly proportional
       expect(positions[0].x).toBe(baseX);
       expect(positions[1].x).toBe(baseX + 1000 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+    });
+  });
+
+  /**
+   * T048: Unit test for calculateVisibleNoteIndices()
+   * 
+   * Virtual scrolling optimization: only render notes visible in viewport.
+   * Uses binary search to find notes within scrollX to scrollX + viewportWidth.
+   * Includes renderBuffer on both sides to prevent pop-in during scrolling.
+   */
+  describe('calculateVisibleNoteIndices', () => {
+    it('should return all notes when viewport covers entire score', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 200, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 300, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 0,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // All notes should be visible (x: 100-300, viewport: 0-1200)
+      expect(result.startIdx).toBe(0);
+      expect(result.endIdx).toBe(3);
+    });
+
+    it('should exclude notes outside visible range', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 1000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '4', x: 1500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '5', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 800,  // Scrolled to middle of score
+        viewportWidth: 600,  // Visible range: 800-1400 (+ buffer: 600-1600)
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // Should include notes within scrollX - buffer to scrollX + viewportWidth + buffer
+      // Range: 800 - 200 to 800 + 600 + 200 = 600 to 1600
+      // Notes in range: x=1000 (idx 2), x=1500 (idx 3)
+      // Note at x=500 (idx 1) is outside (< 600)
+      // Note at x=2000 (idx 4) is outside (> 1600)
+      expect(result.startIdx).toBe(2);
+      expect(result.endIdx).toBe(4);
+    });
+
+    it('should handle scrolled to end of score', () => {
+      const notePositions = [
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '2', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '3', x: 2500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+      ];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 2000,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      // Visible range: 2000 - 200 to 2000 + 1200 + 200 = 1800 to 3400
+      // Notes in range: x=2000 (idx 1), x=2500 (idx 2)
+      expect(result.startIdx).toBe(1);
+      expect(result.endIdx).toBe(3);
+    });
+
+    it('should return empty range for empty notes array', () => {
+      const notePositions: any[] = [];
+
+      const config = {
+        ...DEFAULT_STAFF_CONFIG,
+        scrollX: 0,
+        viewportWidth: 1200,
+        renderBuffer: 200,
+      };
+
+      const result = NotationLayoutEngine.calculateVisibleNoteIndices(notePositions, config);
+
+      expect(result.startIdx).toBe(0);
+      expect(result.endIdx).toBe(0);
     });
   });
 });

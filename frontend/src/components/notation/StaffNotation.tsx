@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngine';
 import { NotationRenderer } from './NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
@@ -17,6 +17,7 @@ import type { Note, ClefType } from '../../types/score';
  * - Call layout engine with useMemo for performance
  * - Manage selection state (User Story 3)
  * - Handle scroll events (User Story 4)
+ * - Adapt to viewport resize (User Story 5)
  */
 
 export interface StaffNotationProps {
@@ -26,7 +27,7 @@ export interface StaffNotationProps {
   /** Current clef type (default: Treble) */
   clef?: ClefType;
   
-  /** Viewport width (default: 1200px) */
+  /** Viewport width (default: auto-detected) */
   viewportWidth?: number;
   
   /** Viewport height (default: 200px) */
@@ -36,21 +37,69 @@ export interface StaffNotationProps {
 export const StaffNotation: React.FC<StaffNotationProps> = ({
   notes,
   clef = 'Treble',
-  viewportWidth = 1200,
-  viewportHeight = 200,
+  viewportWidth: propsViewportWidth,
+  viewportHeight: propsViewportHeight = 200,
 }) => {
+  // T060: Add viewportWidth state and containerRef for measuring container size
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measuredViewportWidth, setMeasuredViewportWidth] = useState(1200);
+  
   // Selection state (User Story 3)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   
-  // Scroll state (User Story 4 - not yet fully implemented)
-  const [scrollX] = useState(0);
+  // Scroll state (User Story 4 - T053)
+  const [scrollX, setScrollX] = useState(0);
+
+  // T061: Add resize observer to update viewport width when container resizes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Initial measurement
+    const updateDimensions = () => {
+      if (container) {
+        setMeasuredViewportWidth(container.clientWidth);
+      }
+    };
+
+    updateDimensions();
+
+    // Use ResizeObserver for efficient resize detection
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect;
+        setMeasuredViewportWidth(width);
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    // Fallback: also listen to window resize events
+    window.addEventListener('resize', updateDimensions);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, []);
+
+  // Use prop value if provided, otherwise use measured value
+  const viewportWidth = propsViewportWidth ?? measuredViewportWidth;
+  const viewportHeight = propsViewportHeight;
 
   // Handle note click - toggle selection
   const handleNoteClick = (noteId: string) => {
     setSelectedNoteId((prevId) => (prevId === noteId ? null : noteId));
   };
 
+  // Handle scroll event - update scrollX state (User Story 4 - T053)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollX(e.currentTarget.scrollLeft);
+  };
+
   // Calculate layout geometry (memoized for performance)
+  // T054: scrollX is already in dependencies, layout recalculates on scroll
+  // T062: viewportWidth in dependencies, layout recalculates on viewport change
   const layout = useMemo(() => {
     return NotationLayoutEngine.calculateLayout({
       notes,
@@ -69,19 +118,24 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     });
   }, [notes, clef, viewportWidth, viewportHeight, scrollX]);
 
+  // T056: Add scrollable container with onScroll handler
   return (
     <div
+      ref={containerRef}
       style={{
-        width: viewportWidth,
+        width: propsViewportWidth ?? '100%',  // Use 100% if no explicit width provided
         height: viewportHeight,
-        overflow: 'hidden',
+        overflowX: 'auto',  // Enable horizontal scrolling
+        overflowY: 'hidden',  // Disable vertical scrolling
         border: '1px solid #ccc',
       }}
+      onScroll={handleScroll}  // Wire up scroll handler
     >
       <NotationRenderer
         layout={layout}
         selectedNoteId={selectedNoteId}
         onNoteClick={handleNoteClick}
+        scrollX={scrollX}  // T057: Pass scrollX to renderer for fixed clef
       />
     </div>
   );

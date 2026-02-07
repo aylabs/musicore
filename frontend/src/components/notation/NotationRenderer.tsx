@@ -25,12 +25,20 @@ export interface NotationRendererProps {
   
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
+  
+  /** Current horizontal scroll position (User Story 4 - T057) */
+  scrollX?: number;
 }
 
-export const NotationRenderer: React.FC<NotationRendererProps> = ({
+/**
+ * NotationRenderer (Internal) - Pure presentational component
+ * Wrapped with React.memo for performance optimization (T066)
+ */
+const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
+  scrollX = 0,
 }) => {
   const handleNoteClick = (noteId: string) => {
     if (onNoteClick) {
@@ -43,6 +51,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       width={layout.totalWidth}
       height={layout.totalHeight}
       xmlns="http://www.w3.org/2000/svg"
+      data-testid="notation-svg"
       style={{
         display: 'block',
         userSelect: 'none',
@@ -52,6 +61,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.staffLines.map((line) => (
         <line
           key={`staff-line-${line.lineNumber}`}
+          data-testid={`staff-line-${line.lineNumber}`}
           x1={line.x1}
           x2={line.x2}
           y1={line.y}
@@ -65,6 +75,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.ledgerLines.map((ledger) => (
         <line
           key={ledger.id}
+          data-testid={ledger.id}
           x1={ledger.x1}
           x2={ledger.x2}
           y1={ledger.y}
@@ -75,8 +86,10 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       ))}
 
       {/* Clef symbol (SMuFL glyph) */}
+      {/* T057: Fixed clef margin - add scrollX to keep clef visible while scrolling */}
       <text
-        x={layout.clef.x}
+        data-testid={`clef-${layout.clef.type}`}
+        x={layout.clef.x + scrollX}
         y={layout.clef.y}
         fontSize={layout.clef.fontSize}
         fontFamily="Bravura"
@@ -88,27 +101,50 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       </text>
 
       {/* Note heads (positioned SMuFL glyphs) */}
-      {layout.notes.map((note) => (
-        <text
-          key={note.id}
-          x={note.x}
-          y={note.y}
-          fontSize={note.fontSize}
-          fontFamily="Bravura"
-          fill={selectedNoteId === note.id ? 'blue' : 'black'}
-          textAnchor="middle"
-          dominantBaseline="central"
-          onClick={() => handleNoteClick(note.id)}
-          style={{ cursor: 'pointer' }}
-        >
-          {note.glyphCodepoint}
-        </text>
+      {/* T055: Virtual scrolling - render only notes within visibleNoteIndices range */}
+      {layout.notes
+        .slice(layout.visibleNoteIndices.startIdx, layout.visibleNoteIndices.endIdx)
+        .map((note) => (
+        <React.Fragment key={note.id}>
+          {/* Accidental (sharp/flat) if needed - positioned before note head */}
+          {note.accidental && (
+            <text
+              data-testid={`${note.id}-accidental`}
+              x={note.x - note.fontSize * 0.35} // Position closer to note head (avoids barline collisions)
+              y={note.y}
+              fontSize={note.fontSize * 0.65} // Smaller to fit between barline and note
+              fontFamily="Bravura"
+              fill={selectedNoteId === note.id ? 'blue' : 'black'}
+              textAnchor="middle"
+              dominantBaseline="central"
+            >
+              {note.accidental === 'sharp' ? '\uE262' : '\uE260'}
+            </text>
+          )}
+          
+          {/* Note head */}
+          <text
+            data-testid={note.id}
+            x={note.x}
+            y={note.y}
+            fontSize={note.fontSize}
+            fontFamily="Bravura"
+            fill={selectedNoteId === note.id ? 'blue' : 'black'}
+            textAnchor="middle"
+            dominantBaseline="central"
+            onClick={() => handleNoteClick(note.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            {note.glyphCodepoint}
+          </text>
+        </React.Fragment>
       ))}
 
       {/* Barlines (User Story 2) */}
       {layout.barlines.map((barline) => (
         <line
           key={barline.id}
+          data-testid={barline.id}
           x1={barline.x}
           x2={barline.x}
           y1={barline.y1}
@@ -122,6 +158,7 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
       {layout.keySignatureAccidentals.map((accidental, index) => (
         <text
           key={`accidental-${index}`}
+          data-testid={`accidental-${index}`}
           x={accidental.x}
           y={accidental.y}
           fontSize={accidental.fontSize}
@@ -136,3 +173,11 @@ export const NotationRenderer: React.FC<NotationRendererProps> = ({
     </svg>
   );
 };
+
+/**
+ * NotationRenderer - Memoized version for performance
+ * 
+ * T066: Wrapped with React.memo to prevent unnecessary re-renders
+ * Only re-renders when props actually change (layout, selectedNoteId, scrollX)
+ */
+export const NotationRenderer = React.memo(NotationRendererComponent);

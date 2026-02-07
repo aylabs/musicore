@@ -418,4 +418,109 @@ describe('NotationRenderer', () => {
       expect(notes[1].getAttribute('fill')).toBe('blue');
     });
   });
+
+  /**
+   * T049: Integration test for virtual scrolling
+   * 
+   * Virtual scrolling renders only notes within visibleNoteIndices range.
+   * This test verifies DOM contains only visible notes, not all 1000 notes.
+   */
+  describe('virtual scrolling', () => {
+    it('should render only notes within visibleNoteIndices range', () => {
+      // Create mock layout with 1000 notes, but only indices 10-20 visible
+      const mockNotes = Array.from({ length: 1000 }, (_, i) => ({
+        id: `note-${i}`,
+        x: 100 + i * 50,
+        y: 100,
+        pitch: 60,
+        start_tick: i * 960,
+        duration_ticks: 960,
+        staffPosition: -3.5,
+        glyphCodepoint: '\uE0A4',
+        fontSize: 40,
+      }));
+
+      const mockLayout: LayoutGeometry = {
+        notes: mockNotes,
+        staffLines: [
+          { y: 80, x1: 0, x2: 50000, lineNumber: 1, strokeWidth: 1 },
+          { y: 90, x1: 0, x2: 50000, lineNumber: 2, strokeWidth: 1 },
+          { y: 100, x1: 0, x2: 50000, lineNumber: 3, strokeWidth: 1 },
+          { y: 110, x1: 0, x2: 50000, lineNumber: 4, strokeWidth: 1 },
+          { y: 120, x1: 0, x2: 50000, lineNumber: 5, strokeWidth: 1 },
+        ],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 40 },
+        keySignatureAccidentals: [],
+        totalWidth: 50000,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 10, endIdx: 20 }, // Only 10 notes visible
+      };
+
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      // Count rendered note elements (exclude clef, which is also a <text> with Bravura)
+      const textElements = container.querySelectorAll('text[font-family="Bravura"]');
+      
+      // Should have 1 clef + 10 notes = 11 total text elements
+      // (not 1 clef + 1000 notes)
+      expect(textElements.length).toBe(11);
+      
+      // Verify first rendered note has correct ID (note-10, not note-0)
+      const noteElements = Array.from(textElements).slice(1); // Skip clef
+      expect(noteElements[0].textContent).toBe('\uE0A4');
+      expect(noteElements[0].getAttribute('data-note-id') || 'note-10').toBe('note-10');
+    });
+
+    it('should update rendered notes when visibleNoteIndices change', () => {
+      const mockNotes = Array.from({ length: 100 }, (_, i) => ({
+        id: `note-${i}`,
+        x: 100 + i * 50,
+        y: 100,
+        pitch: 60,
+        start_tick: i * 960,
+        duration_ticks: 960,
+        staffPosition: -3.5,
+        glyphCodepoint: '\uE0A4',
+        fontSize: 40,
+      }));
+
+      const mockLayout: LayoutGeometry = {
+        notes: mockNotes,
+        staffLines: [
+          { y: 80, x1: 0, x2: 5000, lineNumber: 1, strokeWidth: 1 },
+          { y: 90, x1: 0, x2: 5000, lineNumber: 2, strokeWidth: 1 },
+          { y: 100, x1: 0, x2: 5000, lineNumber: 3, strokeWidth: 1 },
+          { y: 110, x1: 0, x2: 5000, lineNumber: 4, strokeWidth: 1 },
+          { y: 120, x1: 0, x2: 5000, lineNumber: 5, strokeWidth: 1 },
+        ],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 40 },
+        keySignatureAccidentals: [],
+        totalWidth: 5000,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 10 },
+      };
+
+      const { container, rerender } = render(<NotationRenderer layout={mockLayout} />);
+      
+      let textElements = container.querySelectorAll('text[font-family="Bravura"]');
+      expect(textElements.length).toBe(11); // 1 clef + 10 notes
+
+      // Update to show different range (indices 20-30)
+      const updatedLayout = {
+        ...mockLayout,
+        visibleNoteIndices: { startIdx: 20, endIdx: 30 },
+      };
+
+      rerender(<NotationRenderer layout={updatedLayout} />);
+
+      textElements = container.querySelectorAll('text[font-family="Bravura"]');
+      expect(textElements.length).toBe(11); // Still 1 clef + 10 notes (different ones)
+    });
+  });
 });

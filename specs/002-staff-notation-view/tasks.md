@@ -139,19 +139,19 @@
 
 ### Tests for User Story 4 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T048 [P] [US4] Unit test for calculateVisibleNoteIndices() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns correct startIdx and endIdx for notes within viewport + buffer, excludes notes outside range
-- [ ] T049 [P] [US4] Integration test for virtual scrolling in frontend/src/components/notation/NotationRenderer.test.tsx - mock layout with 1000 notes, verify only notes within visibleNoteIndices range are rendered in DOM
-- [ ] T050 [P] [US4] Integration test for scroll handling in frontend/src/components/notation/StaffNotation.test.tsx - simulate scroll event, verify scrollX state updates, layout recalculated with new scrollX, visible indices change
+- [X] T048 [P] [US4] Unit test for calculateVisibleNoteIndices() in frontend/src/services/notation/NotationLayoutEngine.test.ts - verify returns correct startIdx and endIdx for notes within viewport + buffer, excludes notes outside range
+- [X] T049 [P] [US4] Integration test for virtual scrolling in frontend/src/components/notation/NotationRenderer.test.tsx - mock layout with 1000 notes, verify only notes within visibleNoteIndices range are rendered in DOM
+- [X] T050 [P] [US4] Integration test for scroll handling in frontend/src/components/notation/StaffNotation.test.tsx - simulate scroll event, verify scrollX state updates, layout recalculated with new scrollX, visible indices change
 
 ### Implementation for User Story 4
 
-- [ ] T051 [P] [US4] Implement calculateVisibleNoteIndices() method in frontend/src/services/notation/NotationLayoutEngine.ts - binary search notePositions array for notes with x between (scrollX - buffer) and (scrollX + viewportWidth + buffer), return {startIdx, endIdx}
-- [ ] T052 [US4] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateVisibleNoteIndices() and include result in LayoutGeometry (depends on T051)
-- [ ] T053 [US4] Add scrollX state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(0), onScroll handler to update scrollX from e.currentTarget.scrollLeft
-- [ ] T054 [US4] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add scrollX to useMemo dependencies so layout recalculates on scroll
-- [ ] T055 [US4] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - slice notes array using visibleNoteIndices: layout.notes.slice(startIdx, endIdx), render only visible notes
-- [ ] T056 [US4] Add scrollable container to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - wrap NotationRenderer in <div> with overflowX: auto, width: 100%, onScroll handler
-- [ ] T057 [US4] Implement fixed clef margin in frontend/src/components/notation/NotationRenderer.tsx - render clef and staff lines in separate SVG layer or with CSS position: sticky for left margin
+- [X] T051 [P] [US4] Implement calculateVisibleNoteIndices() method in frontend/src/services/notation/NotationLayoutEngine.ts - binary search notePositions array for notes with x between (scrollX - buffer) and (scrollX + viewportWidth + buffer), return {startIdx, endIdx}
+- [X] T052 [US4] Update calculateLayout() in frontend/src/services/notation/NotationLayoutEngine.ts - call calculateVisibleNoteIndices() and include result in LayoutGeometry (depends on T051)
+- [X] T053 [US4] Add scrollX state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(0), onScroll handler to update scrollX from e.currentTarget.scrollLeft
+- [X] T054 [US4] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add scrollX to useMemo dependencies so layout recalculates on scroll
+- [X] T055 [US4] Update NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx - slice notes array using visibleNoteIndices: layout.notes.slice(startIdx, endIdx), render only visible notes
+- [X] T056 [US4] Add scrollable container to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - wrap NotationRenderer in <div> with overflowX: auto, width: 100%, onScroll handler
+- [X] T057 [US4] Implement fixed clef margin in frontend/src/components/notation/NotationRenderer.tsx - render clef and staff lines in separate SVG layer or with CSS position: sticky for left margin
 
 **Checkpoint**: User stories 1-4 complete - long scores scroll smoothly with fixed clef
 
@@ -165,14 +165,14 @@
 
 ### Tests for User Story 5 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T058 [P] [US5] Integration test for viewport resize in frontend/src/components/notation/StaffNotation.test.tsx - mock window.innerWidth changes, verify useEffect updates viewportWidth state, layout recalculated
-- [ ] T059 [P] [US5] Integration test for dimension recalculation in frontend/src/components/notation/StaffNotation.test.tsx - change viewportWidth prop, verify totalWidth and visibleNoteIndices updated in layout
+- [X] T058 [P] [US5] Integration test for viewport resize in frontend/src/components/notation/StaffNotation.test.tsx - mock window.innerWidth changes, verify useEffect updates viewportWidth state, layout recalculated
+- [X] T059 [P] [US5] Integration test for dimension recalculation in frontend/src/components/notation/StaffNotation.test.tsx - change viewportWidth prop, verify totalWidth and visibleNoteIndices updated in layout
 
 ### Implementation for User Story 5
 
-- [ ] T060 [P] [US5] Add viewportWidth state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(1200), useRef for container div
-- [ ] T061 [US5] Add resize observer to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useEffect with ResizeObserver or window resize event listener, update viewportWidth from containerRef.current.clientWidth
-- [ ] T062 [US5] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add viewportWidth to useMemo dependencies so layout recalculates on viewport change (depends on T060, T061)
+- [X] T060 [P] [US5] Add viewportWidth state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(1200), useRef for container div
+- [X] T061 [US5] Add resize observer to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useEffect with ResizeObserver or window resize event listener, update viewportWidth from containerRef.current.clientWidth
+- [X] T062 [US5] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add viewportWidth to useMemo dependencies so layout recalculates on viewport change (depends on T060, T061)
 
 **Checkpoint**: All user stories 1-5 complete - feature fully functional with responsive design
 
@@ -182,14 +182,14 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T063 [P] Add SMuFL codepoint constants in frontend/src/types/notation/config.ts - TREBLE_CLEF = '\uE050', BASS_CLEF = '\uE062', QUARTER_NOTE = '\uE0A4', etc.
-- [ ] T064 [P] Add JSDoc comments to all NotationLayoutEngine methods in frontend/src/services/notation/NotationLayoutEngine.ts
-- [ ] T065 [P] Add data-testid attributes to all SVG elements in frontend/src/components/notation/NotationRenderer.tsx for easier testing
-- [ ] T066 [P] Performance optimization: add React.memo to NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx
-- [ ] T067 [P] Performance optimization: add shouldComponentUpdate logic for note elements in frontend/src/components/notation/NotationRenderer.tsx
-- [ ] T068 [P] Update README.md with feature description, screenshot, usage example
-- [ ] T069 Validate all success criteria from spec.md - SC-001 (identify pitches <5s), SC-002 (render 100 notes <500ms), SC-003 (positioning <1px error), SC-004 (selection <50ms), SC-005 (1000 measures 60fps)
-- [ ] T070 Run through quickstart.md validation checklist - verify font loads, notes positioned correctly, interactions work, performance targets met
+- [X] T063 [P] Add SMuFL codepoint constants in frontend/src/types/notation/config.ts - TREBLE_CLEF = '\uE050', BASS_CLEF = '\uE062', QUARTER_NOTE = '\uE0A4', etc.
+- [X] T064 [P] Add JSDoc comments to all NotationLayoutEngine methods in frontend/src/services/notation/NotationLayoutEngine.ts
+- [X] T065 [P] Add data-testid attributes to all SVG elements in frontend/src/components/notation/NotationRenderer.tsx for easier testing
+- [X] T066 [P] Performance optimization: add React.memo to NotationRenderer component in frontend/src/components/notation/NotationRenderer.tsx
+- [X] T067 [P] Performance optimization: add shouldComponentUpdate logic for note elements in frontend/src/components/notation/NotationRenderer.tsx
+- [X] T068 [P] Update README.md with feature description, screenshot, usage example
+- [X] T069 Validate all success criteria from spec.md - SC-001 (identify pitches <5s), SC-002 (render 100 notes <500ms), SC-003 (positioning <1px error), SC-004 (selection <50ms), SC-005 (1000 measures 60fps)
+- [X] T070 Run through quickstart.md validation checklist - verify font loads, notes positioned correctly, interactions work, performance targets met
 
 ---
 
