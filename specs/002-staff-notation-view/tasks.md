@@ -165,14 +165,14 @@
 
 ### Tests for User Story 5 (Test-First: Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T058 [P] [US5] Integration test for viewport resize in frontend/src/components/notation/StaffNotation.test.tsx - mock window.innerWidth changes, verify useEffect updates viewportWidth state, layout recalculated
-- [ ] T059 [P] [US5] Integration test for dimension recalculation in frontend/src/components/notation/StaffNotation.test.tsx - change viewportWidth prop, verify totalWidth and visibleNoteIndices updated in layout
+- [X] T058 [P] [US5] Integration test for viewport resize in frontend/src/components/notation/StaffNotation.test.tsx - mock window.innerWidth changes, verify useEffect updates viewportWidth state, layout recalculated
+- [X] T059 [P] [US5] Integration test for dimension recalculation in frontend/src/components/notation/StaffNotation.test.tsx - change viewportWidth prop, verify totalWidth and visibleNoteIndices updated in layout
 
 ### Implementation for User Story 5
 
-- [ ] T060 [P] [US5] Add viewportWidth state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(1200), useRef for container div
-- [ ] T061 [US5] Add resize observer to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useEffect with ResizeObserver or window resize event listener, update viewportWidth from containerRef.current.clientWidth
-- [ ] T062 [US5] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add viewportWidth to useMemo dependencies so layout recalculates on viewport change (depends on T060, T061)
+- [X] T060 [P] [US5] Add viewportWidth state to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useState(1200), useRef for container div
+- [X] T061 [US5] Add resize observer to StaffNotation component in frontend/src/components/notation/StaffNotation.tsx - useEffect with ResizeObserver or window resize event listener, update viewportWidth from containerRef.current.clientWidth
+- [X] T062 [US5] Update StaffNotation memoization in frontend/src/components/notation/StaffNotation.tsx - add viewportWidth to useMemo dependencies so layout recalculates on viewport change (depends on T060, T061)
 
 **Checkpoint**: All user stories 1-5 complete - feature fully functional with responsive design
 

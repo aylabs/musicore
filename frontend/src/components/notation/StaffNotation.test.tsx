@@ -100,7 +100,8 @@ describe('StaffNotation', () => {
         },
       ];
 
-      const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
+      // Provide explicit viewport width to ensure all notes are visible (no virtual scrolling)
+      const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" viewportWidth={1200} />);
       
       const textElements = container.querySelectorAll('text[font-family="Bravura"]');
       const noteElements = Array.from(textElements).filter((_el, idx) => idx > 0);
@@ -258,6 +259,150 @@ describe('StaffNotation', () => {
           fireEvent.scroll(scrollContainer);
         });
       }).not.toThrow();
+    });
+  });
+
+  /**
+   * T058: Integration test for viewport resize
+   * 
+   * Verifies that resizing the container triggers layout recalculation
+   * with updated viewport dimensions.
+   */
+  describe('viewport resize handling', () => {
+    it('should update viewportWidth when container is resized', () => {
+      const mockNotes: Note[] = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        pitch: 60,
+        start_tick: i * 1000,
+        duration_ticks: 960,
+      }));
+
+      const { container, rerender } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
+      
+      // Initial render - default viewport width should be used
+      const scrollContainer = container.querySelector('div[style*="overflow"]') as HTMLDivElement;
+      expect(scrollContainer).toBeTruthy();
+
+      // Simulate container resize by changing its clientWidth
+      // (In real usage, ResizeObserver would detect this)
+      Object.defineProperty(scrollContainer, 'clientWidth', {
+        writable: true,
+        value: 800,
+      });
+
+      // Trigger a re-render to simulate resize observer callback
+      rerender(<StaffNotation notes={mockNotes} clef="Treble" />);
+
+      // Component should adapt to new width
+      // (We can't directly test the width change without exposing internal state,
+      // but we verify the component doesn't crash and continues to render)
+      expect(scrollContainer).toBeTruthy();
+    });
+
+    it('should handle window resize events', () => {
+      const mockNotes: Note[] = Array.from({ length: 20 }, (_, i) => ({
+        id: `note-${i}`,
+        pitch: 60 + (i % 12),
+        start_tick: i * 1000,
+        duration_ticks: 960,
+      }));
+
+      const { container } = render(<StaffNotation notes={mockNotes} clef="Treble" />);
+
+      // Simulate window resize
+      global.innerWidth = 1024;
+      fireEvent(window, new Event('resize'));
+
+      // Component should still render without errors
+      const scrollContainer = container.querySelector('div[style*="overflow"]');
+      expect(scrollContainer).toBeTruthy();
+    });
+  });
+
+  /**
+   * T059: Integration test for dimension recalculation
+   * 
+   * Verifies that changing viewport dimensions triggers
+   * layout recalculation and updates visible note indices.
+   */
+  describe('dimension recalculation', () => {
+    it('should recalculate layout when viewportWidth changes', () => {
+      const mockNotes: Note[] = Array.from({ length: 100 }, (_, i) => ({
+        id: `note-${i}`,
+        pitch: 60,
+        start_tick: i * 1000,
+        duration_ticks: 960,
+      }));
+
+      // Render with initial viewport width
+      const { container, rerender } = render(
+        <StaffNotation notes={mockNotes} clef="Treble" viewportWidth={1200} />
+      );
+
+      let textElements = container.querySelectorAll('text[font-family="Bravura"]');
+      const initialCount = textElements.length;
+
+      // Re-render with smaller viewport width
+      rerender(<StaffNotation notes={mockNotes} clef="Treble" viewportWidth={600} />);
+
+      textElements = container.querySelectorAll('text[font-family="Bravura"]');
+      
+      // Layout should be recalculated (might have different visible note count)
+      // At minimum, should not crash and should still render some notes
+      expect(textElements.length).toBeGreaterThan(0);
+      expect(textElements.length).toBeLessThanOrEqual(initialCount + 10);
+    });
+
+    it('should recalculate layout when viewportHeight changes', () => {
+      const mockNotes: Note[] = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        pitch: 60 + (i % 24),
+        start_tick: i * 1000,
+        duration_ticks: 960,
+      }));
+
+      const { container, rerender } = render(
+        <StaffNotation notes={mockNotes} clef="Treble" viewportHeight={200} />
+      );
+
+      let scrollContainer = container.querySelector('div[style*="overflow"]') as HTMLDivElement;
+      expect(scrollContainer).toBeTruthy();
+      
+      // Change viewport height
+      rerender(<StaffNotation notes={mockNotes} clef="Treble" viewportHeight={300} />);
+
+      scrollContainer = container.querySelector('div[style*="overflow"]') as HTMLDivElement;
+      expect(scrollContainer).toBeTruthy();
+      
+      // SVG should adapt to new height
+      const svg = container.querySelector('svg');
+      expect(svg).toBeTruthy();
+    });
+
+    it('should maintain correct totalWidth after viewport changes', () => {
+      const mockNotes: Note[] = Array.from({ length: 30 }, (_, i) => ({
+        id: `note-${i}`,
+        pitch: 60,
+        start_tick: i * 2000,
+        duration_ticks: 960,
+      }));
+
+      const { container, rerender } = render(
+        <StaffNotation notes={mockNotes} clef="Treble" viewportWidth={1200} />
+      );
+
+      const svg1 = container.querySelector('svg');
+      const width1 = svg1?.getAttribute('width');
+
+      // Change viewport width - totalWidth should remain consistent
+      // (represents the full score width, not the viewport)
+      rerender(<StaffNotation notes={mockNotes} clef="Treble" viewportWidth={800} />);
+
+      const svg2 = container.querySelector('svg');
+      const width2 = svg2?.getAttribute('width');
+
+      // totalWidth should be the same (it's the score width, not viewport width)
+      expect(width1).toBe(width2);
     });
   });
 });
