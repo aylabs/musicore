@@ -325,7 +325,8 @@ export const NotationLayoutEngine = {
    * Ledger lines are needed when:
    * - staffPosition > 4 (above top line)
    * - staffPosition < -4 (below bottom line)
-   * - staffPosition is even (on a line position, not in a space)
+   * - Ledger lines are always on line positions (even staff positions)
+   * - Notes in spaces need ledger lines up to the nearest line toward the staff
    * 
    * @param notes - Array of positioned notes
    * @param config - Staff configuration
@@ -344,24 +345,25 @@ export const NotationLayoutEngine = {
         continue; // Note is within staff range
       }
       
-      // Only generate for notes on line positions (even staff positions)
-      // Spaces (odd positions) don't get ledger lines
-      const isOnLine = note.staffPosition % 2 === 0;
-      if (!isOnLine) {
-        continue;
-      }
-      
       // Determine ledger line positions
       const ledgerLinePositions: number[] = [];
       
       if (note.staffPosition < -4) {
         // Below staff - generate ledger lines from -6 down to note position
-        for (let pos = -6; pos >= note.staffPosition; pos -= 2) {
+        // If note is in a space (odd), stop at the line below it (round up to nearest even)
+        const endPosition = note.staffPosition % 2 === 0 
+          ? note.staffPosition  // Note on line: include this line
+          : note.staffPosition + 1; // Note in space: stop at line below
+        for (let pos = -6; pos >= endPosition; pos -= 2) {
           ledgerLinePositions.push(pos);
         }
       } else if (note.staffPosition > 4) {
         // Above staff - generate ledger lines from 6 up to note position
-        for (let pos = 6; pos <= note.staffPosition; pos += 2) {
+        // If note is in a space (odd), stop at the line below it (round down to nearest even)
+        const endPosition = note.staffPosition % 2 === 0 
+          ? note.staffPosition  // Note on line: include this line
+          : note.staffPosition - 1; // Note in space: stop at line below
+        for (let pos = 6; pos <= endPosition; pos += 2) {
           ledgerLinePositions.push(pos);
         }
       }
