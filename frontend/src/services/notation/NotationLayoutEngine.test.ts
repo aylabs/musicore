@@ -79,9 +79,9 @@ describe('NotationLayoutEngine', () => {
     it('should handle notes requiring ledger lines below bass staff', () => {
       // C2 (MIDI 36) is below the bass staff
       // G2 (43) is on bottom line at staffPosition -4
-      // C2 is 7 half-steps below G2, so staffPosition -4 - 7 = -11
+      // C2 is 4 diatonic steps below G2 (G→F→E→D→C), so staffPosition -4 - 4 = -8
       const result = NotationLayoutEngine.midiPitchToStaffPosition(36, 'Bass');
-      expect(result).toBe(-11);
+      expect(result).toBe(-8);
     });
   });
 

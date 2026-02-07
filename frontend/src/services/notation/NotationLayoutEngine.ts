@@ -86,7 +86,8 @@ export const NotationLayoutEngine = {
       43: -4,  // G2 (bottom line)
       41: -5,  // F2 (space below)
       40: -6,  // E2 (ledger line)
-      36: -11, // C2 (ledger line)
+      38: -7,  // D2 (space below ledger)
+      36: -8,  // C2 (second ledger line below)
     };
     
     // Use diatonic mappings
@@ -127,7 +128,7 @@ export const NotationLayoutEngine = {
     const trebleDiatonicPitches = [55, 57, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96];
     
     // Diatonic (white key) pitches in bass clef
-    const bassDiatonicPitches = [36, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
+    const bassDiatonicPitches = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
     
     const diatonicPitches = clef === 'Treble' ? trebleDiatonicPitches : bassDiatonicPitches;
     
