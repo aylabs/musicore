@@ -322,9 +322,12 @@ export const NotationLayoutEngine = {
         proportionalX += barlineNoteSpacing;
       }
       
-      // Enforce minimum spacing: use PREVIOUS note's duration to ensure it has room for its glyph
+      // Enforce minimum spacing: consider BOTH previous and current note's space requirements
+      // Use the maximum of: previous note's trailing space OR current note's leading space
       // Very short notes (32nd, 64th, 128th) with many flags need more horizontal space to render
-      const minWidth = this.getMinimumNoteWidth(previousDuration, config);
+      const prevNoteWidth = this.getMinimumNoteWidth(previousDuration, config);
+      const currNoteWidth = this.getMinimumNoteWidth(note.duration_ticks, config);
+      const minWidth = Math.max(prevNoteWidth, currNoteWidth);
       const x = Math.max(proportionalX, previousX + minWidth);
       previousX = x;
       previousDuration = note.duration_ticks;
