@@ -302,6 +302,13 @@ export const NotationLayoutEngine = {
       // Determine if this note needs an accidental (sharp/flat)
       const accidental = this.getAccidental(note.pitch, clef);
       
+      // Determine stem direction: notes below middle line get stem up, others get stem down
+      // SMuFL convention: stem up for low notes, stem down for high notes
+      const stemUp = staffPosition < 0;
+      const glyphCodepoint = stemUp 
+        ? SMUFL_CODEPOINTS.QUARTER_NOTE_UP 
+        : SMUFL_CODEPOINTS.QUARTER_NOTE_DOWN;
+      
       return {
         id: note.id,
         x,
@@ -310,7 +317,7 @@ export const NotationLayoutEngine = {
         start_tick: note.start_tick,
         duration_ticks: note.duration_ticks,
         staffPosition,
-        glyphCodepoint: SMUFL_CODEPOINTS.QUARTER_NOTE, // Quarter note head (SMuFL)
+        glyphCodepoint,
         fontSize: config.staffSpace * config.glyphFontSizeMultiplier,
         accidental,
       };

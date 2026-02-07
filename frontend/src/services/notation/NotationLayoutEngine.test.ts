@@ -345,9 +345,10 @@ describe('NotationLayoutEngine', () => {
       expect(positioned[0].y).toBe(centerY);
     });
 
-    it('should use quarter note head glyph (U+E0A4)', () => {
+    it('should use quarter note glyph with correct stem direction', () => {
       const notes = [
-        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: '1', start_tick: 0, duration_ticks: 960, pitch: 60 },  // C4 (below middle) - stem up
+        { id: '2', start_tick: 960, duration_ticks: 960, pitch: 71 }, // B4 (middle line) - stem down
       ];
 
       const positioned = NotationLayoutEngine.calculateNotePositions(
@@ -356,7 +357,10 @@ describe('NotationLayoutEngine', () => {
         config
       );
 
-      expect(positioned[0].glyphCodepoint).toBe('\uE0A4');
+      // C4 at staffPosition -6 (below middle) gets stem up
+      expect(positioned[0].glyphCodepoint).toBe('\uE1D5');
+      // B4 at staffPosition 0 (middle line) gets stem down
+      expect(positioned[1].glyphCodepoint).toBe('\uE1D6');
     });
 
     it('should preserve note properties', () => {

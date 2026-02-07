@@ -13,8 +13,16 @@ export const SMUFL_CODEPOINTS = {
   ALTO_CLEF: '\uE05C',
   TENOR_CLEF: '\uE05D',
   
-  // Notes and rests
-  QUARTER_NOTE: '\uE0A4',
+  // Note heads (without stems)
+  NOTEHEAD_BLACK: '\uE0A4',
+  NOTEHEAD_HALF: '\uE0A3',
+  NOTEHEAD_WHOLE: '\uE0A2',
+  
+  // Quarter notes with stems
+  QUARTER_NOTE_UP: '\uE1D5',    // Stem up (for notes below middle line)
+  QUARTER_NOTE_DOWN: '\uE1D6',  // Stem down (for notes on/above middle line)
+  
+  // Other notes
   HALF_NOTE: '\uE0A3',
   WHOLE_NOTE: '\uE0A2',
   EIGHTH_NOTE: '\uE0A5',
