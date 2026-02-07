@@ -236,19 +236,22 @@ export const NotationLayoutEngine = {
    * 1. Sort notes by start_tick (earliest first)
    * 2. Convert each note's pitch to staff position
    * 3. Calculate X position from tick (with clef offset) - PROPORTIONAL
-   * 4. Enforce minimum spacing between consecutive notes
-   * 5. Calculate Y position from staff position
-   * 6. Assign SMuFL note head glyph (U+E0A4 for quarter note)
+   * 4. Avoid barline collisions (notes at measure boundaries get extra spacing)
+   * 5. Enforce minimum spacing between consecutive notes
+   * 6. Calculate Y position from staff position
+   * 7. Assign SMuFL note head glyph (U+E0A4 for quarter note)
    * 
    * @param notes - Array of Note objects from the score
    * @param clef - Clef type for pitch-to-position mapping
    * @param config - Staff configuration
+   * @param timeSignature - Time signature for barline collision detection
    * @returns Array of NotePosition objects with calculated x, y coordinates
    */
   calculateNotePositions(
     notes: Note[],
     clef: ClefType,
-    config: StaffConfig
+    config: StaffConfig,
+    timeSignature?: { numerator: number; denominator: number }
   ): NotePosition[] {
     if (notes.length === 0) {
       return [];
@@ -260,12 +263,25 @@ export const NotationLayoutEngine = {
     const baseX = config.marginLeft + config.clefWidth;
     let previousX = baseX - config.minNoteSpacing; // Initialize to allow first note at baseX
     
+    // Calculate barline positions to avoid collisions
+    const PPQ = 960; // MIDI standard: Pulses Per Quarter note
+    const ticksPerMeasure = timeSignature 
+      ? PPQ * (4 / timeSignature.denominator) * timeSignature.numerator 
+      : 3840; // Default 4/4 time
+    const barlineNoteSpacing = config.minNoteSpacing * 1.5; // Extra spacing after barlines
+    
     const positioned: NotePosition[] = sortedNotes.map((note) => {
       // Convert pitch to staff position
       const staffPosition = this.midiPitchToStaffPosition(note.pitch, clef);
       
       // Calculate proportional X position from tick
-      const proportionalX = baseX + note.start_tick * config.pixelsPerTick;
+      let proportionalX = baseX + note.start_tick * config.pixelsPerTick;
+      
+      // Check if note would collide with a barline (at measure boundaries)
+      // If note starts exactly at a measure boundary, add extra spacing
+      if (note.start_tick > 0 && note.start_tick % ticksPerMeasure === 0) {
+        proportionalX += barlineNoteSpacing;
+      }
       
       // Enforce minimum spacing: ensure at least minNoteSpacing from previous note
       const x = Math.max(proportionalX, previousX + config.minNoteSpacing);
@@ -503,7 +519,7 @@ export const NotationLayoutEngine = {
     // Calculate all layout components
     const staffLines = this.calculateStaffLines(totalWidth, config);
     const clefPosition = this.calculateClefPosition(clef as ClefType, config);
-    const notePositions = this.calculateNotePositions(notes, clef as ClefType, config);
+    const notePositions = this.calculateNotePositions(notes, clef as ClefType, config, timeSignature);
     const barlines = this.calculateBarlines(timeSignature, maxTick, config);
     const ledgerLines = this.calculateLedgerLines(notePositions, config);
     

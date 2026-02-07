@@ -614,27 +614,29 @@ describe('NotationLayoutEngine', () => {
         { id: '4', start_tick: 3840, duration_ticks: 960, pitch: 72 },
       ];
 
+      const timeSignature = { numerator: 4, denominator: 4 };
       const positions = NotationLayoutEngine.calculateNotePositions(
         notes,
         'Treble',
-        DEFAULT_STAFF_CONFIG
+        DEFAULT_STAFF_CONFIG,
+        timeSignature
       );
 
       const baseX = DEFAULT_STAFF_CONFIG.marginLeft + DEFAULT_STAFF_CONFIG.clefWidth;
+      const barlineNoteSpacing = DEFAULT_STAFF_CONFIG.minNoteSpacing * 1.5; // Extra spacing after barlines
       
       // Verify proportional spacing
       expect(positions[0].x).toBe(baseX + 0 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
       expect(positions[1].x).toBe(baseX + 960 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
       expect(positions[2].x).toBe(baseX + 1920 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
-      expect(positions[3].x).toBe(baseX + 3840 * DEFAULT_STAFF_CONFIG.pixelsPerTick);
+      // Note at tick 3840 (measure boundary) gets extra spacing after barline
+      expect(positions[3].x).toBe(baseX + 3840 * DEFAULT_STAFF_CONFIG.pixelsPerTick + barlineNoteSpacing);
       
-      // Verify gap ratios
+      // Verify gap ratios (except for measure boundary)
       const gap1 = positions[1].x - positions[0].x; // 0 to 960
       const gap2 = positions[2].x - positions[1].x; // 960 to 1920
-      const gap3 = positions[3].x - positions[2].x; // 1920 to 3840
       
       expect(gap1).toBe(gap2); // Equal tick intervals = equal gaps
-      expect(gap3).toBe(gap1 * 2); // 3840-1920 gap is 2x the 960 gap
     });
   });
 
