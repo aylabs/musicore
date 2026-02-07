@@ -21,7 +21,9 @@ import * as Tone from 'tone';
 export class ToneAdapter {
   private static instance: ToneAdapter | null = null;
   private polySynth: Tone.PolySynth | null = null;
+  private sampler: Tone.Sampler | null = null;
   private initialized = false;
+  private useSampler = true; // Use piano samples for realistic sound
 
   /**
    * Private constructor - use getInstance() instead
@@ -67,17 +69,60 @@ export class ToneAdapter {
       // Start Tone.js audio context (required for browser autoplay policy)
       await Tone.start();
 
-      // Create polyphonic synthesizer with 16 voices for playing chords
-      // Basic ADSR envelope: 0.005s attack, 0.1s decay, 0.3 sustain, 1s release
-      this.polySynth = new Tone.PolySynth(Tone.Synth, {
-        volume: -8, // Reduce volume to prevent clipping
-        envelope: {
-          attack: 0.005,  // Fast attack for piano-like sound
-          decay: 0.1,
-          sustain: 0.3,
-          release: 1.0,   // Longer release for natural decay
-        },
-      }).toDestination();
+      if (this.useSampler) {
+        // US3: Use Salamander Grand Piano samples for realistic sound
+        this.sampler = new Tone.Sampler({
+          urls: {
+            A0: "A0.mp3",
+            C1: "C1.mp3",
+            "D#1": "Ds1.mp3",
+            "F#1": "Fs1.mp3",
+            A1: "A1.mp3",
+            C2: "C2.mp3",
+            "D#2": "Ds2.mp3",
+            "F#2": "Fs2.mp3",
+            A2: "A2.mp3",
+            C3: "C3.mp3",
+            "D#3": "Ds3.mp3",
+            "F#3": "Fs3.mp3",
+            A3: "A3.mp3",
+            C4: "C4.mp3",
+            "D#4": "Ds4.mp3",
+            "F#4": "Fs4.mp3",
+            A4: "A4.mp3",
+            C5: "C5.mp3",
+            "D#5": "Ds5.mp3",
+            "F#5": "Fs5.mp3",
+            A5: "A5.mp3",
+            C6: "C6.mp3",
+            "D#6": "Ds6.mp3",
+            "F#6": "Fs6.mp3",
+            A6: "A6.mp3",
+            C7: "C7.mp3",
+            "D#7": "Ds7.mp3",
+            "F#7": "Fs7.mp3",
+            A7: "A7.mp3",
+            C8: "C8.mp3"
+          },
+          release: 1,
+          baseUrl: "https://tonejs.github.io/audio/salamander/",
+          volume: -5,
+        }).toDestination();
+
+        // Wait for samples to load
+        await Tone.loaded();
+      } else {
+        // Fallback: Basic synthesizer
+        this.polySynth = new Tone.PolySynth(Tone.Synth, {
+          volume: -8,
+          envelope: {
+            attack: 0.005,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 1.0,
+          },
+        }).toDestination();
+      }
 
       this.initialized = true;
     } catch (error) {
@@ -106,7 +151,9 @@ export class ToneAdapter {
    * Safe to call even if not initialized.
    */
   public stopAll(): void {
-    if (this.polySynth) {
+    if (this.sampler) {
+      this.sampler.releaseAll();
+    } else if (this.polySynth) {
       this.polySynth.releaseAll();
     }
 
@@ -131,14 +178,21 @@ export class ToneAdapter {
    * ```
    */
   public playNote(pitch: number, duration: number, time: number): void {
-    if (!this.initialized || !this.polySynth) {
+    if (!this.initialized || (!this.sampler && !this.polySynth)) {
       console.warn('ToneAdapter not initialized. Call init() first.');
       return;
     }
 
-    // Convert MIDI pitch to frequency and schedule the note
-    const frequency = Tone.Frequency(pitch, 'midi').toFrequency();
-    this.polySynth.triggerAttackRelease(frequency, duration, time);
+    // Convert MIDI pitch to note name (e.g., 60 -> "C4")
+    const noteName = Tone.Frequency(pitch, 'midi').toNote();
+    
+    if (this.sampler) {
+      // Use sampler for realistic piano sound
+      this.sampler.triggerAttackRelease(noteName, duration, time);
+    } else if (this.polySynth) {
+      // Fallback to synthesizer
+      this.polySynth.triggerAttackRelease(noteName, duration, time);
+    }
   }
 
   /**
