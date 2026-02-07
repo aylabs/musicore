@@ -44,7 +44,7 @@ fn test_repository_save_overwrites() {
     repo.save(score).unwrap();
     
     let found = repo.find_by_id(score_id).unwrap().unwrap();
-    assert_eq!(found.instruments.len(), 1);
+    assert_eq!(found.instruments.len(), 2); // Feature 003: Default instrument + added instrument
 }
 
 #[test]

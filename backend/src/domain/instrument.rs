@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 pub struct Instrument {
     pub id: InstrumentId,
     pub name: String,
+    /// Type of instrument for playback (e.g., "piano", "guitar")
+    /// Feature 003: Music Playback - MVP always "piano"
+    pub instrument_type: String,
     pub staves: Vec<Staff>,
 }
 
@@ -15,6 +18,7 @@ impl Instrument {
         Self {
             id: InstrumentId::new(),
             name,
+            instrument_type: "piano".to_string(), // Default to piano for MVP
             staves: vec![Staff::new()],
         }
     }

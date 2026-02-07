@@ -117,6 +117,8 @@ export interface Staff {
 export interface Instrument {
   id: string; // UUID
   name: string;
+  /** Type of instrument for playback (e.g., "piano", "guitar") - Feature 003: Music Playback */
+  instrument_type: string;
   staves: Staff[];
 }
 
@@ -125,6 +127,24 @@ export interface Score {
   id: string; // UUID
   global_structural_events: GlobalStructuralEvent[];
   instruments: Instrument[];
+}
+
+/**
+ * Get the instrument for playback from a score
+ * Feature 003: Music Playback - MVP uses first instrument only
+ * Provides backward compatibility for scores without instruments
+ */
+export function getScoreInstrument(score: Score): Instrument {
+  if (score.instruments.length === 0) {
+    // Backward compatibility: no instruments → default piano
+    return {
+      id: 'default',
+      name: 'Default Piano',
+      instrument_type: 'piano',
+      staves: [],
+    };
+  }
+  return score.instruments[0]; // MVP: Use first instrument only
 }
 
 // ============================================================================

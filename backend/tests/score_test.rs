@@ -13,7 +13,9 @@ fn test_score_creation_with_defaults() {
     let score = Score::new();
     
     assert_eq!(score.global_structural_events.len(), 2); // Tempo + Time Signature
-    assert_eq!(score.instruments.len(), 0);
+    assert_eq!(score.instruments.len(), 1); // Feature 003: Default piano instrument
+    assert_eq!(score.instruments[0].name, "Default Piano");
+    assert_eq!(score.instruments[0].instrument_type, "piano");
 }
 
 #[test]
@@ -100,8 +102,8 @@ fn test_score_add_instrument() {
     let instrument = Instrument::new("Piano".to_string());
     
     score.add_instrument(instrument);
-    assert_eq!(score.instruments.len(), 1);
-    assert_eq!(score.instruments[0].name, "Piano");
+    assert_eq!(score.instruments.len(), 2); // Feature 003: Default + added instrument
+    assert_eq!(score.instruments[1].name, "Piano"); // Access added instrument at index 1
 }
 
 #[test]
@@ -112,7 +114,7 @@ fn test_score_add_multiple_instruments() {
     score.add_instrument(Instrument::new("Guitar".to_string()));
     score.add_instrument(Instrument::new("Bass".to_string()));
     
-    assert_eq!(score.instruments.len(), 3);
+    assert_eq!(score.instruments.len(), 4); // Feature 003: Default + 3 added instruments
 }
 
 #[test]

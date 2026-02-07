@@ -15,9 +15,9 @@
 
 **Purpose**: Project initialization and dependency installation
 
-- [ ] T001 Install Tone.js dependency in frontend: `cd frontend && npm install tone@^14.7.0`
-- [ ] T002 [P] Add uuid dependency to backend Cargo.toml (if not present): `uuid = { version = "1.0", features = ["v4", "serde"] }`
-- [ ] T003 [P] Create frontend playback types file: `frontend/src/types/playback.ts` with PlaybackStatus, PlaybackState, ScheduledNote interfaces
+- [X] T001 Install Tone.js dependency in frontend: `cd frontend && npm install tone@^14.7.0`
+- [X] T002 [P] Add uuid dependency to backend Cargo.toml (if not present): `uuid = { version = "1.0", features = ["v4", "serde"] }` - Already present
+- [X] T003 [P] Create frontend playback types file: `frontend/src/types/playback.ts` with PlaybackStatus, PlaybackState, ScheduledNote interfaces
 
 ---
 
@@ -29,20 +29,20 @@
 
 ### Backend Domain Model
 
-- [ ] T004 Create Instrument entity in `backend/src/models/instrument.rs` with id and instrument_type fields, Default impl
-- [ ] T005 Add Instrument module export to `backend/src/models/mod.rs`
-- [ ] T006 Update Score entity in `backend/src/models/score.rs` to add instruments: Vec<Instrument> field
-- [ ] T007 Update Score::new() method to initialize with vec![Instrument::default()]
-- [ ] T008 [P] Write unit tests for Instrument in `backend/tests/unit/models/instrument_test.rs` (default is piano, custom instrument creation)
-- [ ] T009 Update Score service in `backend/src/services/score_service.rs` to handle instruments in CRUD operations
-- [ ] T010 Update Score API handler in `backend/src/api/score_handler.rs` to serialize instruments in responses
-- [ ] T011 Update Score API contract tests in `backend/tests/integration/api/score_api_test.rs` to validate instruments field in GET /scores/{id}
+- [X] T004 Create Instrument entity in `backend/src/models/instrument.rs` with id and instrument_type fields, Default impl
+- [X] T005 Add Instrument module export to `backend/src/models/mod.rs`
+- [X] T006 Update Score entity in `backend/src/models/score.rs` to add instruments: Vec<Instrument> field
+- [X] T007 Update Score::new() method to initialize with vec![Instrument::default()]
+- [X] T008 [P] Write unit tests for Instrument in `backend/tests/unit/models/instrument_test.rs` (default is piano, custom instrument creation)
+- [X] T009 Update Score service in `backend/src/services/score_service.rs` to handle instruments in CRUD operations
+- [X] T010 Update Score API handler in `backend/src/api/score_handler.rs` to serialize instruments in responses
+- [X] T011 Update Score API contract tests in `backend/tests/integration/api/score_api_test.rs` to validate instruments field in GET /scores/{id}
 
 ### Frontend Type Updates
 
-- [ ] T012 [P] Update Score interface in `frontend/src/types/score.ts` to add instruments: Instrument[] field
-- [ ] T013 [P] Add getScoreInstrument() helper function in `frontend/src/types/score.ts` for backward compatibility
-- [ ] T014 [P] Update ScoreApiClient in `frontend/src/services/api/ScoreApiClient.ts` to handle instruments in Score type responses
+- [X] T012 [P] Update Score interface in `frontend/src/types/score.ts` to add instruments: Instrument[] field
+- [X] T013 [P] Add getScoreInstrument() helper function in `frontend/src/types/score.ts` for backward compatibility
+- [X] T014 [P] Update ScoreApiClient in `frontend/src/services/api/ScoreApiClient.ts` to handle instruments in Score type responses
 
 **Checkpoint**: Foundation ready - Backend serves Instrument entity, Frontend types updated. User story implementation can now begin in parallel.
 
@@ -58,23 +58,23 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T015 [P] [US1] Write unit test for PlaybackControls component in `frontend/src/components/playback/PlaybackControls.test.tsx` (button rendering, click handlers, disabled states)
-- [ ] T016 [P] [US1] Write unit test for MusicTimeline hook in `frontend/src/services/playback/MusicTimeline.test.ts` (state transitions: stopped→playing, playing→paused, paused→playing, stopped on stop)
-- [ ] T017 [P] [US1] Write unit test for ToneAdapter initialization in `frontend/src/services/playback/ToneAdapter.test.ts` (init() called once, handles autoplay policy)
+- [X] T015 [P] [US1] Write unit test for PlaybackControls component in `frontend/src/components/playback/PlaybackControls.test.tsx` (button rendering, click handlers, disabled states)
+- [X] T016 [P] [US1] Write unit test for MusicTimeline hook in `frontend/src/services/playback/MusicTimeline.test.ts` (state transitions: stopped→playing, playing→paused, paused→playing, stopped on stop)
+- [X] T017 [P] [US1] Write unit test for ToneAdapter initialization in `frontend/src/services/playback/ToneAdapter.test.ts` (init() called once, handles autoplay policy)
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Create ToneAdapter class in `frontend/src/services/playback/ToneAdapter.ts` with init(), getCurrentTime(), stopAll() methods (stub playNote for now)
-- [ ] T019 [US1] Implement ToneAdapter.init() with Tone.start() and PolySynth initialization (maxPolyphony: 16, basic envelope)
-- [ ] T020 [P] [US1] Create MusicTimeline hook in `frontend/src/services/playback/MusicTimeline.ts` with usePlayback(notes, tempo) returning {status, currentTick, play, pause, stop}
-- [ ] T021 [US1] Implement MusicTimeline.play() to call ToneAdapter.init() and transition status to 'playing'
-- [ ] T022 [US1] Implement MusicTimeline.pause() to transition status to 'paused' and track currentTick
-- [ ] T023 [US1] Implement MusicTimeline.stop() to call ToneAdapter.stopAll(), reset currentTick to 0, transition to 'stopped'
-- [ ] T024 [US1] Create PlaybackControls component in `frontend/src/components/playback/PlaybackControls.tsx` with Play/Pause/Stop buttons, disabled states based on playback status
-- [ ] T025 [US1] Integrate PlaybackControls into NotationRenderer in `frontend/src/components/notation/NotationRenderer.tsx` (add above staff rendering)
-- [ ] T026 [US1] Add visual playback state indicator to PlaybackControls (display current status: playing/paused/stopped)
-- [ ] T027 [US1] Handle edge case: empty score with no notes (disable Play button or show "No notes to play" message)
-- [ ] T028 [US1] Handle edge case: clicking Play while already playing (ignore duplicate clicks or restart from beginning per research decision)
+- [X] T018 [P] [US1] Create ToneAdapter class in `frontend/src/services/playback/ToneAdapter.ts` with init(), getCurrentTime(), stopAll() methods (stub playNote for now)
+- [X] T019 [US1] Implement ToneAdapter.init() with Tone.start() and PolySynth initialization (maxPolyphony: 16, basic envelope)
+- [X] T020 [P] [US1] Create MusicTimeline hook in `frontend/src/services/playback/MusicTimeline.ts` with usePlayback(notes, tempo) returning {status, currentTick, play, pause, stop}
+- [X] T021 [US1] Implement MusicTimeline.play() to call ToneAdapter.init() and transition status to 'playing'
+- [X] T022 [US1] Implement MusicTimeline.pause() to transition status to 'paused' and track currentTick
+- [X] T023 [US1] Implement MusicTimeline.stop() to call ToneAdapter.stopAll(), reset currentTick to 0, transition to 'stopped'
+- [X] T024 [US1] Create PlaybackControls component in `frontend/src/components/playback/PlaybackControls.tsx` with Play/Pause/Stop buttons, disabled states based on playback status
+- [X] T025 [US1] Integrate PlaybackControls into ScoreViewer component (add above instrument list)
+- [X] T026 [US1] Add visual playback state indicator to PlaybackControls (display current status: playing/paused/stopped)
+- [X] T027 [US1] Handle edge case: empty score with no notes (disable Play button or show "No notes to play" message)
+- [X] T028 [US1] Handle edge case: clicking Play while already playing (ignore duplicate clicks or restart from beginning per research decision)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - Play/Pause/Stop buttons control playback state, audio context initializes on Play. No actual notes play yet (that's US2).
 
@@ -88,23 +88,23 @@
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] Write unit test for ticksToSeconds() in `frontend/src/services/playback/PlaybackScheduler.test.ts` (quarter note at 120BPM=0.5s, at 60BPM=1.0s, different tick values)
-- [ ] T030 [P] [US2] Write unit test for PlaybackScheduler.scheduleNotes() in `frontend/src/services/playback/PlaybackScheduler.test.ts` (notes scheduled at correct times, durations calculated correctly, currentTick offset applied)
-- [ ] T031 [P] [US2] Write integration test for note timing in `frontend/tests/integration/playback-integration.test.tsx` (verify notes play at expected times using Tone.Offline rendering)
+- [X] T029 [P] [US2] Write unit test for ticksToSeconds() in `frontend/src/services/playback/PlaybackScheduler.test.ts` (quarter note at 120BPM=0.5s, at 60BPM=1.0s, different tick values)
+- [X] T030 [P] [US2] Write unit test for PlaybackScheduler.scheduleNotes() in `frontend/src/services/playback/PlaybackScheduler.test.ts` (notes scheduled at correct times, durations calculated correctly, currentTick offset applied)
+- [X] T031 [P] [US2] Write integration test for note timing in `frontend/tests/integration/playback-integration.test.tsx` (verify notes play at expected times using Tone.Offline rendering)
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] Create PlaybackScheduler class in `frontend/src/services/playback/PlaybackScheduler.ts` with constructor(toneAdapter), scheduleNotes(notes, tempo, currentTick), clearSchedule() methods
-- [ ] T033 [P] [US2] Implement ticksToSeconds() pure function in `frontend/src/services/playback/PlaybackScheduler.ts` using formula: ticks / (tempo/60 * 960)
-- [ ] T034 [US2] Implement ToneAdapter.playNote(pitch, duration, time) method to call polySynth.triggerAttackRelease() with Tone.Frequency conversion
-- [ ] T035 [US2] Implement PlaybackScheduler.scheduleNotes() to iterate notes, calculate startTime and duration using ticksToSeconds(), call ToneAdapter.playNote() for each
-- [ ] T036 [US2] Implement PlaybackScheduler.clearSchedule() to call ToneAdapter.stopAll() and Tone.Transport.cancel()
-- [ ] T037 [US2] Integrate PlaybackScheduler into MusicTimeline.play() to schedule notes after ToneAdapter initialization
-- [ ] T038 [US2] Update MusicTimeline.pause() to call PlaybackScheduler.clearSchedule() and calculate currentTick based on elapsed time
-- [ ] T039 [US2] Add PPQ constant (960) to PlaybackScheduler with documentation explaining 960 ticks per quarter note
-- [ ] T040 [US2] Handle edge case: notes with extremely short durations (<50ms) - ensure they still trigger sound
-- [ ] T041 [US2] Handle edge case: simultaneous notes (same start_tick) - verify all schedule at same time for polyphonic playback
-- [ ] T042 [US2] Add tempo fallback: default to 120 BPM if score.tempo is undefined or invalid
+- [X] T032 [P] [US2] Create PlaybackScheduler class in `frontend/src/services/playback/PlaybackScheduler.ts` with constructor(toneAdapter), scheduleNotes(notes, tempo, currentTick), clearSchedule() methods
+- [X] T033 [P] [US2] Implement ticksToSeconds() pure function in `frontend/src/services/playback/PlaybackScheduler.ts` using formula: ticks / (tempo/60 * 960)
+- [X] T034 [US2] Implement ToneAdapter.playNote(pitch, duration, time) method to call polySynth.triggerAttackRelease() with Tone.Frequency conversion
+- [X] T035 [US2] Implement PlaybackScheduler.scheduleNotes() to iterate notes, calculate startTime and duration using ticksToSeconds(), call ToneAdapter.playNote() for each
+- [X] T036 [US2] Implement PlaybackScheduler.clearSchedule() to call ToneAdapter.stopAll() and Tone.Transport.cancel()
+- [X] T037 [US2] Integrate PlaybackScheduler into MusicTimeline.play() to schedule notes after ToneAdapter initialization
+- [X] T038 [US2] Update MusicTimeline.pause() to call PlaybackScheduler.clearSchedule() and calculate currentTick based on elapsed time
+- [X] T039 [US2] Add PPQ constant (960) to PlaybackScheduler with documentation explaining 960 ticks per quarter note
+- [X] T040 [US2] Handle edge case: notes with extremely short durations (<50ms) - ensure they still trigger sound
+- [X] T041 [US2] Handle edge case: simultaneous notes (same start_tick) - verify all schedule at same time for polyphonic playback
+- [X] T042 [US2] Add tempo fallback: default to 120 BPM if score.tempo is undefined or invalid
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - Notes play at correct times with accurate durations. Timing verification can be done with console.log or audio analysis.
 
