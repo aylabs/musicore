@@ -128,9 +128,9 @@
 - [x] T047 [US3] Add oscillator configuration to PolySynth (consider triangle+sine blend for richer harmonics per research decision) - **COMPLETED via Salamander Grand Piano samples (real piano sound)**
 - [x] T048 [US3] Implement MIDI pitch validation in ToneAdapter.playNote() to check range 21-108 (standard piano), skip or clamp out-of-range notes
 - [x] T049 [US3] Add pitch mapping conversion in ToneAdapter.playNote() using Tone.Frequency(midiPitch, 'midi').toNote() - **COMPLETED via Salamander sampler integration**
-- [ ] T050 [US3] Test polyphonic playback with 10 simultaneous notes (create test score with chord) to verify maxPolyphony setting
+- [x] T050 [US3] Test polyphonic playback with 10 simultaneous notes (create test score with chord) to verify maxPolyphony setting - **COMPLETED: test_polyphonic_chord_10_notes in backend/tests/api_integration_test.rs**
 - [x] T051 [US3] Handle edge case: notes outside piano range - log warning and skip silently (don't crash)
-- [ ] T052 [US3] Add browser autoplay policy error handling with user-friendly message in PlaybackControls
+- [x] T052 [US3] Add browser autoplay policy error handling with user-friendly message in PlaybackControls - **COMPLETED: Error handling in MusicTimeline + UI display in PlaybackControls**
 
 **Checkpoint**: All user stories should now be independently functional - Playback has piano-like sound quality with accurate timing and responsive controls.
 
