@@ -300,6 +300,7 @@ export const NotationLayoutEngine = {
     
     const baseX = config.marginLeft + config.clefWidth;
     let previousX = baseX - config.minNoteSpacing; // Initialize to allow first note at baseX
+    let previousDuration = 960; // Track previous note's duration for spacing calculation
     
     // Calculate barline positions to avoid collisions
     const PPQ = 960; // MIDI standard: Pulses Per Quarter note
@@ -321,11 +322,12 @@ export const NotationLayoutEngine = {
         proportionalX += barlineNoteSpacing;
       }
       
-      // Enforce minimum spacing: use duration-based width for notes with complex glyphs (many flags)
-      // Very short notes (64th, 128th) need more horizontal space to render properly
-      const minWidth = this.getMinimumNoteWidth(note.duration_ticks, config);
+      // Enforce minimum spacing: use PREVIOUS note's duration to ensure it has room for its glyph
+      // Very short notes (32nd, 64th, 128th) with many flags need more horizontal space to render
+      const minWidth = this.getMinimumNoteWidth(previousDuration, config);
       const x = Math.max(proportionalX, previousX + minWidth);
       previousX = x;
+      previousDuration = note.duration_ticks;
       
       // Calculate Y position from staff position
       const y = this.staffPositionToY(staffPosition, config);
