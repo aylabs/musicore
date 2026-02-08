@@ -550,7 +550,6 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
             value={saveFilename}
             onChange={(e) => setSaveFilename(e.target.value)}
             className="filename-input"
-            style={{ width: '180px', marginRight: '5px' }}
           />
           <button onClick={handleSaveScore} className="save-button">
             Save
