@@ -74,7 +74,7 @@ impl MusicXMLParser {
                         }
                         
                         if let Some(part_id) = current_part_id.clone() {
-                            let part_data = Self::parse_part(reader, &part_id)?;
+                            let part_data = Self::parse_part(reader, &part_id, &doc.part_names)?;
                             doc.parts.push(part_data);
                         }
                     }
@@ -108,22 +108,48 @@ impl MusicXMLParser {
     /// ```
     fn parse_part_list<B: BufRead>(
         reader: &mut Reader<B>,
-        _doc: &mut MusicXMLDocument,
+        doc: &mut MusicXMLDocument,
     ) -> Result<(), ImportError> {
         let mut buf = Vec::new();
+        let mut current_part_id: Option<String> = None;
+        let mut current_part_name = String::new();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(e)) => match e.name().as_ref() {
                     b"score-part" => {
-                        // Extract part metadata (currently not stored in doc)
-                        // Future enhancement: store part names, instruments
+                        // Extract part ID from attributes
+                        for attr in e.attributes() {
+                            if let Ok(attr) = attr {
+                                if attr.key.as_ref() == b"id" {
+                                    current_part_id = Some(String::from_utf8_lossy(&attr.value).to_string());
+                                }
+                            }
+                        }
+                        current_part_name.clear();
+                    }
+                    b"part-name" => {
+                        // Read part name text content
+                        if let Ok(Event::Text(e)) = reader.read_event_into(&mut buf) {
+                            current_part_name = String::from_utf8_lossy(e.as_ref()).to_string();
+                        }
                     }
                     _ => {}
                 },
-                Ok(Event::End(e)) if e.name().as_ref() == b"part-list" => {
-                    break;
-                }
+                Ok(Event::End(e)) => match e.name().as_ref() {
+                    b"score-part" => {
+                        // Store part name mapping when closing score-part element
+                        if let Some(ref part_id) = current_part_id {
+                            doc.part_names.insert(part_id.clone(), current_part_name.clone());
+                        }
+                        current_part_id = None;
+                        current_part_name.clear();
+                    }
+                    b"part-list" => {
+                        break;
+                    }
+                    _ => {}
+                },
                 Ok(Event::Eof) => {
                     return Err(ImportError::InvalidStructure {
                         reason: "Unexpected EOF in part-list".to_string(),
@@ -156,10 +182,14 @@ impl MusicXMLParser {
     fn parse_part<B: BufRead>(
         reader: &mut Reader<B>,
         part_id: &str,
+        part_names: &std::collections::HashMap<String, String>,
     ) -> Result<PartData, ImportError> {
         let mut part = PartData {
             id: part_id.to_string(),
-            name: String::new(),
+            name: part_names.get(part_id).cloned().unwrap_or_else(|| {
+                // Fallback to generic name if not found in part-list
+                format!("Instrument {}", part_id)
+            }),
             measures: Vec::new(),
             staff_count: 1, // Will be updated after parsing
         };
