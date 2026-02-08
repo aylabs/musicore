@@ -219,8 +219,8 @@ npm test -- StaffNotation
    ```
 
 2. Import test files:
-   - `tests/fixtures/musicxml/piano_grand_staff.musicxml` - **Recommended**: Simple piano grand staff (no chords)
-   - `tests/fixtures/musicxml/CanonD.musicxml` - ⚠️ Canon in D (has chord import bug - notes display sequentially)
+   - `tests/fixtures/musicxml/CanonD.musicxml` - Canon in D with chords (recommended for full testing)
+   - `tests/fixtures/musicxml/piano_grand_staff.musicxml` - Simple piano grand staff (no chords)
    - `tests/fixtures/musicxml/quartet.musicxml` - String quartet (Treble + Alto + Bass) - for User Story 2
 
 3. Verify in UI:
