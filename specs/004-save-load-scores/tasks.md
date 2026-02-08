@@ -22,10 +22,10 @@ description: "Task list for Score File Persistence implementation"
 
 **Purpose**: Create directory structure and type definitions that all user stories depend on
 
-- [ ] T001 [P] Create file service directory structure in frontend/src/services/file/
-- [ ] T002 [P] Create state service directory structure in frontend/src/services/state/
-- [ ] T003 [P] Create type definitions file in frontend/src/types/file.ts with FileState, ValidationError, ValidationResult interfaces
-- [ ] T004 [P] Create integration test directory in frontend/tests/integration/
+- [X] T001 [P] Create file service directory structure in frontend/src/services/file/
+- [X] T002 [P] Create state service directory structure in frontend/src/services/state/
+- [X] T003 [P] Create type definitions file in frontend/src/types/file.ts with FileState, ValidationError, ValidationResult interfaces
+- [X] T004 [P] Create integration test directory in frontend/tests/integration/
 
 **Checkpoint**: Directory structure ready - foundational types defined
 
@@ -39,13 +39,13 @@ description: "Task list for Score File Persistence implementation"
 
 ### Tests (TDD - Write First, Ensure FAIL)
 
-- [ ] T005 [P] Write validation tests in frontend/src/services/file/validation.test.ts (syntax, structure, domain validation)
-- [ ] T006 [P] Write FileStateContext tests in frontend/src/services/state/FileStateContext.test.tsx (state updates, transitions)
+- [X] T005 [P] Write validation tests in frontend/src/services/file/validation.test.ts (syntax, structure, domain validation)
+- [X] T006 [P] Write FileStateContext tests in frontend/src/services/state/FileStateContext.test.tsx (state updates, transitions)
 
 ### Implementation
 
-- [ ] T007 Implement JSON validation layers in frontend/src/services/file/validation.ts (validateScoreFile function with 3-layer validation)
-- [ ] T008 Implement FileStateContext in frontend/src/services/state/FileStateContext.tsx (React Context with setFilePath, setModified, resetFileState actions)
+- [X] T007 Implement JSON validation layers in frontend/src/services/file/validation.ts (validateScoreFile function with 3-layer validation)
+- [X] T008 Implement FileStateContext in frontend/src/services/state/FileStateContext.tsx (React Context with setFilePath, setModified, resetFileState actions)
 
 **Checkpoint**: Foundation complete - validation and state management working - user stories can now proceed in parallel
 
@@ -59,15 +59,15 @@ description: "Task list for Score File Persistence implementation"
 
 ### Tests for User Story 1 (TDD - Write First, Ensure FAIL)
 
-- [ ] T009 [P] [US1] Write FileService save tests in frontend/src/services/file/FileService.test.ts (saveScore creates Blob, triggers download, updates file state)
-- [ ] T010 [P] [US1] Write integration test for save flow in frontend/tests/integration/file-persistence.test.tsx (full save cycle with UI interaction)
+- [X] T009 [P] [US1] Write FileService save tests in frontend/src/services/file/FileService.test.ts (saveScore creates Blob, triggers download, updates file state)
+- [X] T010 [P] [US1] Write integration test for save flow in frontend/tests/integration/file-persistence.test.tsx (full save cycle with UI interaction)
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement saveScore function in frontend/src/services/file/FileService.ts (JSON.stringify with pretty-print, Blob creation, download trigger)
-- [ ] T012 [US1] Add Save button to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (calls FileService.saveScore, updates FileState)
-- [ ] T013 [US1] Implement file state update on score edits in frontend/src/components/ScoreViewer.tsx (set isModified=true when notes/tempo/etc. change)
-- [ ] T014 [US1] Add success notification on save completion in frontend/src/components/ScoreViewer.tsx (toast/alert showing "Score saved successfully")
+- [X] T011 [US1] Implement saveScore function in frontend/src/services/file/FileService.ts (JSON.stringify with pretty-print, Blob creation, download trigger)
+- [X] T012 [US1] Add Save button to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (calls FileService.saveScore, updates FileState)
+- [X] T013 [US1] Implement file state update on score edits in frontend/src/components/ScoreViewer.tsx (set isModified=true when notes/tempo/etc. change)
+- [X] T014 [US1] Add success notification on save completion in frontend/src/components/ScoreViewer.tsx (toast/alert showing "Score saved successfully")
 
 **Checkpoint**: User Story 1 complete - users can save scores and file persists with 100% fidelity (verify SC-001, SC-002, SC-004, SC-005)
 
@@ -81,17 +81,17 @@ description: "Task list for Score File Persistence implementation"
 
 ### Tests for User Story 2 (TDD - Write First, Ensure FAIL)
 
-- [ ] T015 [P] [US2] Write FileService load tests in frontend/src/services/file/FileService.test.ts (loadScore parses JSON, validates, updates state, handles errors)
-- [ ] T016 [P] [US2] Write integration test for load flow in frontend/tests/integration/file-persistence.test.tsx (file selection, validation, score rendering)
-- [ ] T017 [P] [US2] Write integration test for unsaved changes warning in frontend/tests/integration/file-persistence.test.tsx (warning displays, cancel preserves work, continue loads file)
+- [X] T015 [P] [US2] Write FileService load tests in frontend/src/services/file/FileService.test.ts (loadScore parses JSON, validates, updates state, handles errors)
+- [X] T016 [P] [US2] Write integration test for load flow in frontend/tests/integration/file-persistence.test.tsx (file selection, validation, score rendering)
+- [X] T017 [P] [US2] Write integration test for unsaved changes warning in frontend/tests/integration/file-persistence.test.tsx (warning displays, cancel preserves work, continue loads file)
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Implement loadScore function in frontend/src/services/file/FileService.ts (FileReader API, JSON.parse, validation call, state update)
-- [ ] T019 [US2] Add Load button with file input to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (file picker dialog, calls FileService.loadScore)
-- [ ] T020 [US2] Implement unsaved changes warning dialog in frontend/src/components/ScoreViewer.tsx (checks isModified, shows confirmation before load)
-- [ ] T021 [US2] Add error display for invalid files in frontend/src/components/ScoreViewer.tsx (show validation errors from ValidationResult)
-- [ ] T022 [US2] Add success notification on load completion in frontend/src/components/ScoreViewer.tsx (toast/alert showing "Score loaded successfully")
+- [X] T018 [US2] Implement loadScore function in frontend/src/services/file/FileService.ts (FileReader API, JSON.parse, validation call, state update)
+- [X] T019 [US2] Add Load button with file input to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (file picker dialog, calls FileService.loadScore)
+- [X] T020 [US2] Implement unsaved changes warning dialog in frontend/src/components/ScoreViewer.tsx (checks isModified, shows confirmation before load)
+- [X] T021 [US2] Add error display for invalid files in frontend/src/components/ScoreViewer.tsx (show validation errors from ValidationResult)
+- [X] T022 [US2] Add success notification on load completion in frontend/src/components/ScoreViewer.tsx (toast/alert showing "Score loaded successfully")
 
 **Checkpoint**: User Story 2 complete - users can load scores with validation and warnings (verify SC-001, SC-003, SC-006, SC-007, SC-008)
 
@@ -105,15 +105,15 @@ description: "Task list for Score File Persistence implementation"
 
 ### Tests for User Story 3 (TDD - Write First, Ensure FAIL)
 
-- [ ] T023 [P] [US3] Write FileService new score tests in frontend/src/services/file/FileService.test.ts (createNewScore resets state, creates default score)
-- [ ] T024 [P] [US3] Write integration test for new score flow in frontend/tests/integration/file-persistence.test.tsx (button click, warning dialog, empty score creation)
+- [X] T023 [P] [US3] Write FileService new score tests in frontend/src/services/file/FileService.test.ts (createNewScore resets state, creates default score)
+- [X] T024 [P] [US3] Write integration test for new score flow in frontend/tests/integration/file-persistence.test.tsx (button click, warning dialog, empty score creation)
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Implement createNewScore function in frontend/src/services/file/FileService.ts (calls FileStateContext.resetFileState, returns default Score object)
-- [ ] T026 [US3] Add New Score button to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (calls FileService.createNewScore)
-- [ ] T027 [US3] Implement unsaved changes warning dialog for new score in frontend/src/components/ScoreViewer.tsx (checks isModified, shows confirmation before creating new)
-- [ ] T028 [US3] Update UI to render new empty score in frontend/src/components/ScoreViewer.tsx (clear instruments, reset to default tempo/time signature)
+- [X] T025 [US3] Implement createNewScore function in frontend/src/services/file/FileService.ts (calls FileStateContext.resetFileState, returns default Score object)
+- [X] T026 [US3] Add New Score button to ScoreViewer component in frontend/src/components/ScoreViewer.tsx (calls FileService.createNewScore)
+- [X] T027 [US3] Implement unsaved changes warning dialog for new score in frontend/src/components/ScoreViewer.tsx (checks isModified, shows confirmation before creating new)
+- [X] T028 [US3] Update UI to render new empty score in frontend/src/components/ScoreViewer.tsx (clear instruments, reset to default tempo/time signature)
 
 **Checkpoint**: User Story 3 complete - users can create new scores safely (verify SC-008, FR-008)
 
@@ -123,14 +123,14 @@ description: "Task list for Score File Persistence implementation"
 
 **Purpose**: Integration testing, documentation, and validation across all user stories
 
-- [ ] T029 [P] Add comprehensive integration test for full workflow in frontend/tests/integration/file-persistence.test.tsx (create score → save → modify → unsaved warning → load → new)
-- [ ] T030 [P] Add round-trip fidelity test in frontend/tests/integration/file-persistence.test.tsx (save → load → compare all fields, verify SC-001)
-- [ ] T031 [P] Add performance tests in frontend/tests/integration/file-persistence.test.tsx (large score save/load timing, verify SC-002, SC-003)
-- [ ] T032 [P] Update ScoreViewer component with keyboard shortcuts in frontend/src/components/ScoreViewer.tsx (Ctrl+S for save, Ctrl+O for load, Ctrl+N for new)
-- [ ] T033 [P] Add beforeunload warning in frontend/src/components/ScoreViewer.tsx (warn if isModified=true on browser close/navigate)
+- [X] T029 [P] Add comprehensive integration test for full workflow in frontend/tests/integration/file-persistence.test.tsx (create score → save → modify → unsaved warning → load → new)
+- [X] T030 [P] Add round-trip fidelity test in frontend/tests/integration/file-persistence.test.tsx (save → load → compare all fields, verify SC-001)
+- [X] T031 [P] Add performance tests in frontend/tests/integration/file-persistence.test.tsx (large score save/load timing, verify SC-002, SC-003)
+- [X] T032 [P] Update ScoreViewer component with keyboard shortcuts in frontend/src/components/ScoreViewer.tsx (Ctrl+S for save, Ctrl+O for load, Ctrl+N for new)
+- [X] T033 [P] Add beforeunload warning in frontend/src/components/ScoreViewer.tsx (warn if isModified=true on browser close/navigate)
 - [ ] T034 Run manual test suite from quickstart.md (all 5 test suites, cross-browser validation)
-- [ ] T035 Update documentation with save/load features in README.md or docs/
-- [ ] T036 Code cleanup and refactoring across file service and components
+- [X] T035 Update documentation with save/load features in README.md or docs/
+- [X] T036 Code cleanup and refactoring across file service and components
 - [ ] T037 Performance profiling with large scores (100 measures, 10 instruments)
 
 **Checkpoint**: Feature complete - all user stories integrated, tested, and documented

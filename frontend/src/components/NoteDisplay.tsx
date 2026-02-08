@@ -9,9 +9,15 @@ interface NoteDisplayProps {
   voiceId: string;
   staffId: string;
   instrumentId: string;
-  scoreId: string;
-  onUpdate: () => void;
+  scoreId: string | undefined;
+  onUpdate: (scoreId?: string) => void;
+  onScoreCreated?: (scoreId: string) => void;
+  onSync?: () => Promise<string>; // Sync local score to backend
   clef: string;
+  // Indices for mapping to backend IDs after sync (order is preserved)
+  instrumentIndex: number;
+  staffIndex: number;
+  voiceIndex: number;
 }
 
 /**
@@ -33,6 +39,7 @@ interface NoteDisplayProps {
  *   instrumentId={instrument.id}
  *   scoreId={score.id}
  *   onUpdate={() => reloadScore()}
+ *   onScoreCreated={(id) => setScoreId(id)}
  * />
  * ```
  */
@@ -43,7 +50,12 @@ export function NoteDisplay({
   instrumentId, 
   scoreId, 
   onUpdate,
-  clef 
+  onScoreCreated,
+  onSync,
+  clef,
+  instrumentIndex,
+  staffIndex,
+  voiceIndex
 }: NoteDisplayProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -79,9 +91,6 @@ export function NoteDisplay({
     return `${measure}:${beat}:${subTick.toString().padStart(3, "0")}`;
   };
 
-  /**
-   * Add a note to the voice
-   */
   const addNote = async () => {
     const tickNum = parseInt(tick);
     const durationNum = parseInt(duration);
@@ -104,12 +113,52 @@ export function NoteDisplay({
     setLoading(true);
     setError(null);
     try {
-      await apiClient.addNote(scoreId, instrumentId, staffId, voiceId, {
+      // If this is a local score (no scoreId), sync it to backend first
+      let currentScoreId = scoreId;
+      let targetInstrumentId = instrumentId;
+      let targetStaffId = staffId;
+      let targetVoiceId = voiceId;
+      
+      if (!currentScoreId && onSync) {
+        currentScoreId = await onSync();
+        onScoreCreated?.(currentScoreId);
+        
+        // After sync, fetch the score to get correct backend IDs
+        // Match by position/index since sync preserves order
+        const updatedScore = await apiClient.getScore(currentScoreId);
+        
+        const targetInstrument = updatedScore.instruments[instrumentIndex];
+        if (!targetInstrument) {
+          setError("Could not find instrument after sync");
+          return;
+        }
+        targetInstrumentId = targetInstrument.id;
+        
+        const targetStaff = targetInstrument.staves[staffIndex];
+        if (!targetStaff) {
+          setError("Could not find staff after sync");
+          return;
+        }
+        targetStaffId = targetStaff.id;
+        
+        const targetVoice = targetStaff.voices[voiceIndex];
+        if (!targetVoice) {
+          setError("Could not find voice after sync");
+          return;
+        }
+        targetVoiceId = targetVoice.id;
+      } else if (!currentScoreId) {
+        setError("Cannot add notes: score not loaded");
+        return;
+      }
+      
+      await apiClient.addNote(currentScoreId, targetInstrumentId, targetStaffId, targetVoiceId, {
         start_tick: tickNum,
         duration_ticks: durationNum,
         pitch: pitchNum,
       });
-      onUpdate();
+      
+      onUpdate(currentScoreId);
       setShowAddForm(false);
       // Reset to next position
       setTick((tickNum + durationNum).toString());
