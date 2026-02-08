@@ -9,11 +9,29 @@ serde_json = "1.0"
 thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
+# XML parsing for MusicXML import
+quick-xml = "0.31"
+
+# ZIP compression for .mxl files
+zip = "0.6"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
 # Web framework
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "cors"] }
 
 [dev-dependencies]
 http-body-util = "0.1"
+tempfile = "3.8"
+
+[[bin]]
+name = "musicore-import"
+path = "src/bin/musicore-import.rs"

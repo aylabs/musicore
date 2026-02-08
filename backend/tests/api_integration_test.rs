@@ -674,3 +674,156 @@ async fn test_polyphonic_chord_10_notes() {
                 "Note pitch {} should be in expected pitches", note["pitch"]);
     }
 }
+
+// ===== MusicXML Import Endpoint Tests =====
+
+/// T056: Test POST /api/v1/scores/import-musicxml with multipart form-data
+///
+/// Verifies the import endpoint accepts a MusicXML file via multipart upload
+/// and returns a valid ImportResult with score, metadata, and statistics.
+#[tokio::test]
+async fn test_import_musicxml_success() {
+    let app = setup_app().await;
+
+    // Read test fixture
+    let test_file_path = "../tests/fixtures/musicxml/simple_melody.musicxml";
+    let file_content = std::fs::read_to_string(test_file_path)
+        .expect("Failed to read test fixture");
+
+    // Create multipart form body
+    let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+    let multipart_body = format!(
+        "--{}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"simple_melody.musicxml\"\r\nContent-Type: application/xml\r\n\r\n{}\r\n--{}--\r\n",
+        boundary, file_content, boundary
+    );
+
+    // Create request
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/v1/scores/import-musicxml")
+        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .body(Body::from(multipart_body))
+        .unwrap();
+
+    // Make request
+    let response = app.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&body).unwrap();
+
+    // Verify 200 OK
+    assert_eq!(status, StatusCode::OK, "Expected 200 OK, got {}: {:?}", status, json);
+
+    // Verify ImportResult structure
+    assert!(json.get("score").is_some(), "Response should contain 'score' field");
+    assert!(json.get("metadata").is_some(), "Response should contain 'metadata' field");
+    assert!(json.get("statistics").is_some(), "Response should contain 'statistics' field");
+    assert!(json.get("warnings").is_some(), "Response should contain 'warnings' field");
+
+    // Verify score structure
+    let score = &json["score"];
+    assert!(score["id"].is_string(), "Score should have id");
+    assert!(score["instruments"].is_array(), "Score should have instruments array");
+    assert!(score["global_structural_events"].is_array(), "Score should have global_structural_events");
+
+    // Verify metadata
+    let metadata = &json["metadata"];
+    assert!(metadata["format"].as_str().unwrap().starts_with("MusicXML"), "Format should start with MusicXML");
+    // Note: file_name may be null depending on multipart parsing
+    if let Some(file_name) = metadata["file_name"].as_str() {
+        assert!(file_name.ends_with(".musicxml"), "File name should end with .musicxml");
+    }
+
+    // Verify statistics (simple_melody has 8 notes)
+    let statistics = &json["statistics"];
+    assert_eq!(statistics["instrument_count"].as_i64().unwrap(), 1, "Should have 1 instrument");
+    assert_eq!(statistics["staff_count"].as_i64().unwrap(), 1, "Should have 1 staff");
+    assert_eq!(statistics["note_count"].as_i64().unwrap(), 8, "Should have 8 notes");
+
+    // Verify warnings array
+    let warnings = &json["warnings"];
+    assert!(warnings.is_array(), "Warnings should be an array");
+
+    // Remove debug print
+}
+
+/// Test import with missing file field
+#[tokio::test]
+async fn test_import_musicxml_missing_file() {
+    let app = setup_app().await;
+
+    // Create empty multipart form body (no file field)
+    let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+    let multipart_body = format!("--{}--\r\n", boundary);
+
+    // Create request
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/v1/scores/import-musicxml")
+        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .body(Body::from(multipart_body))
+        .unwrap();
+
+    // Make request
+    let response = app.oneshot(request).await.unwrap();
+    let status = response.status();
+
+    // Should return 400 Bad Request for missing file
+    assert_eq!(status, StatusCode::BAD_REQUEST, "Expected 400 for missing file");
+}
+
+/// Test import with compressed .mxl file (if supported)
+#[tokio::test]
+async fn test_import_musicxml_compressed_mxl() {
+    let app = setup_app().await;
+
+    // Read compressed test fixture
+    let test_file_path = "../tests/fixtures/musicxml/simple_melody.mxl";
+    
+    // Skip test if .mxl fixture doesn't exist
+    if !std::path::Path::new(test_file_path).exists() {
+        println!("Skipping .mxl test - fixture not found");
+        return;
+    }
+
+    let file_content = std::fs::read(test_file_path)
+        .expect("Failed to read .mxl test fixture");
+
+    // Create multipart form body with binary content
+    let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+    let mut multipart_body = Vec::new();
+    multipart_body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+    multipart_body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"; filename=\"simple_melody.mxl\"\r\n");
+    multipart_body.extend_from_slice(b"Content-Type: application/vnd.recordare.musicxml\r\n\r\n");
+    multipart_body.extend_from_slice(&file_content);
+    multipart_body.extend_from_slice(format!("\r\n--{}--\r\n", boundary).as_bytes());
+
+    // Create request
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/v1/scores/import-musicxml")
+        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .body(Body::from(multipart_body))
+        .unwrap();
+
+    // Make request
+    let response = app.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    
+    if status != StatusCode::OK {
+        let error_json: Value = serde_json::from_slice(&body).unwrap_or(json!({}));
+        panic!("Expected 200 OK for .mxl import, got {}: {:?}", status, error_json);
+    }
+
+    let json: Value = serde_json::from_slice(&body).unwrap();
+
+    // Verify ImportResult structure
+    assert!(json.get("score").is_some(), "Response should contain score");
+    assert!(json.get("statistics").is_some(), "Response should contain statistics");
+    
+    // Verify it's the same content as uncompressed version
+    let statistics = &json["statistics"];
+    assert_eq!(statistics["note_count"].as_i64().unwrap(), 8, "Should have 8 notes from compressed file");
+}
+
