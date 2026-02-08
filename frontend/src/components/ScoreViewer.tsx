@@ -541,7 +541,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
           {/* Feature 006: MusicXML Import */}
           <ImportButton
             onImportComplete={handleMusicXMLImport}
-            buttonText="Import MusicXML"
+            buttonText="Import"
             baseUrl="http://localhost:8080"
           />
           <input
