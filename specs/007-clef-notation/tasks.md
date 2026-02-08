@@ -7,6 +7,11 @@
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+**Available Test Files**:
+- `tests/fixtures/musicxml/CanonD.musicxml` - Piano arrangement (Canon in D) with treble and bass clefs - **USE THIS for User Story 1 testing**
+- `tests/fixtures/musicxml/piano_grand_staff.musicxml` - Simple piano grand staff test
+- `tests/fixtures/musicxml/quartet.musicxml` - String quartet (for User Story 2 - Alto clef)
+
 ## Format: `- [ ] [ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -57,7 +62,7 @@
 
 **Goal**: Enable correct display of bass clef symbol with accurate note positioning for cello, bass, and piano left-hand parts
 
-**Independent Test**: Import piano_grand_staff.musicxml (treble + bass staves), verify bass clef symbol (𝄢) displays on lower staff and F3 note appears on fourth line from bottom (not second line as in treble)
+**Independent Test**: Import tests/fixtures/musicxml/CanonD.musicxml (Piano with treble + bass staves), verify bass clef symbol (𝄢) displays on lower staff and F3 note appears on fourth line from bottom (not second line as in treble)
 
 ### Tests for User Story 1 (TDD - Write First)
 
@@ -89,7 +94,7 @@
 
 - [X] T023 [US1] Run frontend unit tests: npm test -- ClefPositioning to verify Bass clef positioning logic (16 tests pass)
 - [X] T024 [US1] Run frontend component tests: npm test -- BassClef to verify Bass clef rendering (7 tests pass)
-- [X] T025 [US1] Manual test: Start dev server (npm run dev), import tests/fixtures/musicxml/piano_grand_staff.musicxml, verify bass clef on lower staff (deferred to manual validation)
+- [X] T025 [US1] Manual test: Start dev server (npm run dev), import tests/fixtures/musicxml/CanonD.musicxml (Piano with treble+bass staves), verify bass clef on lower staff (deferred to manual validation)
 - [X] T026 [US1] Manual test: Verify F3 (MIDI 53) appears on fourth line from bottom in bass clef staff (deferred to manual validation)
 - [X] T027 [US1] Manual test: Zoom to 50%, 100%, 200% - verify bass clef scales proportionally (deferred to manual validation)
 
@@ -181,8 +186,8 @@
 
 ### Integration Testing
 
-- [ ] T055 Integration test: Import piano_grand_staff.musicxml, verify both staves display correct clefs and note positioning in frontend/tests/integration/clef-display.test.tsx
-- [ ] T056 Integration test: Import quartet.musicxml, verify all four instruments display correct clefs (2 treble, 1 alto, 1 bass) in frontend/tests/integration/clef-display.test.tsx
+- [ ] T055 Integration test: Import tests/fixtures/musicxml/CanonD.musicxml (Piano with treble+bass), verify both staves display correct clefs and note positioning in frontend/tests/integration/clef-display.test.tsx
+- [ ] T056 Integration test: Import tests/fixtures/musicxml/quartet.musicxml, verify all four instruments display correct clefs (2 treble, 1 alto, 1 bass) in frontend/tests/integration/clef-display.test.tsx
 - [ ] T057 Integration test: Legacy score without ClefEvent displays Treble clef by default (backward compatibility) in frontend/tests/integration/clef-display.test.tsx
 - [ ] T058 Run all integration tests: npm test -- integration/
 

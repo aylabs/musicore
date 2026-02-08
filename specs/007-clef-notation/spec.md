@@ -31,6 +31,7 @@ When a user imports or views a score containing bass instruments (cello, double 
 **Acceptance Scenarios**:
 
 1. **Given** a piano score imported with left-hand bass notes (C3-F3 range), **When** the user views the score, **Then** the bass clef symbol (𝄢) appears at the start of the bass staff line and notes are positioned correctly on the bass clef staff (F3 on fourth line, C3 in third space)
+   - *Test file*: `tests/fixtures/musicxml/CanonD.musicxml` (Piano arrangement with treble and bass staves)
 2. **Given** a cello part with notes in the bass range (C2-C4), **When** the user views the part, **Then** the bass clef symbol appears and notes below middle C are easily readable without excessive ledger lines
 3. **Given** a multi-staff score with both treble and bass instruments, **When** viewing the score, **Then** each staff displays its appropriate clef (treble for violin, bass for cello)
 

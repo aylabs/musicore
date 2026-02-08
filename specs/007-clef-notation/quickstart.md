@@ -219,8 +219,9 @@ npm test -- StaffNotation
    ```
 
 2. Import test files:
-   - `tests/fixtures/musicxml/piano_grand_staff.musicxml` (Treble + Bass)
-   - `tests/fixtures/musicxml/quartet.musicxml` (Treble + Alto + Bass)
+   - `tests/fixtures/musicxml/CanonD.musicxml` - Piano piece (Canon in D) with treble and bass clefs
+   - `tests/fixtures/musicxml/piano_grand_staff.musicxml` - Simple piano grand staff
+   - `tests/fixtures/musicxml/quartet.musicxml` - String quartet (Treble + Alto + Bass) - for User Story 2
 
 3. Verify in UI:
    - Right clef symbols displayed
