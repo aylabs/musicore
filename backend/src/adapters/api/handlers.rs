@@ -11,8 +11,10 @@ use crate::domain::{
     errors::{DomainError, PersistenceError},
     events::{
         clef::ClefEvent,
+        global::GlobalStructuralEvent,
         key_signature::KeySignatureEvent,
         note::Note,
+        staff::StaffStructuralEvent,
         tempo::TempoEvent,
         time_signature::TimeSignatureEvent,
     },
@@ -38,6 +40,75 @@ pub struct CreateScoreRequest {
 #[derive(Debug, Serialize)]
 pub struct ScoreListResponse {
     pub scores: Vec<String>, // UUIDs as strings
+}
+
+// ===== Response DTOs with computed fields (Feature 007) =====
+
+/// DTO for Staff with active_clef field derived from first ClefEvent
+#[derive(Debug, Serialize)]
+pub struct StaffDto {
+    pub id: String,
+    pub active_clef: Clef,  // NEW: Derived from first ClefEvent
+    pub staff_structural_events: Vec<StaffStructuralEvent>,
+    pub voices: Vec<Voice>,
+}
+
+impl From<&Staff> for StaffDto {
+    fn from(staff: &Staff) -> Self {
+        // Find first ClefEvent in staff_structural_events, default to Treble
+        let active_clef = staff.staff_structural_events
+            .iter()
+            .find_map(|event| match event {
+                StaffStructuralEvent::Clef(clef_event) => Some(clef_event.clef),
+                _ => None,
+            })
+            .unwrap_or(Clef::Treble);
+        
+        Self {
+            id: staff.id.to_string(),
+            active_clef,
+            staff_structural_events: staff.staff_structural_events.clone(),
+            voices: staff.voices.clone(),
+        }
+    }
+}
+
+/// DTO for Instrument containing StaffDtos
+#[derive(Debug, Serialize)]
+pub struct InstrumentDto {
+    pub id: String,
+    pub name: String,
+    pub instrument_type: String,
+    pub staves: Vec<StaffDto>,
+}
+
+impl From<&Instrument> for InstrumentDto {
+    fn from(instrument: &Instrument) -> Self {
+        Self {
+            id: instrument.id.to_string(),
+            name: instrument.name.clone(),
+            instrument_type: instrument.instrument_type.clone(),
+            staves: instrument.staves.iter().map(StaffDto::from).collect(),
+        }
+    }
+}
+
+/// DTO for Score containing InstrumentDtos
+#[derive(Debug, Serialize)]
+pub struct ScoreDto {
+    pub id: String,
+    pub global_structural_events: Vec<GlobalStructuralEvent>,
+    pub instruments: Vec<InstrumentDto>,
+}
+
+impl From<&Score> for ScoreDto {
+    fn from(score: &Score) -> Self {
+        Self {
+            id: score.id.to_string(),
+            global_structural_events: score.global_structural_events.clone(),
+            instruments: score.instruments.iter().map(InstrumentDto::from).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,7 +183,10 @@ pub async fn get_score(
     let score = repo.find_by_id(id)?
         .ok_or_else(|| PersistenceError::NotFound(format!("Score {} not found", score_id)))?;
     
-    Ok(Json(score))
+    // Convert to DTO with active_clef field (Feature 007)
+    let score_dto = ScoreDto::from(&score);
+    
+    Ok(Json(score_dto))
 }
 
 /// DELETE /scores/{score_id} - Delete score
