@@ -324,7 +324,7 @@ export const NotationLayoutEngine = {
       : 3840; // Default 4/4 time
     const barlineNoteSpacing = config.minNoteSpacing * 1.5;
     
-    const positioned: NotePosition[] = sortedNotes.map((note) => {
+    const positioned: NotePosition[] = sortedNotes.map((note, index) => {
       // Convert pitch to staff position
       const staffPosition = this.midiPitchToStaffPosition(note.pitch, clef);
       
@@ -346,21 +346,29 @@ export const NotationLayoutEngine = {
       const tickGap = note.start_tick - previousTick;
       const proportionalSpacing = tickGap * config.pixelsPerTick;
       
-      // For very short tick gaps (< 240), proportional spacing may be too tight
-      // Calculate minimum pixel width needed for the current note to render properly
-      let gap = standardGap;
-      if (tickGap > 0 && tickGap < PPQ / 4) {
-        // Short tick gap - need more visual space relative to time
-        // Minimum space = previous glyph + adequate gap + space for current glyph to start
-        const minRequiredSpacing = prevGlyphWidth + config.minNoteSpacing + (currGlyphWidth * 0.3);
-        // If proportional spacing is insufficient, enforce minimum
-        if (proportionalSpacing < minRequiredSpacing) {
-          gap = minRequiredSpacing - prevGlyphWidth;
+      // CHORD NOTATION: Notes at the same tick should be vertically stacked (same x position)
+      let x: number;
+      if (index > 0 && tickGap === 0) {
+        // Same tick as previous note - use same x position (vertical stack for chords)
+        x = previousX;
+      } else {
+        // First note or different tick - apply collision detection
+        // For very short tick gaps (< 240), proportional spacing may be too tight
+        // Calculate minimum pixel width needed for the current note to render properly
+        let gap = standardGap;
+        if (tickGap > 0 && tickGap < PPQ / 4) {
+          // Short tick gap - need more visual space relative to time
+          // Minimum space = previous glyph + adequate gap + space for current glyph to start
+          const minRequiredSpacing = prevGlyphWidth + config.minNoteSpacing + (currGlyphWidth * 0.3);
+          // If proportional spacing is insufficient, enforce minimum
+          if (proportionalSpacing < minRequiredSpacing) {
+            gap = minRequiredSpacing - prevGlyphWidth;
+          }
         }
+        
+        const minimumX = previousX + prevGlyphWidth + gap;
+        x = Math.max(proportionalX, minimumX);
       }
-      
-      const minimumX = previousX + prevGlyphWidth + gap;
-      const x = Math.max(proportionalX, minimumX);
       
       previousX = x;
       previousDuration = note.duration_ticks;

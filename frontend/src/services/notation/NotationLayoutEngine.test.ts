@@ -419,8 +419,8 @@ describe('NotationLayoutEngine', () => {
 
     it('should not generate ledger lines for notes within staff range', () => {
       const notes = [
-        { id: '1', x: 100, y: 100, staffPosition: 0, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 71, start_tick: 0, duration_ticks: 960 },
-        { id: '2', x: 200, y: 90, staffPosition: 2, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 74, start_tick: 960, duration_ticks: 960 },
+        { id: '1', x: 100, y: 100, staffPosition: 0, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 71, start_tick: 0, duration_ticks: 960 },
+        { id: '2', x: 200, y: 90, staffPosition: 2, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 74, start_tick: 960, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -434,7 +434,7 @@ describe('NotationLayoutEngine', () => {
       const y = centerY + 3 * config.staffSpace; // staffPosition -6
 
       const notes = [
-        { id: '1', x: 100, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 60, start_tick: 0, duration_ticks: 960 },
+        { id: '1', x: 100, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 60, start_tick: 0, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -449,7 +449,7 @@ describe('NotationLayoutEngine', () => {
       const y = centerY - 4 * config.staffSpace; // staffPosition 8
 
       const notes = [
-        { id: '1', x: 100, y, staffPosition: 8, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 81, start_tick: 0, duration_ticks: 960 },
+        { id: '1', x: 100, y, staffPosition: 8, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 81, start_tick: 0, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -462,7 +462,7 @@ describe('NotationLayoutEngine', () => {
       const y = centerY + 2.5 * config.staffSpace;
 
       const notes = [
-        { id: '1', x: 100, y, staffPosition: -5, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 61, start_tick: 0, duration_ticks: 960 },
+        { id: '1', x: 100, y, staffPosition: -5, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 61, start_tick: 0, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -474,7 +474,7 @@ describe('NotationLayoutEngine', () => {
       const y = centerY + 3 * config.staffSpace;
 
       const notes = [
-        { id: '1', x: 100, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 60, start_tick: 0, duration_ticks: 960 },
+        { id: '1', x: 100, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 60, start_tick: 0, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -491,7 +491,7 @@ describe('NotationLayoutEngine', () => {
       const noteX = 150;
 
       const notes = [
-        { id: '1', x: noteX, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 60, start_tick: 0, duration_ticks: 960 },
+        { id: '1', x: noteX, y, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 60, start_tick: 0, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -507,8 +507,8 @@ describe('NotationLayoutEngine', () => {
       const centerY = config.viewportHeight / 2;
 
       const notes = [
-        { id: '1', x: 100, y: centerY + 3 * config.staffSpace, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 60, start_tick: 0, duration_ticks: 960 },
-        { id: '2', x: 200, y: centerY - 4 * config.staffSpace, staffPosition: 8, glyphCodepoint: '\uE0A4', fontSize: 40, pitch: 81, start_tick: 960, duration_ticks: 960 },
+        { id: '1', x: 100, y: centerY + 3 * config.staffSpace, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 60, start_tick: 0, duration_ticks: 960 },
+        { id: '2', x: 200, y: centerY - 4 * config.staffSpace, staffPosition: 8, glyphCodepoint: '\uE0A4', fontSize: 30, pitch: 81, start_tick: 960, duration_ticks: 960 },
       ];
 
       const ledgerLines = NotationLayoutEngine.calculateLedgerLines(notes, config);
@@ -701,9 +701,9 @@ describe('NotationLayoutEngine', () => {
   describe('calculateVisibleNoteIndices', () => {
     it('should return all notes when viewport covers entire score', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 200, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 300, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '2', x: 200, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '3', x: 300, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
       ];
 
       const config = {
@@ -722,11 +722,11 @@ describe('NotationLayoutEngine', () => {
 
     it('should exclude notes outside visible range', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 1000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '4', x: 1500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '5', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '2', x: 500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '3', x: 1000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '4', x: 1500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '5', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
       ];
 
       const config = {
@@ -749,9 +749,9 @@ describe('NotationLayoutEngine', () => {
 
     it('should handle scrolled to end of score', () => {
       const notePositions = [
-        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '2', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
-        { id: '3', x: 2500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 40 },
+        { id: '1', x: 100, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '2', x: 2000, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
+        { id: '3', x: 2500, y: 130, pitch: 60, start_tick: 0, duration_ticks: 960, staffPosition: -6, glyphCodepoint: '\uE0A4', fontSize: 30 },
       ];
 
       const config = {

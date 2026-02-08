@@ -124,5 +124,5 @@ export const DEFAULT_STAFF_CONFIG: StaffConfig = {
   keySignatureWidthPerAccidental: 15,
   barlineWidth: 2,
   renderBuffer: 200,
-  glyphFontSizeMultiplier: 4.0
+  glyphFontSizeMultiplier: 3.0  // Reduced from 4.0 to prevent overlap in vertical stacks
 };
