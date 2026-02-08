@@ -198,17 +198,17 @@
 
 ### Multi-Instrument Logic
 
-- [ ] T090 Write unit test: MusicXMLDocument with 4 parts → Score with 4 Instruments in backend/src/domain/importers/musicxml/converter.rs
-- [ ] T091 [US3] Modify MusicXMLConverter::convert() to iterate over all parts and create multiple Instruments in backend/src/domain/importers/musicxml/converter.rs
-- [ ] T092 [US3] Extract part names from <score-part><part-name> in parser and assign to Instrument.name in backend/src/domain/importers/musicxml/parser.rs
-- [ ] T093 [US3] Ensure each instrument gets its own key signature if <key> elements differ per part in backend/src/domain/importers/musicxml/converter.rs
-- [ ] T094 [US3] Ensure each instrument gets its own clef based on <clef> elements in backend/src/domain/importers/musicxml/converter.rs
+- [X] T090 Write unit test: MusicXMLDocument with 4 parts → Score with 4 Instruments in backend/src/domain/importers/musicxml/converter.rs
+- [X] T091 [US3] Modify MusicXMLConverter::convert() to iterate over all parts and create multiple Instruments in backend/src/domain/importers/musicxml/converter.rs
+- [X] T092 [US3] Extract part names from <score-part><part-name> in parser and assign to Instrument.name in backend/src/domain/importers/musicxml/parser.rs
+- [X] T093 [US3] Ensure each instrument gets its own key signature if <key> elements differ per part in backend/src/domain/importers/musicxml/converter.rs
+- [X] T094 [US3] Ensure each instrument gets its own clef based on <clef> elements in backend/src/domain/importers/musicxml/converter.rs
 
 ### Integration Tests for User Story 3
 
-- [ ] T095 Write test: Import quartet.mxl (4 instruments) → verify 4 Instruments with correct names in backend/tests/integration/musicxml_import_test.rs
-- [ ] T096 Write test: Verify each instrument has correct clef (Violin=Treble, Viola=Alto, Cello=Bass) in backend/tests/integration/musicxml_import_test.rs
-- [ ] T097 Write test: Verify instrument-specific key signatures are preserved in backend/tests/integration/musicxml_import_test.rs
+- [X] T095 Write test: Import quartet.mxl (4 instruments) → verify 4 Instruments with correct names in backend/tests/integration/musicxml_import_test.rs
+- [X] T096 Write test: Verify each instrument has correct clef (Violin=Treble, Viola=Alto, Cello=Bass) in backend/tests/integration/musicxml_import_test.rs
+- [X] T097 Write test: Verify instrument-specific key signatures are preserved in backend/tests/integration/musicxml_import_test.rs
 
 **Checkpoint**: User Story 3 complete. Users can import multi-instrument ensemble scores.
 

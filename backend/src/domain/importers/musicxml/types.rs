@@ -1,5 +1,7 @@
 // MusicXML intermediate data structures - feature 006-musicxml-import
 
+use std::collections::HashMap;
+
 /// Raw MusicXML document structure after parsing
 #[derive(Debug, Clone)]
 pub struct MusicXMLDocument {
@@ -14,6 +16,10 @@ pub struct MusicXMLDocument {
 
     /// Default tempo if not specified in parts (defaults to 120 BPM)
     pub default_tempo: f64,
+
+    /// Mapping of part ID to part name (e.g., "P1" -> "Violin")
+    /// Populated during part-list parsing (T092 - User Story 3)
+    pub part_names: HashMap<String, String>,
 }
 
 /// Metadata from <encoding> element
@@ -169,6 +175,7 @@ impl Default for MusicXMLDocument {
             encoding: EncodingMetadata::default(),
             parts: Vec::new(),
             default_tempo: 120.0,
+            part_names: HashMap::new(),
         }
     }
 }

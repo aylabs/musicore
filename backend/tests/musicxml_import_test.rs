@@ -1,7 +1,9 @@
 // Integration tests for MusicXML Import - Feature 006-musicxml-import
 
-use musicore_backend::domain::importers::musicxml::{MusicXMLParser, CompressionHandler};
+use musicore_backend::domain::importers::musicxml::{MusicXMLParser, MusicXMLImporter, CompressionHandler};
+use musicore_backend::ports::importers::IMusicXMLImporter;
 use std::path::Path;
+use std::env;
 
 #[test]
 fn test_parse_simple_melody() {
@@ -198,8 +200,8 @@ fn test_import_piano_grand_staff_structure() {
         "Expected 1 instrument in piano grand staff");
     
     let instrument = &score.instruments[0];
-    assert_eq!(instrument.name, "Instrument P1", 
-        "Expected instrument name 'Instrument P1'");
+    assert_eq!(instrument.name, "Piano", 
+        "Expected instrument name 'Piano' (from part-name in MusicXML)");
     
     // Verify 2 staves
     assert_eq!(instrument.staves.len(), 2, 
@@ -468,4 +470,142 @@ fn test_import_compressed_mxl() {
     
     // Clean up
     std::fs::remove_file(mxl_path).ok();
+}
+
+// ============================================================================
+// User Story 3: Multi-Instrument Support Tests (T095-T097)
+// ============================================================================
+
+#[test]
+fn test_import_quartet_four_instruments() {
+    // T090, T095: Import quartet.musicxml (4 instruments) → verify 4 Instruments with correct names
+    let project_root = std::env::current_dir()
+        .expect("Failed to get current directory")
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    
+    let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
+    
+    let importer = MusicXMLImporter::new();
+    let result = importer.import_file(&fixture_path)
+        .expect("Failed to import quartet.musicxml");
+    
+    let score = result.score;
+    
+    // Verify 4 instruments
+    assert_eq!(score.instruments.len(), 4, 
+        "Expected 4 instruments in quartet (Violin, Viola, Cello, Contrabass)");
+    
+    // Verify instrument names are extracted from <part-name> elements (T092)
+    let expected_names = vec!["Violin", "Viola", "Cello", "Contrabass"];
+    for (i, expected_name) in expected_names.iter().enumerate() {
+        assert_eq!(score.instruments[i].name, *expected_name, 
+            "Instrument {} should be named '{}'", i + 1, expected_name);
+    }
+    
+    // Verify each instrument has 1 staff
+    for (i, instrument) in score.instruments.iter().enumerate() {
+        assert_eq!(instrument.staves.len(), 1, 
+            "Instrument {} should have 1 staff", i + 1);
+    }
+}
+
+#[test]
+fn test_quartet_instrument_clefs() {
+    // T096: Verify each instrument has correct clef (Violin=Treble, Viola=Alto, Cello=Bass, Contrabass=Bass)
+    let project_root = env::current_dir()
+        .expect("Failed to get current directory")
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    
+    let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
+    
+    let importer = MusicXMLImporter::new();
+    let result = importer.import_file(&fixture_path)
+        .expect("Failed to import quartet.musicxml");
+    
+    let score = result.score;
+    
+    use musicore_backend::domain::events::staff::StaffStructuralEvent;
+    use musicore_backend::domain::value_objects::Clef;
+    
+    // Verify instrument-specific clefs
+    let expected_clefs = vec![
+        ("Violin", Clef::Treble),
+        ("Viola", Clef::Alto),
+        ("Cello", Clef::Bass),
+        ("Contrabass", Clef::Bass),
+    ];
+    
+    for (i, (name, expected_clef)) in expected_clefs.iter().enumerate() {
+        let instrument = &score.instruments[i];
+        assert_eq!(instrument.name, *name);
+        
+        let staff = &instrument.staves[0];
+        assert!(!staff.staff_structural_events.is_empty(), 
+            "{} staff should have structural events", name);
+        
+        // Check clef events
+        let clef_events: Vec<_> = staff.staff_structural_events.iter()
+            .filter_map(|e| {
+                if let StaffStructuralEvent::Clef(clef_event) = e {
+                    Some(clef_event.clef)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        assert!(!clef_events.is_empty(), "{} should have clef event", name);
+        assert_eq!(clef_events[0], *expected_clef, 
+            "{} should have {:?} clef", name, expected_clef);
+    }
+}
+
+#[test]
+fn test_quartet_instrument_key_signatures() {
+    // T097: Verify instrument-specific key signatures are preserved
+    let project_root = env::current_dir()
+        .expect("Failed to get current directory")
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    
+    let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
+    
+    let importer = MusicXMLImporter::new();
+    let result = importer.import_file(&fixture_path)
+        .expect("Failed to import quartet.musicxml");
+    
+    let score = result.score;
+    
+    use musicore_backend::domain::events::staff::StaffStructuralEvent;
+    use musicore_backend::domain::value_objects::KeySignature;
+    
+    // Verify all instruments have C Major key signature (fifths=0)
+    // In quartet.musicxml, all parts have <fifths>0</fifths><mode>major</mode>
+    let expected_key = KeySignature::new(0)
+        .expect("Failed to create C Major key signature");
+    
+    for instrument in &score.instruments {
+        let staff = &instrument.staves[0];
+        
+        // Check key signature events
+        let key_events: Vec<_> = staff.staff_structural_events.iter()
+            .filter_map(|e| {
+                if let StaffStructuralEvent::KeySignature(key_event) = e {
+                    Some(key_event.key)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        assert!(!key_events.is_empty(), 
+            "{} should have key signature event", instrument.name);
+        assert_eq!(key_events[0], expected_key, 
+            "{} should have C Major key signature", instrument.name);
+    }
 }
