@@ -6,8 +6,10 @@ import "./InstrumentList.css";
 
 interface InstrumentListProps {
   instruments: Instrument[];
-  scoreId: string;
-  onUpdate: () => void;
+  scoreId: string | undefined;
+  onUpdate: (scoreId?: string) => void;
+  onScoreCreated?: (scoreId: string) => void;
+  onSync?: () => Promise<string>; // Sync local score to backend
 }
 
 /**
@@ -26,24 +28,25 @@ interface InstrumentListProps {
  *   instruments={score.instruments} 
  *   scoreId={score.id}
  *   onUpdate={() => reloadScore()}
+ *   onScoreCreated={(id) => setScoreId(id)}
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentListProps) {
-  const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set());
+export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync }: InstrumentListProps) {
+  const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Toggle instrument expansion
+   * Toggle instrument expansion by index (preserves state across ID changes)
    */
-  const toggleInstrument = (instrumentId: string) => {
+  const toggleInstrument = (instrumentIndex: number) => {
     setExpandedInstruments(prev => {
       const next = new Set(prev);
-      if (next.has(instrumentId)) {
-        next.delete(instrumentId);
+      if (next.has(instrumentIndex)) {
+        next.delete(instrumentIndex);
       } else {
-        next.add(instrumentId);
+        next.add(instrumentIndex);
       }
       return next;
     });
@@ -56,8 +59,37 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
     setLoading(true);
     setError(null);
     try {
-      await apiClient.addStaff(scoreId, instrumentId);
-      onUpdate();
+      // If this is a local score (no scoreId), sync it to backend first
+      let currentScoreId = scoreId;
+      let targetInstrumentId = instrumentId;
+      
+      if (!currentScoreId && onSync) {
+        currentScoreId = await onSync();
+        onScoreCreated?.(currentScoreId);
+        
+        // After sync, fetch score to get correct backend IDs
+        // Match by position since sync preserves order
+        const updatedScore = await apiClient.getScore(currentScoreId);
+        
+        // Find instrument by position in original instruments array
+        const instIndex = instruments.findIndex(i => i.id === instrumentId);
+        const targetInstrument = instIndex >= 0 && updatedScore.instruments[instIndex]
+          ? updatedScore.instruments[instIndex]
+          : updatedScore.instruments[0];
+        
+        if (!targetInstrument) {
+          setError("Could not find instrument after sync");
+          return;
+        }
+        
+        targetInstrumentId = targetInstrument.id;
+      } else if (!currentScoreId) {
+        setError("Cannot add staff: score not loaded");
+        return;
+      }
+      
+      await apiClient.addStaff(currentScoreId, targetInstrumentId);
+      onUpdate(currentScoreId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add staff");
     } finally {
@@ -72,8 +104,52 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
     setLoading(true);
     setError(null);
     try {
-      await apiClient.addVoice(scoreId, instrumentId, staffId);
-      onUpdate();
+      // If this is a local score (no scoreId), sync it to backend first
+      let currentScoreId = scoreId;
+      let targetInstrumentId = instrumentId;
+      let targetStaffId = staffId;
+      
+      if (!currentScoreId && onSync) {
+        currentScoreId = await onSync();
+        onScoreCreated?.(currentScoreId);
+        
+        // After sync, fetch score to get correct backend IDs
+        // Match by position since sync preserves order  
+        const updatedScore = await apiClient.getScore(currentScoreId);
+        
+        // Find instrument by position in original instruments array
+        const instIndex = instruments.findIndex(i => i.id === instrumentId);
+        const originalInstrument = instruments[instIndex];
+        const targetInstrument = instIndex >= 0 && updatedScore.instruments[instIndex]
+          ? updatedScore.instruments[instIndex]
+          : updatedScore.instruments[0];
+        
+        if (!targetInstrument || !originalInstrument) {
+          setError("Could not find instrument after sync");
+          return;
+        }
+        
+        targetInstrumentId = targetInstrument.id;
+        
+        // Find staff by position in original instrument's staves array
+        const staffIdx = originalInstrument.staves.findIndex(s => s.id === staffId);
+        const targetStaff = staffIdx >= 0 && targetInstrument.staves[staffIdx]
+          ? targetInstrument.staves[staffIdx]
+          : targetInstrument.staves[0];
+        
+        if (!targetStaff) {
+          setError("Could not find staff after sync");
+          return;
+        }
+        
+        targetStaffId = targetStaff.id;
+      } else if (!currentScoreId) {
+        setError("Cannot add voice: score not loaded");
+        return;
+      }
+      
+      await apiClient.addVoice(currentScoreId, targetInstrumentId, targetStaffId);
+      onUpdate(currentScoreId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add voice");
     } finally {
@@ -111,20 +187,20 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
     <div className="instrument-list">
       {error && <div className="error">{error}</div>}
       
-      {instruments.map((instrument) => (
+      {instruments.map((instrument, instIdx) => (
         <div key={instrument.id} className="instrument-card">
           <div 
-            className="instrument-header" 
-            onClick={() => toggleInstrument(instrument.id)}
+            className="instrument-header"
+            onClick={() => toggleInstrument(instIdx)}
           >
             <span className="expand-icon">
-              {expandedInstruments.has(instrument.id) ? "▼" : "▶"}
+              {expandedInstruments.has(instIdx) ? "▼" : "▶"}
             </span>
             <h3>{instrument.name}</h3>
             <span className="badge">{instrument.staves.length} staves</span>
           </div>
 
-          {expandedInstruments.has(instrument.id) && (
+          {expandedInstruments.has(instIdx) && (
             <div className="instrument-body">
               {instrument.staves.map((staff, staffIdx) => (
                 <div key={staff.id} className="staff-section">
@@ -150,7 +226,12 @@ export function InstrumentList({ instruments, scoreId, onUpdate }: InstrumentLis
                         instrumentId={instrument.id}
                         scoreId={scoreId}
                         onUpdate={onUpdate}
+                        onScoreCreated={onScoreCreated}
+                        onSync={onSync}
                         clef={getStaffClef(instrument, staffIdx)}
+                        instrumentIndex={instIdx}
+                        staffIndex={staffIdx}
+                        voiceIndex={voiceIdx}
                       />
                     </div>
                   ))}

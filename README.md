@@ -31,6 +31,16 @@ Musicore is a music score editor implementing a hierarchical domain model with p
 - Ledger lines for notes outside staff range
 - Barlines at measure boundaries
 
+✅ **Score File Persistence** (Feature 004)
+- Save scores to JSON files (.musicore.json)
+- Load scores from browser file picker
+- Create new empty scores with default settings
+- Unsaved changes warnings (on load, new score, browser close)
+- 100% data fidelity (round-trip preservation)
+- Keyboard shortcuts: Ctrl+S (save), Ctrl+O (load), Ctrl+N (new)
+- Human-readable JSON format
+- 3-layer validation: syntax, structure, domain rules
+
 ✅ **REST API** (Backend)
 - 13 endpoints for complete score management
 - Axum web framework with Tokio async runtime
@@ -46,7 +56,7 @@ Musicore is a music score editor implementing a hierarchical domain model with p
 - Complete CRUD operations for scores, instruments, and notes
 
 ✅ **Testing**
-- 94 tests passing (76 unit + 18 integration)
+- 223 tests passing (97 file persistence + 126 others)
 - 100% pass rate
 - Test-first development approach
 
@@ -117,6 +127,54 @@ function App() {
 - **Interactive**: Click notes to select (blue highlight)
 - **Virtual Scrolling**: Handles 1000+ notes efficiently
 - **Responsive**: Adapts to container width automatically
+
+### Score File Persistence
+
+Save and load musical scores to/from JSON files using browser File API:
+
+```tsx
+import { ScoreViewer } from './components/ScoreViewer';
+import { FileStateProvider } from './services/state/FileStateContext';
+
+function App() {
+  return (
+    <FileStateProvider>
+      <ScoreViewer />
+    </FileStateProvider>
+  );
+}
+```
+
+**Features:**
+- **Save**: Click "Save" button or press `Ctrl+S` / `⌘S` to download score as `.musicore.json`
+- **Load**: Click "Load" button or press `Ctrl+O` / `⌘O` to open file picker
+- **New Score**: Click "New" button or press `Ctrl+N` / `⌘N` to create empty score
+- **Unsaved Changes**: Automatic warnings when loading/creating with unsaved changes
+- **Browser Warning**: Prevents accidental data loss on page close/navigation
+- **Data Fidelity**: 100% round-trip preservation (all data saved and restored exactly)
+- **Validation**: 3-layer validation (JSON syntax, structure, domain rules)
+
+**File Format:**
+The JSON format matches the API response from `GET /api/v1/scores/:id`:
+```json
+{
+  "id": "uuid-v4-string",
+  "global_structural_events": [
+    { "Tempo": { "tick": 0, "bpm": 120 } },
+    { "TimeSignature": { "tick": 0, "numerator": 4, "denominator": 4 } }
+  ],
+  "instruments": [
+    {
+      "id": "uuid",
+      "name": "Piano",
+      "instrument_type": "piano",
+      "staves": [...]
+    }
+  ]
+}
+```
+
+See [specs/004-save-load-scores/quickstart.md](specs/004-save-load-scores/quickstart.md) for testing guide.
 
 ## Project Structure
 
@@ -254,8 +312,9 @@ npm run lint         # ESLint
 
 ## Implementation Progress
 
-**Overall: 70/93 tasks (75.3%)**
+**Overall: 101/127 tasks (79.5%)**
 
+**Feature 001 - Score Model:**
 - ✅ Phase 1: Setup (7/7)
 - ✅ Phase 2: Foundational (5/5)
 - ✅ Phase 3: User Story 1 MVP (24/24)
@@ -266,6 +325,23 @@ npm run lint         # ESLint
 - ✅ Phase 8: API Layer (20/20)
 - ✅ Phase 9: Frontend Integration (10/10)
 - 🚧 Phase 10: Polish (7/10) - In progress
+
+**Feature 004 - Score File Persistence:**
+- ✅ Phase 1: Setup (4/4)
+- ✅ Phase 2: Foundational (4/4)
+- ✅ Phase 3: US1 - Save (6/6)
+- ✅ Phase 4: US2 - Load (8/8)
+- ✅ Phase 5: US3 - New Score (4/4)
+- 🚧 Phase 6: Polish (5/9) - In progress
+  - ✅ T029: Integration tests (full workflow)
+  - ✅ T030: Round-trip fidelity tests
+  - ✅ T031: Performance tests
+  - ✅ T032: Keyboard shortcuts (Ctrl+S, Ctrl+O, Ctrl+N)
+  - ✅ T033: beforeunload warning
+  - ⏳ T034: Manual testing (requires running app)
+  - ✅ T035: Documentation updates
+  - ⏳ T036: Code cleanup
+  - ⏳ T037: Performance profiling (requires running app)
 
 ## Technology Stack
 
@@ -294,9 +370,15 @@ This project follows five core principles:
 
 - **Backend**: [backend/README.md](backend/README.md)
 - **Frontend**: [frontend/README.md](frontend/README.md)
-- **Specification**: [specs/001-score-model/spec.md](specs/001-score-model/spec.md)
-- **Data Model**: [specs/001-score-model/data-model.md](specs/001-score-model/data-model.md)
-- **API Contracts**: [specs/001-score-model/contracts/score-api.yaml](specs/001-score-model/contracts/score-api.yaml)
+- **Feature 001 - Score Model**:
+  - [specs/001-score-model/spec.md](specs/001-score-model/spec.md) - Specification
+  - [specs/001-score-model/data-model.md](specs/001-score-model/data-model.md) - Domain entities
+  - [specs/001-score-model/contracts/score-api.yaml](specs/001-score-model/contracts/score-api.yaml) - API contracts
+- **Feature 004 - Score File Persistence**:
+  - [specs/004-save-load-scores/spec.md](specs/004-save-load-scores/spec.md) - Specification
+  - [specs/004-save-load-scores/plan.md](specs/004-save-load-scores/plan.md) - Implementation plan
+  - [specs/004-save-load-scores/quickstart.md](specs/004-save-load-scores/quickstart.md) - Testing guide
+  - [specs/004-save-load-scores/contracts/score-file.json](specs/004-save-load-scores/contracts/score-file.json) - File format example
 
 ## Contributing
 

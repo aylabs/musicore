@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { ToneAdapter } from './ToneAdapter';
-import { PlaybackScheduler, secondsToTicks } from './PlaybackScheduler';
+import { PlaybackScheduler, secondsToTicks, ticksToSeconds } from './PlaybackScheduler';
 import type { Note } from '../../types/score';
 import type { PlaybackStatus } from '../../types/playback';
 
@@ -44,6 +44,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   // Refs to track timing information
   const startTimeRef = useRef<number>(0);
   const pausedAtRef = useRef<number>(0);
+  const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
   
   // Get ToneAdapter singleton
   const adapter = ToneAdapter.getInstance();
@@ -65,6 +66,12 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Clear any previous errors
       setError(null);
 
+      // Clear any existing playback end timeout
+      if (playbackEndTimeoutRef.current !== null) {
+        window.clearTimeout(playbackEndTimeoutRef.current);
+        playbackEndTimeoutRef.current = null;
+      }
+
       // Initialize audio context (required for browser autoplay policy)
       // US1 T021: Call ToneAdapter.init()
       await adapter.init();
@@ -74,6 +81,32 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
 
       // US2 T037: Schedule notes for playback
       scheduler.scheduleNotes(notes, tempo, currentTick);
+
+      // Calculate when playback will end and auto-stop
+      if (notes.length > 0) {
+        // Find the last note end time
+        const notesToPlay = notes.filter(note => note.start_tick >= currentTick);
+        if (notesToPlay.length > 0) {
+          const lastNote = notesToPlay.reduce((latest, note) => {
+            const noteEndTick = note.start_tick + note.duration_ticks;
+            const latestEndTick = latest.start_tick + latest.duration_ticks;
+            return noteEndTick > latestEndTick ? note : latest;
+          });
+          
+          const lastNoteEndTick = lastNote.start_tick + lastNote.duration_ticks;
+          const ticksFromCurrent = lastNoteEndTick - currentTick;
+          const playbackDurationSeconds = ticksToSeconds(ticksFromCurrent, tempo);
+          
+          // Add a small buffer (100ms) to ensure the last note completes
+          const timeoutMs = (playbackDurationSeconds + 0.1) * 1000;
+          
+          playbackEndTimeoutRef.current = window.setTimeout(() => {
+            setStatus('stopped');
+            setCurrentTick(0);
+            playbackEndTimeoutRef.current = null;
+          }, timeoutMs);
+        }
+      }
 
       // Transition to playing state
       // US1 T021: Transition status to 'playing'
@@ -109,6 +142,12 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       return; // Only pause if currently playing
     }
 
+    // Clear playback end timeout since we're manually pausing
+    if (playbackEndTimeoutRef.current !== null) {
+      window.clearTimeout(playbackEndTimeoutRef.current);
+      playbackEndTimeoutRef.current = null;
+    }
+
     // Calculate elapsed time since playback started
     const currentTime = adapter.getCurrentTime();
     const elapsedTime = currentTime - startTimeRef.current;
@@ -137,6 +176,12 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const stop = useCallback(() => {
     if (status === 'stopped') {
       return; // Already stopped
+    }
+
+    // Clear playback end timeout since we're manually stopping
+    if (playbackEndTimeoutRef.current !== null) {
+      window.clearTimeout(playbackEndTimeoutRef.current);
+      playbackEndTimeoutRef.current = null;
     }
 
     // US2 T038: Clear all scheduled notes

@@ -1,4 +1,5 @@
 import { ScoreViewer } from './components/ScoreViewer'
+import { FileStateProvider } from './services/state/FileStateContext'
 import './App.css'
 
 /**
@@ -9,15 +10,17 @@ import './App.css'
  */
 function App() {
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>🎵 Musicore</h1>
-        <p>Music Score Editor - Domain-Driven Design</p>
-      </header>
-      <main>
-        <ScoreViewer />
-      </main>
-    </div>
+    <FileStateProvider>
+      <div className="app">
+        <header className="app-header">
+          <h1>🎵 Musicore</h1>
+          <p>Music Score Editor - Domain-Driven Design</p>
+        </header>
+        <main>
+          <ScoreViewer />
+        </main>
+      </div>
+    </FileStateProvider>
   )
 }
 
