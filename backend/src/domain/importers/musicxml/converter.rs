@@ -245,8 +245,7 @@ impl MusicXMLConverter {
         let mut timing_context = TimingContext::new();
 
         for measure in measures {
-            // Reset timing at start of each measure for this staff
-            // (backup/forward in MusicXML applies globally, but we track per-staff)
+            // Track measure start for backup/forward within THIS measure only
             let measure_start_tick = timing_context.current_tick;
             
             // Process attributes first (update divisions, ignore structural events)
@@ -257,6 +256,9 @@ impl MusicXMLConverter {
             }
 
             // Process musical elements, filtering by staff number
+            // Track maximum tick reached in this measure for staff timing
+            let mut max_tick_in_measure = measure_start_tick;
+            
             for element in &measure.elements {
                 match element {
                     MeasureElement::Note(note_data) => {
@@ -264,6 +266,8 @@ impl MusicXMLConverter {
                         if note_data.staff == staff_num {
                             let note = Self::convert_note(note_data, &mut timing_context)?;
                             voice.add_note(note)?;
+                            // Track the maximum tick reached for this staff in this measure
+                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
                         }
                         // Notes on other staves don't affect our timing
                     }
@@ -271,6 +275,7 @@ impl MusicXMLConverter {
                         // Only process rests for this staff
                         if rest_data.staff == staff_num {
                             timing_context.advance_by_duration(rest_data.duration)?;
+                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
                         }
                     }
                     MeasureElement::Backup(_duration) => {
@@ -278,16 +283,21 @@ impl MusicXMLConverter {
                         // notes for the next staff. We ignore it since each staff tracks
                         // timing independently. Backup typically happens after all notes
                         // for staff 1, resetting to measure start to write staff 2.
-                        // Reset to measure start for this staff
+                        // Reset to measure start ONLY within this measure
                         timing_context.current_tick = measure_start_tick;
                     }
                     MeasureElement::Forward(duration) => {
                         // Forward advances time (e.g., for multi-voice within same staff)
                         // Only apply if it's relevant to this staff's timing
                         timing_context.advance_by_duration(*duration)?;
+                        max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
                     }
                 }
             }
+            
+            // After processing the measure, ensure timing advances to the end of the measure
+            // This prevents backup from affecting the next measure's start position
+            timing_context.current_tick = max_tick_in_measure;
         }
 
         Ok(voice)

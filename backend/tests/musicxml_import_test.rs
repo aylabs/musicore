@@ -609,3 +609,40 @@ fn test_quartet_instrument_key_signatures() {
             "{} should have C Major key signature", instrument.name);
     }
 }
+
+/// Test for bug: Two consecutive measures with whole notes should not overlap
+#[test]
+fn test_two_measures_piano_whole_notes() {
+    let fixture_path = std::env::current_dir()
+        .expect("Failed to get current directory")
+        .parent()
+        .unwrap()
+        .join("tests/fixtures/musicxml/two_bars_piano_whole_notes.musicxml");    
+    let importer = MusicXMLImporter::new();
+    let result = importer.import_file(&fixture_path);
+    
+    match result {
+        Ok(import_result) => {
+            let score = import_result.score;
+            println!("Import successful!");
+            println!("Instruments: {}", score.instruments.len());
+            if !score.instruments.is_empty() {
+                println!("Staves in instrument 0: {}", score.instruments[0].staves.len());
+                for (i, staff) in score.instruments[0].staves.iter().enumerate() {
+                    println!("Staff {} voices: {}", i, staff.voices.len());
+                    if !staff.voices.is_empty() {
+                        println!("Staff {} voice 0 notes: {}", i, staff.voices[0].interval_events.len());
+                        for (j, note) in staff.voices[0].interval_events.iter().enumerate() {
+                            println!("  Note {}: start={}, duration={}, pitch={}", 
+                                j, note.start_tick.value(), note.duration_ticks, note.pitch.value());
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("Import failed with error: {:?}", e);
+            panic!("Import should succeed but failed: {:?}", e);
+        }
+    }
+}
