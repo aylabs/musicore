@@ -1,6 +1,6 @@
 # Rust
 target/
-Cargo.lock
+# Cargo.lock - SHOULD be committed for applications (keeping it tracked)
 *.rs.bk
 *.rlib
 *.prof*
