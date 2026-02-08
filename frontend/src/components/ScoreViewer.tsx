@@ -7,6 +7,8 @@ import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
 import { saveScore as saveScoreToFile, loadScore as loadScoreFromFile, createNewScore as createNewScoreFile } from "../services/file/FileService";
 import { validateScoreFile } from "../services/file/validation";
+import { ImportButton } from "./import/ImportButton";
+import type { ImportResult } from "../services/import/MusicXMLImportService";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -406,6 +408,19 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   };
 
   /**
+   * Handle successful MusicXML import (Feature 006)
+   * Loads the imported score into the viewer
+   */
+  const handleMusicXMLImport = (result: ImportResult) => {
+    setScore(result.score);
+    setScoreId(result.score.id);
+    setIsFileSourced(false); // Backend API is source of truth for imported scores
+    resetFileState(); // Clear file state (this is a new score from import)
+    setSuccessMessage(`Imported ${result.statistics.note_count} notes from ${result.metadata.file_name || 'MusicXML file'}`);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  /**
    * Get tempo at tick 0
    */
   const getInitialTempo = (): number => {
@@ -482,6 +497,13 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
             <button onClick={handleLoadButtonClick} disabled={loading}>
               Load Score
             </button>
+            {/* Feature 006: Import MusicXML Score */}
+            <ImportButton
+              onImportComplete={handleMusicXMLImport}
+              buttonText="Import Score"
+              baseUrl="http://localhost:8080"
+              disabled={loading}
+            />
           </div>
           {/* Feature 004 T019: Hidden file input */}
           <input
@@ -492,6 +514,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
             onChange={handleFileSelect}
           />
           {error && <div className="error">{error}</div>}
+          {successMessage && <div className="success">{successMessage}</div>}
         </div>
       </div>
     );
@@ -515,6 +538,12 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
           <button onClick={handleLoadButtonClick} className="load-button">
             Load
           </button>
+          {/* Feature 006: MusicXML Import */}
+          <ImportButton
+            onImportComplete={handleMusicXMLImport}
+            buttonText="Import MusicXML"
+            baseUrl="http://localhost:8080"
+          />
           <input
             type="text"
             placeholder="filename (optional)"
