@@ -42,23 +42,6 @@ The system recognizes and displays common chord types including major, minor, di
 
 ---
 
-### User Story 3 - Manual Note View Option (Priority: P3)
-
-Users can toggle between chord symbol view and individual note view for specific measures or the entire score, allowing them to see the actual notes when needed for detailed editing or learning.
-
-**Why this priority**: While chord symbols are great for reading, some users may need to see individual notes for teaching, transcription, or editing purposes. This provides flexibility without removing the chord symbol benefit.
-
-**Independent Test**: Display a score with chords, toggle view mode, and verify individual notes appear in traditional notation, then toggle back to see chord symbols again.
-
-**Acceptance Scenarios**:
-
-1. **Given** a score displaying chord symbols, **When** user toggles to "note view" mode, **Then** individual notes appear as traditional notation
-2. **Given** a score in note view mode, **When** user toggles to "chord view" mode, **Then** chord symbols replace individual note display
-3. **Given** a chord being edited, **When** user is in note view mode, **Then** they can add/remove individual notes and see them immediately
-4. **Given** a score with both solo melody and accompaniment chords, **When** in chord view, **Then** melody notes remain as individual notes while accompaniment shows as chord symbols
-
----
-
 ### Edge Cases
 
 - What happens when notes don't form a recognizable chord pattern (e.g., C, D#, F#)?
@@ -83,11 +66,11 @@ Users can toggle between chord symbol view and individual note view for specific
 - **FR-003**: System MUST display chord symbols above the staff at the appropriate horizontal position corresponding to the note tick
 - **FR-004**: System MUST render chord symbols using standard music notation conventions (e.g., "C", "Am", "G7", "Fdim")
 - **FR-005**: System MUST preserve the underlying note data (pitch, duration, tick position) when displaying as chord symbols
-- **FR-006**: System MUST continue playing all notes in the chord during audio playback regardless of display mode
+- **FR-006**: System MUST continue playing all notes in the chord during audio playback
 - **FR-007**: System MUST support at minimum these chord types: major, minor, diminished, augmented, dominant seventh, major seventh, minor seventh
 - **FR-008**: System MUST handle chord roots for all 12 chromatic pitches (C, C#/Db, D, D#/Eb, E, F, F#/Gb, G, G#/Ab, A, A#/Bb, B)
 - **FR-009**: System MUST update chord symbol display dynamically when notes are added or removed from a chord
-- **FR-010**: Users MUST be able to save and load scores with chord symbol display preferences retained
+- **FR-010**: System MUST preserve chord note data when saving and loading scores to maintain accurate chord display
 - **FR-011**: System MUST display individual notes normally (not as chord symbols) when they do not form a recognized chord pattern
 - **FR-012**: System MUST handle chords across multiple voices by analyzing notes in a combined context for the same instrument staff
 - **FR-013**: System MUST position chord symbols to avoid overlapping with other notation elements (clefs, time signatures, notes)
@@ -102,10 +85,6 @@ Users can toggle between chord symbol view and individual note view for specific
   - Attributes: name (major, minor, seventh, etc.), symbol notation (e.g., "m", "7", "dim"), required intervals
   - Relationship: Referenced by Chord Groups for display purposes
 
-- **Display Mode**: User preference for how simultaneous notes are visualized
-  - Attributes: mode type (chord symbols vs. individual notes), scope (entire score, per-measure, per-staff)
-  - Relationship: Affects rendering of Chord Groups
-
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -114,7 +93,7 @@ Users can toggle between chord symbol view and individual note view for specific
 - **SC-002**: System correctly identifies and displays at least 95% of common chord types (major, minor, seventh chords) in standard voicings
 - **SC-003**: Chord symbol display renders in under 100ms when adding notes to form a chord, providing immediate visual feedback
 - **SC-004**: Musicians can read chord progressions 3x faster compared to the current displaced note visualization (measured by time to identify 10 chords)
-- **SC-005**: Playback quality remains identical - all notes in chords sound correctly regardless of visualization mode
+- **SC-005**: Playback quality remains identical - all notes in chords sound correctly with chord symbol visualization
 - **SC-006**: Chord symbols are positioned without overlapping other notation elements in at least 98% of typical score layouts
 - **SC-007**: Users successfully create, edit, and save chord-based compositions with chord symbols persisting across session reload
 
@@ -124,7 +103,7 @@ Users can toggle between chord symbol view and individual note view for specific
 - The score rendering system can support text/symbol overlay above staff notation
 - The existing note model (pitch, tick, duration) provides sufficient data to identify chords
 - Chord detection will focus on vertical harmony (simultaneous notes) rather than implied harmony from arpeggios or broken chords
-- Default behavior is to show chord symbols when detected; users can opt-in to see individual notes if needed
+- Chord symbols will always be displayed when detected, with fallback to individual notes for unrecognized patterns
 - Chord symbols will use English/international notation (C, D, E, etc.) as default, with potential for localization later
 - The system will use simplified enharmonic spelling (e.g., C# over Db) based on key signature or most common usage
 
@@ -137,3 +116,10 @@ Users can toggle between chord symbol view and individual note view for specific
 - Chord voicing recommendations or automatic voice leading
 - Guitar chord diagrams or instrument-specific chord fingerings
 - Advanced music theory analysis (secondary dominants, modal interchange, etc.)
+- Manual toggle between chord symbol view and individual note view (User Story 3 - removed during clarification)
+
+## Clarifications
+
+### Session 2026-02-08
+
+- Q: Should users be able to toggle between chord symbol view and individual note view? → A: No, removed User Story 3 (Manual Note View Option). Simplified scope: always display chord symbols when detected, fall back to individual notes only when chords are not recognized. This reduces complexity and focuses on the core value proposition.
