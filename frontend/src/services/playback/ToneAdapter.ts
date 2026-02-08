@@ -113,8 +113,11 @@ export class ToneAdapter {
           volume: -5,
         }).toDestination();
 
-        // Wait for samples to load
-        await Tone.loaded();
+        // Load samples asynchronously (don't block initialization)
+        // Samples will stream in as needed - first notes may use synth fallback
+        Tone.loaded().then(() => {
+          console.log('Piano samples loaded');
+        });
       } else {
         // Fallback: Basic synthesizer
         this.polySynth = new Tone.PolySynth(Tone.Synth, {

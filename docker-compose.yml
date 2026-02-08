@@ -15,10 +15,10 @@ services:
       - musicore-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/scores"]
-      interval: 30s
+      interval: 10s
       timeout: 3s
       retries: 3
-      start_period: 10s
+      start_period: 2s
     restart: unless-stopped
 
   # Frontend Web Server

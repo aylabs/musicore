@@ -1,5 +1,7 @@
 import React from 'react';
 import type { LayoutGeometry } from '../../types/notation/layout';
+import type { Note } from '../../types/score';
+import { ChordSymbol } from './ChordSymbol';
 
 /**
  * NotationRenderer - Pure presentational component that renders notation SVG
@@ -28,6 +30,12 @@ export interface NotationRendererProps {
   
   /** Current horizontal scroll position (User Story 4 - T057) */
   scrollX?: number;
+  
+  /** Notes for chord symbol detection (T032) */
+  notes?: Note[];
+  
+  /** Pixels per tick for chord positioning */
+  pixelsPerTick?: number;
 }
 
 /**
@@ -39,6 +47,8 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   selectedNoteId = null,
   onNoteClick,
   scrollX = 0,
+  notes = [],
+  pixelsPerTick = 0.1,
 }) => {
   const handleNoteClick = (noteId: string) => {
     if (onNoteClick) {
@@ -170,6 +180,19 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           {accidental.glyphCodepoint}
         </text>
       ))}
+
+      {/* Chord symbols (T033: Chord symbol layer) */}
+      {notes.length > 0 && (
+        <ChordSymbol
+          notes={notes}
+          notePositions={layout.notes}
+          staffConfig={{
+            pixelsPerTick,
+            marginLeft: layout.marginLeft,
+            staffSpace: 10,
+          } as any}
+        />
+      )}
     </svg>
   );
 };
