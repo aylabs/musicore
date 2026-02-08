@@ -8,3 +8,6 @@ pub mod voice;
 
 // Score module
 pub mod score;
+
+// Importers module (Feature 006)
+pub mod importers;

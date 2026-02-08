@@ -4,7 +4,7 @@ Rust backend for the Musicore music score editor implementing a hierarchical dom
 
 ## Current Implementation Status
 
-### ✅ Completed (Phase 1-8: Full Backend API)
+### ✅ Completed
 
 **Phase 1-7: Domain Model**
 - **Domain Entities**: Score, Instrument, Staff, Voice, Note
@@ -25,8 +25,19 @@ Rust backend for the Musicore music score editor implementing a hierarchical dom
 - **Integration Tests**: 18 tests covering all endpoints and validation scenarios
 - **Total Test Coverage**: 94 tests (76 unit + 18 integration) - all passing ✅
 
+**Feature 006: MusicXML Import** ✅ (Phase 3 - User Story 1)
+- **CLI Tool**: `musicore-import` for command-line MusicXML importing
+- **Formats**: .musicxml, .xml (uncompressed), .mxl (compressed ZIP)
+- **Conversion Pipeline**: Streaming XML parser → Domain converter → JSON output
+- **Timing**: Rational arithmetic (960 PPQ) with ±1 tick accuracy
+- **Statistics**: Auto-calculated note count, duration, and metadata
+- **Validation**: --validate-only mode for checking files without importing
+- **Output Modes**: JSON to stdout or file, quiet/verbose flags
+- **Test Fixtures**: Sample files for simple melody, piano grand staff, quartet
+
 ### 🚧 Next Phase
 
+- **Feature 006**: MusicXML Import - API endpoint (User Story 1) and multi-staff support (User Story 2-3)
 - **Phase 9**: Frontend React integration with TypeScript API client
 - **Phase 10**: Documentation, Docker, performance profiling
 
@@ -128,6 +139,82 @@ Format code:
 ```bash
 cargo fmt
 ```
+
+## CLI Tools
+
+### MusicXML Import Tool
+
+The `musicore-import` CLI tool allows you to import MusicXML files (.xml or .mxl) into MusiCore's JSON format.
+
+**Build the CLI:**
+
+```bash
+cargo build --release --bin musicore-import
+```
+
+The binary will be at `target/release/musicore-import`.
+
+**Basic Usage:**
+
+```bash
+# Display help
+./target/release/musicore-import --help
+
+# Import MusicXML file to stdout (JSON)
+./target/release/musicore-import path/to/score.musicxml
+
+# Import to a file
+./target/release/musicore-import path/to/score.musicxml -o output.json
+
+# Validate without importing
+./target/release/musicore-import path/to/score.musicxml --validate-only
+```
+
+**Options:**
+
+- `-o, --output <FILE>` - Output file path (default: stdout)
+- `--validate-only` - Only validate without saving output
+- `-q, --quiet` - Suppress all output except errors
+- `-v, --verbose` - Enable verbose output with detailed statistics
+- `-f, --format <FORMAT>` - Output format: json or yaml (default: json)
+
+**Examples:**
+
+```bash
+# Test with provided fixtures
+./target/release/musicore-import \
+  ../tests/fixtures/musicxml/simple_melody.musicxml \
+  --validate-only
+
+# Import with verbose statistics
+./target/release/musicore-import \
+  ../tests/fixtures/musicxml/simple_melody.musicxml \
+  --verbose -o imported.json
+
+# Pipe to other tools (e.g., count notes)
+./target/release/musicore-import score.musicxml | \
+  jq '[.instruments[].staves[].voices[].interval_events[]] | length'
+```
+
+**Output Example:**
+
+```
+Import Statistics:
+  Instruments: 1
+  Staves:      1
+  Voices:      1
+  Notes:       8
+  Duration:    7680 ticks
+
+✓ Score saved to: output.json
+```
+
+**Supported Formats:**
+- `.musicxml` - Uncompressed MusicXML
+- `.xml` - Uncompressed MusicXML (alternative extension)
+- `.mxl` - Compressed MusicXML (ZIP archive)
+
+For more details, see [quickstart guide](../specs/006-musicxml-import/quickstart.md).
 
 ## Using the Domain Model (Library Mode)
 

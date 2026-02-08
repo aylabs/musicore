@@ -10,6 +10,7 @@ use super::handlers::{
     add_tempo_event, add_time_signature_event, add_voice, create_score, delete_score,
     get_score, list_scores, AppState,
 };
+use super::import::import_musicxml;
 
 /// Create the main application router with all API routes
 pub fn create_router(state: AppState) -> Router {
@@ -19,6 +20,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/v1/scores", get(list_scores))
         .route("/api/v1/scores/:score_id", get(get_score))
         .route("/api/v1/scores/:score_id", delete(delete_score))
+        // MusicXML import
+        .route("/api/v1/scores/import-musicxml", post(import_musicxml))
         // Instrument operations
         .route("/api/v1/scores/:score_id/instruments", post(add_instrument))
         // Staff operations
