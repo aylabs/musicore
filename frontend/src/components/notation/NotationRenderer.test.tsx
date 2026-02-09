@@ -523,4 +523,272 @@ describe('NotationRenderer', () => {
       expect(textElements.length).toBe(11); // Still 1 clef + 10 notes (different ones)
     });
   });
+
+  /**
+   * Feature 009 - US2 - T022: Integration test for playback note highlighting
+   * 
+   * Verifies that notes in highlightedNoteIds array receive the 'highlighted' CSS class
+   * for visual feedback during playback.
+   */
+  describe('playback note highlighting', () => {
+    it('should apply highlighted class to playing notes', () => {
+      const mockLayout: LayoutGeometry = {
+        notes: [
+          {
+            id: 'note-1',
+            x: 100,
+            y: 90,
+            pitch: 60,
+            start_tick: 0,
+            duration_ticks: 960,
+            staffPosition: 0,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+          {
+            id: 'note-2',
+            x: 200,
+            y: 80,
+            pitch: 62,
+            start_tick: 960,
+            duration_ticks: 960,
+            staffPosition: 1,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+        ],
+        staffLines: [{ y: 100, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 }],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+        keySignatureAccidentals: [],
+        totalWidth: 500,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 2 },
+      };
+
+      const { container } = render(
+        <NotationRenderer layout={mockLayout} highlightedNoteIds={['note-1']} />
+      );
+      
+      const note1 = container.querySelector('[data-testid="note-1"]');
+      const note2 = container.querySelector('[data-testid="note-2"]');
+      
+      // note-1 should have highlighted class
+      expect(note1?.className).toContain('highlighted');
+      expect(note1?.className).toContain('note-head');
+      
+      // note-2 should not have highlighted class
+      expect(note2?.className).toContain('note-head');
+      expect(note2?.className).not.toContain('highlighted');
+    });
+
+    it('should handle empty highlightedNoteIds array', () => {
+      const mockLayout: LayoutGeometry = {
+        notes: [
+          {
+            id: 'note-1',
+            x: 100,
+            y: 90,
+            pitch: 60,
+            start_tick: 0,
+            duration_ticks: 960,
+            staffPosition: 0,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+        ],
+        staffLines: [{ y: 100, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 }],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+        keySignatureAccidentals: [],
+        totalWidth: 500,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 1 },
+      };
+
+      const { container } = render(<NotationRenderer layout={mockLayout} highlightedNoteIds={[]} />);
+      
+      const note1 = container.querySelector('[data-testid="note-1"]');
+      
+      // note-1 should have note-head class but not highlighted
+      expect(note1?.className).toContain('note-head');
+      expect(note1?.className).not.toContain('highlighted');
+    });
+
+    it('should highlight multiple notes in a chord simultaneously', () => {
+      const mockLayout: LayoutGeometry = {
+        notes: [
+          {
+            id: 'note-1',
+            x: 100,
+            y: 90,
+            pitch: 60,
+            start_tick: 0,
+            duration_ticks: 960,
+            staffPosition: 0,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+          {
+            id: 'note-2',
+            x: 100, // Same x position = chord
+            y: 80,
+            pitch: 64,
+            start_tick: 0, // Same start tick = chord
+            duration_ticks: 960,
+            staffPosition: 2,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+          {
+            id: 'note-3',
+            x: 100, // Same x position = chord
+            y: 70,
+            pitch: 67,
+            start_tick: 0, // Same start tick = chord
+            duration_ticks: 960,
+            staffPosition: 4,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+          {
+            id: 'note-4',
+            x: 200, // Different position = not in chord
+            y: 90,
+            pitch: 62,
+            start_tick: 960,
+            duration_ticks: 960,
+            staffPosition: 1,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+        ],
+        staffLines: [{ y: 100, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 }],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+        keySignatureAccidentals: [],
+        totalWidth: 500,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 4 },
+      };
+
+      const { container } = render(
+        <NotationRenderer layout={mockLayout} highlightedNoteIds={['note-1', 'note-2', 'note-3']} />
+      );
+      
+      const note1 = container.querySelector('[data-testid="note-1"]');
+      const note2 = container.querySelector('[data-testid="note-2"]');
+      const note3 = container.querySelector('[data-testid="note-3"]');
+      const note4 = container.querySelector('[data-testid="note-4"]');
+      
+      // All chord notes should be highlighted
+      expect(note1?.className).toContain('highlighted');
+      expect(note2?.className).toContain('highlighted');
+      expect(note3?.className).toContain('highlighted');
+      
+      // Non-chord note should not be highlighted
+      expect(note4?.className).toContain('note-head');
+      expect(note4?.className).not.toContain('highlighted');
+    });
+
+    it('should update highlighting when highlightedNoteIds changes', () => {
+      const mockLayout: LayoutGeometry = {
+        notes: [
+          {
+            id: 'note-1',
+            x: 100,
+            y: 90,
+            pitch: 60,
+            start_tick: 0,
+            duration_ticks: 960,
+            staffPosition: 0,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+          {
+            id: 'note-2',
+            x: 200,
+            y: 80,
+            pitch: 62,
+            start_tick: 960,
+            duration_ticks: 960,
+            staffPosition: 1,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+        ],
+        staffLines: [{ y: 100, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 }],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+        keySignatureAccidentals: [],
+        totalWidth: 500,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 2 },
+      };
+
+      // Render with note-1 highlighted
+      const { container, rerender } = render(
+        <NotationRenderer layout={mockLayout} highlightedNoteIds={['note-1']} />
+      );
+      
+      let note1 = container.querySelector('[data-testid="note-1"]');
+      let note2 = container.querySelector('[data-testid="note-2"]');
+      
+      expect(note1?.className).toContain('highlighted');
+      expect(note2?.className).not.toContain('highlighted');
+      
+      // Re-render with note-2 highlighted
+      rerender(<NotationRenderer layout={mockLayout} highlightedNoteIds={['note-2']} />);
+      
+      note1 = container.querySelector('[data-testid="note-1"]');
+      note2 = container.querySelector('[data-testid="note-2"]');
+      
+      expect(note1?.className).not.toContain('highlighted');
+      expect(note2?.className).toContain('highlighted');
+    });
+
+    it('should handle omitted highlightedNoteIds prop', () => {
+      const mockLayout: LayoutGeometry = {
+        notes: [
+          {
+            id: 'note-1',
+            x: 100,
+            y: 90,
+            pitch: 60,
+            start_tick: 0,
+            duration_ticks: 960,
+            staffPosition: 0,
+            glyphCodepoint: '\uE0A4',
+            fontSize: 30,
+          },
+        ],
+        staffLines: [{ y: 100, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 }],
+        barlines: [],
+        ledgerLines: [],
+        clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+        keySignatureAccidentals: [],
+        totalWidth: 500,
+        totalHeight: 200,
+        marginLeft: 60,
+        visibleNoteIndices: { startIdx: 0, endIdx: 1 },
+      };
+
+      // Render without highlightedNoteIds prop
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      const note1 = container.querySelector('[data-testid="note-1"]');
+      
+      // Should have note-head class but not highlighted (defaults to empty array)
+      expect(note1?.className).toContain('note-head');
+      expect(note1?.className).not.toContain('highlighted');
+    });
+  });
 });

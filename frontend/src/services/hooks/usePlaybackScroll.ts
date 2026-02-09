@@ -1,17 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ScrollController } from '../playback/ScrollController';
+import { NoteHighlightService } from '../playback/NoteHighlightService';
 import type { ScrollConfig } from '../../types/playback';
 import type { PlaybackStatus } from '../../types/playback';
+import type { Note } from '../../types/score';
 
 /**
- * Feature 009: Playback Scroll and Highlight - T011
- * usePlaybackScroll - React hook for auto-scroll during playback
+ * Feature 009: Playback Scroll and Highlight
+ * usePlaybackScroll - React hook for auto-scroll and note highlighting during playback
  * 
- * Coordinates ScrollController service with React component lifecycle.
- * Manages auto-scroll enabled state and calculates target scroll position.
+ * Coordinates ScrollController and NoteHighlightService with React component lifecycle.
+ * Manages auto-scroll enabled state, calculates target scroll position, and identifies playing notes.
  * 
- * User Story 1 (MVP): Auto-scroll only
- * User Story 2 (Future): Will add note highlight logic
+ * User Story 1: Auto-scroll during playback
+ * User Story 2: Highlight currently playing notes
  */
 
 export interface UsePlaybackScrollConfig {
@@ -35,6 +37,9 @@ export interface UsePlaybackScrollConfig {
   
   /** Target position ratio (0-1) for playback position in viewport (default: 0.3) */
   targetPositionRatio?: number;
+  
+  /** Notes array for highlight calculation (User Story 2) */
+  notes?: Note[];
 }
 
 export interface PlaybackScrollState {
@@ -44,28 +49,32 @@ export interface PlaybackScrollState {
   /** Target scroll position in pixels (for component to apply) */
   targetScrollX: number;
   
+  /** IDs of notes currently being played (User Story 2) */
+  highlightedNoteIds: string[];
+  
   /** Function to enable/disable auto-scroll */
   setAutoScrollEnabled: (enabled: boolean) => void;
 }
 
 /**
- * Hook for managing auto-scroll during playback
+ * Hook for managing auto-scroll and note highlighting during playback
  * 
- * @param config - Scroll configuration
- * @returns Scroll state with enabled flag and target position
+ * @param config - Scroll and highlight configuration
+ * @returns Scroll state with enabled flag, target position, and highlighted note IDs
  * 
  * @example
  * ```typescript
- * const { autoScrollEnabled, targetScrollX, setAutoScrollEnabled } = usePlaybackScroll({
+ * const { autoScrollEnabled, targetScrollX, highlightedNoteIds, setAutoScrollEnabled } = usePlaybackScroll({
  *   currentTick: 1920,
  *   playbackStatus: 'playing',
  *   pixelsPerTick: 0.1,
  *   viewportWidth: 1200,
  *   totalWidth: 5000,
- *   currentScrollX: 100
+ *   currentScrollX: 100,
+ *   notes: notesArray
  * });
  * 
- * // In component: apply targetScrollX to scrollLeft if autoScrollEnabled
+ * // Apply scroll and highlights in component
  * useEffect(() => {
  *   if (autoScrollEnabled && containerRef.current) {
  *     containerRef.current.scrollLeft = targetScrollX;
@@ -82,6 +91,7 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
     totalWidth,
     currentScrollX,
     targetPositionRatio = 0.3,
+    notes = [],
   } = config;
   
   // Auto-scroll enabled state (user can disable by manual scrolling)
@@ -110,9 +120,18 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   // Extract target scroll position
   const targetScrollX = scrollCalculation.scrollX;
   
+  // Calculate highlighted notes using NoteHighlightService (User Story 2)
+  const highlightedNoteIds = useMemo(() => {
+    if (!notes || notes.length === 0) {
+      return [];
+    }
+    return NoteHighlightService.getPlayingNoteIds(notes, currentTick);
+  }, [notes, currentTick]);
+  
   return {
     autoScrollEnabled,
     targetScrollX,
+    highlightedNoteIds,
     setAutoScrollEnabled,
   };
 }

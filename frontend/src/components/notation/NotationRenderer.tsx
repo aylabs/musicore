@@ -39,6 +39,9 @@ export interface NotationRendererProps {
   
   /** Pixels per tick for chord positioning */
   pixelsPerTick?: number;
+  
+  /** Feature 009 - US2 - T021: IDs of currently playing notes to highlight */
+  highlightedNoteIds?: string[];
 }
 
 /**
@@ -53,6 +56,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
+  highlightedNoteIds = [], // T021: Default to empty array
 }) => {
   const handleNoteClick = (noteId: string) => {
     if (onNoteClick) {
@@ -141,6 +145,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           {/* Note head */}
           <text
             data-testid={note.id}
+            className={`note-head${highlightedNoteIds.includes(note.id) ? ' highlighted' : ''}`}
             x={note.x}
             y={note.y}
             fontSize={note.fontSize}

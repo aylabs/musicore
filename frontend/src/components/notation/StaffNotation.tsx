@@ -129,13 +129,15 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   }, [notes, clef, viewportWidth, viewportHeight, scrollXThrottled]);
   
   // Feature 009 - T012: Use playback scroll hook for auto-scroll during playback
-  const { autoScrollEnabled, targetScrollX, setAutoScrollEnabled } = usePlaybackScroll({
+  // Feature 009 - US2 - T020: Extract highlightedNoteIds for note highlighting
+  const { autoScrollEnabled, targetScrollX, highlightedNoteIds, setAutoScrollEnabled } = usePlaybackScroll({
     currentTick,
     playbackStatus,
     pixelsPerTick: DEFAULT_STAFF_CONFIG.pixelsPerTick,
     viewportWidth,
     totalWidth: layout.totalWidth,
     currentScrollX: scrollX,
+    notes, // T020: Pass notes for highlight calculation
   });
   
   // Feature 009 - T012: Apply auto-scroll when enabled and playing
@@ -202,6 +204,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
         showClef={!(autoScrollEnabled && playbackStatus === 'playing')}
         notes={notes}  // T033: Pass notes for chord symbol rendering
         pixelsPerTick={DEFAULT_STAFF_CONFIG.pixelsPerTick}
+        highlightedNoteIds={highlightedNoteIds}  // T020: Pass highlighted note IDs for visual feedback
       />
     </div>
   );

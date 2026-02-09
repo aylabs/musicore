@@ -198,24 +198,27 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       playbackEndTimeoutRef.current = null;
     }
 
-    // Calculate elapsed time since playback started
+    // Calculate exact tick position at the moment of pause
+    // (same calculation as the 60 Hz interval for consistency)
     const currentTime = adapter.getCurrentTime();
     const elapsedTime = currentTime - startTimeRef.current;
     
-    // Convert elapsed time to ticks and add to currentTick to get new position
-    const elapsedTicks = secondsToTicks(elapsedTime, tempo);
-    const newCurrentTick = currentTick + elapsedTicks;
+    // Convert elapsed time to ticks, accounting for tempo multiplier
+    const elapsedTicks = secondsToTicks(elapsedTime, tempo) * tempoState.tempoMultiplier;
+    
+    // Calculate absolute position: starting tick + elapsed ticks
+    const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
     
     // US2 T038: Clear all scheduled notes
     scheduler.clearSchedule();
 
-    // Update currentTick for resume
+    // Update currentTick to exact pause position for resume
     setCurrentTick(newCurrentTick);
     pausedAtRef.current = currentTime;
 
     // US1 T022: Transition status to 'paused'
     setStatus('paused');
-  }, [status, adapter, scheduler, tempo, currentTick]);
+  }, [status, adapter, scheduler, tempo, tempoState.tempoMultiplier]);
 
   /**
    * US1 T023: Implement stop() - Stop playback, reset to initial state

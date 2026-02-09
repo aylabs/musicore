@@ -326,4 +326,128 @@ describe('usePlaybackScroll', () => {
       expect(result.current.targetScrollX).toBe(0);
     });
   });
-});
+
+  describe('note highlighting (US2)', () => {
+    it('should return highlightedNoteIds array from hook', () => {
+      const notes = [
+        { id: 'note1', start_tick: 0, duration_ticks: 100, pitch: 60, velocity: 80 },
+        { id: 'note2', start_tick: 100, duration_ticks: 100, pitch: 62, velocity: 80 },
+      ];
+
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 50,
+          playbackStatus: 'playing',
+          notes, // Pass notes for highlighting
+        })
+      );
+
+      expect(result.current.highlightedNoteIds).toEqual(['note1']);
+    });
+
+    it('should highlight multiple simultaneous notes (chord)', () => {
+      const notes = [
+        { id: 'note1', start_tick: 0, duration_ticks: 200, pitch: 60, velocity: 80 },
+        { id: 'note2', start_tick: 0, duration_ticks: 200, pitch: 64, velocity: 80 },
+        { id: 'note3', start_tick: 0, duration_ticks: 200, pitch: 67, velocity: 80 },
+      ];
+
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 100,
+          playbackStatus: 'playing',
+          notes,
+        })
+      );
+
+      expect(result.current.highlightedNoteIds).toEqual(['note1', 'note2', 'note3']);
+    });
+
+    it('should update highlights when currentTick changes', () => {
+      const notes = [
+        { id: 'note1', start_tick: 0, duration_ticks: 100, pitch: 60, velocity: 80 },
+        { id: 'note2', start_tick: 100, duration_ticks: 100, pitch: 62, velocity: 80 },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ currentTick }) =>
+          usePlaybackScroll({
+            ...defaultConfig,
+            currentTick,
+            playbackStatus: 'playing',
+            notes,
+          }),
+        { initialProps: { currentTick: 50 } }
+      );
+
+      // At tick 50, note1 is playing
+      expect(result.current.highlightedNoteIds).toEqual(['note1']);
+
+      // At tick 150, note2 is playing
+      rerender({ currentTick: 150 });
+      expect(result.current.highlightedNoteIds).toEqual(['note2']);
+    });
+
+    it('should return empty array when no notes are playing', () => {
+      const notes = [
+        { id: 'note1', start_tick: 100, duration_ticks: 100, pitch: 60, velocity: 80 },
+      ];
+
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 50, // Before note starts
+          playbackStatus: 'playing',
+          notes,
+        })
+      );
+
+      expect(result.current.highlightedNoteIds).toEqual([]);
+    });
+
+    it('should return empty array when notes array is empty', () => {
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 50,
+          playbackStatus: 'playing',
+          notes: [],
+        })
+      );
+
+      expect(result.current.highlightedNoteIds).toEqual([]);
+    });
+
+    it('should return empty array when notes prop is omitted', () => {
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 50,
+          playbackStatus: 'playing',
+          // notes omitted
+        })
+      );
+
+      expect(result.current.highlightedNoteIds).toEqual([]);
+    });
+
+    it('should not highlight when playback is stopped', () => {
+      const notes = [
+        { id: 'note1', start_tick: 0, duration_ticks: 100, pitch: 60, velocity: 80 },
+      ];
+
+      const { result } = renderHook(() =>
+        usePlaybackScroll({
+          ...defaultConfig,
+          currentTick: 50,
+          playbackStatus: 'stopped',
+          notes,
+        })
+      );
+
+      // Still returns highlights even when stopped (component decides what to do)
+      expect(result.current.highlightedNoteIds).toEqual(['note1']);
+    });
+  });});
