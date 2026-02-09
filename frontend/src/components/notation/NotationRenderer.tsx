@@ -28,6 +28,9 @@ export interface NotationRendererProps {
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
   
+  /** Current horizontal scroll position (for fixed clef positioning) */
+  scrollX?: number;
+  
   /** Notes for chord symbol detection (T032) */
   notes?: Note[];
   
@@ -43,6 +46,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
+  scrollX = 0,
   notes = [],
   pixelsPerTick = 0.1,
 }) => {
@@ -53,54 +57,16 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   };
 
   return (
-    <div style={{ position: 'relative', display: 'block' }}>
-      {/* Fixed clef overlay - Feature 009: Use CSS for performance (no flickering) */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          width: layout.clef.x * 2,
-          height: layout.totalHeight,
-          pointerEvents: 'none',
-          zIndex: 10,
-          background: 'linear-gradient(to right, white 70%, transparent)',
-        }}
-      >
-        <svg
-          width={layout.clef.x * 2}
-          height={layout.totalHeight}
-          xmlns="http://www.w3.org/2000/svg"
-          style={{
-            position: 'sticky',
-            left: 0,
-          }}
-        >
-          <text
-            data-testid={`clef-${layout.clef.type}`}
-            x={layout.clef.x}
-            y={layout.clef.y}
-            fontSize={layout.clef.fontSize}
-            fontFamily="Bravura"
-            fill="black"
-            textAnchor="middle"
-            dominantBaseline="central"
-          >
-            {layout.clef.glyphCodepoint}
-          </text>
-        </svg>
-      </div>
-
-      <svg
-        width={layout.totalWidth}
-        height={layout.totalHeight}
-        xmlns="http://www.w3.org/2000/svg"
-        data-testid="notation-svg"
-        style={{
-          display: 'block',
-          userSelect: 'none',
-        }}
-      >
+    <svg
+      width={layout.totalWidth}
+      height={layout.totalHeight}
+      xmlns="http://www.w3.org/2000/svg"
+      data-testid="notation-svg"
+      style={{
+        display: 'block',
+        userSelect: 'none',
+      }}
+    >
       {/* Staff lines (5 horizontal lines) */}
       {layout.staffLines.map((line) => (
         <line
@@ -129,7 +95,21 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       ))}
 
-      {/* Feature 009: Clef rendered in fixed overlay above for performance (no flickering) */}
+      {/* Clef symbol - Feature 009: Use CSS transform for hardware-accelerated positioning */}
+      <g style={{ transform: `translateX(${scrollX}px)`, willChange: 'transform' }}>
+        <text
+          data-testid={`clef-${layout.clef.type}`}
+          x={layout.clef.x}
+          y={layout.clef.y}
+          fontSize={layout.clef.fontSize}
+          fontFamily="Bravura"
+          fill="black"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {layout.clef.glyphCodepoint}
+        </text>
+      </g>
 
       {/* Note heads (positioned SMuFL glyphs) - T055: Virtual scrolling */}
       {layout.notes
@@ -214,7 +194,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       )}
     </svg>
-    </div>
   );
 };
 
@@ -222,6 +201,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
  * NotationRenderer - Memoized version for performance
  * 
  * T066: Wrapped with React.memo to prevent unnecessary re-renders
- * Only re-renders when props actually change (layout, selectedNoteId, notes)
+ * Only re-renders when props actually change (layout, selectedNoteId, scrollX, notes)
  */
 export const NotationRenderer = React.memo(NotationRendererComponent);

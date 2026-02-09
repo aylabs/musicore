@@ -198,6 +198,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
         layout={layout}
         selectedNoteId={selectedNoteId}
         onNoteClick={handleNoteClick}
+        scrollX={scrollX}
         notes={notes}  // T033: Pass notes for chord symbol rendering
         pixelsPerTick={DEFAULT_STAFF_CONFIG.pixelsPerTick}
       />
