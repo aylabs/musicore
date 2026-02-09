@@ -1,5 +1,6 @@
 /**
  * ImportButton Component - Feature 006-musicxml-import
+ * Feature 011: Now uses WASM for instant client-side parsing
  * 
  * Button with file picker for importing MusicXML files
  * 
@@ -28,8 +29,6 @@ export interface ImportButtonProps {
   onImportComplete?: (result: ImportResult) => void;
   /** Custom button text (default: "Import MusicXML") */
   buttonText?: string;
-  /** Base URL for backend API */
-  baseUrl?: string;
   /** Custom CSS class name */
   className?: string;
   /** Disable the button */
@@ -52,15 +51,13 @@ export interface ImportButtonProps {
 export function ImportButton({
   onImportComplete,
   buttonText = "Import MusicXML",
-  baseUrl,
   className = "",
   disabled = false,
 }: ImportButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // T070: Use import hook
+  // T070: Use import hook (now WASM-based)
   const { importFile, loading, error, result, reset } = useImportMusicXML({
-    baseUrl,
     onSuccess: (importResult) => {
       // T074: Call onImportComplete callback
       if (onImportComplete) {

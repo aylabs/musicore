@@ -414,12 +414,13 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
 
   /**
    * Handle successful MusicXML import (Feature 006)
+   * Feature 011: WASM parsing creates in-memory score (not in backend DB)
    * Loads the imported score into the viewer
    */
   const handleMusicXMLImport = (result: ImportResult) => {
     setScore(result.score);
     setScoreId(result.score.id);
-    setIsFileSourced(false); // Backend API is source of truth for imported scores
+    setIsFileSourced(true); // Frontend is source of truth for WASM-imported scores (not in backend DB)
     resetFileState(); // Clear file state (this is a new score from import)
     setSuccessMessage(`Imported ${result.statistics.note_count} notes from ${result.metadata.file_name || 'MusicXML file'}`);
     setTimeout(() => setSuccessMessage(null), 5000);
@@ -506,7 +507,6 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
             <ImportButton
               onImportComplete={handleMusicXMLImport}
               buttonText="Import Score"
-              baseUrl="http://localhost:8080"
               disabled={loading}
             />
           </div>
@@ -550,7 +550,6 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
               <ImportButton
                 onImportComplete={handleMusicXMLImport}
                 buttonText="Import"
-                baseUrl="http://localhost:8080"
               />
               <input
                 type="text"

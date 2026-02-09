@@ -114,6 +114,8 @@ impl From<quick_xml::Error> for ImportError {
     }
 }
 
+// ZIP error conversion only for native (zip crate not available in WASM)
+#[cfg(not(target_arch = "wasm32"))]
 impl From<zip::result::ZipError> for ImportError {
     fn from(err: zip::result::ZipError) -> Self {
         ImportError::CompressionError {

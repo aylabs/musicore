@@ -24,8 +24,8 @@ services:
   # Frontend Web Server
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: musicore-frontend
     ports:
       - "80:80"
