@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ToneAdapter } from './ToneAdapter';
 import { PlaybackScheduler, secondsToTicks, ticksToSeconds } from './PlaybackScheduler';
 import { useTempoState } from '../state/TempoStateContext';
@@ -15,6 +15,8 @@ export interface PlaybackState {
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
+  seekToTick: (tick: number) => void; // Feature 009: Seek to specific tick position
+  unpinStartTick: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -50,13 +52,38 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   // Refs to track timing information
   const startTimeRef = useRef<number>(0);
   const pausedAtRef = useRef<number>(0);
+  const playbackStartTickRef = useRef<number>(0); // Feature 009: Track tick position when playback started
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
+  const pinnedStartTickRef = useRef<number | null>(null); // Feature 009: Pinned start position from selected note
   
   // Get ToneAdapter singleton
   const adapter = ToneAdapter.getInstance();
 
   // US2 T037: Create PlaybackScheduler instance (memoized to persist across renders)
   const scheduler = useMemo(() => new PlaybackScheduler(adapter), [adapter]);
+
+  // Feature 009 - Playback Scroll and Highlight: T006
+  // Broadcast currentTick updates at 60 Hz during playback for smooth scroll/highlight
+  useEffect(() => {
+    if (status !== 'playing') {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      const currentTime = adapter.getCurrentTime();
+      const elapsedTime = currentTime - startTimeRef.current;
+      
+      // Convert elapsed time to ticks, accounting for tempo multiplier
+      const elapsedTicks = secondsToTicks(elapsedTime, tempo) * tempoState.tempoMultiplier;
+      
+      // Calculate absolute position: starting tick + elapsed ticks
+      const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
+      
+      setCurrentTick(newCurrentTick);
+    }, 16); // 60 Hz = ~16ms interval (matches 60 FPS target)
+
+    return () => clearInterval(intervalId);
+  }, [status, adapter, tempo, tempoState.tempoMultiplier]);
 
   /**
    * US1 T021: Implement play() - Initialize audio and transition to 'playing'
@@ -80,14 +107,22 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
 
       // If starting from the beginning (currentTick = 0), skip to the first note
       // This avoids playing through rest measures at the start of the score
+      // Feature 009: If there's a pinned position from note selection, use that instead
       let playbackStartTick = currentTick;
-      if (currentTick === 0 && notes.length > 0) {
+      if (pinnedStartTickRef.current !== null) {
+        // Use pinned position from selected note
+        playbackStartTick = pinnedStartTickRef.current;
+        setCurrentTick(playbackStartTick);
+      } else if (currentTick === 0 && notes.length > 0) {
         const firstNote = notes.reduce((earliest, note) => 
           note.start_tick < earliest.start_tick ? note : earliest
         );
         playbackStartTick = firstNote.start_tick;
         setCurrentTick(playbackStartTick);
       }
+
+      // Feature 009: Store the tick position where playback starts for scroll calculations
+      playbackStartTickRef.current = playbackStartTick;
 
       // Initialize audio context (required for browser autoplay policy)
       // US1 T021: Call ToneAdapter.init()
@@ -171,30 +206,34 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       playbackEndTimeoutRef.current = null;
     }
 
-    // Calculate elapsed time since playback started
+    // Calculate exact tick position at the moment of pause
+    // (same calculation as the 60 Hz interval for consistency)
     const currentTime = adapter.getCurrentTime();
     const elapsedTime = currentTime - startTimeRef.current;
     
-    // Convert elapsed time to ticks and add to currentTick to get new position
-    const elapsedTicks = secondsToTicks(elapsedTime, tempo);
-    const newCurrentTick = currentTick + elapsedTicks;
+    // Convert elapsed time to ticks, accounting for tempo multiplier
+    const elapsedTicks = secondsToTicks(elapsedTime, tempo) * tempoState.tempoMultiplier;
+    
+    // Calculate absolute position: starting tick + elapsed ticks
+    const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
     
     // US2 T038: Clear all scheduled notes
     scheduler.clearSchedule();
 
-    // Update currentTick for resume
+    // Update currentTick to exact pause position for resume
     setCurrentTick(newCurrentTick);
     pausedAtRef.current = currentTime;
 
     // US1 T022: Transition status to 'paused'
     setStatus('paused');
-  }, [status, adapter, scheduler, tempo, currentTick]);
+  }, [status, adapter, scheduler, tempo, tempoState.tempoMultiplier]);
 
   /**
    * US1 T023: Implement stop() - Stop playback, reset to initial state
    * US2 T038: Clear scheduled notes
    * 
    * Stops all audio, resets currentTick to 0, and transitions to 'stopped'.
+   * Feature 009: If a note is pinned (selected), reset to that position instead.
    */
   const stop = useCallback(() => {
     if (status === 'stopped') {
@@ -213,8 +252,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     // US1 T023: Call ToneAdapter.stopAll()
     adapter.stopAll();
 
-    // US1 T023: Reset currentTick to 0
-    setCurrentTick(0);
+    // Feature 009: Reset currentTick to pinned position if set, otherwise 0
+    const resetTick = pinnedStartTickRef.current !== null ? pinnedStartTickRef.current : 0;
+    setCurrentTick(resetTick);
 
     // US1 T023: Transition to 'stopped'
     setStatus('stopped');
@@ -224,6 +264,58 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     pausedAtRef.current = 0;
   }, [status, adapter, scheduler]);
 
+  /**
+   * Feature 009: Seek to specific tick position
+   * 
+   * Sets the playback position to a specific tick. If currently playing,
+   * stops playback and sets status to paused so user can continue from
+   * the new position with play button.
+   * 
+   * This also "pins" the start position - pressing Stop will return to this
+   * position instead of tick 0, and Play will always start from here until
+   * unpinStartTick() is called.
+   * 
+   * @param tick - The tick position to seek to
+   */
+  const seekToTick = useCallback((tick: number) => {
+    // Clear any scheduled notes if playing
+    if (status === 'playing') {
+      scheduler.clearSchedule();
+      adapter.stopAll();
+    }
+
+    // Clear playback end timeout
+    if (playbackEndTimeoutRef.current !== null) {
+      window.clearTimeout(playbackEndTimeoutRef.current);
+      playbackEndTimeoutRef.current = null;
+    }
+
+    // Set the tick position and pin it
+    setCurrentTick(tick);
+    pinnedStartTickRef.current = tick;
+
+    // If currently playing, transition to paused so user can resume
+    if (status === 'playing') {
+      setStatus('paused');
+    }
+  }, [status, adapter, scheduler]);
+
+  /**
+   * Feature 009: Clear pinned start position
+   * 
+   * Removes the pinned start position set by seekToTick(). After calling this,
+   * Stop will reset to tick 0 and Play will start from the first note as normal.
+   * 
+   * Called when a note is deselected in the UI.
+   */
+  const unpinStartTick = useCallback(() => {
+    pinnedStartTickRef.current = null;
+    // If stopped, reset to tick 0
+    if (status === 'stopped') {
+      setCurrentTick(0);
+    }
+  }, [status]);
+
   return {
     status,
     currentTick,
@@ -231,5 +323,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     play,
     pause,
     stop,
+    seekToTick,
+    unpinStartTick,
   };
 }

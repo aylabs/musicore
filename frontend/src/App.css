@@ -26,3 +26,38 @@
 main {
   padding: 20px;
 }
+
+/* Feature 009 - User Story 2: Note Highlighting (T019) */
+/* Highlight notes that are currently playing during playback */
+
+.note-head.highlighted {
+  fill: #4CAF50 !important; /* Green fill for highlighted notes */
+  opacity: 0.85;
+  stroke: #2E7D32;
+  stroke-width: 2;
+  transition: fill 0.1s ease-in-out, opacity 0.1s ease-in-out;
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+  .note-head.highlighted {
+    fill: #00FF00 !important;
+    opacity: 1;
+    stroke: #000000;
+    stroke-width: 3;
+  }
+}
+
+/* Animation for note highlight (optional subtle pulse) */
+@keyframes note-highlight-pulse {
+  0%, 100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.note-head.highlighted {
+  animation: note-highlight-pulse 1s ease-in-out infinite;
+}

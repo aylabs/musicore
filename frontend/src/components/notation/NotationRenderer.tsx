@@ -28,14 +28,20 @@ export interface NotationRendererProps {
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
   
-  /** Current horizontal scroll position (User Story 4 - T057) */
+  /** Current horizontal scroll position (for fixed clef positioning) */
   scrollX?: number;
+  
+  /** Whether to show the clef (Feature 009: hide during auto-scroll to prevent flickering) */
+  showClef?: boolean;
   
   /** Notes for chord symbol detection (T032) */
   notes?: Note[];
   
   /** Pixels per tick for chord positioning */
   pixelsPerTick?: number;
+  
+  /** Feature 009 - US2 - T021: IDs of currently playing notes to highlight */
+  highlightedNoteIds?: string[];
 }
 
 /**
@@ -47,8 +53,10 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   selectedNoteId = null,
   onNoteClick,
   scrollX = 0,
+  showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
+  highlightedNoteIds = [], // T021: Default to empty array
 }) => {
   const handleNoteClick = (noteId: string) => {
     if (onNoteClick) {
@@ -95,23 +103,25 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       ))}
 
-      {/* Clef symbol (SMuFL glyph) */}
-      {/* T057: Fixed clef margin - add scrollX to keep clef visible while scrolling */}
-      <text
-        data-testid={`clef-${layout.clef.type}`}
-        x={layout.clef.x + scrollX}
-        y={layout.clef.y}
-        fontSize={layout.clef.fontSize}
-        fontFamily="Bravura"
-        fill="black"
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {layout.clef.glyphCodepoint}
-      </text>
+      {/* Clef symbol - Feature 009: Hide during auto-scroll to prevent flickering */}
+      {showClef && (
+        <g style={{ transform: `translateX(${scrollX}px)`, willChange: 'transform' }}>
+          <text
+            data-testid={`clef-${layout.clef.type}`}
+            x={layout.clef.x}
+            y={layout.clef.y}
+            fontSize={layout.clef.fontSize}
+            fontFamily="Bravura"
+            fill="black"
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {layout.clef.glyphCodepoint}
+          </text>
+        </g>
+      )}
 
-      {/* Note heads (positioned SMuFL glyphs) */}
-      {/* T055: Virtual scrolling - render only notes within visibleNoteIndices range */}
+      {/* Note heads (positioned SMuFL glyphs) - T055: Virtual scrolling */}
       {layout.notes
         .slice(layout.visibleNoteIndices.startIdx, layout.visibleNoteIndices.endIdx)
         .map((note) => (
@@ -135,6 +145,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           {/* Note head */}
           <text
             data-testid={note.id}
+            className={`note-head${highlightedNoteIds.includes(note.id) ? ' highlighted' : ''}`}
             x={note.x}
             y={note.y}
             fontSize={note.fontSize}
@@ -201,6 +212,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
  * NotationRenderer - Memoized version for performance
  * 
  * T066: Wrapped with React.memo to prevent unnecessary re-renders
- * Only re-renders when props actually change (layout, selectedNoteId, scrollX)
+ * Only re-renders when props actually change (layout, selectedNoteId, scrollX, showClef, notes)
  */
 export const NotationRenderer = React.memo(NotationRendererComponent);

@@ -204,3 +204,36 @@ export interface LayoutInput {
   /** Configuration parameters */
   config: StaffConfig;
 }
+
+/**
+ * Feature 009: Playback Scroll and Highlight
+ * Note highlight state during playback
+ */
+
+/**
+ * Highlight state for a note during playback
+ */
+export interface NoteHighlight {
+  /** Note ID being highlighted */
+  noteId: string;
+  
+  /** Start tick of the note */
+  startTick: number;
+  
+  /** End tick of the note (start + duration) */
+  endTick: number;
+  
+  /** Whether the note is currently playing */
+  isPlaying: boolean;
+}
+
+/**
+ * Highlight calculation result
+ */
+export interface HighlightResult {
+  /** Array of note IDs currently playing */
+  playingNoteIds: string[];
+  
+  /** Map of note ID to highlight state (for additional metadata if needed) */
+  highlightMap: Map<string, NoteHighlight>;
+}

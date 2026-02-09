@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Note, ClefType } from "../types/score";
+import type { PlaybackStatus } from "../types/playback";
 import { apiClient } from "../services/score-api";
 import { StaffNotation } from "./notation/StaffNotation";
 import "./NoteDisplay.css";
@@ -18,6 +19,11 @@ interface NoteDisplayProps {
   instrumentIndex: number;
   staffIndex: number;
   voiceIndex: number;
+  // Feature 009: Playback state for auto-scroll
+  currentTick?: number;
+  playbackStatus?: PlaybackStatus;
+  onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
+  onUnpinStartTick?: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -55,7 +61,11 @@ export function NoteDisplay({
   clef,
   instrumentIndex,
   staffIndex,
-  voiceIndex
+  voiceIndex,
+  currentTick,
+  playbackStatus,
+  onSeekToTick,
+  onUnpinStartTick
 }: NoteDisplayProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -182,6 +192,10 @@ export function NoteDisplay({
             clef={clef as ClefType}
             viewportWidth={800}
             viewportHeight={200}
+            currentTick={currentTick}
+            playbackStatus={playbackStatus}
+            onNoteClick={onSeekToTick}
+            onNoteDeselect={onUnpinStartTick}
           />
         </div>
       )}

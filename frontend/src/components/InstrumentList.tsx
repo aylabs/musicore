@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Instrument } from "../types/score";
+import type { PlaybackStatus } from "../types/playback";
 import { apiClient } from "../services/score-api";
 import { NoteDisplay } from "./NoteDisplay";
 import "./InstrumentList.css";
@@ -10,6 +11,11 @@ interface InstrumentListProps {
   onUpdate: (scoreId?: string) => void;
   onScoreCreated?: (scoreId: string) => void;
   onSync?: () => Promise<string>; // Sync local score to backend
+  // Feature 009: Playback state for auto-scroll
+  currentTick?: number;
+  playbackStatus?: PlaybackStatus;
+  onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
+  onUnpinStartTick?: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -32,7 +38,7 @@ interface InstrumentListProps {
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync }: InstrumentListProps) {
+export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +246,10 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
                         instrumentIndex={instIdx}
                         staffIndex={staffIdx}
                         voiceIndex={voiceIdx}
+                        currentTick={currentTick}
+                        playbackStatus={playbackStatus}
+                        onSeekToTick={onSeekToTick}
+                        onUnpinStartTick={onUnpinStartTick}
                       />
                     </div>
                   ))}
