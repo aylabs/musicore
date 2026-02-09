@@ -1,0 +1,10 @@
+/* StackedStaffView - Container for vertically stacked staff groups */
+/* Feature 010: Stacked Staves View - User Story 1 */
+
+.stacked-staff-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 10px;
+  background: #f5f5f5;
+}

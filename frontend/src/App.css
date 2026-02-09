@@ -6,21 +6,15 @@
 .app-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 30px 20px;
+  padding: 12px 20px;
   text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .app-header h1 {
-  margin: 0 0 10px 0;
-  font-size: 2.5em;
-  font-weight: 700;
-}
-
-.app-header p {
   margin: 0;
-  font-size: 1.1em;
-  opacity: 0.9;
+  font-size: 1.5em;
+  font-weight: 600;
 }
 
 main {

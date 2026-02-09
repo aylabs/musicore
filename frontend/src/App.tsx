@@ -18,7 +18,6 @@ function App() {
         <div className="app">
           <header className="app-header">
             <h1>🎵 Musicore</h1>
-            <p>Music Score Editor - Domain-Driven Design</p>
           </header>
           <main>
             <ScoreViewer />

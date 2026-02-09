@@ -19,6 +19,10 @@ export interface PlaybackControlsProps {
   onPause: () => void;
   /** Handler for Stop button click */
   onStop: () => void;
+  /** Compact mode - hides status indicator and tempo control (Feature 010) */
+  compact?: boolean;
+  /** Additional actions to render on the right side in compact mode (Feature 010) */
+  rightActions?: React.ReactNode;
 }
 
 /**
@@ -55,6 +59,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onPlay,
   onPause,
   onStop,
+  compact = false, // Feature 010: Compact mode for stacked view
+  rightActions = null, // Feature 010: Additional actions for right side
 }) => {
   // US1 T027: Disable Play button if no notes
   const canPlay = status !== 'playing' && hasNotes;
@@ -80,12 +86,14 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   };
 
   return (
-    <div className="playback-controls">
-      {/* US1 T026: Visual playback state indicator */}
-      <div className={`playback-status ${statusClass[status]}`}>
-        <span className="status-indicator"></span>
-        <span className="status-label">{statusLabel[status]}</span>
-      </div>
+    <div className={`playback-controls ${compact ? 'compact' : ''}`}>
+      {/* US1 T026: Visual playback state indicator (hidden in compact mode) */}
+      {!compact && (
+        <div className={`playback-status ${statusClass[status]}`}>
+          <span className="status-indicator"></span>
+          <span className="status-label">{statusLabel[status]}</span>
+        </div>
+      )}
 
       {/* US1 T024: Control buttons with disabled states */}
       <div className="playback-buttons">
@@ -120,9 +128,16 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         </button>
       </div>
 
-      {/* Feature 008 - Tempo Change: T014 Inline tempo display with controls */}
+      {/* Feature 010: Right actions slot for compact mode */}
+      {compact && rightActions && (
+        <div className="playback-right-actions">
+          {rightActions}
+        </div>
+      )}
+
+      {/* Feature 008 - Tempo Change: T014 Inline tempo display with controls (hidden in compact mode) */}
       {/* Disable tempo changes during playback to avoid reschedule delays */}
-      <TempoControl disabled={status === 'playing'} />
+      {!compact && <TempoControl disabled={status === 'playing'} />}
 
       {/* US1 T027: Show message when no notes available */}
       {!hasNotes && (

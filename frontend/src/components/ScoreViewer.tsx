@@ -9,6 +9,8 @@ import { saveScore as saveScoreToFile, loadScore as loadScoreFromFile, createNew
 import { validateScoreFile } from "../services/file/validation";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
+import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
+import { StackedStaffView } from "./stacked/StackedStaffView";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -43,6 +45,9 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
   const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
+  
+  // Feature 010: View mode state for toggling between individual and stacked views
+  const [viewMode, setViewMode] = useState<ViewMode>('individual');
 
   // File input ref for Load button (Feature 004 T019)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -523,39 +528,48 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   // Render score
   return (
     <div className="score-viewer">
-      <div className="score-header">
-        <h1>Score {fileState.isModified && <span className="unsaved-indicator">*</span>}</h1>
-        <div className="score-info">
-          <span className="score-id">ID: {score.id}</span>
-          <span className="tempo">Tempo: {getInitialTempo()} BPM</span>
-          <span className="time-sig">Time: {getInitialTimeSignature()}</span>
-        </div>
-        {/* Feature 004 T012, T026: File operation buttons */}
-        <div className="score-actions">
-          <button onClick={handleNewScoreButtonClick} className="new-button">
-            New
-          </button>
-          <button onClick={handleLoadButtonClick} className="load-button">
-            Load
-          </button>
-          {/* Feature 006: MusicXML Import */}
-          <ImportButton
-            onImportComplete={handleMusicXMLImport}
-            buttonText="Import"
-            baseUrl="http://localhost:8080"
-          />
-          <input
-            type="text"
-            placeholder="filename (optional)"
-            value={saveFilename}
-            onChange={(e) => setSaveFilename(e.target.value)}
-            className="filename-input"
-          />
-          <button onClick={handleSaveScore} className="save-button">
-            Save
-          </button>
-        </div>
-      </div>
+      {/* Feature 010: Hide header and file operations in stacked view */}
+      {viewMode === 'individual' && (
+        <>
+          <div className="score-header">
+            <h1>Score {fileState.isModified && <span className="unsaved-indicator">*</span>}</h1>
+            <div className="score-info">
+              <span className="score-id">ID: {score.id}</span>
+              <span className="tempo">Tempo: {getInitialTempo()} BPM</span>
+              <span className="time-sig">Time: {getInitialTimeSignature()}</span>
+            </div>
+            {/* Feature 004 T012, T026: File operation buttons */}
+            <div className="score-actions">
+              <button onClick={handleNewScoreButtonClick} className="new-button">
+                New
+              </button>
+              <button onClick={handleLoadButtonClick} className="load-button">
+                Load
+              </button>
+              {/* Feature 006: MusicXML Import */}
+              <ImportButton
+                onImportComplete={handleMusicXMLImport}
+                buttonText="Import"
+                baseUrl="http://localhost:8080"
+              />
+              <input
+                type="text"
+                placeholder="filename (optional)"
+                value={saveFilename}
+                onChange={(e) => setSaveFilename(e.target.value)}
+                className="filename-input"
+              />
+              <button onClick={handleSaveScore} className="save-button">
+                Save
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="error">{error}</div>}
+          {/* Feature 004 T014: Success notification */}
+          {successMessage && <div className="success-message">{successMessage}</div>}
+        </>
+      )}
 
       {/* Feature 004 T019: Hidden file input for Load functionality */}
       <input
@@ -586,39 +600,55 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
         </div>
       )}
 
-      {error && <div className="error">{error}</div>}
-      {/* Feature 004 T014: Success notification */}
-      {successMessage && <div className="success-message">{successMessage}</div>}
+      {/* Feature 010: View Mode Selector - Toggle between Individual and Stacked views */}
+      {/* In individual view: show both buttons. In stacked view: integrated with playback controls */}
+      {viewMode === 'individual' && score && score.instruments.length > 0 && (
+        <ViewModeSelector currentMode={viewMode} onChange={setViewMode} />
+      )}
 
       {/* Feature 003 - Music Playback: US1 T025 - Playback Controls */}
+      {/* Feature 010: Compact mode in stacked view, full mode in individual view */}
       <PlaybackControls
         status={playbackState.status}
         hasNotes={allNotes.length > 0}
-        error={playbackState.error} // US3 T052: Pass autoplay error message
+        error={playbackState.error}
         onPlay={playbackState.play}
         onPause={playbackState.pause}
         onStop={playbackState.stop}
+        compact={viewMode === 'stacked'}
+        rightActions={viewMode === 'stacked' && score && score.instruments.length > 0 ? (
+          <button 
+            className="view-mode-button" 
+            onClick={() => setViewMode('individual')}
+            aria-label="Switch to individual view"
+          >
+            Individual View
+          </button>
+        ) : undefined}
       />
 
-      <div className="add-instrument">
-        <input
-          type="text"
-          placeholder="Instrument name (e.g., Piano)"
-          value={instrumentName}
-          onChange={(e) => setInstrumentName(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && addInstrument()}
-          disabled={loading}
-        />
-        <button onClick={addInstrument} disabled={loading || !instrumentName.trim()}>
-          Add Instrument
-        </button>
-      </div>
+      {/* Feature 010: Hide Add Instrument control in stacked view */}
+      {viewMode === 'individual' && (
+        <div className="add-instrument">
+          <input
+            type="text"
+            placeholder="Instrument name (e.g., Piano)"
+            value={instrumentName}
+            onChange={(e) => setInstrumentName(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && addInstrument()}
+            disabled={loading}
+          />
+          <button onClick={addInstrument} disabled={loading || !instrumentName.trim()}>
+            Add Instrument
+          </button>
+        </div>
+      )}
 
       {score.instruments.length === 0 ? (
         <div className="no-instruments">
           <p>No instruments yet. Add one to get started!</p>
         </div>
-      ) : (
+      ) : viewMode === 'individual' ? (
         <InstrumentList 
           instruments={score.instruments} 
           scoreId={scoreId} 
@@ -636,6 +666,15 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
             setScoreId(id);
           }}
           onSync={syncLocalScoreToBackend}
+          currentTick={playbackState.currentTick}
+          playbackStatus={playbackState.status}
+          onSeekToTick={playbackState.seekToTick}
+          onUnpinStartTick={playbackState.unpinStartTick}
+        />
+      ) : (
+        /* Feature 010: Stacked Staves View */
+        <StackedStaffView
+          score={score}
           currentTick={playbackState.currentTick}
           playbackStatus={playbackState.status}
           onSeekToTick={playbackState.seekToTick}
