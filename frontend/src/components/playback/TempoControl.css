@@ -1,0 +1,123 @@
+/**
+ * TempoControl Component Styles
+ * 
+ * Feature 008 - Tempo Change: Inline tempo display with compact buttons
+ * Format: "Tempo: 120 BPM (100%) - Reset +"
+ */
+
+.tempo-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-family: system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.tempo-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #666;
+  margin-right: 0.25rem;
+}
+
+.tempo-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.25rem;
+}
+
+.tempo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  user-select: none;
+}
+
+.tempo-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+
+.tempo-btn:active:not(:disabled),
+.tempo-btn.pressed {
+  background: #e5e5e5;
+  transform: scale(0.95);
+}
+
+.tempo-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: #fafafa;
+}
+
+.tempo-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.tempo-decrement,
+.tempo-increment {
+  font-size: 1.125rem;
+  padding: 0;
+  min-width: 1.75rem;
+}
+
+.tempo-reset {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0 0.625rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .tempo-control {
+    background: #2a2a2a;
+  }
+
+  .tempo-label {
+    color: #aaa;
+  }
+
+  .tempo-value {
+    color: #fff;
+  }
+
+  .tempo-btn {
+    background: #333;
+    border-color: #555;
+    color: #fff;
+  }
+
+  .tempo-btn:hover:not(:disabled) {
+    background: #444;
+    border-color: #666;
+  }
+
+  .tempo-btn:active:not(:disabled),
+  .tempo-btn.pressed {
+    background: #2a2a2a;
+  }
+
+  .tempo-btn:disabled {
+    background: #222;
+  }
+}
+

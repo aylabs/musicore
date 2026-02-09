@@ -24,6 +24,8 @@ struct TimingContext {
     divisions: i32,
     /// Current tick position in 960 PPQ
     current_tick: u32,
+    /// Tick position of the last non-chord note (for chord notes)
+    last_note_tick: u32,
 }
 
 impl TimingContext {
@@ -31,6 +33,7 @@ impl TimingContext {
         Self {
             divisions: 480, // Default divisions
             current_tick: 0,
+            last_note_tick: 0,
         }
     }
 
@@ -47,6 +50,14 @@ impl TimingContext {
 
     fn current_tick(&self) -> Tick {
         Tick::new(self.current_tick)
+    }
+    
+    fn last_note_tick(&self) -> Tick {
+        Tick::new(self.last_note_tick)
+    }
+    
+    fn update_last_note_tick(&mut self) {
+        self.last_note_tick = self.current_tick;
     }
 }
 
@@ -319,12 +330,22 @@ impl MusicXMLConverter {
         let pitch = ElementMapper::map_pitch(pitch_data.step, pitch_data.octave, pitch_data.alter)?;
 
         // Calculate tick position and duration
-        let tick = timing_context.current_tick();
+        // Chord notes use the same tick as the previous note
+        let tick = if note_data.is_chord {
+            timing_context.last_note_tick()
+        } else {
+            timing_context.current_tick()
+        };
+        
         let fraction = Fraction::from_musicxml(note_data.duration, timing_context.divisions);
         let duration_ticks = fraction.to_ticks()?;
 
-        // Advance timing cursor
-        timing_context.advance_by_duration(note_data.duration)?;
+        // Advance timing cursor only for non-chord notes
+        // Chord notes start at the same tick as the previous note
+        if !note_data.is_chord {
+            timing_context.update_last_note_tick();
+            timing_context.advance_by_duration(note_data.duration)?;
+        }
 
         // Create Note using domain constructor
         let note = Note::new(tick, duration_ticks as u32, pitch)
@@ -511,5 +532,82 @@ mod tests {
         // Second note: D4 at tick 960
         assert_eq!(voice.interval_events[1].pitch.value(), 62);
         assert_eq!(voice.interval_events[1].start_tick.value(), 960);
+    }
+
+    #[test]
+    fn test_convert_chord_notes() {
+        // Test chord notes start at the same tick
+        let measures = vec![MeasureData {
+            number: 1,
+            attributes: Some(AttributesData {
+                divisions: Some(480),
+                key: None,
+                time: None,
+                clefs: vec![],
+                tempo: None,
+            }),
+            elements: vec![
+                // First note of chord: D5 (whole note)
+                MeasureElement::Note(NoteData {
+                    pitch: Some(PitchData {
+                        step: 'D',
+                        octave: 5,
+                        alter: 0,
+                    }),
+                    duration: 960, // half note
+                    voice: 1,
+                    staff: 1,
+                    note_type: Some("half".to_string()),
+                    is_chord: false, // First note in chord
+                }),
+                // Second note of chord: F#5 (should start at same tick)
+                MeasureElement::Note(NoteData {
+                    pitch: Some(PitchData {
+                        step: 'F',
+                        octave: 5,
+                        alter: 1, // F#
+                    }),
+                    duration: 960, // half note
+                    voice: 1,
+                    staff: 1,
+                    note_type: Some("half".to_string()),
+                    is_chord: true, // Chord note - starts at same time
+                }),
+                // Third note: C#5 (sequential, after the chord)
+                MeasureElement::Note(NoteData {
+                    pitch: Some(PitchData {
+                        step: 'C',
+                        octave: 5,
+                        alter: 1, // C#
+                    }),
+                    duration: 960, // half note
+                    voice: 1,
+                    staff: 1,
+                    note_type: Some("half".to_string()),
+                    is_chord: false, // Not a chord - starts after previous chord
+                }),
+            ],
+        }];
+
+        let result = MusicXMLConverter::convert_voice(&measures);
+        assert!(result.is_ok(), "Voice conversion should succeed: {:?}", result.err());
+
+        let voice = result.unwrap();
+        assert_eq!(voice.interval_events.len(), 3, "Expected 3 notes (2-note chord + 1 sequential)");
+
+        // First note: D5 at tick 0
+        assert_eq!(voice.interval_events[0].pitch.value(), 74); // D5
+        assert_eq!(voice.interval_events[0].start_tick.value(), 0);
+        assert_eq!(voice.interval_events[0].duration_ticks, 1920); // half note at 960 PPQ
+
+        // Second note: F#5 at tick 0 (chord note - same as previous)
+        assert_eq!(voice.interval_events[1].pitch.value(), 78); // F#5
+        assert_eq!(voice.interval_events[1].start_tick.value(), 0, "Chord note should start at same tick as first note");
+        assert_eq!(voice.interval_events[1].duration_ticks, 1920);
+
+        // Third note: C#5 at tick 1920 (after the chord)
+        assert_eq!(voice.interval_events[2].pitch.value(), 73); // C#5
+        assert_eq!(voice.interval_events[2].start_tick.value(), 1920, "Sequential note should start after chord duration");
+        assert_eq!(voice.interval_events[2].duration_ticks, 1920);
     }
 }

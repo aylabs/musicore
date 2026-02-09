@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { ToneAdapter } from './ToneAdapter';
 import { PlaybackScheduler, secondsToTicks, ticksToSeconds } from './PlaybackScheduler';
+import { useTempoState } from '../state/TempoStateContext';
 import type { Note } from '../../types/score';
 import type { PlaybackStatus } from '../../types/playback';
 
@@ -20,6 +21,8 @@ export interface PlaybackState {
  * MusicTimeline - React hook for managing playback state
  * 
  * Feature 003 - Music Playback: User Story 1
+ * Feature 008 - Tempo Change: T015 Added tempo multiplier support
+ * 
  * Manages playback lifecycle: stopped → playing → paused → stopped
  * Coordinates with ToneAdapter for audio initialization and control.
  * 
@@ -40,6 +43,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const [status, setStatus] = useState<PlaybackStatus>('stopped');
   const [currentTick, setCurrentTick] = useState<number>(0);
   const [error, setError] = useState<string | null>(null); // US3 T052: Track autoplay errors
+  
+  // Feature 008 - Tempo Change: T015 Get tempo multiplier from context
+  const { tempoState } = useTempoState();
   
   // Refs to track timing information
   const startTimeRef = useRef<number>(0);
@@ -72,20 +78,38 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
         playbackEndTimeoutRef.current = null;
       }
 
+      // If starting from the beginning (currentTick = 0), skip to the first note
+      // This avoids playing through rest measures at the start of the score
+      let playbackStartTick = currentTick;
+      if (currentTick === 0 && notes.length > 0) {
+        const firstNote = notes.reduce((earliest, note) => 
+          note.start_tick < earliest.start_tick ? note : earliest
+        );
+        playbackStartTick = firstNote.start_tick;
+        setCurrentTick(playbackStartTick);
+      }
+
       // Initialize audio context (required for browser autoplay policy)
       // US1 T021: Call ToneAdapter.init()
       await adapter.init();
 
+      // Start Transport fresh for this playback
+      adapter.startTransport();
+
       // Store start time for timeline tracking
       startTimeRef.current = adapter.getCurrentTime();
 
+      // US1 T021: Transition status to 'playing' immediately for responsive UI
+      setStatus('playing');
+
       // US2 T037: Schedule notes for playback
-      scheduler.scheduleNotes(notes, tempo, currentTick);
+      // Feature 008 - Tempo Change: T015 Pass tempo multiplier to scheduler
+      await scheduler.scheduleNotes(notes, tempo, playbackStartTick, tempoState.tempoMultiplier);
 
       // Calculate when playback will end and auto-stop
       if (notes.length > 0) {
         // Find the last note end time
-        const notesToPlay = notes.filter(note => note.start_tick >= currentTick);
+        const notesToPlay = notes.filter(note => note.start_tick >= playbackStartTick);
         if (notesToPlay.length > 0) {
           const lastNote = notesToPlay.reduce((latest, note) => {
             const noteEndTick = note.start_tick + note.duration_ticks;
@@ -94,8 +118,11 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
           });
           
           const lastNoteEndTick = lastNote.start_tick + lastNote.duration_ticks;
-          const ticksFromCurrent = lastNoteEndTick - currentTick;
-          const playbackDurationSeconds = ticksToSeconds(ticksFromCurrent, tempo);
+          const ticksFromCurrent = lastNoteEndTick - playbackStartTick;
+          let playbackDurationSeconds = ticksToSeconds(ticksFromCurrent, tempo);
+          
+          // Feature 008 - Tempo Change: T015 Adjust timeout for tempo multiplier
+          playbackDurationSeconds = playbackDurationSeconds / tempoState.tempoMultiplier;
           
           // Add a small buffer (100ms) to ensure the last note completes
           const timeoutMs = (playbackDurationSeconds + 0.1) * 1000;
@@ -107,10 +134,6 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
           }, timeoutMs);
         }
       }
-
-      // Transition to playing state
-      // US1 T021: Transition status to 'playing'
-      setStatus('playing');
     } catch (error) {
       // US3 T052: Handle browser autoplay policy errors
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -128,7 +151,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Stay in stopped/paused state if initialization fails
       throw error;
     }
-  }, [adapter, scheduler, notes, tempo, currentTick]);
+  }, [adapter, scheduler, notes, tempo, currentTick, tempoState.tempoMultiplier]);
 
   /**
    * US1 T022: Implement pause() - Pause playback and track currentTick

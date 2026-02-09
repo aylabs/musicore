@@ -109,6 +109,7 @@ export interface Voice {
 /** Staff contains voices and staff-scoped structural events */
 export interface Staff {
   id: string; // UUID
+  active_clef: ClefType; // Feature 007: Active clef derived from first ClefEvent
   staff_structural_events: StaffStructuralEvent[];
   voices: Voice[];
 }

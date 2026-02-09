@@ -159,9 +159,17 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
 
   /**
    * Get clef for a staff at tick 0
+   * Feature 007: Prefer active_clef field, fall back to staff_structural_events
    */
   const getStaffClef = (instrument: Instrument, staffIndex: number): string => {
     const staff = instrument.staves[staffIndex];
+    
+    // Feature 007: Use active_clef if available (backward compatible)
+    if (staff.active_clef) {
+      return staff.active_clef;
+    }
+    
+    // Fallback: Legacy logic for older API responses
     for (const event of staff.staff_structural_events) {
       if ("Clef" in event && event.Clef.tick === 0) {
         return event.Clef.clef_type;

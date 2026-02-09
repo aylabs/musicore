@@ -213,7 +213,10 @@ export const NotationLayoutEngine = {
    * - Treble clef (G-clef): U+E050
    * - Bass clef (F-clef): U+E062
    * - Alto clef (C-clef): U+E05C
-   * - Tenor clef (C-clef): U+E05C
+   * - Tenor clef (C-clef): U+E05D (Feature 007: corrected from U+E05C)
+   * 
+   * Feature 007: Vertical offsets for clef glyph centering
+   * Some clefs need vertical adjustment for proper alignment on the staff
    * 
    * @param clef - Clef type (Treble, Bass, Alto, Tenor)
    * @param config - Staff configuration
@@ -228,12 +231,23 @@ export const NotationLayoutEngine = {
       Tenor: SMUFL_CODEPOINTS.TENOR_CLEF,
     };
     
+    // Feature 007: Vertical offsets for clef positioning (in staff spaces)
+    // Treble clef: moved down so the bottom end aligns under the second line
+    // Bass clef: moved up so the upper curve touches the first line (bottom line)
+    const CLEF_VERTICAL_OFFSETS: Record<ClefType, number> = {
+      Treble: 1.0,   // Move down 1 staff space
+      Bass: -1.0,    // Move up 1 staff space
+      Alto: 0,
+      Tenor: 0,
+    };
+    
     const centerY = config.viewportHeight / 2;
+    const verticalOffset = CLEF_VERTICAL_OFFSETS[clef] * config.staffSpace;
     
     return {
       type: clef,
       x: config.marginLeft / 2, // Center in the left margin
-      y: centerY, // Vertically centered on staff
+      y: centerY + verticalOffset, // Feature 007: Apply vertical offset
       glyphCodepoint: codepoints[clef],
       fontSize: config.staffSpace * config.glyphFontSizeMultiplier,
     };

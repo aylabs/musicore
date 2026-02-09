@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlayback } from './MusicTimeline';
+import { TempoStateProvider } from '../state/TempoStateContext';
 import type { Note } from '../../types/score';
+import React, { type ReactNode } from 'react';
 
 /**
  * T016: Unit tests for MusicTimeline hook (usePlayback)
@@ -20,6 +22,9 @@ describe('MusicTimeline - usePlayback hook', () => {
           stopAll: vi.fn(),
           getCurrentTime: vi.fn(() => 0),
           playNote: vi.fn(), // US2: Add playNote mock for scheduler
+          startTransport: vi.fn(),
+          stopTransport: vi.fn(),
+          clearSchedule: vi.fn(),
         })),
       },
     }));
@@ -32,11 +37,15 @@ describe('MusicTimeline - usePlayback hook', () => {
 
   const mockTempo = 120;
 
+  // Wrapper to provide TempoStateContext
+  const wrapper = ({ children }: { children: ReactNode }) => 
+    React.createElement(TempoStateProvider, null, children);
+
   /**
    * Test: Hook initializes with default state
    */
   it('should initialize with status "stopped" and currentTick 0', () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     expect(result.current.status).toBe('stopped');
     expect(result.current.currentTick).toBe(0);
@@ -48,7 +57,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * US1 T021: Implement MusicTimeline.play() to transition status to 'playing'
    */
   it('should transition from "stopped" to "playing" when play() is called', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     expect(result.current.status).toBe('stopped');
 
@@ -65,7 +74,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * US1 T022: Implement MusicTimeline.pause() to transition status to 'paused'
    */
   it('should transition from "playing" to "paused" when pause() is called', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -88,7 +97,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * Resume playback from paused state
    */
   it('should transition from "paused" to "playing" when play() is called after pause', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -116,7 +125,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * US1 T023: Implement MusicTimeline.stop() to transition to 'stopped' and reset currentTick
    */
   it('should transition to "stopped" and reset currentTick to 0 when stop() is called', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -144,7 +153,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * Stop should work from paused state as well
    */
   it('should transition from "paused" to "stopped" when stop() is called', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -180,11 +189,14 @@ describe('MusicTimeline - usePlayback hook', () => {
           init: mockInit,
           stopAll: vi.fn(),
           getCurrentTime: vi.fn(() => 0),
+          startTransport: vi.fn(),
+          stopTransport: vi.fn(),
+          clearSchedule: vi.fn(),
         })),
       },
     }));
 
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     await act(async () => {
       await result.current.play();
@@ -207,11 +219,14 @@ describe('MusicTimeline - usePlayback hook', () => {
           init: vi.fn().mockResolvedValue(undefined),
           stopAll: mockStopAll,
           getCurrentTime: vi.fn(() => 0),
+          startTransport: vi.fn(),
+          stopTransport: vi.fn(),
+          clearSchedule: vi.fn(),
         })),
       },
     }));
 
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -233,7 +248,7 @@ describe('MusicTimeline - usePlayback hook', () => {
    * US1 T022: pause() should track currentTick for resume capability
    */
   it('should maintain currentTick when paused for resume capability', async () => {
-    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo));
+    const { result } = renderHook(() => usePlayback(mockNotes, mockTempo), { wrapper });
 
     // Start playback
     await act(async () => {

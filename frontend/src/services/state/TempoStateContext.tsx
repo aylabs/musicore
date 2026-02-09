@@ -1,0 +1,150 @@
+/**
+ * TempoStateContext - React Context for tempo state management
+ * 
+ * Feature 008 - Tempo Change: Provides global tempo state and methods
+ * for adjusting, resetting, and calculating effective tempo.
+ */
+
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import type { TempoState } from '../../types/playback';
+import {
+  clampTempoMultiplier,
+  DEFAULT_TEMPO_MULTIPLIER,
+} from '../../utils/tempoCalculations';
+
+/**
+ * Context value interface
+ */
+interface TempoStateContextValue {
+  tempoState: TempoState;
+  setTempoMultiplier: (multiplier: number) => void;
+  adjustTempo: (percentageChange: number) => void;
+  resetTempo: () => void;
+  getEffectiveTempo: () => number;
+  setOriginalTempo: (tempo: number) => void;
+}
+
+/**
+ * React Context for tempo state
+ */
+const TempoStateContext = createContext<TempoStateContextValue | undefined>(undefined);
+
+/**
+ * Props for TempoStateProvider
+ */
+interface TempoStateProviderProps {
+  children: ReactNode;
+}
+
+/**
+ * Default original tempo (BPM)
+ */
+const DEFAULT_ORIGINAL_TEMPO = 120;
+
+/**
+ * TempoStateProvider - Provides tempo state to child components
+ * 
+ * @param props - Component props
+ * @returns Provider component
+ */
+export function TempoStateProvider({ children }: TempoStateProviderProps) {
+  const [tempoState, setTempoState] = useState<TempoState>({
+    tempoMultiplier: DEFAULT_TEMPO_MULTIPLIER,
+    originalTempo: DEFAULT_ORIGINAL_TEMPO,
+  });
+
+  /**
+   * Set tempo multiplier directly (with clamping)
+   * 
+   * @param multiplier - New tempo multiplier (0.5 to 2.0)
+   */
+  const setTempoMultiplier = useCallback((multiplier: number): void => {
+    const clampedMultiplier = clampTempoMultiplier(multiplier);
+    setTempoState((prev) => ({
+      ...prev,
+      tempoMultiplier: clampedMultiplier,
+    }));
+  }, []);
+
+  /**
+   * Adjust tempo by percentage change
+   * 
+   * @param percentageChange - Change in percentage points (e.g., +1 for +1%, -10 for -10%)
+   * 
+   * @example
+   * adjustTempo(1);   // Increase by 1% (1.0 → 1.01)
+   * adjustTempo(-1);  // Decrease by 1% (1.0 → 0.99)
+   * adjustTempo(10);  // Increase by 10% (1.0 → 1.10)
+   * adjustTempo(-10); // Decrease by 10% (1.0 → 0.90)
+   */
+  const adjustTempo = useCallback((percentageChange: number): void => {
+    setTempoState((prev) => {
+      const newMultiplier = prev.tempoMultiplier + percentageChange / 100;
+      const clampedMultiplier = clampTempoMultiplier(newMultiplier);
+      return {
+        ...prev,
+        tempoMultiplier: clampedMultiplier,
+      };
+    });
+  }, []);
+
+  /**
+   * Reset tempo multiplier to 1.0 (100%)
+   */
+  const resetTempo = useCallback((): void => {
+    setTempoState((prev) => ({
+      ...prev,
+      tempoMultiplier: DEFAULT_TEMPO_MULTIPLIER,
+    }));
+  }, []);
+
+  /**
+   * Get effective tempo in BPM (rounded to whole number)
+   * 
+   * @returns Effective tempo (originalTempo * tempoMultiplier)
+   */
+  const getEffectiveTempo = useCallback((): number => {
+    return Math.round(tempoState.originalTempo * tempoState.tempoMultiplier);
+  }, [tempoState.originalTempo, tempoState.tempoMultiplier]);
+
+  /**
+   * Set original tempo (from score)
+   * 
+   * @param tempo - Original tempo in BPM
+   */
+  const setOriginalTempo = useCallback((tempo: number): void => {
+    setTempoState((prev) => ({
+      ...prev,
+      originalTempo: tempo,
+    }));
+  }, []);
+
+  const value: TempoStateContextValue = {
+    tempoState,
+    setTempoMultiplier,
+    adjustTempo,
+    resetTempo,
+    getEffectiveTempo,
+    setOriginalTempo,
+  };
+
+  return (
+    <TempoStateContext.Provider value={value}>
+      {children}
+    </TempoStateContext.Provider>
+  );
+}
+
+/**
+ * Hook to access tempo state
+ * 
+ * @returns Tempo state context value
+ * @throws Error if used outside TempoStateProvider
+ */
+export function useTempoState(): TempoStateContextValue {
+  const context = useContext(TempoStateContext);
+  if (context === undefined) {
+    throw new Error('useTempoState must be used within TempoStateProvider');
+  }
+  return context;
+}
