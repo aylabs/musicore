@@ -31,6 +31,9 @@ export interface NotationRendererProps {
   /** Current horizontal scroll position (for fixed clef positioning) */
   scrollX?: number;
   
+  /** Whether to show the clef (Feature 009: hide during auto-scroll to prevent flickering) */
+  showClef?: boolean;
+  
   /** Notes for chord symbol detection (T032) */
   notes?: Note[];
   
@@ -47,6 +50,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   selectedNoteId = null,
   onNoteClick,
   scrollX = 0,
+  showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
 }) => {
@@ -95,21 +99,23 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       ))}
 
-      {/* Clef symbol - Feature 009: Use CSS transform for hardware-accelerated positioning */}
-      <g style={{ transform: `translateX(${scrollX}px)`, willChange: 'transform' }}>
-        <text
-          data-testid={`clef-${layout.clef.type}`}
-          x={layout.clef.x}
-          y={layout.clef.y}
-          fontSize={layout.clef.fontSize}
-          fontFamily="Bravura"
-          fill="black"
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          {layout.clef.glyphCodepoint}
-        </text>
-      </g>
+      {/* Clef symbol - Feature 009: Hide during auto-scroll to prevent flickering */}
+      {showClef && (
+        <g style={{ transform: `translateX(${scrollX}px)`, willChange: 'transform' }}>
+          <text
+            data-testid={`clef-${layout.clef.type}`}
+            x={layout.clef.x}
+            y={layout.clef.y}
+            fontSize={layout.clef.fontSize}
+            fontFamily="Bravura"
+            fill="black"
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {layout.clef.glyphCodepoint}
+          </text>
+        </g>
+      )}
 
       {/* Note heads (positioned SMuFL glyphs) - T055: Virtual scrolling */}
       {layout.notes
@@ -201,6 +207,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
  * NotationRenderer - Memoized version for performance
  * 
  * T066: Wrapped with React.memo to prevent unnecessary re-renders
- * Only re-renders when props actually change (layout, selectedNoteId, scrollX, notes)
+ * Only re-renders when props actually change (layout, selectedNoteId, scrollX, showClef, notes)
  */
 export const NotationRenderer = React.memo(NotationRendererComponent);
