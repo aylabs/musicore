@@ -4,7 +4,18 @@
 // WASM module interface - represents the exported functions from Rust
 interface WasmModule {
   default: () => Promise<void>;
+  // Phase 3: MusicXML Parsing
   parse_musicxml: (xmlContent: string) => unknown;
+  // Phase 4: Domain Operations
+  create_score: (title?: string) => unknown;
+  add_instrument: (score: unknown, name: string) => unknown;
+  add_staff: (score: unknown, instrumentId: string) => unknown;
+  add_voice: (score: unknown, staffId: string) => unknown;
+  add_note: (score: unknown, voiceId: string, note: unknown) => unknown;
+  add_tempo_event: (score: unknown, tick: number, bpm: number) => unknown;
+  add_time_signature_event: (score: unknown, tick: number, numerator: number, denominator: number) => unknown;
+  add_clef_event: (score: unknown, staffId: string, tick: number, clefType: string) => unknown;
+  add_key_signature_event: (score: unknown, staffId: string, tick: number, key: string) => unknown;
 }
 
 let wasmModule: WasmModule | null = null;

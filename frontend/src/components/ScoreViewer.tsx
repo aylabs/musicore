@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
+import * as wasmEngine from "../services/wasm/music-engine";
 import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
@@ -263,6 +264,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
 
   /**
    * Add an instrument to the current score
+   * Feature 011: Uses WASM engine for offline capability
    */
   const addInstrument = async () => {
     if (!score || !instrumentName.trim()) return;
@@ -270,18 +272,14 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
     setLoading(true);
     setError(null);
     try {
-      // If this is a local score (no scoreId), create it on the backend first
-      let currentScoreId = scoreId;
-      if (!currentScoreId) {
-        const newBackendScore = await apiClient.createScore({ title: "New Score" });
-        currentScoreId = newBackendScore.id;
-        setScoreId(currentScoreId);
-      }
-
-      await apiClient.addInstrument(currentScoreId, { name: instrumentName });
-      // Reload score to get updated state
-      await loadScore(currentScoreId);
+      // Use WASM to add instrument locally (no backend needed)
+      const updatedScore = await wasmEngine.addInstrument(score, instrumentName.trim());
+      setScore(updatedScore);
       setInstrumentName("");
+      
+      // Mark as file-sourced since we're using WASM (frontend is source of truth)
+      setIsFileSourced(true);
+      
       // Feature 004 T013: Mark as modified when score is edited
       setModified(true);
     } catch (err) {

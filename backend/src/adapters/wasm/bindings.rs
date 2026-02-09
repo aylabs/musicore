@@ -40,7 +40,360 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
 // Phase 4: User Story 2 - Domain Operations
 // ============================================================================
 
-// WASM exports will be implemented in Phase 3 (User Story 1) and Phase 4 (User Story 2)
-// This module provides the foundation for WASM function exports
+use crate::domain::{
+    score::Score,
+    instrument::Instrument,
+    staff::Staff,
+    voice::Voice,
+    events::{
+        note::Note,
+        tempo::TempoEvent,
+        time_signature::TimeSignatureEvent,
+        clef::ClefEvent,
+        key_signature::KeySignatureEvent,
+    },
+    ids::{InstrumentId, StaffId, VoiceId},
+    value_objects::{Tick, BPM, Clef, KeySignature},
+};
+use super::error_handling::to_js_error;
+
+/// Helper function to parse key signature string to sharps/flats count
+/// Examples: "C" -> 0, "G" -> 1, "D" -> 2, "F" -> -1, "Bb" -> -2
+fn parse_key_signature(key: &str) -> Result<i8, JsValue> {
+    match key {
+        // Major keys with sharps
+        "C" => Ok(0),
+        "G" => Ok(1),
+        "D" => Ok(2),
+        "A" => Ok(3),
+        "E" => Ok(4),
+        "B" => Ok(5),
+        "F#" => Ok(6),
+        "C#" => Ok(7),
+        // Major keys with flats  
+        "F" => Ok(-1),
+        "Bb" => Ok(-2),
+        "Eb" => Ok(-3),
+        "Ab" => Ok(-4),
+        "Db" => Ok(-5),
+        "Gb" => Ok(-6),
+        "Cb" => Ok(-7),
+        // Minor keys with sharps
+        "Am" => Ok(0),
+        "Em" => Ok(1),
+        "Bm" => Ok(2),
+        "F#m" => Ok(3),
+        "C#m" => Ok(4),
+        "G#m" => Ok(5),
+        "D#m" => Ok(6),
+        "A#m" => Ok(7),
+        // Minor keys with flats
+        "Dm" => Ok(-1),
+        "Gm" => Ok(-2),
+        "Cm" => Ok(-3),
+        "Fm" => Ok(-4),
+        "Bbm" => Ok(-5),
+        "Ebm" => Ok(-6),
+        "Abm" => Ok(-7),
+        _ => Err(JsValue::from_str(&format!("Invalid key signature: {}", key))),
+    }
+}
+
+/// Create a new empty score with default structural events
+///
+/// # Arguments
+/// * `title` - Optional score title (will be ignored as Score doesn't have title field)
+///
+/// # Returns
+/// * JsValue representing the new Score with default tempo (120 BPM) and time signature (4/4)
+#[wasm_bindgen]
+pub fn create_score(_title: Option<String>) -> Result<JsValue, JsValue> {
+    let score = Score::new();
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add an instrument to a score
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `name` - Instrument name (e.g., "Piano", "Violin")
+///
+/// # Returns
+/// * JsValue representing the updated Score with added instrument
+#[wasm_bindgen]
+pub fn add_instrument(score_js: JsValue, name: &str) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let instrument = Instrument::new(name.to_string());
+    score.add_instrument(instrument);
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a staff to an instrument
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `instrument_id` - UUID of the target instrument
+///
+/// # Returns
+/// * JsValue representing the updated Score with added staff
+#[wasm_bindgen]
+pub fn add_staff(score_js: JsValue, instrument_id: &str) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let instrument_id = InstrumentId::parse(instrument_id)
+        .map_err(|e| JsValue::from_str(&format!("Invalid instrument ID: {}", e)))?;
+    
+    let instrument = score.instruments.iter_mut()
+        .find(|i| i.id == instrument_id)
+        .ok_or_else(|| JsValue::from_str("Instrument not found"))?;
+    
+    let staff = Staff::new();
+    instrument.add_staff(staff);
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a voice to a staff
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `staff_id` - UUID of the target staff
+///
+/// # Returns
+/// * JsValue representing the updated Score with added voice
+#[wasm_bindgen]
+pub fn add_voice(score_js: JsValue, staff_id: &str) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let staff_id = StaffId::parse(staff_id)
+        .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
+    
+    // Find the staff in any instrument
+    let mut found = false;
+    for instrument in &mut score.instruments {
+        if let Ok(staff) = instrument.get_staff_mut(staff_id) {
+            let voice = Voice::new();
+            staff.add_voice(voice);
+            found = true;
+            break;
+        }
+    }
+    
+    if !found {
+        return Err(JsValue::from_str("Staff not found"));
+    }
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a note to a voice with domain validation
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `voice_id` - UUID of the target voice
+/// * `note_js` - Note to add as JsValue
+///
+/// # Returns
+/// * JsValue representing the updated Score with added note
+#[wasm_bindgen]
+pub fn add_note(score_js: JsValue, voice_id: &str, note_js: JsValue) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let note: Note = serde_wasm_bindgen::from_value(note_js)
+        .map_err(|e| JsValue::from_str(&format!("Note deserialization error: {}", e)))?;
+    
+    let voice_id = VoiceId::parse(voice_id)
+        .map_err(|e| JsValue::from_str(&format!("Invalid voice ID: {}", e)))?;
+    
+    // Find the voice in any staff in any instrument
+    let mut found = false;
+    'outer: for instrument in &mut score.instruments {
+        for staff in &mut instrument.staves {
+            if let Ok(voice) = staff.get_voice_mut(voice_id) {
+                voice.add_note(note.clone())
+                    .map_err(to_js_error)?;
+                found = true;
+                break 'outer;
+            }
+        }
+    }
+    
+    if !found {
+        return Err(JsValue::from_str("Voice not found"));
+    }
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a tempo change event
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `tick` - Absolute position in score timeline (960 PPQ resolution)
+/// * `bpm` - Beats per minute
+///
+/// # Returns
+/// * JsValue representing the updated Score with added tempo event
+#[wasm_bindgen]
+pub fn add_tempo_event(score_js: JsValue, tick: u32, bpm: u16) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let bpm_value = BPM::new(bpm)
+        .map_err(|e| JsValue::from_str(e))?;
+    
+    let tempo_event = TempoEvent::new(Tick::new(tick), bpm_value);
+    
+    score.add_tempo_event(tempo_event)
+        .map_err(to_js_error)?;
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a time signature change event
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `tick` - Absolute position in score timeline
+/// * `numerator` - Top number (e.g., 4 in 4/4)
+/// * `denominator` - Bottom number (e.g., 4 in 4/4, must be power of 2)
+///
+/// # Returns
+/// * JsValue representing the updated Score with added time signature event
+#[wasm_bindgen]
+pub fn add_time_signature_event(
+    score_js: JsValue,
+    tick: u32,
+    numerator: u8,
+    denominator: u8
+) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let time_sig_event = TimeSignatureEvent::new(
+        Tick::new(tick),
+        numerator,
+        denominator
+    );
+    
+    score.add_time_signature_event(time_sig_event)
+        .map_err(to_js_error)?;
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a clef change event to a staff
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `staff_id` - UUID of the target staff
+/// * `tick` - Absolute position in score timeline
+/// * `clef_type` - Clef type (treble, bass, alto, tenor)
+///
+/// # Returns
+/// * JsValue representing the updated Score with added clef event
+#[wasm_bindgen]
+pub fn add_clef_event(
+    score_js: JsValue,
+    staff_id: &str,
+    tick: u32,
+    clef_type: &str
+) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let staff_id = StaffId::parse(staff_id)
+        .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
+    
+    let clef = match clef_type.to_lowercase().as_str() {
+        "treble" => Clef::Treble,
+        "bass" => Clef::Bass,
+        "alto" => Clef::Alto,
+        "tenor" => Clef::Tenor,
+        _ => return Err(JsValue::from_str(&format!("Invalid clef type: {}", clef_type))),
+    };
+    
+    let clef_event = ClefEvent::new(Tick::new(tick), clef);
+    
+    // Find the staff in any instrument
+    let mut found = false;
+    for instrument in &mut score.instruments {
+        if let Ok(staff) = instrument.get_staff_mut(staff_id) {
+            staff.add_clef_event(clef_event)
+                .map_err(to_js_error)?;
+            found = true;
+            break;
+        }
+    }
+    
+    if !found {
+        return Err(JsValue::from_str("Staff not found"));
+    }
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
+
+/// Add a key signature change event to a staff
+///
+/// # Arguments
+/// * `score_js` - Current score as JsValue
+/// * `staff_id` - UUID of the target staff
+/// * `tick` - Absolute position in score timeline
+/// * `key` - Key signature (e.g., "C", "G", "Dm", "F#")
+///
+/// # Returns
+/// * JsValue representing the updated Score with added key signature event
+#[wasm_bindgen]
+pub fn add_key_signature_event(
+    score_js: JsValue,
+    staff_id: &str,
+    tick: u32,
+    key: &str
+) -> Result<JsValue, JsValue> {
+    let mut score: Score = serde_wasm_bindgen::from_value(score_js)
+        .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+    
+    let staff_id = StaffId::parse(staff_id)
+        .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
+    
+    let sharps = parse_key_signature(key)?;
+    let key_signature = KeySignature::new(sharps)
+        .map_err(|e| JsValue::from_str(e))?;
+    
+    let key_sig_event = KeySignatureEvent::new(Tick::new(tick), key_signature);
+    
+    // Find the staff in any instrument
+    let mut found = false;
+    for instrument in &mut score.instruments {
+        if let Ok(staff) = instrument.get_staff_mut(staff_id) {
+            staff.add_key_signature_event(key_sig_event)
+                .map_err(to_js_error)?;
+            found = true;
+            break;
+        }
+    }
+    
+    if !found {
+        return Err(JsValue::from_str("Staff not found"));
+    }
+    
+    serde_wasm_bindgen::to_value(&score)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+}
 
 

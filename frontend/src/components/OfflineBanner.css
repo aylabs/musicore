@@ -1,0 +1,72 @@
+/* Feature 011: Offline Banner Styles */
+
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+.offline-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.offline-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+.offline-message {
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .offline-banner {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .offline-message {
+    font-size: 0.875rem;
+  }
+
+  .offline-icon {
+    width: 20px;
+    height: 20px;
+  }
+}

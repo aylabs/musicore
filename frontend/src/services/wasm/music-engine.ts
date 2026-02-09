@@ -74,13 +74,251 @@ export async function parseMusicXML(xmlContent: string): Promise<Score> {
 // Phase 4: User Story 2 - Domain Operations
 // ============================================================================
 
-// Domain operation wrappers will be added in Phase 4:
-// - addNote
-// - updateNote
-// - deleteNote
-// - addInstrument
-// - updateInstrument
-// - etc.
+/**
+ * Create a new empty score with default structural events
+ * 
+ * @param title - Optional score title
+ * @returns New Score with default tempo (120 BPM) and time signature (4/4)
+ * @throws WasmEngineError if creation fails
+ */
+export async function createScore(title?: string): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.create_score(title);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add an instrument to a score
+ * 
+ * @param score - Current score
+ * @param name - Instrument name (e.g., "Piano", "Violin")
+ * @returns Updated score with added instrument
+ * @throws WasmEngineError if operation fails
+ */
+export async function addInstrument(score: Score, name: string): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_instrument(score, name);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a staff to an instrument
+ * 
+ * @param score - Current score
+ * @param instrumentId - UUID of the target instrument
+ * @returns Updated score with added staff
+ * @throws WasmEngineError if instrument not found or operation fails
+ */
+export async function addStaff(score: Score, instrumentId: string): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_staff(score, instrumentId);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a voice to a staff
+ * 
+ * @param score - Current score
+ * @param staffId - UUID of the target staff
+ * @returns Updated score with added voice
+ * @throws WasmEngineError if staff not found or operation fails
+ */
+export async function addVoice(score: Score, staffId: string): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_voice(score, staffId);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a note to a voice with domain validation
+ * 
+ * @param score - Current score
+ * @param voiceId - UUID of the target voice
+ * @param note - Note to add (must have tick, duration, pitch)
+ * @returns Updated score with added note
+ * @throws WasmEngineError if validation fails or voice not found
+ */
+export async function addNote(
+  score: Score,
+  voiceId: string,
+  note: { id: string; tick: number; duration: number; pitch: number }
+): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_note(score, voiceId, note);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a tempo change event
+ * 
+ * @param score - Current score
+ * @param tick - Absolute position in score timeline (960 PPQ resolution)
+ * @param bpm - Beats per minute
+ * @returns Updated score with added tempo event
+ * @throws WasmEngineError if validation fails
+ */
+export async function addTempoEvent(
+  score: Score,
+  tick: number,
+  bpm: number
+): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_tempo_event(score, tick, bpm);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a time signature change event
+ * 
+ * @param score - Current score
+ * @param tick - Absolute position in score timeline
+ * @param numerator - Top number (e.g., 4 in 4/4)
+ * @param denominator - Bottom number (e.g., 4 in 4/4, must be power of 2)
+ * @returns Updated score with added time signature event
+ * @throws WasmEngineError if validation fails
+ */
+export async function addTimeSignatureEvent(
+  score: Score,
+  tick: number,
+  numerator: number,
+  denominator: number
+): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_time_signature_event(score, tick, numerator, denominator);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a clef change event to a staff
+ * 
+ * @param score - Current score
+ * @param staffId - UUID of the target staff
+ * @param tick - Absolute position in score timeline
+ * @param clefType - Clef type (treble, bass, alto, tenor)
+ * @returns Updated score with added clef event
+ * @throws WasmEngineError if staff not found or validation fails
+ */
+export async function addClefEvent(
+  score: Score,
+  staffId: string,
+  tick: number,
+  clefType: 'treble' | 'bass' | 'alto' | 'tenor'
+): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_clef_event(score, staffId, tick, clefType);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
+
+/**
+ * Add a key signature change event to a staff
+ * 
+ * @param score - Current score
+ * @param staffId - UUID of the target staff
+ * @param tick - Absolute position in score timeline
+ * @param key - Key signature (e.g., "C", "G", "Dm", "F#")
+ * @returns Updated score with added key signature event
+ * @throws WasmEngineError if staff not found or invalid key
+ */
+export async function addKeySignatureEvent(
+  score: Score,
+  staffId: string,
+  tick: number,
+  key: string
+): Promise<Score> {
+  await ensureWasmInitialized();
+  
+  try {
+    const wasmModule = getWasmModule();
+    if (!wasmModule) {
+      throw new Error('WASM module not initialized');
+    }
+    
+    const result = wasmModule.add_key_signature_event(score, staffId, tick, key);
+    return result as Score;
+  } catch (error) {
+    handleWasmError(error);
+  }
+}
 
 /**
  * Export utility functions for use in other modules

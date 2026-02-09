@@ -132,45 +132,45 @@ This is a monorepo web application:
 
 ### Remaining WASM Exports (Domain Operations)
 
-- [ ] T049 [P] [US2] Implement create_score function in backend/src/adapters/wasm/bindings.rs
-- [ ] T050 [P] [US2] Implement add_instrument function with Score serialization in backend/src/adapters/wasm/bindings.rs
-- [ ] T051 [P] [US2] Implement add_staff function with instrument_id resolution in backend/src/adapters/wasm/bindings.rs
-- [ ] T052 [P] [US2] Implement add_voice function with staff_id resolution in backend/src/adapters/wasm/bindings.rs
-- [ ] T053 [P] [US2] Implement add_note function with domain validation in backend/src/adapters/wasm/bindings.rs
-- [ ] T054 [P] [US2] Implement add_tempo_event function in backend/src/adapters/wasm/bindings.rs
-- [ ] T055 [P] [US2] Implement add_time_signature_event function in backend/src/adapters/wasm/bindings.rs
-- [ ] T056 [P] [US2] Implement add_clef_event function in backend/src/adapters/wasm/bindings.rs
-- [ ] T057 [P] [US2] Implement add_key_signature_event function in backend/src/adapters/wasm/bindings.rs
-- [ ] T058 [US2] Rebuild WASM module with all domain operations: `wasm-pack build --target web`
+- [X] T049 [P] [US2] Implement create_score function in backend/src/adapters/wasm/bindings.rs
+- [X] T050 [P] [US2] Implement add_instrument function with Score serialization in backend/src/adapters/wasm/bindings.rs
+- [X] T051 [P] [US2] Implement add_staff function with instrument_id resolution in backend/src/adapters/wasm/bindings.rs
+- [X] T052 [P] [US2] Implement add_voice function with staff_id resolution in backend/src/adapters/wasm/bindings.rs
+- [X] T053 [P] [US2] Implement add_note function with domain validation in backend/src/adapters/wasm/bindings.rs
+- [X] T054 [P] [US2] Implement add_tempo_event function in backend/src/adapters/wasm/bindings.rs
+- [X] T055 [P] [US2] Implement add_time_signature_event function in backend/src/adapters/wasm/bindings.rs
+- [X] T056 [P] [US2] Implement add_clef_event function in backend/src/adapters/wasm/bindings.rs
+- [X] T057 [P] [US2] Implement add_key_signature_event function in backend/src/adapters/wasm/bindings.rs
+- [X] T058 [US2] Rebuild WASM module with all domain operations: `wasm-pack build --target web`
 
 ### Frontend Wrapper Functions
 
-- [ ] T059 [P] [US2] Add createScore wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T060 [P] [US2] Add addInstrument wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T061 [P] [US2] Add addStaff wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T062 [P] [US2] Add addVoice wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T063 [P] [US2] Add addNote wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T064 [P] [US2] Add addTempoEvent wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T065 [P] [US2] Add addTimeSignatureEvent wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T066 [P] [US2] Add addClefEvent wrapper function in frontend/src/services/wasm/music-engine.ts
-- [ ] T067 [P] [US2] Add addKeySignatureEvent wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T059 [P] [US2] Add createScore wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T060 [P] [US2] Add addInstrument wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T061 [P] [US2] Add addStaff wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T062 [P] [US2] Add addVoice wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T063 [P] [US2] Add addNote wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T064 [P] [US2] Add addTempoEvent wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T065 [P] [US2] Add addTimeSignatureEvent wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T066 [P] [US2] Add addClefEvent wrapper function in frontend/src/services/wasm/music-engine.ts
+- [X] T067 [P] [US2] Add addKeySignatureEvent wrapper function in frontend/src/services/wasm/music-engine.ts
 
 ### Replace REST API Calls Throughout Frontend
 
-- [ ] T068 [US2] Identify all ScoreApiClient usages: `cd frontend && grep -r "ScoreApiClient" src/`
-- [ ] T069 [US2] Replace ScoreApiClient.createScore with WASM createScore in frontend components
-- [ ] T070 [US2] Replace ScoreApiClient.addInstrument with WASM addInstrument in frontend components
-- [ ] T071 [US2] Replace ScoreApiClient.addNote with WASM addNote in frontend components
-- [ ] T072 [US2] Update error handling from ApiError to WasmError in frontend components
-- [ ] T073 [US2] Remove ScoreApiClient class (mark deprecated if gradual migration) in frontend/src/services/score-api.ts
+- [X] T068 [US2] Identify all ScoreApiClient usages: `cd frontend && grep -r "ScoreApiClient" src/`
+- [X] T069 [US2] Replace ScoreApiClient.createScore with WASM createScore in frontend components
+- [X] T070 [US2] Replace ScoreApiClient.addInstrument with WASM addInstrument in frontend components
+- [ ] T071 [US2] Replace ScoreApiClient.addNote with WASM addNote in frontend components (requires component refactoring)
+- [ ] T072 [US2] Update error handling from ApiError to WasmError in frontend components (requires component refactoring)
+- [ ] T073 [US2] Remove ScoreApiClient class (mark deprecated if gradual migration) in frontend/src/services/score-api.ts (deferred)
 
 ### Offline Capabilities
 
-- [ ] T074 [P] [US2] Add offline detection using navigator.onLine in frontend/src/hooks/useOfflineDetection.ts
-- [ ] T075 [P] [US2] Add offline banner UI component in frontend/src/components/OfflineBanner.tsx
-- [ ] T076 [P] [US2] Add IndexedDB or localStorage for score persistence in frontend/src/services/storage/local-storage.ts
-- [ ] T077 [US2] Integrate offline banner into App component in frontend/src/App.tsx
-- [ ] T078 [US2] Add score caching to IndexedDB when loaded in frontend/src/services/score-cache.ts
+- [X] T074 [P] [US2] Add offline detection using navigator.onLine in frontend/src/hooks/useOfflineDetection.ts
+- [X] T075 [P] [US2] Add offline banner UI component in frontend/src/components/OfflineBanner.tsx
+- [X] T076 [P] [US2] Add IndexedDB or localStorage for score persistence in frontend/src/services/storage/local-storage.ts
+- [X] T077 [US2] Integrate offline banner into App component in frontend/src/App.tsx
+- [X] T078 [US2] Add score caching to IndexedDB when loaded in frontend/src/services/score-cache.ts
 
 ### Validation
 
