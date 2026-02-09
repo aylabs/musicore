@@ -57,16 +57,54 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   };
 
   return (
-    <svg
-      width={layout.totalWidth}
-      height={layout.totalHeight}
-      xmlns="http://www.w3.org/2000/svg"
-      data-testid="notation-svg"
-      style={{
-        display: 'block',
-        userSelect: 'none',
-      }}
-    >
+    <>
+      {/* Fixed clef overlay - Feature 009: Use CSS for performance (no flickering) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: layout.clef.x * 2,
+          height: layout.totalHeight,
+          pointerEvents: 'none',
+          zIndex: 10,
+          background: 'linear-gradient(to right, white 70%, transparent)',
+        }}
+      >
+        <svg
+          width={layout.clef.x * 2}
+          height={layout.totalHeight}
+          xmlns="http://www.w3.org/2000/svg"
+          style={{
+            position: 'sticky',
+            left: 0,
+          }}
+        >
+          <text
+            data-testid={`clef-${layout.clef.type}`}
+            x={layout.clef.x}
+            y={layout.clef.y}
+            fontSize={layout.clef.fontSize}
+            fontFamily="Bravura"
+            fill="black"
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {layout.clef.glyphCodepoint}
+          </text>
+        </svg>
+      </div>
+
+      <svg
+        width={layout.totalWidth}
+        height={layout.totalHeight}
+        xmlns="http://www.w3.org/2000/svg"
+        data-testid="notation-svg"
+        style={{
+          display: 'block',
+          userSelect: 'none',
+        }}
+      >
       {/* Staff lines (5 horizontal lines) */}
       {layout.staffLines.map((line) => (
         <line
@@ -95,23 +133,9 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       ))}
 
-      {/* Clef symbol (SMuFL glyph) */}
-      {/* T057: Fixed clef margin - add scrollX to keep clef visible while scrolling */}
-      <text
-        data-testid={`clef-${layout.clef.type}`}
-        x={layout.clef.x + scrollX}
-        y={layout.clef.y}
-        fontSize={layout.clef.fontSize}
-        fontFamily="Bravura"
-        fill="black"
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {layout.clef.glyphCodepoint}
-      </text>
+      {/* Feature 009: Clef rendered in fixed overlay above for performance (no flickering) */}
 
-      {/* Note heads (positioned SMuFL glyphs) */}
-      {/* T055: Virtual scrolling - render only notes within visibleNoteIndices range */}
+      {/* Note heads (positioned SMuFL glyphs) - T055: Virtual scrolling */}
       {layout.notes
         .slice(layout.visibleNoteIndices.startIdx, layout.visibleNoteIndices.endIdx)
         .map((note) => (
@@ -194,6 +218,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       )}
     </svg>
+    </>
   );
 };
 

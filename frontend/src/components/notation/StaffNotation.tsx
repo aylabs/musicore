@@ -185,6 +185,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     <div
       ref={containerRef}
       style={{
+        position: 'relative',  // Feature 009: Enable absolute positioning for fixed clef overlay
         width: propsViewportWidth ?? '100%',  // Use 100% if no explicit width provided
         height: viewportHeight,
         overflowX: 'auto',  // Enable horizontal scrolling
