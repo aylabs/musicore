@@ -149,3 +149,50 @@
   font-weight: 500;
 }
 
+/* Feature 010: Compact mode for stacked view */
+.playback-controls.compact {
+  flex-direction: row;
+  padding: 10px;
+  margin-bottom: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playback-controls.compact .playback-buttons {
+  gap: 6px;
+}
+
+.playback-controls.compact .playback-button {
+  padding: 8px 16px;
+  font-size: 13px;
+  min-width: 85px;
+}
+
+.playback-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playback-right-actions .view-mode-button {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #667eea;
+  color: white;
+}
+
+.playback-right-actions .view-mode-button:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.playback-right-actions .view-mode-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

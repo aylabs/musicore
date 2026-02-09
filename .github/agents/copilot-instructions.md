@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - TypeScript 5.9 (frontend), Rust 1.82+ (backend API - minimal changes) + React 19.2, Bravura music font (SMuFL), Vite 7.2 bundler; backend: Axum 0.7, serde (007-clef-notation)
 - N/A (display-only feature; clef data already stored in domain model via Feature 006) (007-clef-notation)
 - N/A (no data persistence - scroll/highlight state is ephemeral playback state) (009-playback-scroll-highlight)
+- TypeScript 5.9, React 19.2 + React, Vite (bundler), Vitest (testing), Tone.js (audio playback) (010-stacked-staves-view)
+- N/A (frontend only, uses existing backend API) (010-stacked-staves-view)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -36,9 +38,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 010-stacked-staves-view: Added TypeScript 5.9, React 19.2 + React, Vite (bundler), Vitest (testing), Tone.js (audio playback)
 - 009-playback-scroll-highlight: Added N/A (no data persistence - scroll/highlight state is ephemeral playback state)
 - 007-clef-notation: Added TypeScript 5.9 (frontend), Rust 1.82+ (backend API - minimal changes) + React 19.2, Bravura music font (SMuFL), Vite 7.2 bundler; backend: Axum 0.7, serde
-- 006-musicxml-import: Added Rust 1.82+ (backend/parsing engine), TypeScript 5.9 (frontend UI) + quick-xml or roxmltree (Rust XML parsing), zip crate (Rust .mxl decompression), React 19, Axum web framework
 
 
 <!-- MANUAL ADDITIONS START -->
