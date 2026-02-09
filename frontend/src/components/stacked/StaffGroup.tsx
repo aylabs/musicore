@@ -16,6 +16,7 @@ interface StaffGroupProps {
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void;
   onUnpinStartTick?: () => void;
+  sharedScrollX?: number;  // Feature 010: Shared scroll position
 }
 
 export function StaffGroup({
@@ -25,7 +26,8 @@ export function StaffGroup({
   currentTick,
   playbackStatus,
   onSeekToTick,
-  onUnpinStartTick
+  onUnpinStartTick,
+  sharedScrollX
 }: StaffGroupProps) {
   // Use active_clef from staff (already computed by backend)
   const clef = staff.active_clef;
@@ -43,6 +45,7 @@ export function StaffGroup({
           playbackStatus={playbackStatus}
           onSeekToTick={onSeekToTick}
           onUnpinStartTick={onUnpinStartTick}
+          sharedScrollX={sharedScrollX}
         />
       </div>
     </div>

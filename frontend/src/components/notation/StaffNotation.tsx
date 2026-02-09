@@ -47,6 +47,12 @@ export interface StaffNotationProps {
   
   /** Feature 009: Callback when note is deselected - clears pinned start position */
   onNoteDeselect?: () => void;
+  
+  /** Feature 010: External scroll position (for shared scrolling in stacked view) */
+  externalScrollX?: number;
+  
+  /** Feature 010: Disable internal scroll container (use external scroll) */
+  disableInternalScroll?: boolean;
 }
 
 export const StaffNotation: React.FC<StaffNotationProps> = ({
@@ -58,6 +64,8 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   playbackStatus = 'stopped',
   onNoteClick,
   onNoteDeselect,
+  externalScrollX,
+  disableInternalScroll = false,
 }) => {
   // T060: Add viewportWidth state and containerRef for measuring container size
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +75,9 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   
   // Scroll state (User Story 4 - T053)
-  const [scrollX, setScrollX] = useState(0);
+  // Feature 010: Use external scroll if provided, otherwise internal state
+  const [internalScrollX, setInternalScrollX] = useState(0);
+  const scrollX = externalScrollX !== undefined ? externalScrollX : internalScrollX;
   
   // Feature 009: Track last auto-scroll time for manual override detection
   const lastAutoScrollTimeRef = useRef<number>(Date.now());
@@ -149,8 +159,13 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   });
   
   // Feature 009 - T012: Apply auto-scroll when enabled and playing
+  // Feature 010: Skip auto-scroll if using external scroll (parent handles it)
   // Use requestAnimationFrame for smooth scrolling synced with browser repaints
   useEffect(() => {
+    if (disableInternalScroll) {
+      return undefined; // Parent handles auto-scroll
+    }
+    
     if (!autoScrollEnabled || playbackStatus !== 'playing' || !containerRef.current) {
       return undefined;
     }
@@ -168,7 +183,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     animationFrameId = requestAnimationFrame(smoothScroll);
     
     return () => cancelAnimationFrame(animationFrameId);
-  }, [autoScrollEnabled, targetScrollX, playbackStatus]);
+  }, [autoScrollEnabled, targetScrollX, playbackStatus, disableInternalScroll]);
 
   // Handle note click - toggle selection and seek to note position
   // Feature 009: When note clicked, seek playback to that note's position
@@ -198,7 +213,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   // Feature 009 - T012: Detect manual scroll and disable auto-scroll
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const newScrollX = e.currentTarget.scrollLeft;
-    setScrollX(newScrollX);
+    setInternalScrollX(newScrollX);
     
     // Feature 009: Detect manual scroll during playback
     if (playbackStatus === 'playing' && autoScrollEnabled) {
@@ -210,18 +225,30 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   };
 
   // T056: Add scrollable container with onScroll handler
+  // Feature 010: Support external scroll container for stacked view
+  const containerStyle = disableInternalScroll
+    ? {
+        width: 'max-content',  // Expand to full content width for shared scrolling
+        minWidth: '100%',  // At least full container width
+        height: viewportHeight,
+        overflowX: 'visible' as const,  // No internal scrolling
+        overflowY: 'hidden' as const,
+        border: 'none',  // No border in stacked view
+      }
+    : {
+        width: propsViewportWidth ?? '100%',
+        height: viewportHeight,
+        overflowX: 'auto' as const,  // Enable horizontal scrolling
+        overflowY: 'hidden' as const,
+        border: '1px solid #ccc',
+        willChange: 'scroll-position',  // Feature 009: Hint to browser for scroll optimization
+      };
+
   return (
     <div
       ref={containerRef}
-      style={{
-        width: propsViewportWidth ?? '100%',  // Use 100% if no explicit width provided
-        height: viewportHeight,
-        overflowX: 'auto',  // Enable horizontal scrolling
-        overflowY: 'hidden',  // Disable vertical scrolling
-        border: '1px solid #ccc',
-        willChange: 'scroll-position',  // Feature 009: Hint to browser for scroll optimization
-      }}
-      onScroll={handleScroll}  // Wire up scroll handler
+      style={containerStyle}
+      onScroll={disableInternalScroll ? undefined : handleScroll}  // Wire up scroll handler only if internal scroll
     >
       <NotationRenderer
         layout={layout}

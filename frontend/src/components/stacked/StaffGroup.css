@@ -5,7 +5,7 @@
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   align-items: center;
 }
 
@@ -27,10 +27,7 @@
 }
 
 .staff-content {
-  flex: 1;
-  min-width: 0; /* Allow flex child to shrink */
   background: white;
   padding: 8px;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: visible; /* Allow content to expand for shared scrolling */
 }
