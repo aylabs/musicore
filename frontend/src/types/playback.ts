@@ -50,3 +50,59 @@ export interface ScheduledNote {
   /** Real-time duration in seconds */
   durationSeconds: number;
 }
+
+/**
+ * Tempo adjustment state
+ * 
+ * Feature 008 - Tempo Change: Manages playback tempo multiplier
+ * Separate from score's TempoEvent (domain model) - this is playback adapter state
+ */
+export interface TempoState {
+  /**
+   * Tempo multiplier applied to playback
+   * - 1.0 = 100% (no change)
+   * - 0.5 = 50% (half speed)
+   * - 2.0 = 200% (double speed)
+   * Range: 0.5 to 2.0
+   */
+  tempoMultiplier: number;
+
+  /**
+   * Original tempo from score (in BPM)
+   * Used to calculate effective tempo for display
+   * Example: 120 BPM * 0.8 multiplier = 96 BPM effective
+   */
+  originalTempo: number;
+}
+
+/**
+ * Tempo preference stored in browser localStorage
+ * 
+ * Feature 008 - Tempo Change: Per-score tempo persistence
+ * Key format: "musicore:tempo:{scoreId}"
+ * Example: "musicore:tempo:d5f8a9c2-4b3e-11ef-9a1b-0242ac110002"
+ */
+export interface TempoPreference {
+  /**
+   * Unique identifier for the score
+   * Matches Score.id from backend API
+   */
+  scoreId: string;
+
+  /**
+   * Saved tempo multiplier (0.5 to 2.0)
+   */
+  tempoMultiplier: number;
+
+  /**
+   * When this preference was last saved (Unix timestamp in milliseconds)
+   * Used for cleanup of old preferences
+   */
+  timestamp: number;
+
+  /**
+   * Schema version for future migrations
+   * Current version: 1
+   */
+  version: number;
+}

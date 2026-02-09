@@ -66,12 +66,17 @@ vi.mock('tone', () => {
     })),
     Transport: {
       start: vi.fn(),
+      stop: vi.fn(),
       cancel: vi.fn(),
       clear: vi.fn(),
       schedule: vi.fn((_callback, _time) => {
         // Return a mock event ID
         return Math.floor(Math.random() * 10000);
       }),
+      bpm: {
+        value: 120,
+      },
+      seconds: 0,
     },
     context: {
       state: 'suspended',

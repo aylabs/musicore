@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlaybackStatus } from '../../types/playback';
+import TempoControl from './TempoControl';
 import './PlaybackControls.css';
 
 /**
@@ -118,6 +119,10 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           ⏹ Stop
         </button>
       </div>
+
+      {/* Feature 008 - Tempo Change: T014 Inline tempo display with controls */}
+      {/* Disable tempo changes during playback to avoid reschedule delays */}
+      <TempoControl disabled={status === 'playing'} />
 
       {/* US1 T027: Show message when no notes available */}
       {!hasNotes && (

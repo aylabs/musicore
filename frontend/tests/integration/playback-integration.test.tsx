@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlayback } from '../../src/services/playback/MusicTimeline';
+import { TempoStateProvider } from '../../src/services/state/TempoStateContext';
 import type { Note } from '../../src/types/score';
+import React, { type ReactNode } from 'react';
+
+// Wrapper to provide TempoStateContext
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <TempoStateProvider>{children}</TempoStateProvider>
+);
 
 /**
  * T031: Integration test for note timing accuracy
@@ -18,6 +25,9 @@ describe('Playback Integration - Note Timing', () => {
       const mockStopAll = vi.fn();
       const mockInit = vi.fn().mockResolvedValue(undefined);
       const mockGetCurrentTime = vi.fn(() => 0);
+      const mockStartTransport = vi.fn();
+      const mockStopTransport = vi.fn();
+      const mockClearSchedule = vi.fn();
 
       return {
         ToneAdapter: {
@@ -26,6 +36,9 @@ describe('Playback Integration - Note Timing', () => {
             playNote: mockPlayNote,
             stopAll: mockStopAll,
             getCurrentTime: mockGetCurrentTime,
+            startTransport: mockStartTransport,
+            stopTransport: mockStopTransport,
+            clearSchedule: mockClearSchedule,
             isInitialized: vi.fn(() => true),
           })),
         },
@@ -50,7 +63,7 @@ describe('Playback Integration - Note Timing', () => {
       { id: 'note4', start_tick: 2880, duration_ticks: 960, pitch: 65 },   // F4
     ];
 
-    const { result } = renderHook(() => usePlayback(notes, 120));
+    const { result } = renderHook(() => usePlayback(notes, 120), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -74,7 +87,7 @@ describe('Playback Integration - Note Timing', () => {
     ];
 
     // Test with 60 BPM (slower tempo)
-    const { result: result60 } = renderHook(() => usePlayback(notes, 60));
+    const { result: result60 } = renderHook(() => usePlayback(notes, 60), { wrapper });
     
     await act(async () => {
       await result60.current.play();
@@ -83,7 +96,7 @@ describe('Playback Integration - Note Timing', () => {
     expect(result60.current.status).toBe('playing');
 
     // Test with 240 BPM (faster tempo)
-    const { result: result240 } = renderHook(() => usePlayback(notes, 240));
+    const { result: result240 } = renderHook(() => usePlayback(notes, 240), { wrapper });
     
     await act(async () => {
       await result240.current.play();
@@ -102,7 +115,7 @@ describe('Playback Integration - Note Timing', () => {
       { id: 'note3', start_tick: 1920, duration_ticks: 960, pitch: 64 },
     ];
 
-    const { result } = renderHook(() => usePlayback(notes, 120));
+    const { result } = renderHook(() => usePlayback(notes, 120), { wrapper });
 
     // Start playback
     await act(async () => {
@@ -137,7 +150,7 @@ describe('Playback Integration - Note Timing', () => {
       { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
     ];
 
-    const { result } = renderHook(() => usePlayback(notes, 120));
+    const { result } = renderHook(() => usePlayback(notes, 120), { wrapper });
 
     // Start playback
     await act(async () => {

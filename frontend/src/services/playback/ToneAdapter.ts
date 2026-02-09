@@ -23,8 +23,8 @@ export class ToneAdapter {
   private polySynth: Tone.PolySynth | null = null;
   private sampler: Tone.Sampler | null = null;
   private initialized = false;
-  private useSampler = true; // Use piano samples for realistic sound
-  private scheduledEventIds: number[] = []; // Track Transport event IDs for cancellation
+  private useSampler = true; // Use piano samples for rich sound
+  private scheduledEventIds: number[] = []; // Track scheduled Transport events
 
   /**
    * Private constructor - use getInstance() instead
@@ -70,8 +70,7 @@ export class ToneAdapter {
       // Start Tone.js audio context (required for browser autoplay policy)
       await Tone.start();
       
-      // Start Tone.Transport for scheduling (required for Transport.schedule)
-      Tone.Transport.start();
+      // Note: We don't start Tone.Transport here - we'll start it fresh each playback
 
       if (this.useSampler) {
         // US3: Use Salamander Grand Piano samples for realistic sound
@@ -113,11 +112,8 @@ export class ToneAdapter {
           volume: -5,
         }).toDestination();
 
-        // Load samples asynchronously (don't block initialization)
-        // Samples will stream in as needed - first notes may use synth fallback
-        Tone.loaded().then(() => {
-          console.log('Piano samples loaded');
-        });
+        // CRITICAL: Wait for samples to load before allowing playback
+        await Tone.loaded();
       } else {
         // Fallback: Basic synthesizer
         this.polySynth = new Tone.PolySynth(Tone.Synth, {
@@ -150,6 +146,40 @@ export class ToneAdapter {
   }
 
   /**
+   * Start Tone.Transport from the beginning
+   * Call this before scheduling notes for a fresh playback
+   */
+  public startTransport(): void {
+    Tone.Transport.stop();
+    Tone.Transport.seconds = 0;
+    Tone.Transport.start();
+  }
+
+  /**
+   * Stop Tone.Transport and clear scheduled events
+   */
+  public stopTransport(): void {
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    this.scheduledEventIds = [];
+  }
+
+  /**
+   * Clear all scheduled notes
+   * US2 T038: Called by MusicTimeline.pause() and stop()
+   */
+  public clearSchedule(): void {
+    // Cancel all scheduled Transport events
+    this.scheduledEventIds.forEach(id => {
+      Tone.Transport.clear(id);
+    });
+    this.scheduledEventIds = [];
+    
+    // Also stop Transport
+    this.stopTransport();
+  }
+
+  /**
    * Stop all currently playing and scheduled notes
    * 
    * US1 T018: stopAll() method for playback control
@@ -158,21 +188,15 @@ export class ToneAdapter {
    * Safe to call even if not initialized.
    */
   public stopAll(): void {
-    // Cancel all scheduled events by ID
-    for (const eventId of this.scheduledEventIds) {
-      Tone.Transport.clear(eventId);
-    }
-    this.scheduledEventIds = [];
-
+    // Clear scheduled events
+    this.clearSchedule();
+    
     // Stop currently playing notes
     if (this.sampler) {
       this.sampler.releaseAll();
     } else if (this.polySynth) {
       this.polySynth.releaseAll();
     }
-
-    // Cancel any remaining scheduled events on Tone.Transport
-    Tone.Transport.cancel();
   }
 
   /**
@@ -214,18 +238,15 @@ export class ToneAdapter {
     // Convert MIDI pitch to note name (e.g., 60 -> "C4")
     const noteName = Tone.Frequency(pitch, 'midi').toNote();
     
-    // Schedule the note using Transport.schedule so it can be cancelled
+    // Schedule the note using Transport for proper timing coordination
     const eventId = Tone.Transport.schedule((scheduleTime) => {
       if (this.sampler) {
-        // Use sampler for realistic piano sound
         this.sampler.triggerAttackRelease(noteName, duration, scheduleTime);
       } else if (this.polySynth) {
-        // Fallback to synthesizer
         this.polySynth.triggerAttackRelease(noteName, duration, scheduleTime);
       }
     }, time);
     
-    // Track the event ID so we can cancel it later
     this.scheduledEventIds.push(eventId);
   }
 
@@ -236,5 +257,35 @@ export class ToneAdapter {
    */
   public isInitialized(): boolean {
     return this.initialized;
+  }
+
+  /**
+   * Update the transport tempo (BPM)
+   * 
+   * Feature 008 - Tempo Change: T016
+   * 
+   * Updates the Tone.Transport BPM value. While our current implementation
+   * calculates note timing manually in PlaybackScheduler, this ensures
+   * Tone.Transport BPM stays synchronized for potential future features
+   * like visual metronome or timeline display.
+   * 
+   * @param bpm - Tempo in beats per minute (1-400)
+   * 
+   * @example
+   * ```typescript
+   * // Update to 96 BPM (80% of 120 BPM)
+   * adapter.updateTempo(96);
+   * ```
+   */
+  public updateTempo(bpm: number): void {
+    // Validate BPM range (reasonable musical tempos)
+    const validBpm = Math.max(1, Math.min(400, bpm));
+    
+    if (validBpm !== bpm) {
+      console.warn(`Tempo ${bpm} out of range (1-400), clamping to ${validBpm}`);
+    }
+    
+    // Update Tone.Transport BPM
+    Tone.Transport.bpm.value = validBpm;
   }
 }

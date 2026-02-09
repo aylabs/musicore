@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PlaybackControls } from './PlaybackControls';
+import { TempoStateProvider } from '../../services/state/TempoStateContext';
+import React, { type ReactNode } from 'react';
+
+// Wrapper to provide TempoStateContext for TempoControl component
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <TempoStateProvider>{children}</TempoStateProvider>
+);
 
 /**
  * T015: Unit tests for PlaybackControls component
@@ -20,7 +27,7 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    render(<PlaybackControls status="stopped" {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="stopped" {...mockHandlers} /></TempoStateProvider>);
 
     expect(screen.getByRole('button', { name: /play/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
@@ -38,7 +45,7 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    render(<PlaybackControls status="stopped" {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="stopped" {...mockHandlers} /></TempoStateProvider>);
 
     const playButton = screen.getByRole('button', { name: /play/i });
     fireEvent.click(playButton);
@@ -57,7 +64,7 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    render(<PlaybackControls status="playing" {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="playing" {...mockHandlers} /></TempoStateProvider>);
 
     const pauseButton = screen.getByRole('button', { name: /pause/i });
     fireEvent.click(pauseButton);
@@ -76,7 +83,7 @@ describe('PlaybackControls', () => {
       onStop: mockOnStop,
     };
 
-    render(<PlaybackControls status="playing" {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="playing" {...mockHandlers} /></TempoStateProvider>);
 
     const stopButton = screen.getByRole('button', { name: /stop/i });
     fireEvent.click(stopButton);
@@ -99,7 +106,7 @@ describe('PlaybackControls', () => {
         onStop: vi.fn(),
       };
 
-      render(<PlaybackControls status="stopped" {...mockHandlers} />);
+      render(<TempoStateProvider><PlaybackControls status="stopped" {...mockHandlers} /></TempoStateProvider>);
 
       expect(screen.getByRole('button', { name: /play/i })).not.toBeDisabled();
       expect(screen.getByRole('button', { name: /pause/i })).toBeDisabled();
@@ -113,7 +120,7 @@ describe('PlaybackControls', () => {
         onStop: vi.fn(),
       };
 
-      render(<PlaybackControls status="playing" {...mockHandlers} />);
+      render(<TempoStateProvider><PlaybackControls status="playing" {...mockHandlers} /></TempoStateProvider>);
 
       expect(screen.getByRole('button', { name: /play/i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /pause/i })).not.toBeDisabled();
@@ -127,7 +134,7 @@ describe('PlaybackControls', () => {
         onStop: vi.fn(),
       };
 
-      render(<PlaybackControls status="paused" {...mockHandlers} />);
+      render(<TempoStateProvider><PlaybackControls status="paused" {...mockHandlers} /></TempoStateProvider>);
 
       expect(screen.getByRole('button', { name: /play/i })).not.toBeDisabled();
       expect(screen.getByRole('button', { name: /pause/i })).toBeDisabled();
@@ -147,13 +154,13 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    const { rerender } = render(<PlaybackControls status="stopped" {...mockHandlers} />);
+    const { rerender } = render(<TempoStateProvider><PlaybackControls status="stopped" {...mockHandlers} /></TempoStateProvider>);
     expect(screen.getByText(/stopped/i)).toBeInTheDocument();
 
-    rerender(<PlaybackControls status="playing" {...mockHandlers} />);
+    rerender(<TempoStateProvider><PlaybackControls status="playing" {...mockHandlers} /></TempoStateProvider>);
     expect(screen.getByText(/playing/i)).toBeInTheDocument();
 
-    rerender(<PlaybackControls status="paused" {...mockHandlers} />);
+    rerender(<TempoStateProvider><PlaybackControls status="paused" {...mockHandlers} /></TempoStateProvider>);
     expect(screen.getByText(/paused/i)).toBeInTheDocument();
   });
 
@@ -169,7 +176,7 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    render(<PlaybackControls status="stopped" hasNotes={false} {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="stopped" hasNotes={false} {...mockHandlers} /></TempoStateProvider>);
 
     const playButton = screen.getByRole('button', { name: /play/i });
     expect(playButton).toBeDisabled();
@@ -182,7 +189,7 @@ describe('PlaybackControls', () => {
       onStop: vi.fn(),
     };
 
-    render(<PlaybackControls status="stopped" hasNotes={false} {...mockHandlers} />);
+    render(<TempoStateProvider><PlaybackControls status="stopped" hasNotes={false} {...mockHandlers} /></TempoStateProvider>);
 
     expect(screen.getByText(/no notes to play/i)).toBeInTheDocument();
   });

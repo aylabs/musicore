@@ -212,4 +212,136 @@ describe('PlaybackScheduler', () => {
       expect(seconds).toBeCloseTo(1.0, 5);
     });
   });
+
+  /**
+   * T009: Tempo multiplier integration tests
+   * 
+   * Feature 008 - Tempo Change: Tests for tempo multiplier parameter
+   * Verifies that scheduleNotes applies tempo multiplier to timing calculations
+   */
+  describe('tempo multiplier integration', () => {
+    let scheduler: PlaybackScheduler;
+    let mockToneAdapter: any;
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      const { ToneAdapter } = await import('./ToneAdapter');
+      mockToneAdapter = ToneAdapter.getInstance();
+      scheduler = new PlaybackScheduler(mockToneAdapter);
+    });
+
+    it('should schedule notes at original timing with 1.0 multiplier (100%)', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
+      ];
+
+      scheduler.scheduleNotes(notes, 120, 0, 1.0);
+
+      // At 120 BPM with 1.0 multiplier: 960 ticks = 0.5s (unchanged)
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(1, 60, 0.5, 0);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(2, 62, 0.5, 0.5);
+    });
+
+    it('should schedule notes twice as fast with 2.0 multiplier (200%)', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
+      ];
+
+      scheduler.scheduleNotes(notes, 120, 0, 2.0);
+
+      // At 120 BPM with 2.0 multiplier: 960 ticks = 0.25s (half the time = twice the speed)
+      // Note 1: duration = 0.5 / 2.0 = 0.25s, start = 0s
+      // Note 2: duration = 0.5 / 2.0 = 0.25s, start = 0.5 / 2.0 = 0.25s
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(1, 60, 0.25, 0);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(2, 62, 0.25, 0.25);
+    });
+
+    it('should schedule notes half as fast with 0.5 multiplier (50%)', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
+      ];
+
+      scheduler.scheduleNotes(notes, 120, 0, 0.5);
+
+      // At 120 BPM with 0.5 multiplier: 960 ticks = 1.0s (double the time = half the speed)
+      // Note 1: duration = 0.5 / 0.5 = 1.0s, start = 0s
+      // Note 2: duration = 0.5 / 0.5 = 1.0s, start = 0.5 / 0.5 = 1.0s
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(1, 60, 1.0, 0);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(2, 62, 1.0, 1.0);
+    });
+
+    it('should use 1.0 multiplier as default when parameter omitted', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+      ];
+
+      // Call without tempo multiplier parameter
+      scheduler.scheduleNotes(notes, 120, 0);
+
+      // Should behave as 1.0 multiplier (backward compatible)
+      expect(mockToneAdapter.playNote).toHaveBeenCalledWith(60, 0.5, 0);
+    });
+
+    it('should scale durations correctly with 0.8 multiplier (80%)', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
+      ];
+
+      scheduler.scheduleNotes(notes, 120, 0, 0.8);
+
+      // At 120 BPM with 0.8 multiplier:
+      // duration = 0.5 / 0.8 = 0.625s
+      // Note 2 start = 0.5 / 0.8 = 0.625s
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(1, 60, 0.625, 0);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(2, 62, 0.625, 0.625);
+    });
+
+    it('should apply multiplier to currentTick offset', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 960, duration_ticks: 960, pitch: 62 },
+      ];
+
+      // Resume from tick 960 (normally 0.5s at 120 BPM)
+      // With 0.5 multiplier, that offset becomes 1.0s
+      scheduler.scheduleNotes(notes, 120, 960, 0.5);
+
+      // Note 1 should not play (start_tick 0 < currentTick 960)
+      // Note 2 should play immediately: (960 - 960) / 0.5 = 0s
+      expect(mockToneAdapter.playNote).toHaveBeenCalledTimes(1);
+      expect(mockToneAdapter.playNote).toHaveBeenCalledWith(62, 1.0, 0);
+    });
+
+    it('should handle minimum duration with tempo multiplier', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 10, pitch: 60 }, // Extremely short
+      ];
+
+      // With 2.0 multiplier, even shorter duration
+      scheduler.scheduleNotes(notes, 120, 0, 2.0);
+
+      // Duration should still be at least 0.05 seconds (50ms)
+      const call = mockToneAdapter.playNote.mock.calls[0];
+      expect(call[1]).toBeGreaterThanOrEqual(0.05);
+    });
+
+    it('should handle simultaneous notes with tempo multiplier', () => {
+      const notes: Note[] = [
+        { id: 'note1', start_tick: 0, duration_ticks: 960, pitch: 60 },
+        { id: 'note2', start_tick: 0, duration_ticks: 960, pitch: 64 }, // Chord
+      ];
+
+      scheduler.scheduleNotes(notes, 120, 0, 1.5);
+
+      // Both notes at time 0 with scaled duration
+      // duration = 0.5 / 1.5 ≈ 0.333s
+      expect(mockToneAdapter.playNote).toHaveBeenCalledTimes(2);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(1, 60, expect.closeTo(0.333, 2), 0);
+      expect(mockToneAdapter.playNote).toHaveBeenNthCalledWith(2, 64, expect.closeTo(0.333, 2), 0);
+    });
+  });
 });

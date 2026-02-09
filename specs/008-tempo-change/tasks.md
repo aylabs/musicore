@@ -20,8 +20,8 @@
 
 **Purpose**: Project initialization and type definitions
 
-- [ ] T001 Create TempoState interface in frontend/src/types/playback.ts
-- [ ] T002 Create TempoPreference interface in frontend/src/types/playback.ts
+- [X] T001 Create TempoState interface in frontend/src/types/playback.ts
+- [X] T002 Create TempoPreference interface in frontend/src/types/playback.ts
 
 ---
 
@@ -31,10 +31,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Write unit tests for tempo multiplier calculation in frontend/tests/unit/TempoMultiplier.test.ts
-- [ ] T004 Create tempo multiplier utility functions in frontend/src/utils/tempoCalculations.ts (clamp, toPercentage, fromPercentage)
-- [ ] T005 Write tests for useLongPress hook in frontend/src/hooks/useLongPress.test.ts
-- [ ] T006 Implement useLongPress hook in frontend/src/hooks/useLongPress.ts (500ms threshold, 100ms repeat)
+- [X] T003 Write unit tests for tempo multiplier calculation in frontend/tests/unit/TempoMultiplier.test.ts
+- [X] T004 Create tempo multiplier utility functions in frontend/src/utils/tempoCalculations.ts (clamp, toPercentage, fromPercentage)
+- [X] T005 Write tests for useLongPress hook in frontend/src/hooks/useLongPress.test.ts
+- [X] T006 Implement useLongPress hook in frontend/src/hooks/useLongPress.ts (500ms threshold, 100ms repeat)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -48,19 +48,19 @@
 
 ### Tests for User Story 1 (TDD - WRITE FIRST)
 
-- [ ] T007 [P] [US1] Write unit tests for TempoStateContext in frontend/src/services/state/TempoStateContext.test.tsx
-- [ ] T008 [P] [US1] Write component tests for TempoControl buttons in frontend/src/components/playback/TempoControl.test.tsx
-- [ ] T009 [P] [US1] Write unit tests for PlaybackScheduler tempo integration in frontend/src/services/playback/PlaybackScheduler.test.ts
+- [X] T007 [P] [US1] Write unit tests for TempoStateContext in frontend/src/services/state/TempoStateContext.test.tsx
+- [X] T008 [P] [US1] Write component tests for TempoControl buttons in frontend/src/components/playback/TempoControl.test.tsx
+- [X] T009 [P] [US1] Write unit tests for PlaybackScheduler tempo integration in frontend/src/services/playback/PlaybackScheduler.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Create TempoStateContext with React Context in frontend/src/services/state/TempoStateContext.tsx (state management, adjustTempo, resetTempo)
-- [ ] T011 [US1] Integrate TempoStateProvider into App.tsx (wrap ScoreViewer component)
-- [ ] T012 [P] [US1] Create TempoControl component in frontend/src/components/playback/TempoControl.tsx (increment/decrement buttons using useLongPress)
-- [ ] T013 [P] [US1] Modify PlaybackScheduler.scheduleNotes() in frontend/src/services/playback/PlaybackScheduler.ts (apply tempo multiplier to ticksToSeconds)
-- [ ] T014 [US1] Integrate TempoControl into PlaybackControls in frontend/src/components/playback/PlaybackControls.tsx
-- [ ] T015 [US1] Update usePlayback hook in frontend/src/services/playback/MusicTimeline.ts (pass tempo multiplier to PlaybackScheduler)
-- [ ] T016 [US1] Add Tone.js Transport.bpm integration in frontend/src/services/playback/ToneAdapter.ts (method to update transport BPM at runtime)
+- [X] T010 [P] [US1] Create TempoStateContext with React Context in frontend/src/services/state/TempoStateContext.tsx (state management, adjustTempo, resetTempo)
+- [X] T011 [US1] Integrate TempoStateProvider into App.tsx (wrap ScoreViewer component)
+- [X] T012 [P] [US1] Create TempoControl component in frontend/src/components/playback/TempoControl.tsx (increment/decrement buttons using useLongPress)
+- [X] T013 [P] [US1] Modify PlaybackScheduler.scheduleNotes() in frontend/src/services/playback/PlaybackScheduler.ts (apply tempo multiplier to ticksToSeconds)
+- [X] T014 [US1] Integrate TempoControl into PlaybackControls in frontend/src/components/playback/PlaybackControls.tsx
+- [X] T015 [US1] Update usePlayback hook in frontend/src/services/playback/MusicTimeline.ts (pass tempo multiplier to PlaybackScheduler)
+- [X] T016 [US1] Add Tone.js Transport.bpm integration in frontend/src/services/playback/ToneAdapter.ts (method to update transport BPM at runtime)
 
 **Checkpoint**: At this point, users can adjust tempo during playback and hear immediate speed changes
 
@@ -74,15 +74,15 @@
 
 ### Tests for User Story 2 (TDD - WRITE FIRST)
 
-- [ ] T017 [P] [US2] Write component tests for TempoDisplay in frontend/src/components/playback/TempoDisplay.test.tsx
-- [ ] T018 [P] [US2] Write unit tests for tempo display formatting in frontend/tests/unit/TempoFormatting.test.ts
+- [X] T017 [P] [US2] Write component tests for TempoDisplay in frontend/src/components/playback/TempoDisplay.test.tsx
+- [X] T018 [P] [US2] Write unit tests for tempo display formatting in frontend/tests/unit/TempoFormatting.test.ts
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Create TempoDisplay component in frontend/src/components/playback/TempoDisplay.tsx (show "120 BPM (100%)" format)
-- [ ] T020 [P] [US2] Create tempo formatting utilities in frontend/src/utils/tempoFormatting.ts (formatTempo, formatPercentage)
-- [ ] T021 [US2] Integrate TempoDisplay into PlaybackControls in frontend/src/components/playback/PlaybackControls.tsx (place near tempo control buttons)
-- [ ] T022 [US2] Add getEffectiveTempo() method to TempoStateContext in frontend/src/services/state/TempoStateContext.tsx
+- [X] T019 [P] [US2] Create TempoDisplay component in frontend/src/components/playback/TempoDisplay.tsx (show "120 BPM (100%)" format)
+- [X] T020 [P] [US2] Create tempo formatting utilities in frontend/src/utils/tempoFormatting.ts (formatTempo, formatPercentage)
+- [X] T021 [US2] Integrate TempoDisplay into PlaybackControls in frontend/src/components/playback/PlaybackControls.tsx (place near tempo control buttons)
+- [X] T022 [US2] Add getEffectiveTempo() method to TempoStateContext in frontend/src/services/state/TempoStateContext.tsx
 
 **Checkpoint**: Users see real-time tempo feedback (both original and adjusted BPM)
 
