@@ -39,8 +39,15 @@
 
 - [x] T004 [P] Add ScrollState, ScrollConfig, ScrollCalculation type definitions to frontend/src/types/playback.ts
 - [x] T005 [P] Add NoteHighlight, HighlightResult type definitions to frontend/src/types/notation/layout.ts
-- [x] T006 Modify MusicTimeline to broadcast currentTick updates at 30 Hz during playback in frontend/src/services/playback/MusicTimeline.ts
+- [x] T006 Modify MusicTimeline to broadcast currentTick updates at 60 Hz during playback in frontend/src/services/playback/MusicTimeline.ts (Updated from 30 Hz to 60 Hz for smoother scroll at high tempos)
 - [x] T007 Verify NotationLayoutEngine exposes pixelsPerTick mapping in frontend/src/services/notation/NotationLayoutEngine.ts
+
+**Performance Optimizations Applied**:
+- ✅ Increased currentTick broadcast to 60 Hz (16ms interval) to match 60 FPS target and eliminate lag at high tempos
+- ✅ Throttled layout recalculations to 200px threshold to prevent 60 Hz full layout recalcs
+- ✅ Used requestAnimationFrame for smooth scroll synced with browser repaint cycle
+- ✅ Moved clef to fixed CSS overlay to eliminate flickering (removed scrollX dependency)
+- ✅ Added willChange: 'scroll-position' hint for browser optimization
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
