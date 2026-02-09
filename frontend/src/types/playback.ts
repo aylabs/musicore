@@ -106,3 +106,56 @@ export interface TempoPreference {
    */
   version: number;
 }
+
+/**
+ * Feature 009: Playback Scroll and Highlight
+ * Auto-scroll configuration and state
+ */
+
+/**
+ * Auto-scroll state during playback
+ */
+export interface ScrollState {
+  /** Whether auto-scroll is currently enabled */
+  enabled: boolean;
+  
+  /** Target scroll position in pixels (calculated from currentTick) */
+  targetScrollX: number;
+  
+  /** Timestamp of last programmatic scroll update (for manual override detection) */
+  lastAutoScrollTime: number;
+}
+
+/**
+ * Scroll calculation configuration
+ */
+export interface ScrollConfig {
+  /** Desired position ratio (0-1) for current playback position in viewport */
+  targetPositionRatio: number;  // Default: 0.3 (30% from left)
+  
+  /** Pixels per tick from layout engine */
+  pixelsPerTick: number;
+  
+  /** Viewport width in pixels */
+  viewportWidth: number;
+  
+  /** Total score width in pixels (from NotationLayoutEngine) */
+  totalWidth: number;
+  
+  /** Current horizontal scroll position in pixels */
+  currentScrollX: number;
+}
+
+/**
+ * Result of scroll position calculation
+ */
+export interface ScrollCalculation {
+  /** Target scroll position in pixels (clamped to valid range) */
+  scrollX: number;
+  
+  /** Whether scrolling should occur (false if score fits in viewport) */
+  shouldScroll: boolean;
+  
+  /** Whether we're near the end of the score */
+  nearEnd: boolean;
+}

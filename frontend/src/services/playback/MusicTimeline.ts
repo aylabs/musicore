@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ToneAdapter } from './ToneAdapter';
 import { PlaybackScheduler, secondsToTicks, ticksToSeconds } from './PlaybackScheduler';
 import { useTempoState } from '../state/TempoStateContext';
@@ -50,6 +50,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   // Refs to track timing information
   const startTimeRef = useRef<number>(0);
   const pausedAtRef = useRef<number>(0);
+  const playbackStartTickRef = useRef<number>(0); // Feature 009: Track tick position when playback started
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
   
   // Get ToneAdapter singleton
@@ -57,6 +58,29 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
 
   // US2 T037: Create PlaybackScheduler instance (memoized to persist across renders)
   const scheduler = useMemo(() => new PlaybackScheduler(adapter), [adapter]);
+
+  // Feature 009 - Playback Scroll and Highlight: T006
+  // Broadcast currentTick updates at 30 Hz during playback for smooth scroll/highlight
+  useEffect(() => {
+    if (status !== 'playing') {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      const currentTime = adapter.getCurrentTime();
+      const elapsedTime = currentTime - startTimeRef.current;
+      
+      // Convert elapsed time to ticks, accounting for tempo multiplier
+      const elapsedTicks = secondsToTicks(elapsedTime, tempo) * tempoState.tempoMultiplier;
+      
+      // Calculate absolute position: starting tick + elapsed ticks
+      const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
+      
+      setCurrentTick(newCurrentTick);
+    }, 33); // 30 Hz = ~33ms interval
+
+    return () => clearInterval(intervalId);
+  }, [status, adapter, tempo, tempoState.tempoMultiplier]);
 
   /**
    * US1 T021: Implement play() - Initialize audio and transition to 'playing'
@@ -88,6 +112,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
         playbackStartTick = firstNote.start_tick;
         setCurrentTick(playbackStartTick);
       }
+
+      // Feature 009: Store the tick position where playback starts for scroll calculations
+      playbackStartTickRef.current = playbackStartTick;
 
       // Initialize audio context (required for browser autoplay policy)
       // US1 T021: Call ToneAdapter.init()

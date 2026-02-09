@@ -2,7 +2,10 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngine';
 import { NotationRenderer } from './NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
+import { usePlaybackScroll } from '../../services/hooks/usePlaybackScroll';
+import { ScrollController } from '../../services/playback/ScrollController';
 import type { Note, ClefType } from '../../types/score';
+import type { PlaybackStatus } from '../../types/playback';
 
 /**
  * StaffNotation - Container component for staff notation visualization
@@ -32,6 +35,12 @@ export interface StaffNotationProps {
   
   /** Viewport height (default: 200px) */
   viewportHeight?: number;
+  
+  /** Feature 009: Current playback position in ticks (for auto-scroll) */
+  currentTick?: number;
+  
+  /** Feature 009: Current playback status (for auto-scroll) */
+  playbackStatus?: PlaybackStatus;
 }
 
 export const StaffNotation: React.FC<StaffNotationProps> = ({
@@ -39,6 +48,8 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   clef = 'Treble',
   viewportWidth: propsViewportWidth,
   viewportHeight: propsViewportHeight = 200,
+  currentTick = 0,
+  playbackStatus = 'stopped',
 }) => {
   // T060: Add viewportWidth state and containerRef for measuring container size
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +60,9 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   
   // Scroll state (User Story 4 - T053)
   const [scrollX, setScrollX] = useState(0);
+  
+  // Feature 009: Track last auto-scroll time for manual override detection
+  const lastAutoScrollTimeRef = useRef<number>(Date.now());
 
   // T061: Add resize observer to update viewport width when container resizes
   useEffect(() => {
@@ -86,17 +100,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   // Use prop value if provided, otherwise use measured value
   const viewportWidth = propsViewportWidth ?? measuredViewportWidth;
   const viewportHeight = propsViewportHeight;
-
-  // Handle note click - toggle selection
-  const handleNoteClick = (noteId: string) => {
-    setSelectedNoteId((prevId) => (prevId === noteId ? null : noteId));
-  };
-
-  // Handle scroll event - update scrollX state (User Story 4 - T053)
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollX(e.currentTarget.scrollLeft);
-  };
-
+  
   // Calculate layout geometry (memoized for performance)
   // T054: scrollX is already in dependencies, layout recalculates on scroll
   // T062: viewportWidth in dependencies, layout recalculates on viewport change
@@ -117,6 +121,44 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
       },
     });
   }, [notes, clef, viewportWidth, viewportHeight, scrollX]);
+  
+  // Feature 009 - T012: Use playback scroll hook for auto-scroll during playback
+  const { autoScrollEnabled, targetScrollX, setAutoScrollEnabled } = usePlaybackScroll({
+    currentTick,
+    playbackStatus,
+    pixelsPerTick: DEFAULT_STAFF_CONFIG.pixelsPerTick,
+    viewportWidth,
+    totalWidth: layout.totalWidth,
+    currentScrollX: scrollX,
+  });
+  
+  // Feature 009 - T012: Apply auto-scroll when enabled and playing
+  useEffect(() => {
+    if (autoScrollEnabled && playbackStatus === 'playing' && containerRef.current) {
+      containerRef.current.scrollLeft = targetScrollX;
+      lastAutoScrollTimeRef.current = Date.now();
+    }
+  }, [autoScrollEnabled, targetScrollX, playbackStatus]);
+
+  // Handle note click - toggle selection
+  const handleNoteClick = (noteId: string) => {
+    setSelectedNoteId((prevId) => (prevId === noteId ? null : noteId));
+  };
+
+  // Handle scroll event - update scrollX state (User Story 4 - T053)
+  // Feature 009 - T012: Detect manual scroll and disable auto-scroll
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const newScrollX = e.currentTarget.scrollLeft;
+    setScrollX(newScrollX);
+    
+    // Feature 009: Detect manual scroll during playback
+    if (playbackStatus === 'playing' && autoScrollEnabled) {
+      const isManual = ScrollController.isManualScroll(lastAutoScrollTimeRef.current);
+      if (isManual) {
+        setAutoScrollEnabled(false);
+      }
+    }
+  };
 
   // T056: Add scrollable container with onScroll handler
   return (
