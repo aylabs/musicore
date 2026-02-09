@@ -28,9 +28,6 @@ export interface NotationRendererProps {
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
   
-  /** Current horizontal scroll position (User Story 4 - T057) */
-  scrollX?: number;
-  
   /** Notes for chord symbol detection (T032) */
   notes?: Note[];
   
@@ -46,7 +43,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
-  scrollX = 0,
   notes = [],
   pixelsPerTick = 0.1,
 }) => {
@@ -226,6 +222,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
  * NotationRenderer - Memoized version for performance
  * 
  * T066: Wrapped with React.memo to prevent unnecessary re-renders
- * Only re-renders when props actually change (layout, selectedNoteId, scrollX)
+ * Only re-renders when props actually change (layout, selectedNoteId, notes)
  */
 export const NotationRenderer = React.memo(NotationRendererComponent);
