@@ -53,7 +53,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   };
 
   return (
-    <>
+    <div style={{ position: 'relative', display: 'block' }}>
       {/* Fixed clef overlay - Feature 009: Use CSS for performance (no flickering) */}
       <div
         style={{
@@ -214,7 +214,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       )}
     </svg>
-    </>
+    </div>
   );
 };
 
