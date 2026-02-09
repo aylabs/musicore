@@ -37,7 +37,6 @@ Rust (latest stable 1.75+): Follow standard conventions
 ## Recent Changes
 - 007-clef-notation: Added TypeScript 5.9 (frontend), Rust 1.82+ (backend API - minimal changes) + React 19.2, Bravura music font (SMuFL), Vite 7.2 bundler; backend: Axum 0.7, serde
 - 006-musicxml-import: Added Rust 1.82+ (backend/parsing engine), TypeScript 5.9 (frontend UI) + quick-xml or roxmltree (Rust XML parsing), zip crate (Rust .mxl decompression), React 19, Axum web framework
-- 005-chord-symbols: Added TypeScript 5.9 (frontend), Rust 1.82+ (backend) + React 19, Vite bundler (frontend); Axum web framework, Tokio async runtime (backend)
 
 
 <!-- MANUAL ADDITIONS START -->
