@@ -23,6 +23,7 @@ interface NoteDisplayProps {
   currentTick?: number;
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
+  onUnpinStartTick?: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -63,7 +64,8 @@ export function NoteDisplay({
   voiceIndex,
   currentTick,
   playbackStatus,
-  onSeekToTick
+  onSeekToTick,
+  onUnpinStartTick
 }: NoteDisplayProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -193,6 +195,7 @@ export function NoteDisplay({
             currentTick={currentTick}
             playbackStatus={playbackStatus}
             onNoteClick={onSeekToTick}
+            onNoteDeselect={onUnpinStartTick}
           />
         </div>
       )}

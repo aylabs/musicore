@@ -15,6 +15,7 @@ interface InstrumentListProps {
   currentTick?: number;
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
+  onUnpinStartTick?: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -37,7 +38,7 @@ interface InstrumentListProps {
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus, onSeekToTick }: InstrumentListProps) {
+export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -248,6 +249,7 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
                         currentTick={currentTick}
                         playbackStatus={playbackStatus}
                         onSeekToTick={onSeekToTick}
+                        onUnpinStartTick={onUnpinStartTick}
                       />
                     </div>
                   ))}

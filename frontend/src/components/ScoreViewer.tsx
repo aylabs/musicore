@@ -639,6 +639,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
           currentTick={playbackState.currentTick}
           playbackStatus={playbackState.status}
           onSeekToTick={playbackState.seekToTick}
+          onUnpinStartTick={playbackState.unpinStartTick}
         />
       )}
 

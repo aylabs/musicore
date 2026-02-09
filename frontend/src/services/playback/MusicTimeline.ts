@@ -16,6 +16,7 @@ export interface PlaybackState {
   pause: () => void;
   stop: () => void;
   seekToTick: (tick: number) => void; // Feature 009: Seek to specific tick position
+  unpinStartTick: () => void; // Feature 009: Clear pinned start position
 }
 
 /**
@@ -53,6 +54,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const pausedAtRef = useRef<number>(0);
   const playbackStartTickRef = useRef<number>(0); // Feature 009: Track tick position when playback started
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
+  const pinnedStartTickRef = useRef<number | null>(null); // Feature 009: Pinned start position from selected note
   
   // Get ToneAdapter singleton
   const adapter = ToneAdapter.getInstance();
@@ -105,8 +107,13 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
 
       // If starting from the beginning (currentTick = 0), skip to the first note
       // This avoids playing through rest measures at the start of the score
+      // Feature 009: If there's a pinned position from note selection, use that instead
       let playbackStartTick = currentTick;
-      if (currentTick === 0 && notes.length > 0) {
+      if (pinnedStartTickRef.current !== null) {
+        // Use pinned position from selected note
+        playbackStartTick = pinnedStartTickRef.current;
+        setCurrentTick(playbackStartTick);
+      } else if (currentTick === 0 && notes.length > 0) {
         const firstNote = notes.reduce((earliest, note) => 
           note.start_tick < earliest.start_tick ? note : earliest
         );
@@ -226,6 +233,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
    * US2 T038: Clear scheduled notes
    * 
    * Stops all audio, resets currentTick to 0, and transitions to 'stopped'.
+   * Feature 009: If a note is pinned (selected), reset to that position instead.
    */
   const stop = useCallback(() => {
     if (status === 'stopped') {
@@ -244,8 +252,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     // US1 T023: Call ToneAdapter.stopAll()
     adapter.stopAll();
 
-    // US1 T023: Reset currentTick to 0
-    setCurrentTick(0);
+    // Feature 009: Reset currentTick to pinned position if set, otherwise 0
+    const resetTick = pinnedStartTickRef.current !== null ? pinnedStartTickRef.current : 0;
+    setCurrentTick(resetTick);
 
     // US1 T023: Transition to 'stopped'
     setStatus('stopped');
@@ -262,6 +271,10 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
    * stops playback and sets status to paused so user can continue from
    * the new position with play button.
    * 
+   * This also "pins" the start position - pressing Stop will return to this
+   * position instead of tick 0, and Play will always start from here until
+   * unpinStartTick() is called.
+   * 
    * @param tick - The tick position to seek to
    */
   const seekToTick = useCallback((tick: number) => {
@@ -277,14 +290,31 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       playbackEndTimeoutRef.current = null;
     }
 
-    // Set the tick position
+    // Set the tick position and pin it
     setCurrentTick(tick);
+    pinnedStartTickRef.current = tick;
 
     // If currently playing, transition to paused so user can resume
     if (status === 'playing') {
       setStatus('paused');
     }
   }, [status, adapter, scheduler]);
+
+  /**
+   * Feature 009: Clear pinned start position
+   * 
+   * Removes the pinned start position set by seekToTick(). After calling this,
+   * Stop will reset to tick 0 and Play will start from the first note as normal.
+   * 
+   * Called when a note is deselected in the UI.
+   */
+  const unpinStartTick = useCallback(() => {
+    pinnedStartTickRef.current = null;
+    // If stopped, reset to tick 0
+    if (status === 'stopped') {
+      setCurrentTick(0);
+    }
+  }, [status]);
 
   return {
     status,
@@ -294,5 +324,6 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     pause,
     stop,
     seekToTick,
+    unpinStartTick,
   };
 }
