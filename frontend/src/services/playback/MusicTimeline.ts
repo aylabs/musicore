@@ -15,6 +15,7 @@ export interface PlaybackState {
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
+  seekToTick: (tick: number) => void; // Feature 009: Seek to specific tick position
 }
 
 /**
@@ -254,6 +255,37 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     pausedAtRef.current = 0;
   }, [status, adapter, scheduler]);
 
+  /**
+   * Feature 009: Seek to specific tick position
+   * 
+   * Sets the playback position to a specific tick. If currently playing,
+   * stops playback and sets status to paused so user can continue from
+   * the new position with play button.
+   * 
+   * @param tick - The tick position to seek to
+   */
+  const seekToTick = useCallback((tick: number) => {
+    // Clear any scheduled notes if playing
+    if (status === 'playing') {
+      scheduler.clearSchedule();
+      adapter.stopAll();
+    }
+
+    // Clear playback end timeout
+    if (playbackEndTimeoutRef.current !== null) {
+      window.clearTimeout(playbackEndTimeoutRef.current);
+      playbackEndTimeoutRef.current = null;
+    }
+
+    // Set the tick position
+    setCurrentTick(tick);
+
+    // If currently playing, transition to paused so user can resume
+    if (status === 'playing') {
+      setStatus('paused');
+    }
+  }, [status, adapter, scheduler]);
+
   return {
     status,
     currentTick,
@@ -261,5 +293,6 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     play,
     pause,
     stop,
+    seekToTick,
   };
 }

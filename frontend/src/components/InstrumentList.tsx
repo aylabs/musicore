@@ -14,6 +14,7 @@ interface InstrumentListProps {
   // Feature 009: Playback state for auto-scroll
   currentTick?: number;
   playbackStatus?: PlaybackStatus;
+  onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
 }
 
 /**
@@ -36,7 +37,7 @@ interface InstrumentListProps {
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus }: InstrumentListProps) {
+export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus, onSeekToTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +247,7 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
                         voiceIndex={voiceIdx}
                         currentTick={currentTick}
                         playbackStatus={playbackStatus}
+                        onSeekToTick={onSeekToTick}
                       />
                     </div>
                   ))}

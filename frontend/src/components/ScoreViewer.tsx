@@ -638,6 +638,7 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
           onSync={syncLocalScoreToBackend}
           currentTick={playbackState.currentTick}
           playbackStatus={playbackState.status}
+          onSeekToTick={playbackState.seekToTick}
         />
       )}
 

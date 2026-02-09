@@ -22,6 +22,7 @@ interface NoteDisplayProps {
   // Feature 009: Playback state for auto-scroll
   currentTick?: number;
   playbackStatus?: PlaybackStatus;
+  onSeekToTick?: (tick: number) => void; // Feature 009: Seek to tick when note clicked
 }
 
 /**
@@ -61,7 +62,8 @@ export function NoteDisplay({
   staffIndex,
   voiceIndex,
   currentTick,
-  playbackStatus
+  playbackStatus,
+  onSeekToTick
 }: NoteDisplayProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -190,6 +192,7 @@ export function NoteDisplay({
             viewportHeight={200}
             currentTick={currentTick}
             playbackStatus={playbackStatus}
+            onNoteClick={onSeekToTick}
           />
         </div>
       )}

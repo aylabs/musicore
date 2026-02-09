@@ -41,6 +41,9 @@ export interface StaffNotationProps {
   
   /** Feature 009: Current playback status (for auto-scroll) */
   playbackStatus?: PlaybackStatus;
+  
+  /** Feature 009: Callback when note is clicked - seeks to that note's position */
+  onNoteClick?: (tick: number) => void;
 }
 
 export const StaffNotation: React.FC<StaffNotationProps> = ({
@@ -50,6 +53,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   viewportHeight: propsViewportHeight = 200,
   currentTick = 0,
   playbackStatus = 'stopped',
+  onNoteClick,
 }) => {
   // T060: Add viewportWidth state and containerRef for measuring container size
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,9 +166,19 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     return () => cancelAnimationFrame(animationFrameId);
   }, [autoScrollEnabled, targetScrollX, playbackStatus]);
 
-  // Handle note click - toggle selection
+  // Handle note click - toggle selection and seek to note position
+  // Feature 009: When note clicked, seek playback to that note's position
   const handleNoteClick = (noteId: string) => {
+    // Toggle visual selection (blue highlight)
     setSelectedNoteId((prevId) => (prevId === noteId ? null : noteId));
+    
+    // If onNoteClick callback provided, seek to this note's position
+    if (onNoteClick) {
+      const clickedNote = notes.find(note => note.id === noteId);
+      if (clickedNote) {
+        onNoteClick(clickedNote.start_tick);
+      }
+    }
   };
 
   // Handle scroll event - update scrollX state (User Story 4 - T053)
