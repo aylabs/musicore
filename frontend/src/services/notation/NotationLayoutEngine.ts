@@ -66,9 +66,14 @@ export const NotationLayoutEngine = {
       65: -3,  // F4 (space)
       64: -4,  // E4 (bottom line)
       62: -5,  // D4 (space below)
-      60: -6,  // C4 (ledger line below)
-      57: -7,  // A3
-      55: -8,  // G3
+      60: -6,  // C4 (first ledger line below)
+      59: -7,  // B3 (space below C4)
+      57: -8,  // A3 (second ledger line below)
+      55: -9,  // G3 (space)
+      53: -10, // F3 (third ledger line below)
+      52: -11, // E3 (space)
+      50: -12, // D3 (fourth ledger line below)
+      48: -13, // C3 (space below D3)
     };
     
     // Exact mappings for common notes in bass clef (relative to D3 = 0)
@@ -85,9 +90,16 @@ export const NotationLayoutEngine = {
       45: -3,  // A2 (space)
       43: -4,  // G2 (bottom line)
       41: -5,  // F2 (space below)
-      40: -6,  // E2 (ledger line)
-      38: -7,  // D2 (space below ledger)
+      40: -6,  // E2 (first ledger line below)
+      38: -7,  // D2 (space)
       36: -8,  // C2 (second ledger line below)
+      35: -9,  // B1 (space)
+      33: -10, // A1 (third ledger line below)
+      31: -11, // G1 (space)
+      29: -12, // F1 (fourth ledger line below)
+      28: -13, // E1 (space)
+      26: -14, // D1 (fifth ledger line below)
+      24: -15, // C1 (space)
     };
     
     // Use diatonic mappings
@@ -102,6 +114,23 @@ export const NotationLayoutEngine = {
     const diatonicMap = clef === 'Treble' ? trebleDiatonicMap : bassDiatonicMap;
     const diatonicPitches = Object.keys(diatonicMap).map(Number).sort((a, b) => a - b);
     
+    // Extrapolate for pitches outside the mapped range
+    if (pitch < diatonicPitches[0]) {
+      // Below lowest mapped note: extrapolate
+      if (clef === 'Treble') {
+        return (pitch - 71) / 2; // B4 = 71, staffPosition 0
+      } else if (clef === 'Bass') {
+        return (pitch - 50) / 2; // D3 = 50, staffPosition 0
+      }
+    }
+    if (pitch > diatonicPitches[diatonicPitches.length - 1]) {
+      // Above highest mapped note: extrapolate
+      if (clef === 'Treble') {
+        return (pitch - 71) / 2;
+      } else if (clef === 'Bass') {
+        return (pitch - 50) / 2;
+      }
+    }
     // Find the closest diatonic note at or below this pitch
     let closestPitch = diatonicPitches[0];
     for (const diatonicPitch of diatonicPitches) {
@@ -111,7 +140,6 @@ export const NotationLayoutEngine = {
         break;
       }
     }
-    
     // Use the staff position of the closest natural note
     return diatonicMap[closestPitch];
   },
@@ -124,11 +152,11 @@ export const NotationLayoutEngine = {
    * @returns Accidental type or undefined if natural note
    */
   getAccidental(pitch: number, clef: ClefType): 'sharp' | 'flat' | undefined {
-    // Diatonic (white key) pitches in treble clef
-    const trebleDiatonicPitches = [55, 57, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96];
+    // Diatonic (white key) pitches in treble clef (extended range to include lower notes with ledger lines)
+    const trebleDiatonicPitches = [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95, 96];
     
-    // Diatonic (white key) pitches in bass clef
-    const bassDiatonicPitches = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
+    // Diatonic (white key) pitches in bass clef (extended range to include lower notes with ledger lines)
+    const bassDiatonicPitches = [24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60];
     
     const diatonicPitches = clef === 'Treble' ? trebleDiatonicPitches : bassDiatonicPitches;
     
