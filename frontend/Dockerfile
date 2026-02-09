@@ -49,10 +49,6 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy custom entrypoint to fix Docker overlay filesystem issue
-COPY frontend/docker-entrypoint.sh /custom-entrypoint.sh
-RUN chmod +x /custom-entrypoint.sh
-
 # Expose port 80
 EXPOSE 80
 
@@ -60,6 +56,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
-# Use custom entrypoint that touches WASM files before starting nginx
-ENTRYPOINT ["/custom-entrypoint.sh"]
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
