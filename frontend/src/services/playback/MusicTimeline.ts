@@ -60,7 +60,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const scheduler = useMemo(() => new PlaybackScheduler(adapter), [adapter]);
 
   // Feature 009 - Playback Scroll and Highlight: T006
-  // Broadcast currentTick updates at 30 Hz during playback for smooth scroll/highlight
+  // Broadcast currentTick updates at 60 Hz during playback for smooth scroll/highlight
   useEffect(() => {
     if (status !== 'playing') {
       return undefined;
@@ -77,7 +77,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
       
       setCurrentTick(newCurrentTick);
-    }, 33); // 30 Hz = ~33ms interval
+    }, 16); // 60 Hz = ~16ms interval (matches 60 FPS target)
 
     return () => clearInterval(intervalId);
   }, [status, adapter, tempo, tempoState.tempoMultiplier]);

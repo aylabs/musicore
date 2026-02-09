@@ -102,8 +102,14 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   const viewportHeight = propsViewportHeight;
   
   // Calculate layout geometry (memoized for performance)
-  // T054: scrollX is already in dependencies, layout recalculates on scroll
+  // Feature 009 optimization: Only recalculate layout when scrollX changes by >200px
+  // to prevent 60 Hz layout recalculations during auto-scroll (causes clef flickering)
   // T062: viewportWidth in dependencies, layout recalculates on viewport change
+  const scrollXThrottled = useMemo(() => {
+    // Round scrollX to nearest 200px to reduce recalculation frequency
+    return Math.round(scrollX / 200) * 200;
+  }, [scrollX]);
+  
   const layout = useMemo(() => {
     return NotationLayoutEngine.calculateLayout({
       notes,
@@ -117,10 +123,10 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
         ...DEFAULT_STAFF_CONFIG,
         viewportWidth,
         viewportHeight,
-        scrollX,
+        scrollX: scrollXThrottled,
       },
     });
-  }, [notes, clef, viewportWidth, viewportHeight, scrollX]);
+  }, [notes, clef, viewportWidth, viewportHeight, scrollXThrottled]);
   
   // Feature 009 - T012: Use playback scroll hook for auto-scroll during playback
   const { autoScrollEnabled, targetScrollX, setAutoScrollEnabled } = usePlaybackScroll({
@@ -133,11 +139,25 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   });
   
   // Feature 009 - T012: Apply auto-scroll when enabled and playing
+  // Use requestAnimationFrame for smooth scrolling synced with browser repaints
   useEffect(() => {
-    if (autoScrollEnabled && playbackStatus === 'playing' && containerRef.current) {
-      containerRef.current.scrollLeft = targetScrollX;
-      lastAutoScrollTimeRef.current = Date.now();
+    if (!autoScrollEnabled || playbackStatus !== 'playing' || !containerRef.current) {
+      return undefined;
     }
+    
+    let animationFrameId: number;
+    
+    const smoothScroll = () => {
+      if (containerRef.current) {
+        containerRef.current.scrollLeft = targetScrollX;
+        lastAutoScrollTimeRef.current = Date.now();
+      }
+    };
+    
+    // Schedule scroll on next animation frame for smooth 60 FPS rendering
+    animationFrameId = requestAnimationFrame(smoothScroll);
+    
+    return () => cancelAnimationFrame(animationFrameId);
   }, [autoScrollEnabled, targetScrollX, playbackStatus]);
 
   // Handle note click - toggle selection
@@ -170,6 +190,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
         overflowX: 'auto',  // Enable horizontal scrolling
         overflowY: 'hidden',  // Disable vertical scrolling
         border: '1px solid #ccc',
+        willChange: 'scroll-position',  // Feature 009: Hint to browser for scroll optimization
       }}
       onScroll={handleScroll}  // Wire up scroll handler
     >
