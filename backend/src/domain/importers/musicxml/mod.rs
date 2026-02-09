@@ -4,6 +4,8 @@ pub mod errors;
 pub mod types;
 pub mod timing;
 pub mod mapper;
+// Compression handler only for native (uses std::fs and zip, not available in WASM)
+#[cfg(not(target_arch = "wasm32"))]
 pub mod compression;
 pub mod parser;
 pub mod converter;
@@ -12,17 +14,23 @@ pub use errors::{ImportError, MappingError, ConversionError};
 pub use types::*;
 pub use timing::Fraction;
 pub use mapper::ElementMapper;
+#[cfg(not(target_arch = "wasm32"))]
 pub use compression::CompressionHandler;
 pub use parser::MusicXMLParser;
 pub use converter::MusicXMLConverter;
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::ports::importers::{IMusicXMLImporter, ImportResult, ImportMetadata, ImportStatistics};
+#[cfg(not(target_arch = "wasm32"))]
 use crate::domain::score::Score;
 
-/// Main service for MusicXML import operations
+/// Main service for MusicXML import operations (native only)
+#[cfg(not(target_arch = "wasm32"))]
 pub struct MusicXMLImporter;
 
+#[cfg(not(target_arch = "wasm32"))]
 impl MusicXMLImporter {
     /// Create a new MusicXML importer service
     pub fn new() -> Self {
@@ -75,6 +83,7 @@ impl MusicXMLImporter {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl IMusicXMLImporter for MusicXMLImporter {
     fn import_file(&self, path: &Path) -> Result<ImportResult, Box<dyn std::error::Error>> {
         // Load file content (handles both .xml and .mxl)
@@ -118,6 +127,7 @@ impl IMusicXMLImporter for MusicXMLImporter {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for MusicXMLImporter {
     fn default() -> Self {
         Self::new()

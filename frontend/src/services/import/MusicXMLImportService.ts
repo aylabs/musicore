@@ -1,17 +1,22 @@
 /**
  * MusicXML Import Service - Feature 006-musicxml-import
+ * Feature 011: Migrated to WASM for instant client-side parsing
  * 
- * Service for importing MusicXML files (.musicxml, .xml, .mxl) from backend API
+ * Service for importing MusicXML files (.musicxml, .xml, .mxl)
+ * Now uses WASM engine for immediate parsing without network requests
  * 
  * @example
  * ```typescript
- * const service = new MusicXMLImportService("http://localhost:8080");
+ * const service = new MusicXMLImportService();
  * const result = await service.importFile(file);
  * console.log(`Imported ${result.statistics.note_count} notes`);
  * ```
  */
 
+import JSZip from 'jszip';
 import type { Score } from "../../types/score";
+import { parseMusicXML } from "../wasm/music-engine";
+import { WasmEngineError } from "../../types/wasm-error";
 
 /**
  * Result of MusicXML import operation
@@ -78,24 +83,23 @@ export interface ImportErrorResponse {
 /**
  * MusicXML Import Service
  * 
- * Handles uploading .musicxml, .xml, or .mxl files to the backend API
- * and returning the imported Score with metadata and statistics.
+ * Handles parsing .musicxml, .xml, or .mxl files using WASM engine
+ * Returns the imported Score with metadata and statistics
  */
 export class MusicXMLImportService {
-  private readonly baseUrl: string;
-
   /**
    * Create a new import service instance
-   * @param baseUrl - Base URL of the backend API (default: http://localhost:8080)
+   * No backend URL needed - parsing happens locally via WASM
    */
-  constructor(baseUrl: string = "http://localhost:8080") {
-    this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  constructor() {
+    // No initialization needed for WASM-based parsing
   }
 
   /**
    * Import a MusicXML file from the user's file system
    * 
-   * T068-T069: Implements file upload with multipart/form-data
+   * Feature 011: Now uses WASM for instant client-side parsing
+   * Handles both uncompressed (.musicxml, .xml) and compressed (.mxl) formats
    * 
    * @param file - File object from input element
    * @returns ImportResult with score, metadata, statistics, and warnings
@@ -129,38 +133,134 @@ export class MusicXMLImportService {
       );
     }
 
-    // T069: Create fetch POST request with FormData
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await fetch(
-      `${this.baseUrl}/api/v1/scores/import-musicxml`,
-      {
-        method: "POST",
-        body: formData,
-        // Note: Don't set Content-Type header - browser will set it with boundary
+    try {
+      // Extract XML content from file
+      let xmlContent: string;
+      
+      if (file.name.toLowerCase().endsWith('.mxl')) {
+        // Decompress .mxl file using JSZip
+        xmlContent = await this.extractMxlFile(file);
+      } else {
+        // Read uncompressed .musicxml or .xml file
+        xmlContent = await file.text();
       }
-    );
 
-    // Handle errors
-    if (!response.ok) {
-      const errorData: ImportErrorResponse = await response
-        .json()
-        .catch(() => ({
-          error: "Import failed",
-          details: response.statusText,
-        }));
+      // Parse XML using WASM engine
+      const score = await parseMusicXML(xmlContent);
 
-      const errorMessage = errorData.details
-        ? `${errorData.error}: ${errorData.details}`
-        : errorData.error;
+      // Build import result
+      const result: ImportResult = {
+        score,
+        metadata: this.buildMetadata(file),
+        statistics: this.buildStatistics(score),
+        warnings: [], // WASM parser in does not return warnings yet
+      };
 
-      throw new Error(errorMessage);
+      return result;
+    } catch (error) {
+      // Handle WASM errors
+      if (error instanceof WasmEngineError) {
+        throw new Error(`MusicXML parsing failed: ${error.message}`);
+      }
+      
+      // Re-throw other errors
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error('Unknown error during MusicXML import');
+    }
+  }
+
+  /**
+   * Extract MusicXML content from compressed .mxl file
+   * .mxl files are ZIP archives containing a 'META-INF/container.xml'
+   * that points to the main MusicXML file (usually 'musicxml.xml')
+   * 
+   * @param file - .mxl File object
+   * @returns Extracted MusicXML content as string
+   * @throws Error if file is not a valid .mxl archive
+   */
+  private async extractMxlFile(file: File): Promise<string> {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      
+      // Look for the main MusicXML file
+      // Most .mxl files have a 'musicxml.xml' file at the root
+      let xmlFile = zip.file('musicxml.xml');
+      
+      // If not found, try other common names
+      if (!xmlFile) {
+        xmlFile = zip.file(/\.xml$/i)[0]; // Find first .xml file
+      }
+      
+      if (!xmlFile) {
+        throw new Error('No MusicXML file found in .mxl archive');
+      }
+      
+      // Extract and return XML content
+      const content = await xmlFile.async('string');
+      return content;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to decompress .mxl file: ${error.message}`);
+      }
+      throw new Error('Failed to decompress .mxl file');
+    }
+  }
+
+  /**
+   * Build import metadata from file and score
+   * @param file - Original file object
+   * @returns Import metadata
+   */
+  private buildMetadata(file: File): ImportMetadata {
+    // Score doesn't have metadata fields directly
+    // In the future, we could extract title/composer from MusicXML work-title/creator elements
+    return {
+      format: 'MusicXML', // WASM parser doesn't track version yet
+      file_name: file.name,
+      // Title and composer would need to be extracted during parsing
+      // For now, we don't have access to them after parsing
+    };
+  }
+
+  /**
+   * Build import statistics from score
+   * @param score - Parsed score
+   * @returns Import statistics
+   */
+  private buildStatistics(score: Score): ImportStatistics {
+    let noteCount = 0;
+    let voiceCount = 0;
+    let staffCount = 0;
+    let maxTick = 0;
+
+    // Count notes, voices, and staves across all instruments
+    for (const instrument of score.instruments || []) {
+      for (const staff of instrument.staves || []) {
+        staffCount++;
+        for (const voice of staff.voices || []) {
+          voiceCount++;
+          // Count notes and track max tick
+          for (const note of voice.interval_events || []) {
+            noteCount++;
+            const noteTick = note.start_tick + note.duration_ticks;
+            if (noteTick > maxTick) {
+              maxTick = noteTick;
+            }
+          }
+        }
+      }
     }
 
-    // Parse and return successful result
-    const result: ImportResult = await response.json();
-    return result;
+    return {
+      instrument_count: score.instruments?.length || 0,
+      staff_count: staffCount,
+      voice_count: voiceCount,
+      note_count: noteCount,
+      duration_ticks: maxTick,
+    };
   }
 
   /**

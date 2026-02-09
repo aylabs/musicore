@@ -1,5 +1,6 @@
 /**
  * useImportMusicXML Hook - Feature 006-musicxml-import
+ * Feature 011: Now uses WASM for instant client-side parsing
  * 
  * React hook for importing MusicXML files with loading, error, and result state
  * 
@@ -44,8 +45,6 @@ export interface UseImportMusicXMLResult {
  * Configuration options for the hook
  */
 export interface UseImportMusicXMLOptions {
-  /** Base URL for the backend API */
-  baseUrl?: string;
   /** Callback when import completes successfully */
   onSuccess?: (result: ImportResult) => void;
   /** Callback when import fails */
@@ -87,15 +86,15 @@ export interface UseImportMusicXMLOptions {
 export function useImportMusicXML(
   options: UseImportMusicXMLOptions = {}
 ): UseImportMusicXMLResult {
-  const { baseUrl, onSuccess, onError } = options;
+  const { onSuccess, onError } = options;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
 
-  // Create service instance (memoized by baseUrl)
+  // Create service instance (WASM-based, no backend URL needed)
   const [service] = useState(
-    () => new MusicXMLImportService(baseUrl)
+    () => new MusicXMLImportService()
   );
 
   /**
