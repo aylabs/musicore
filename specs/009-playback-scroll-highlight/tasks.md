@@ -62,7 +62,7 @@
   - Test: No scroll when score fits in viewport
   - Test: isManualScroll detection with timestamp threshold
 
-- [ ] T009 [P] [US1] Create usePlaybackScroll hook tests in frontend/src/services/hooks/usePlaybackScroll.test.ts
+- [x] T009 [P] [US1] Create usePlaybackScroll hook tests in frontend/src/services/hooks/usePlaybackScroll.test.ts
   - Test: Calculate target scroll position from currentTick
   - Test: Enable/disable auto-scroll state management
   - Test: Manual scroll override detection
