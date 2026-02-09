@@ -16,6 +16,7 @@ interface MultiVoiceStaffProps {
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void;
   onUnpinStartTick?: () => void;
+  sharedScrollX?: number;  // Feature 010: Shared scroll position
 }
 
 export function MultiVoiceStaff({
@@ -24,7 +25,8 @@ export function MultiVoiceStaff({
   currentTick,
   playbackStatus,
   onSeekToTick,
-  onUnpinStartTick
+  onUnpinStartTick,
+  sharedScrollX
 }: MultiVoiceStaffProps) {
   // Merge all voice notes into single array, sorted by start_tick
   const mergedNotes = useMemo(() => {
@@ -41,6 +43,8 @@ export function MultiVoiceStaff({
         playbackStatus={playbackStatus}
         onNoteClick={onSeekToTick}
         onNoteDeselect={onUnpinStartTick}
+        externalScrollX={sharedScrollX}
+        disableInternalScroll={sharedScrollX !== undefined}
       />
     </div>
   );
