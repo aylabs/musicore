@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
-import * as wasmEngine from "../services/wasm/music-engine";
 import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
-import { saveScore as saveScoreToFile, loadScore as loadScoreFromFile, createNewScore as createNewScoreFile } from "../services/file/FileService";
+import { loadScore as loadScoreFromFile } from "../services/file/FileService";
 import { validateScoreFile } from "../services/file/validation";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
@@ -28,11 +27,9 @@ interface ScoreViewerProps {
  * ScoreViewer - Main component for displaying and interacting with a musical score
  * 
  * Features:
- * - Create new scores
  * - Load existing scores by ID
  * - Display full score hierarchy (instruments, staves, voices, notes)
  * - Show structural events (tempo, time signature)
- * - Add instruments to scores
  * - Error handling and loading states
  * 
  * @example
@@ -49,13 +46,11 @@ export function ScoreViewer({
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [instrumentName, setInstrumentName] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [pendingAction, setPendingAction] = useState<'load' | 'new' | null>(null);
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
-  const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
   
   // Feature 010: View mode state for toggling between individual and stacked views
@@ -68,7 +63,7 @@ export function ScoreViewer({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // File state management (Feature 004 - Score File Persistence)
-  const { fileState, setFilePath, setModified, resetFileState } = useFileState();
+  const { fileState, setFilePath, resetFileState } = useFileState();
 
   // Load score when scoreId changes (but only for backend-sourced scores)
   useEffect(() => {
@@ -85,21 +80,8 @@ export function ScoreViewer({
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check for Ctrl/Cmd modifier
       if (event.ctrlKey || event.metaKey) {
-        if (event.key === 's') {
-          // Ctrl+S / Cmd+S: Save
-          event.preventDefault();
-          if (score) {
-            handleSaveScore();
-          }
-        } else if (event.key === 'o') {
-          // Ctrl+O / Cmd+O: Load
-          event.preventDefault();
-          handleLoadButtonClick();
-        } else if (event.key === 'n') {
-          // Ctrl+N / Cmd+N: New Score
-          event.preventDefault();
-          handleNewScoreButtonClick();
-        }
+        // Removed: Ctrl+S (Save), Ctrl+N (New), Ctrl+O (Load from backend)
+        // All editing shortcuts removed per Feature 014
       }
     };
 
@@ -109,21 +91,8 @@ export function ScoreViewer({
     };
   }, [score, fileState.isModified]); // Dependencies: score and isModified state
 
-  // Feature 004 T033: Browser beforeunload warning for unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (fileState.isModified) {
-        // Modern browsers ignore custom messages, but returnValue is required
-        event.preventDefault();
-        event.returnValue = ''; // Chrome requires this
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [fileState.isModified]);
+  // Removed: Feature 004 T033 - Browser beforeunload warning
+  // No unsaved changes warning needed since editing is disabled (Feature 014)
 
   /**
    * Load a score by ID
@@ -174,46 +143,6 @@ export function ScoreViewer({
   };
   // Explicitly mark as used to avoid build errors (legacy API compatibility)
   void createNewScore;
-
-  /**
-   * Handle New Score button click (Feature 004 T026, T027)
-   */
-  const handleNewScoreButtonClick = () => {
-    // Check for unsaved changes (Feature 004 T027)
-    if (fileState.isModified) {
-      setPendingAction('new');
-      setShowUnsavedWarning(true);
-    } else {
-      // No unsaved changes, create new score directly
-      executeNewScore();
-    }
-  };
-
-  /**
-   * Execute new score creation (Feature 004 T028)
-   */
-  const executeNewScore = () => {
-    try {
-      // Create new empty score with default settings
-      const newScore = createNewScoreFile();
-
-      // Update UI state
-      setScore(newScore);
-      setScoreId(undefined); // Clear scoreId - this is a local score not saved to backend yet
-      setIsFileSourced(true); // Frontend is source of truth for new scores
-
-      // Reset file state (Feature 004 T028)
-      resetFileState();
-      
-      // Clear save filename input
-      setSaveFilename("");
-
-      // Show success notification
-      showSuccessMessage("New score created");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create new score");
-    }
-  };
 
   /**
    * Load demo score from IndexedDB (Feature 013)
@@ -325,57 +254,6 @@ export function ScoreViewer({
   };
 
   /**
-   * Add an instrument to the current score
-   * Feature 011: Uses WASM engine for offline capability
-   */
-  const addInstrument = async () => {
-    if (!score || !instrumentName.trim()) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      // Use WASM to add instrument locally (no backend needed)
-      const updatedScore = await wasmEngine.addInstrument(score, instrumentName.trim());
-      setScore(updatedScore);
-      setInstrumentName("");
-      
-      // Mark as file-sourced since we're using WASM (frontend is source of truth)
-      setIsFileSourced(true);
-      
-      // Feature 004 T013: Mark as modified when score is edited
-      setModified(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add instrument");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Save the current score to a JSON file (Feature 004 T012)
-   * Downloads score as .musicore.json file and updates file state
-   */
-  const handleSaveScore = () => {
-    if (!score) return;
-
-    try {
-      // Use custom filename if provided, otherwise generate from score ID
-      const filename = saveFilename.trim() || `score-${score.id.substring(0, 8)}`;
-      
-      // Save score to file (triggers browser download)
-      saveScoreToFile(score, filename);
-      
-      // Update file state: mark as saved, update timestamp (Feature 004 T012)
-      setFilePath(`${filename}.musicore.json`);
-      
-      // Show success notification (Feature 004 T014)
-      showSuccessMessage("Score saved successfully");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save score");
-    }
-  };
-
-  /**
    * Display success message and auto-dismiss after 3 seconds (Feature 004 T014)
    */
   const showSuccessMessage = (message: string) => {
@@ -435,10 +313,6 @@ export function ScoreViewer({
       // Update file state (Feature 004 T018)
       setFilePath(file.name);
       
-      // Populate save filename input with loaded filename (without extension)
-      const filenameWithoutExt = file.name.replace(/\.musicore\.json$/, '').replace(/\.json$/, '');
-      setSaveFilename(filenameWithoutExt);
-      
       // Show success notification (Feature 004 T022)
       showSuccessMessage("Score loaded successfully");
     } catch (err) {
@@ -450,15 +324,13 @@ export function ScoreViewer({
   };
 
   /**
-   * Confirm action despite unsaved changes (Feature 004 T020, T027)
+   * Confirm action despite unsaved changes (Feature 004 T020)
    */
   const confirmActionWithUnsavedChanges = () => {
     setShowUnsavedWarning(false);
     
     if (pendingAction === 'load') {
       fileInputRef.current?.click();
-    } else if (pendingAction === 'new') {
-      executeNewScore();
     }
     
     setPendingAction(null);
@@ -585,14 +457,7 @@ export function ScoreViewer({
                 color: 'white',
                 fontWeight: 'bold'
               }}
-            >
-              🎵 Demo
-            </button>
-            <button onClick={handleNewScoreButtonClick} disabled={loading}>
-              New Score
-            </button>
-            <button onClick={handleLoadButtonClick} disabled={loading}>
-              Load Score
+            >              🎵 Demo
             </button>
             {/* Feature 006: Import MusicXML Score */}
             <ImportButton
@@ -631,9 +496,6 @@ export function ScoreViewer({
             </div>
             {/* Feature 004 T012, T026: File operation buttons */}
             <div className="score-actions">
-              <button onClick={handleNewScoreButtonClick} className="new-button">
-                New
-              </button>
               <button onClick={handleLoadButtonClick} className="load-button">
                 Load
               </button>
@@ -642,16 +504,6 @@ export function ScoreViewer({
                 onImportComplete={handleMusicXMLImport}
                 buttonText="Import"
               />
-              <input
-                type="text"
-                placeholder="filename (optional)"
-                value={saveFilename}
-                onChange={(e) => setSaveFilename(e.target.value)}
-                className="filename-input"
-              />
-              <button onClick={handleSaveScore} className="save-button">
-                Save
-              </button>
             </div>
           </div>
 
@@ -717,26 +569,9 @@ export function ScoreViewer({
         ) : undefined}
       />
 
-      {/* Feature 010: Hide Add Instrument control in stacked view */}
-      {viewMode === 'individual' && (
-        <div className="add-instrument">
-          <input
-            type="text"
-            placeholder="Instrument name (e.g., Piano)"
-            value={instrumentName}
-            onChange={(e) => setInstrumentName(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && addInstrument()}
-            disabled={loading}
-          />
-          <button onClick={addInstrument} disabled={loading || !instrumentName.trim()}>
-            Add Instrument
-          </button>
-        </div>
-      )}
-
       {score.instruments.length === 0 ? (
         <div className="no-instruments">
-          <p>No instruments yet. Add one to get started!</p>
+          <p>This score has no instruments. Try importing a MusicXML file or loading the demo.</p>
         </div>
       ) : viewMode === 'individual' ? (
         <InstrumentList 
