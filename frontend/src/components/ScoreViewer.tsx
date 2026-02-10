@@ -12,6 +12,7 @@ import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { StackedStaffView } from "./stacked/StackedStaffView";
+import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -124,11 +125,23 @@ export function ScoreViewer({
 
   /**
    * Load a score by ID
+   * Feature 013: Try IndexedDB first (for demo scores), then fall back to API
    */
   const loadScore = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
+      // Try IndexedDB first (for demo scores and imported scores)
+      const indexedDBScore = await loadScoreFromIndexedDB(id);
+      if (indexedDBScore) {
+        console.log(`[ScoreViewer] Loaded score from IndexedDB: ${id}`);
+        setScore(indexedDBScore);
+        setIsFileSourced(false);
+        return;
+      }
+
+      // Fall back to API if not in IndexedDB
+      console.log(`[ScoreViewer] Score not in IndexedDB, trying API: ${id}`);
       const loadedScore = await apiClient.getScore(id);
       setScore(loadedScore);
       setIsFileSourced(false); // Backend is source of truth for API-loaded scores
