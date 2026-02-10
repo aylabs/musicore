@@ -11,7 +11,6 @@ import type {
   DemoLoadingError,
   IDemoLoaderService,
 } from './types';
-import type { Score } from '../../types/score';
 import { ONBOARDING_CONFIG } from './config';
 import { parseMusicXML } from '../wasm/music-engine';
 import { saveScoreToIndexedDB } from '../storage/local-storage';
@@ -60,10 +59,10 @@ export class DemoLoaderService implements IDemoLoaderService {
 
       // 2. Parse via WASM engine (Feature 011)
       const parsedScore = await parseMusicXML(musicXML);
-      console.log(`[DemoLoader] Parsed score: ${parsedScore.title} by ${parsedScore.composer}`);
+      console.log(`[DemoLoader] Parsed score with ${parsedScore.instruments.length} instruments`);
 
       // 3. Validate score structure (must have ≥4 instruments for stacked view demo)
-      const instrumentCount = parsedScore.parts?.length ?? 0;
+      const instrumentCount = parsedScore.instruments?.length ?? 0;
       if (instrumentCount < 4) {
         throw this.createError(
           'parse_failed',
@@ -71,9 +70,11 @@ export class DemoLoaderService implements IDemoLoaderService {
         );
       }
 
-      // 4. Create demo metadata
-      const demoScore: DemoScoreMetadata & Score = {
+      // 4. Create demo metadata (extend Score with demo properties)
+      const demoScore: DemoScoreMetadata = {
         ...parsedScore,
+        title: 'Canon in D',
+        composer: 'Johann Pachelbel',
         isDemoScore: true,
         sourceType: 'bundled',
         bundledPath: this.demoBundlePath,
@@ -131,7 +132,7 @@ export class DemoLoaderService implements IDemoLoaderService {
       const allScores = await getAllScoresFromIndexedDB();
       
       // Find the demo score (marked with isDemoScore=true)
-      const demoScore = allScores.find((score: any) => score.isDemoScore === true);
+      const demoScore = allScores.find((score: any) => score.isDemoScore === true) as DemoScoreMetadata | undefined;
       
       return demoScore ?? null;
     } catch (error) {

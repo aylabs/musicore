@@ -23,7 +23,7 @@ function App() {
   const [wasmError, setWasmError] = useState<string | null>(null)
   
   // Feature 013: Onboarding hook for first-run demo and view mode preference
-  const { viewMode, setViewMode, isFirstRun, isDemoLoading, demoError } = useOnboarding()
+  const { demoError } = useOnboarding()
 
   useEffect(() => {
     // Initialize WASM module on app startup

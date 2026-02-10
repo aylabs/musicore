@@ -8,6 +8,8 @@
  * Plan: specs/013-demo-onboarding/plan.md
  */
 
+import type { Score } from '../../types/score';
+
 // ============================================================================
 // First-Run State Types
 // ============================================================================
@@ -67,12 +69,9 @@ export type ScoreSourceType = 'bundled' | 'imported';
 
 /**
  * Metadata extension for demo score identification
- * Extends existing Score entity from Feature 011
+ * Extends existing Score entity from Feature 011 with demo-specific properties
  */
-export interface DemoScoreMetadata {
-  /** Unique identifier (UUID) for score in library */
-  id: string;
-  
+export interface DemoScoreMetadata extends Score {
   /** Score title (e.g., "Canon in D") */
   title: string;
   
