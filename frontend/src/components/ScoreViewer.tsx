@@ -56,6 +56,7 @@ export function ScoreViewer({
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
   const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
   
   // Feature 010: View mode state for toggling between individual and stacked views
   // Use controlled mode if provided, otherwise internal state
@@ -532,6 +533,17 @@ export function ScoreViewer({
   const initialTempo = getInitialTempo();
   const playbackState = usePlayback(allNotes, initialTempo);
 
+  /**
+   * Auto-play demo when loaded (Feature 013)
+   */
+  useEffect(() => {
+    if (shouldAutoPlay && score && playbackState.play) {
+      console.log('[ScoreViewer] Auto-playing demo');
+      playbackState.play();
+      setShouldAutoPlay(false); // Reset flag
+    }
+  }, [shouldAutoPlay, score, playbackState.play]);
+
   // Render loading state
   if (loading && !score) {
     return (
@@ -558,7 +570,7 @@ export function ScoreViewer({
                 fontWeight: 'bold'
               }}
             >
-              🎵 Load Demo
+              🎵 Demo
             </button>
             <button onClick={handleNewScoreButtonClick} disabled={loading}>
               New Score
