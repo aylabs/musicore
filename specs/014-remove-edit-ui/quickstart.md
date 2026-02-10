@@ -23,9 +23,10 @@ Musicore is now a **read-only score viewer and player**. All editing functionali
 ### What's Removed ❌
 
 1. **Create New Scores**: "New Score" button removed (landing page and viewer header)
-2. **Edit Scores**: Cannot add notes, voices, staves, or instruments
-3. **Save to Backend**: "Save" button removed (no backend persistence available)
-4. **Keyboard Shortcuts**: Ctrl+S (save), Ctrl+N (new score), Ctrl+O (load from backend) removed
+2. **Load from File (Landing Page)**: "Load Score" button removed from landing page (still available in header when score is loaded)
+3. **Edit Scores**: Cannot add notes, voices, staves, or instruments
+4. **Save to Backend**: "Save" button removed (no backend persistence available)
+5. **Keyboard Shortcuts**: Ctrl+S (save), Ctrl+N (new score), Ctrl+O (load from backend) removed
 
 ### Why This Change?
 
@@ -41,6 +42,7 @@ The backend REST API is not available in the PWA deployment on GitHub Pages (sta
    - Removed "New Score" button
    - Removed "Save" button  
    - Removed score name input field
+   - Removed "Load Score" button from landing page (kept in header when score is loaded)
    - Removed keyboard shortcuts (`handleKeyDown` event listener for Ctrl+S, Ctrl+N, Ctrl+O)
    - Removed unsaved changes warning (`beforeunload` event listener)
 

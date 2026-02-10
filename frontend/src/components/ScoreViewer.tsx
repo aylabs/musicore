@@ -490,9 +490,6 @@ export function ScoreViewer({
               }}
             >              🎵 Demo
             </button>
-            <button onClick={handleLoadButtonClick} disabled={loading}>
-              Load Score
-            </button>
             {/* Feature 006: Import MusicXML Score */}
             <ImportButton
               onImportComplete={handleMusicXMLImport}

@@ -24,10 +24,10 @@ npm run dev
 
 - [ ] Open app with no score loaded
 - [ ] Verify **Demo** button is visible
-- [ ] Verify **Load Score** button is visible  
 - [ ] Verify **Import Score** button is visible
+- [ ] Verify **NO "Load Score" button** appears (removed from landing page)
 - [ ] Verify **NO "New Score" button** appears
-- [ ] Landing page is clean and uncluttered
+- [ ] Landing page is clean and uncluttered with only 2 buttons
 
 **Screenshot**: Attach screenshot of landing page
 
