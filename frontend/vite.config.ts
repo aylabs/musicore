@@ -13,7 +13,7 @@ export default defineConfig({
     react(),
     // PWA plugin configuration
     VitePWA({
-      registerType: 'prompt',  // User controls when to update (T006)
+      registerType: 'autoUpdate',  // Auto-install updates on reload
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'wasm/*'],
       manifest: {
         name: 'Musicore - Intelligent Music Stand',
