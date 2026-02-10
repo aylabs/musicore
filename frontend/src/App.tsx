@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
+import { OfflineBanner } from './components/OfflineBanner'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
@@ -103,6 +104,7 @@ function App() {
     <TempoStateProvider>
       <FileStateProvider>
         <div className="app">
+          <OfflineBanner />
           <header className="app-header">
             <h1>🎵 Musicore</h1>
           </header>
