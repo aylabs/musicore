@@ -102,9 +102,9 @@ description: "Task list for Feature 014 - Remove Editing Interface"
 
 - [X] T017 [P] Run full frontend test suite with `cd frontend && npm test` to verify no regressions
 - [X] T018 [P] Build production bundle with `cd frontend && npm run build` to verify no build errors  
-- [ ] T019 Manual testing on local dev server: load demo, import file, verify playback, check all view modes
-- [ ] T020 Deploy to GitHub Pages and test on tablet device to verify mobile experience  
-- [ ] T021 Run quickstart.md validation: follow user and developer guides to confirm accuracy
+- [X] T019 Manual testing on local dev server: load demo, import file, verify playback, check all view modes
+- [X] T020 Deploy to GitHub Pages and test on tablet device to verify mobile experience  
+- [X] T021 Run quickstart.md validation: follow user and developer guides to confirm accuracy
 
 **Checkpoint**: Feature complete and deployment-ready
 

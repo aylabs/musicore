@@ -47,11 +47,14 @@ The backend REST API is not available in the PWA deployment on GitHub Pages (sta
 2. **`frontend/src/components/InstrumentList.tsx`**
    - Removed "Add Voice" button
    - Removed "Add Staff" button
-   - `addStaff()` and `addVoice()` functions may be removed or marked deprecated
+   - Removed `addStaff()` and `addVoice()` functions
+   - Removed unused state variables and API imports
 
 3. **`frontend/src/components/NoteDisplay.tsx`**
    - Removed "Add Note" button
-   - `addNote()` function may be removed or marked deprecated
+   - Removed add note form (tick, duration, pitch inputs)
+   - Removed `addNote()` function
+   - Removed unused state variables and props
 
 ### Unchanged Components
 
