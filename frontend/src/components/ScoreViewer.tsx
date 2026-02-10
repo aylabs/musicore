@@ -717,8 +717,8 @@ export function ScoreViewer({
         ) : undefined}
       />
 
-      {/* Feature 010: Hide Add Instrument control in stacked view */}
-      {viewMode === 'individual' && (
+      {/* Feature 010: Show Add Instrument control when no instruments exist, or in individual view */}
+      {(score.instruments.length === 0 || viewMode === 'individual') && (
         <div className="add-instrument">
           <input
             type="text"
