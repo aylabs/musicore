@@ -43,7 +43,11 @@ export async function initWasm(): Promise<WasmModule> {
     try {
       // Load WASM module - in production, this is in /wasm/ directory
       // The JS bindings will automatically load the .wasm file from the same directory
-      const jsUrl = new URL('/wasm/musicore_backend.js', window.location.origin);
+      // Use BASE_URL to support deployment to subdirectories (e.g., GitHub Pages project sites)
+      const basePath = import.meta.env.BASE_URL.endsWith('/') 
+        ? import.meta.env.BASE_URL 
+        : `${import.meta.env.BASE_URL}/`;
+      const jsUrl = new URL(`${basePath}wasm/musicore_backend.js`, window.location.origin);
       
       // Dynamically import the JS bindings
       const wasm = await import(/* @vite-ignore */ jsUrl.href) as WasmModule;
