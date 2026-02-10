@@ -43,13 +43,25 @@ export class DemoLoaderService implements IDemoLoaderService {
    */
   async loadBundledDemo(): Promise<DemoScoreMetadata> {
     try {
+      console.log('========================================');
+      console.log('[DemoLoader] START: Loading bundled demo');
       console.log(`[DemoLoader] Demo path configured as: ${this.demoBundlePath}`);
-      console.log(`[DemoLoader] import.meta.env.BASE_URL = ${import.meta.env.BASE_URL}`);
-      console.log(`[DemoLoader] Fetching demo from ${this.demoBundlePath}`);
+      console.log(`[DemoLoader] import.meta.env.BASE_URL = "${import.meta.env.BASE_URL}"`);
+      console.log(`[DemoLoader] window.location.origin = "${window.location.origin}"`);
+      console.log(`[DemoLoader] window.location.pathname = "${window.location.pathname}"`);
+      
+      const fullUrl = new URL(this.demoBundlePath, window.location.origin + window.location.pathname);
+      console.log(`[DemoLoader] Resolved full URL: ${fullUrl.href}`);
+      console.log(`[DemoLoader] Fetching demo from: ${this.demoBundlePath}`);
 
       // 1. Fetch bundled MusicXML
       const response = await fetch(this.demoBundlePath);
+      console.log(`[DemoLoader] Fetch response status: ${response.status} ${response.statusText}`);
+      console.log(`[DemoLoader] Fetch response URL: ${response.url}`);
+      console.log(`[DemoLoader] Content-Type: ${response.headers.get('content-type')}`);
+      
       if (!response.ok) {
+        console.error(`[DemoLoader] ERROR: Fetch failed with status ${response.status}`);
         throw this.createError(
           'fetch_failed',
           `Failed to fetch demo: HTTP ${response.status} ${response.statusText}`
@@ -57,11 +69,13 @@ export class DemoLoaderService implements IDemoLoaderService {
       }
 
       const musicXML = await response.text();
-      console.log(`[DemoLoader] Fetched ${musicXML.length} bytes of MusicXML`);
+      console.log(`[DemoLoader] SUCCESS: Fetched ${musicXML.length} bytes of MusicXML`);
+      console.log(`[DemoLoader] First 100 chars: ${musicXML.substring(0, 100)}`);
 
       // 2. Parse via WASM engine (Feature 011)
+      console.log('[DemoLoader] Parsing MusicXML via WASM engine...');
       const parsedScore = await parseMusicXML(musicXML);
-      console.log(`[DemoLoader] Parsed score with ${parsedScore.instruments.length} instruments`);
+      console.log(`[DemoLoader] SUCCESS: Parsed score with ${parsedScore.instruments.length} instruments`);
 
       // 3. Validate score structure (must have at least 1 instrument)
       const instrumentCount = parsedScore.instruments?.length ?? 0;
@@ -84,11 +98,23 @@ export class DemoLoaderService implements IDemoLoaderService {
       };
 
       // 5. Store in IndexedDB (Feature 011)
+      console.log('[DemoLoader] Saving to IndexedDB...');
       await saveScoreToIndexedDB(demoScore);
-      console.log(`[DemoLoader] Demo score stored with ID: ${demoScore.id}`);
+      console.log(`[DemoLoader] SUCCESS: Demo score stored with ID: ${demoScore.id}`);
+      console.log('[DemoLoader] COMPLETE: Demo loaded successfully');
+      console.log('========================================');
 
       return demoScore;
     } catch (error) {
+      console.error('========================================');
+      console.error('[DemoLoader] FATAL ERROR loading demo:', error);
+      console.error('[DemoLoader] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('[DemoLoader] Error message:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error && error.stack) {
+        console.error('[DemoLoader] Stack trace:', error.stack);
+      }
+      console.error('========================================');
+      
       // Normalize error to DemoLoadingError
       if (this.isDemoLoadingError(error)) {
         throw error;
