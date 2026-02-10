@@ -8,7 +8,7 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write  # Needed to commit version bump and create tags
   pages: write
   id-token: write
 
@@ -25,6 +25,49 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for version tagging
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ========================================
+      # Stage 0: Auto-bump version on main
+      # ========================================
+      - name: Setup Node.js for version bump
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and create tag
+        id: version
+        working-directory: frontend
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Bump patch version (0.1.0 -> 0.1.1, 0.1.1 -> 0.1.2, etc.)
+          npm version patch --no-git-tag-version
+          
+          # Get new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Commit version bump
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to v$NEW_VERSION [skip ci]"
+          
+          # Create and push tag
+          git tag "v$NEW_VERSION"
+          git push origin main
+          git push origin "v$NEW_VERSION"
+          
+          echo "✅ Version bumped from $CURRENT_VERSION to $NEW_VERSION"
 
       # ========================================
       # Stage 1: Build WASM Module (Rust)
@@ -97,11 +140,13 @@ jobs:
         uses: actions/deploy-pages@v4
 
       # ========================================
+      # ========================================
       # Post-Deployment Verification
       # ========================================
       - name: Report deployment URL
         run: |
           echo "✅ PWA deployed successfully!"
+          echo "📦 Version: v${{ steps.version.outputs.version }}"
           echo "🌐 URL: ${{ steps.deployment.outputs.page_url }}"
           echo ""
           echo "📱 To test PWA installation:"
