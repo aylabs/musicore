@@ -61,12 +61,12 @@ export class DemoLoaderService implements IDemoLoaderService {
       const parsedScore = await parseMusicXML(musicXML);
       console.log(`[DemoLoader] Parsed score with ${parsedScore.instruments.length} instruments`);
 
-      // 3. Validate score structure (must have ≥4 instruments for stacked view demo)
+      // 3. Validate score structure (must have at least 1 instrument)
       const instrumentCount = parsedScore.instruments?.length ?? 0;
-      if (instrumentCount < 4) {
+      if (instrumentCount < 1) {
         throw this.createError(
           'parse_failed',
-          `Demo must have at least 4 instruments, found ${instrumentCount}`
+          `Demo must have at least 1 instrument, found ${instrumentCount}`
         );
       }
 
