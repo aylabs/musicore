@@ -5,6 +5,7 @@ import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
+import { useOnboarding } from './hooks/useOnboarding'
 import './App.css'
 
 /**
@@ -15,10 +16,14 @@ import './App.css'
  * 
  * Feature 008: Added TempoStateProvider for tempo change support
  * Feature 011: Added WASM music engine initialization
+ * Feature 013: Added onboarding with demo music on first run
  */
 function App() {
   const [wasmLoading, setWasmLoading] = useState(true)
   const [wasmError, setWasmError] = useState<string | null>(null)
+  
+  // Feature 013: Onboarding hook for first-run demo and view mode preference
+  const { viewMode, setViewMode, isFirstRun, isDemoLoading, demoError } = useOnboarding()
 
   useEffect(() => {
     // Initialize WASM module on app startup
@@ -106,6 +111,25 @@ function App() {
       <FileStateProvider>
         <div className="app">
           <OfflineBanner />
+          {/* Feature 013: Demo loading error notification (T019) */}
+          {demoError && (
+            <div style={{
+              position: 'fixed',
+              top: '4rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: '#ff9800',
+              color: 'white',
+              padding: '1rem 2rem',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              zIndex: 1000,
+              maxWidth: '600px',
+              textAlign: 'center'
+            }}>
+              ⚠️ Demo music unavailable. You can import your own MusicXML files.
+            </div>
+          )}
           <header className="app-header">
             <h1>🎵 Musicore</h1>
           </header>

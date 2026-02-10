@@ -129,6 +129,32 @@ export async function listScoreIdsFromIndexedDB(): Promise<string[]> {
 }
 
 /**
+ * Get all scores from IndexedDB
+ * Feature 013: Added for demo score detection
+ * @returns Promise<Score[]>
+ */
+export async function getAllScoresFromIndexedDB(): Promise<Score[]> {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([SCORES_STORE], 'readonly');
+    const store = transaction.objectStore(SCORES_STORE);
+
+    const scores = await new Promise<Score[]>((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(new Error(`Failed to get all scores: ${request.error?.message}`));
+    });
+
+    db.close();
+    console.log(`[IndexedDB] Retrieved ${scores.length} scores`);
+    return scores;
+  } catch (error) {
+    console.error('[IndexedDB] Error getting all scores:', error);
+    throw error;
+  }
+}
+
+/**
  * Delete a score from IndexedDB
  * @param scoreId - UUID of the score to delete
  * @returns Promise<void>

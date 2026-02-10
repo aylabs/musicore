@@ -62,15 +62,15 @@ description: "Task list for Demo Music Onboarding implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement IFirstRunStorage adapter as LocalStorageFirstRunAdapter in frontend/src/services/storage/preferences.ts (implement isFirstRun, getFirstRunState, markFirstRunComplete, resetFirstRun methods with error handling)
-- [ ] T013 [P] [US1] Implement first-run detection service in frontend/src/services/onboarding/firstRunDetection.ts (export firstRunStorage singleton, handle localStorage disabled gracefully)
-- [ ] T014 [US1] Implement IDemoLoaderService as DemoLoaderService in frontend/src/services/onboarding/demoLoader.ts (implement loadBundledDemo with fetch from /demo/CanonD.musicxml, integrate with WASM parser from Feature 011, add demo metadata with isDemoScore=true)
-- [ ] T015 [US1] Implement getDemoScore and isDemoLoaded methods in frontend/src/services/onboarding/demoLoader.ts (query IndexedDB for demo score with isDemoScore=true)
-- [ ] T016 [US1] Implement IOnboardingService as OnboardingService in frontend/src/services/onboarding/OnboardingService.ts (implement initialize method orchestrating first-run check → load demo → mark complete, add 5-second timeout handling)
-- [ ] T017 [US1] Implement useOnboarding React hook in frontend/src/hooks/useOnboarding.ts (manage isFirstRun state, isDemoLoading state, demoError state, call OnboardingService.initialize on mount)
-- [ ] T018 [US1] Integrate useOnboarding hook in frontend/src/App.tsx (call useOnboarding at component mount, handle loading and error states in UI, ensure demo score displays when loaded)
-- [ ] T019 [US1] Add error boundary and user notification for demo loading failures in frontend/src/App.tsx (show non-blocking warning if demo fails: "Demo music unavailable. You can import your own MusicXML files.")
-- [ ] T020 [US1] Add logging for first-run analytics in frontend/src/services/onboarding/OnboardingService.ts (log first-run completion timestamp, app version, demo load time)
+- [X] T012 [P] [US1] Implement IFirstRunStorage adapter as LocalStorageFirstRunAdapter in frontend/src/services/storage/preferences.ts (implement isFirstRun, getFirstRunState, markFirstRunComplete, resetFirstRun methods with error handling)
+- [X] T013 [P] [US1] Implement first-run detection service in frontend/src/services/onboarding/firstRunDetection.ts (export firstRunStorage singleton, handle localStorage disabled gracefully)
+- [X] T014 [US1] Implement IDemoLoaderService as DemoLoaderService in frontend/src/services/onboarding/demoLoader.ts (implement loadBundledDemo with fetch from /demo/CanonD.musicxml, integrate with WASM parser from Feature 011, add demo metadata with isDemoScore=true)
+- [X] T015 [US1] Implement getDemoScore and isDemoLoaded methods in frontend/src/services/onboarding/demoLoader.ts (query IndexedDB for demo score with isDemoScore=true)
+- [X] T016 [US1] Implement IOnboardingService as OnboardingService in frontend/src/services/onboarding/OnboardingService.ts (implement initialize method orchestrating first-run check → load demo → mark complete, add 5-second timeout handling)
+- [X] T017 [US1] Implement useOnboarding React hook in frontend/src/hooks/useOnboarding.ts (manage isFirstRun state, isDemoLoading state, demoError state, call OnboardingService.initialize on mount)
+- [X] T018 [US1] Integrate useOnboarding hook in frontend/src/App.tsx (call useOnboarding at component mount, handle loading and error states in UI, ensure demo score displays when loaded)
+- [X] T019 [US1] Add error boundary and user notification for demo loading failures in frontend/src/App.tsx (show non-blocking warning if demo fails: "Demo music unavailable. You can import your own MusicXML files.")
+- [X] T020 [US1] Add logging for first-run analytics in frontend/src/services/onboarding/OnboardingService.ts (log first-run completion timestamp, app version, demo load time)
 
 **Checkpoint**: User Story 1 complete - first-run users see Canon D in stacked view within 5 seconds
 
