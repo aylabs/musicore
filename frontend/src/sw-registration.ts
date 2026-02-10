@@ -20,7 +20,7 @@ export async function registerServiceWorker(
   callbacks: ServiceWorkerCallbacks = {}
 ): Promise<ServiceWorkerRegistration | undefined> {
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    const wb = new Workbox('/sw.js');
+    const wb = new Workbox(`${import.meta.env.BASE_URL}sw.js`);
 
     // Service worker waiting (update available) - T019
     wb.addEventListener('waiting', () => {
