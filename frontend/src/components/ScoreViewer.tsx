@@ -85,15 +85,8 @@ export function ScoreViewer({
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check for Ctrl/Cmd modifier
       if (event.ctrlKey || event.metaKey) {
-        if (event.key === 'o') {
-          // Ctrl+O / Cmd+O: Load
-          event.preventDefault();
-          handleLoadButtonClick();
-        } else if (event.key === 'n') {
-          // Ctrl+N / Cmd+N: New Score
-          event.preventDefault();
-          handleNewScoreButtonClick();
-        }
+        // Removed: Ctrl+S (Save), Ctrl+N (New), Ctrl+O (Load from backend)
+        // All editing shortcuts removed per Feature 014
       }
     };
 
@@ -103,21 +96,8 @@ export function ScoreViewer({
     };
   }, [score, fileState.isModified]); // Dependencies: score and isModified state
 
-  // Feature 004 T033: Browser beforeunload warning for unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (fileState.isModified) {
-        // Modern browsers ignore custom messages, but returnValue is required
-        event.preventDefault();
-        event.returnValue = ''; // Chrome requires this
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [fileState.isModified]);
+  // Removed: Feature 004 T033 - Browser beforeunload warning
+  // No unsaved changes warning needed since editing is disabled (Feature 014)
 
   /**
    * Load a score by ID
@@ -579,11 +559,7 @@ export function ScoreViewer({
                 color: 'white',
                 fontWeight: 'bold'
               }}
-            >
-              🎵 Demo
-            </button>
-            <button onClick={handleNewScoreButtonClick} disabled={loading}>
-              New Score
+            >              🎵 Demo
             </button>
             <button onClick={handleLoadButtonClick} disabled={loading}>
               Load Score
@@ -625,9 +601,6 @@ export function ScoreViewer({
             </div>
             {/* Feature 004 T012, T026: File operation buttons */}
             <div className="score-actions">
-              <button onClick={handleNewScoreButtonClick} className="new-button">
-                New
-              </button>
               <button onClick={handleLoadButtonClick} className="load-button">
                 Load
               </button>
