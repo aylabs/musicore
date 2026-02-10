@@ -24,6 +24,18 @@ function App() {
   const [wasmError, setWasmError] = useState<string | null>(null)
   const [wasmReady, setWasmReady] = useState(false)
   
+  // Mobile debug console (eruda) - enable with ?debug=true
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'true') {
+      import('eruda').then(eruda => {
+        eruda.default.init();
+        console.log('[App] Eruda mobile debug console initialized');
+        console.log('[App] Access console by tapping the floating button');
+      });
+    }
+  }, []);
+  
   // Feature 013: Onboarding hook for first-run demo and view mode preference
   // CRITICAL: Pass wasmReady to prevent race condition on mobile
   const { viewMode, setViewMode, isDemoLoading, demoError } = useOnboarding(wasmReady)
