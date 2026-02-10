@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Debug - Musicore</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.6;
+    }
+    .section {
+      background: #f5f5f5;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 8px;
+    }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    pre {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0.5rem 0.5rem 0.5rem 0;
+    }
+    button:hover {
+      background: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 PWA Debug Tool - Musicore</h1>
+  
+  <div class="section">
+    <h2>Installation Status</h2>
+    <div id="installStatus"></div>
+    <button id="installBtn" style="display: none;">Install PWA</button>
+  </div>
+
+  <div class="section">
+    <h2>Manifest Check</h2>
+    <div id="manifestCheck"></div>
+  </div>
+
+  <div class="section">
+    <h2>Service Worker Check</h2>
+    <div id="swCheck"></div>
+    <button onclick="checkServiceWorker()">Refresh SW Status</button>
+  </div>
+
+  <div class="section">
+    <h2>Icon Check</h2>
+    <div id="iconCheck"></div>
+  </div>
+
+  <div class="section">
+    <h2>Browser Info</h2>
+    <div id="browserInfo"></div>
+  </div>
+
+  <div class="section">
+    <h2>Console Logs</h2>
+    <pre id="logs" style="max-height: 300px; overflow-y: auto;"></pre>
+  </div>
+
+  <script>
+    const logs = [];
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      logs.push(`[${timestamp}] ${message}`);
+      document.getElementById('logs').textContent = logs.join('\n');
+      console.log(message);
+    }
+
+    let deferredPrompt;
+
+    // Capture beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      log('✅ beforeinstallprompt event fired - PWA is installable!', 'success');
+      document.getElementById('installBtn').style.display = 'block';
+      updateInstallStatus('✅ PWA is installable! Install button available below.');
+    });
+
+    // Install button handler
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (!deferredPrompt) {
+        log('❌ No deferred prompt available', 'error');
+        return;
+      }
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      log(`User ${outcome} the install prompt`, outcome === 'accepted' ? 'success' : 'warning');
+      deferredPrompt = null;
+      document.getElementById('installBtn').style.display = 'none';
+    });
+
+    // Check install status
+    function updateInstallStatus(message) {
+      const el = document.getElementById('installStatus');
+      el.innerHTML = message;
+    }
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      updateInstallStatus('✅ <span class="success">Already installed and running in standalone mode</span>');
+      log('Already installed in standalone mode');
+    } else if (window.navigator.standalone === true) {
+      updateInstallStatus('✅ <span class="success">Already installed (iOS)</span>');
+      log('Already installed (iOS standalone)');
+    } else {
+      updateInstallStatus('⏳ <span class="warning">Not installed yet. Checking installability...</span>');
+      log('Not installed, waiting for beforeinstallprompt event...');
+      
+      // If no event after 3 seconds, show warning
+      setTimeout(() => {
+        if (!deferredPrompt) {
+          updateInstallStatus('⚠️ <span class="warning">beforeinstallprompt event not fired yet. Check manifest and service worker below.</span>');
+          log('⚠️ beforeinstallprompt not fired after 3 seconds', 'warning');
+        }
+      }, 3000);
+    }
+
+    // Check manifest
+    async function checkManifest() {
+      const el = document.getElementById('manifestCheck');
+      try {
+        const basePath = document.querySelector('base')?.href || window.location.origin + '/musicore/';
+        const manifestUrl = new URL('manifest.webmanifest', basePath).href;
+        log(`Fetching manifest from: ${manifestUrl}`);
+        
+        const response = await fetch(manifestUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const manifest = await response .json();
+        log('✅ Manifest loaded successfully');
+        
+        el.innerHTML = `
+          <p class="success">✅ Manifest loaded successfully</p>
+          <p><strong>Name:</strong> ${manifest.name || manifest.short_name}</p>
+          <p><strong>Start URL:</strong> ${manifest.start_url}</p>
+          <p><strong>Scope:</strong> ${manifest.scope}</p>
+          <p><strong>Display:</strong> ${manifest.display}</p>
+          <p><strong>Icons:</strong> ${manifest.icons?.length || 0} icons</p>
+          ${manifest.icons?.map((icon, i) => `
+            <div>Icon ${i + 1}: ${icon.src} (${icon.sizes})</div>
+          `).join('') || ''}
+          <details>
+            <summary>Full Manifest JSON</summary>
+            <pre>${JSON.stringify(manifest, null, 2)}</pre>
+          </details>
+        `;
+        
+        // Check icon accessibility
+        checkIcons(manifest.icons || []);
+      } catch (error) {
+        log(`❌ Manifest error: ${error.message}`, 'error');
+        el.innerHTML = `<p class="error">❌ Failed to load manifest: ${error.message}</p>`;
+      }
+    }
+
+    // Check icons
+    async function checkIcons(icons) {
+      const el = document.getElementById('iconCheck');
+      const results = [];
+      
+      for (const icon of icons) {
+        try {
+          const iconUrl = new URL(icon.src, window.location.href).href;
+          log(`Checking icon: ${iconUrl}`);
+          const response = await fetch(iconUrl, { method: 'HEAD' });
+          const status = response.ok ? '✅' : '❌';
+          const className = response.ok ? 'success' : 'error';
+          results.push(`<p class="${className}">${status} ${icon.src} (${icon.sizes}) - HTTP ${response.status}</p>`);
+          log(`${status} Icon ${icon.src}: HTTP ${response.status}`);
+        } catch (error) {
+          results.push(`<p class="error">❌ ${icon.src} - Error: ${error.message}</p>`);
+          log(`❌ Icon ${icon.src}: ${error.message}`, 'error');
+        }
+      }
+      
+      el.innerHTML = results.join('');
+    }
+
+    // Check service worker
+    async function checkServiceWorker() {
+      const el = document.getElementById('swCheck');
+      
+      if (!('serviceWorker' in navigator)) {
+        el.innerHTML = '<p class="error">❌ Service Worker not supported</p>';
+        log('❌ Service Worker not supported', 'error');
+        return;
+      }
+      
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+          el.innerHTML = '<p class="warning">⚠️ No service worker registered yet</p>';
+          log('⚠️ No service worker registered', 'warning');
+          return;
+        }
+        
+        const state = registration.active?.state || registration.installing?.state || registration.waiting?.state || 'unknown';
+        log(`✅ Service worker registered: ${state}`);
+        
+        el.innerHTML = `
+          <p class="success">✅ Service Worker registered</p>
+          <p><strong>State:</strong> ${state}</p>
+          <p><strong>Scope:</strong> ${registration.scope}</p>
+          <p><strong>Active:</strong> ${registration.active ? 'Yes' : 'No'}</p>
+          <p><strong>Waiting:</strong> ${registration.waiting ? 'Yes' : 'No'}</p>
+          <p><strong>Installing:</strong> ${registration.installing ? 'Yes' : 'No'}</p>
+        `;
+      } catch (error) {
+        el.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+        log(`❌ Service worker error: ${error.message}`, 'error');
+      }
+    }
+
+    // Browser info
+    function checkBrowser() {
+      const el = document.getElementById('browserInfo');
+      const ua = navigator.userAgent;
+      const isChrome = /Chrome/.test(ua) && /Google Inc/.test(navigator.vendor);
+      const isEdge = /Edg/.test(ua);
+      const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+      const isFirefox = /Firefox/.test(ua);
+      const isIOS = /iPhone|iPad|iPod/.test(ua);
+      const isAndroid = /Android/.test(ua);
+      
+      el.innerHTML = `
+        <p><strong>User Agent:</strong> ${ua}</p>
+        <p><strong>Browser:</strong> ${isChrome ? 'Chrome' : isEdge ? 'Edge' : isSafari ? 'Safari' : isFirefox ? 'Firefox' : 'Other'}</p>
+        <p><strong>Platform:</strong> ${isIOS ? 'iOS' : isAndroid ? 'Android' : navigator.platform}</p>
+        <p><strong>Online:</strong> ${navigator.onLine ? 'Yes' : 'No'}</p>
+        <p><strong>HTTPS:</strong> ${location.protocol === 'https:' ? 'Yes ✅' : 'No ❌'}</p>
+      `;
+      
+      log(`Browser: ${isChrome ? 'Chrome' : isEdge ? 'Edge' : isSafari ? 'Safari' : isFirefox ? 'Firefox' : 'Other'}`);
+      log(`Platform: ${isIOS ? 'iOS' : isAndroid ? 'Android' : navigator.platform}`);
+    }
+
+    // Run checks on load
+    window.addEventListener('load', () => {
+      log('=== PWA Debug Tool Loaded ===');
+      checkManifest();
+      checkServiceWorker();
+      checkBrowser();
+    });
+
+    // Listen for app installed event
+    window.addEventListener('appinstalled', () => {
+      log('✅ PWA installed successfully!', 'success');
+      updateInstallStatus('✅ <span class="success">PWA installed successfully!</span>');
+    });
+  </script>
+</body>
+</html>
