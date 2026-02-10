@@ -25,8 +25,9 @@ import { demoLoaderService } from '../services/onboarding/demoLoader';
 
 /**
  * React hook for onboarding initialization and view mode management
+ * @param wasmReady - Whether WASM engine is initialized (required for demo parsing)
  */
-export function useOnboarding(): OnboardingHookResult {
+export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult {
   // Initialize view mode from localStorage (lazy initializer for SSR safety)
   const [viewMode, setViewModeState] = useState<ViewMode>(() => {
     return viewModeStorage.getViewMode(); // Defaults to "stacked" if not set
@@ -48,6 +49,7 @@ export function useOnboarding(): OnboardingHookResult {
 
   /**
    * Initialize onboarding on mount
+   * CRITICAL: Only runs after WASM is ready (required for parseMusicXML)
    */
   useEffect(() => {
     let mounted = true;
@@ -58,7 +60,12 @@ export function useOnboarding(): OnboardingHookResult {
         return;
       }
 
-      console.log('[useOnboarding] Starting first-run initialization...');
+      if (!wasmReady) {
+        console.log('[useOnboarding] Waiting for WASM to initialize...');
+        return;
+      }
+
+      console.log('[useOnboarding] Starting first-run initialization (WASM ready)...');
       setIsDemoLoading(true);
       setDemoError(null);
 
@@ -109,7 +116,7 @@ export function useOnboarding(): OnboardingHookResult {
     return () => {
       mounted = false;
     };
-  }, []); // Run once on mount
+  }, [wasmReady]); // Re-run when WASM becomes ready
 
   /**
    * Load demo score ID for returning users

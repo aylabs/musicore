@@ -32,9 +32,13 @@ export const ONBOARDING_CONFIG: OnboardingConfig = {
   
   /**
    * Maximum time to wait for demo loading before timeout
-   * 5 seconds per spec.md SC-001 requirement
+   * 15 seconds to handle slower mobile connections (was 5s)
+   * Mobile devices with slow networks need more time for:
+   * - Fetching 120KB MusicXML file
+   * - WASM initialization and parsing
+   * - IndexedDB write operations
    */
-  firstRunTimeoutMs: 5000,
+  firstRunTimeoutMs: 15000,
 };
 
 /**
