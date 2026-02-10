@@ -21,8 +21,9 @@ export const ONBOARDING_CONFIG: OnboardingConfig = {
   /**
    * Path to bundled demo MusicXML file
    * File is copied to public/demo/ during build
+   * Uses Vite's BASE_URL to work with GitHub Pages deployment
    */
-  demoBundlePath: '/demo/CanonD.musicxml',
+  demoBundlePath: `${import.meta.env.BASE_URL}demo/CanonD.musicxml`,
   
   /**
    * Whether to show "Reload Demo" UI
