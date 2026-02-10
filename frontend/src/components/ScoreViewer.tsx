@@ -16,6 +16,10 @@ import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
   scoreId?: string;
+  /** Optional controlled view mode (if not provided, uses internal state with 'individual' default) */
+  viewMode?: ViewMode;
+  /** Optional callback for view mode changes (required if viewMode is controlled) */
+  onViewModeChange?: (mode: ViewMode) => void;
 }
 
 /**
@@ -34,7 +38,11 @@ interface ScoreViewerProps {
  * <ScoreViewer scoreId="123e4567-e89b-12d3-a456-426614174000" />
  * ```
  */
-export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
+export function ScoreViewer({ 
+  scoreId: initialScoreId,
+  viewMode: controlledViewMode,
+  onViewModeChange: controlledOnViewModeChange,
+}: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
   const [loading, setLoading] = useState(false);
@@ -48,7 +56,10 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
   
   // Feature 010: View mode state for toggling between individual and stacked views
-  const [viewMode, setViewMode] = useState<ViewMode>('individual');
+  // Use controlled mode if provided, otherwise internal state
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('individual');
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = controlledOnViewModeChange ?? setInternalViewMode;
 
   // File input ref for Load button (Feature 004 T019)
   const fileInputRef = useRef<HTMLInputElement>(null);

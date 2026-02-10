@@ -36,7 +36,7 @@ export interface FirstRunState {
 /**
  * Valid view mode values
  */
-export type ViewMode = 'stacked' | 'single';
+export type ViewMode = 'stacked' | 'individual';
 
 /**
  * Source of view mode preference (for analytics)
@@ -135,6 +135,9 @@ export interface OnboardingHookResult {
   
   /** Error message if demo loading failed (null if no error) */
   demoError: string | null;
+  
+  /** Demo score ID if loaded (null if not loaded or loading failed) */
+  demoScoreId: string | null;
 }
 
 // ============================================================================

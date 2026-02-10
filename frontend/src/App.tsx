@@ -23,7 +23,7 @@ function App() {
   const [wasmError, setWasmError] = useState<string | null>(null)
   
   // Feature 013: Onboarding hook for first-run demo and view mode preference
-  const { demoError } = useOnboarding()
+  const { viewMode, setViewMode, isDemoLoading, demoError, demoScoreId } = useOnboarding()
 
   useEffect(() => {
     // Initialize WASM module on app startup
@@ -40,8 +40,8 @@ function App() {
       })
   }, [])
 
-  // Show loading state while WASM initializes
-  if (wasmLoading) {
+  // Show loading state while WASM initializes or demo loads on first run
+  if (wasmLoading || isDemoLoading) {
     return (
       <div className="app">
         <header className="app-header">
@@ -56,7 +56,7 @@ function App() {
           gap: '1rem'
         }}>
           <div style={{ fontSize: '2rem' }}>🎼</div>
-          <p>Loading music engine...</p>
+          <p>{isDemoLoading ? 'Loading demo music...' : 'Loading music engine...'}</p>
         </main>
       </div>
     )
@@ -134,7 +134,11 @@ function App() {
             <h1>🎵 Musicore</h1>
           </header>
           <main>
-            <ScoreViewer />
+            <ScoreViewer 
+              scoreId={demoScoreId ?? undefined}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
           </main>
           <IOSInstallModal />
         </div>

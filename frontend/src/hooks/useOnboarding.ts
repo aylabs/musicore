@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react';
 import type { ViewMode, OnboardingHookResult } from '../services/onboarding/types';
 import { onboardingService } from '../services/onboarding/OnboardingService';
 import { firstRunStorage, viewModeStorage } from '../services/storage/preferences';
+import { demoLoaderService } from '../services/onboarding/demoLoader';
 
 /**
  * React hook for onboarding initialization and view mode management
@@ -41,6 +42,9 @@ export function useOnboarding(): OnboardingHookResult {
 
   // Track demo loading errors
   const [demoError, setDemoError] = useState<string | null>(null);
+
+  // Track demo score ID (null until loaded)
+  const [demoScoreId, setDemoScoreId] = useState<string | null>(null);
 
   /**
    * Initialize onboarding on mount
@@ -69,6 +73,13 @@ export function useOnboarding(): OnboardingHookResult {
           // Update view mode from storage (should be "stacked" after first-run)
           const updatedMode = viewModeStorage.getViewMode();
           setViewModeState(updatedMode);
+          
+          // Get demo score ID from IndexedDB
+          const demoScore = await demoLoaderService.getDemoScore();
+          if (demoScore) {
+            setDemoScoreId(demoScore.id);
+            console.log(`[useOnboarding] Demo score ID: ${demoScore.id}`);
+          }
           
           console.log('[useOnboarding] First-run initialization complete');
         }
@@ -101,6 +112,36 @@ export function useOnboarding(): OnboardingHookResult {
   }, []); // Run once on mount
 
   /**
+   * Load demo score ID for returning users
+   */
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDemoScoreId() {
+      // Skip if first run (will be loaded by initializeOnboarding)
+      if (isFirstRun || isDemoLoading) {
+        return;
+      }
+
+      try {
+        const demoScore = await demoLoaderService.getDemoScore();
+        if (demoScore && mounted) {
+          setDemoScoreId(demoScore.id);
+          console.log(`[useOnboarding] Loaded demo score ID for returning user: ${demoScore.id}`);
+        }
+      } catch (error) {
+        console.error('[useOnboarding] Failed to load demo score ID:', error);
+      }
+    }
+
+    loadDemoScoreId();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isFirstRun, isDemoLoading]); // Run when first-run status changes
+
+  /**
    * Update view mode and persist to localStorage
    */
   const setViewMode = (mode: ViewMode) => {
@@ -119,5 +160,6 @@ export function useOnboarding(): OnboardingHookResult {
     isFirstRun,
     isDemoLoading,
     demoError,
+    demoScoreId,
   };
 }
