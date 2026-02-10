@@ -24,9 +24,9 @@ description: "Task list for Demo Music Onboarding implementation"
 
 **Purpose**: Project initialization and demo asset bundling
 
-- [ ] T001 Create directory structure for onboarding services in frontend/src/services/onboarding/
-- [ ] T002 Copy Canon D MusicXML from tests/fixtures/musicxml/CanonD.musicxml to frontend/public/demo/CanonD.musicxml
-- [ ] T003 Verify demo asset accessibility at http://localhost:5173/demo/CanonD.musicxml and check file size ~200KB
+- [X] T001 Create directory structure for onboarding services in frontend/src/services/onboarding/
+- [X] T002 Copy Canon D MusicXML from tests/fixtures/musicxml/CanonD.musicxml to frontend/public/demo/CanonD.musicxml
+- [X] T003 Verify demo asset accessibility at http://localhost:5173/demo/CanonD.musicxml and check file size ~200KB
 
 ---
 
@@ -36,9 +36,9 @@ description: "Task list for Demo Music Onboarding implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create TypeScript types file frontend/src/services/onboarding/types.ts based on contracts/types.ts
-- [ ] T005 [P] Create onboarding configuration constants in frontend/src/services/onboarding/config.ts with defaultViewMode, demoBundlePath, enableDemoReload, firstRunTimeoutMs
-- [ ] T006 [P] Setup test infrastructure with localStorage mock in frontend/tests/setup/localStorage.mock.ts
+- [X] T004 Create TypeScript types file frontend/src/services/onboarding/types.ts based on contracts/types.ts
+- [X] T005 [P] Create onboarding configuration constants in frontend/src/services/onboarding/config.ts with defaultViewMode, demoBundlePath, enableDemoReload, firstRunTimeoutMs
+- [X] T006 [P] Setup test infrastructure with localStorage mock in frontend/tests/setup/localStorage.mock.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

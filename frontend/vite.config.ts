@@ -42,7 +42,7 @@ export default defineConfig({
       },
       workbox: {
         // Precache all static assets (T008)
-        globPatterns: ['**/*.{js,css,html,wasm,png,svg,ico}'],
+        globPatterns: ['**/*.{js,css,html,wasm,png,svg,ico,musicxml}'],
         
         // Runtime caching strategies (T007)
         runtimeCaching: [
