@@ -51,7 +51,7 @@ export default defineConfig({
             urlPattern: /\/api\/scores\/.*/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'musicore-scores-v1',
+              cacheName: 'musicore-scores-v2',
               networkTimeoutSeconds: 3,
               expiration: {
                 maxEntries: 50,
@@ -65,7 +65,7 @@ export default defineConfig({
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'musicore-images-v1',
+              cacheName: 'musicore-images-v2',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
@@ -77,7 +77,7 @@ export default defineConfig({
             urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'musicore-fonts-v1',
+              cacheName: 'musicore-fonts-v2',
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
