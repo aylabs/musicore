@@ -135,7 +135,7 @@ function App() {
             </div>
           )}
           <header className="app-header">
-            <h1>🎵 Musicore <span style={{ fontSize: '0.5em', color: '#666', fontWeight: 'normal' }}>v{packageJson.version}</span></h1>
+            <h1>🎵 Musicore <span style={{ fontSize: '0.5em', color: '#999', fontWeight: 'normal' }}>v{packageJson.version}</span></h1>
           </header>
           <main>
             <ScoreViewer 
