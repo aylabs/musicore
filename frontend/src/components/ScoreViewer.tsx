@@ -85,13 +85,7 @@ export function ScoreViewer({
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check for Ctrl/Cmd modifier
       if (event.ctrlKey || event.metaKey) {
-        if (event.key === 's') {
-          // Ctrl+S / Cmd+S: Save
-          event.preventDefault();
-          if (score) {
-            handleSaveScore();
-          }
-        } else if (event.key === 'o') {
+        if (event.key === 'o') {
           // Ctrl+O / Cmd+O: Load
           event.preventDefault();
           handleLoadButtonClick();
@@ -642,16 +636,6 @@ export function ScoreViewer({
                 onImportComplete={handleMusicXMLImport}
                 buttonText="Import"
               />
-              <input
-                type="text"
-                placeholder="filename (optional)"
-                value={saveFilename}
-                onChange={(e) => setSaveFilename(e.target.value)}
-                className="filename-input"
-              />
-              <button onClick={handleSaveScore} className="save-button">
-                Save
-              </button>
             </div>
           </div>
 
