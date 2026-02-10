@@ -189,13 +189,13 @@ git push origin [branch-name]
 
 ## Constitution Compliance
 
-Musicore follows architectural principles defined in `.specify/constitution/`. Key rules:
+Musicore follows architectural principles defined in `.specify/memory/constitution.md`. Key rules:
 
 1. **Domain-Driven Design**: Domain logic is pure, no infrastructure dependencies
 2. **Hexagonal Architecture**: Domain → Ports (interfaces) → Adapters (implementations)
-3. **API-First**: Backend exposes APIs, frontend consumes them
+3. **PWA Architecture**: Tablet-first PWA with WASM deployment, offline-capable
 4. **Precision & Fidelity**: 960 PPQ integer timing, no floating-point drift
-5. **Test-First**: Tests before implementation (when possible)
+5. **Test-First**: Tests before implementation (NON-NEGOTIABLE)
 
 **Check**: plan.md includes "Constitution Check" section validating compliance.
 

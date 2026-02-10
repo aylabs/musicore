@@ -1,13 +1,13 @@
 // Feature 011: Score Caching Service
 // Automatically saves scores to IndexedDB for offline persistence
 
-import type { Score } from '../../types/score';
+import type { Score } from '../types/score';
 import {
   saveScoreToIndexedDB,
   loadScoreFromIndexedDB,
   listScoreIdsFromIndexedDB,
   deleteScoreFromIndexedDB,
-} from '../storage/local-storage';
+} from './storage/local-storage';
 
 /**
  * Cache strategy for score persistence
