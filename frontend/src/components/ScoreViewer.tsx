@@ -13,6 +13,7 @@ import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { StackedStaffView } from "./stacked/StackedStaffView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
+import { demoLoaderService } from "../services/onboarding/demoLoader";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -210,6 +211,34 @@ export function ScoreViewer({
       showSuccessMessage("New score created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create new score");
+    }
+  };
+
+  /**
+   * Load demo score from IndexedDB (Feature 013)
+   */
+  const handleLoadDemoButtonClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Get demo score from IndexedDB
+      const demoScore = await demoLoaderService.getDemoScore();
+      
+      if (!demoScore) {
+        setError("Demo not found. Try refreshing the page.");
+        return;
+      }
+
+      // Load the demo
+      setScore(demoScore);
+      setScoreId(demoScore.id);
+      setIsFileSourced(false);
+      resetFileState();
+      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load demo");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -519,6 +548,18 @@ export function ScoreViewer({
         <div className="no-score">
           <h2>No Score Loaded</h2>
           <div className="initial-actions">
+            {/* Feature 013: Load demo button */}
+            <button 
+              onClick={handleLoadDemoButtonClick} 
+              disabled={loading}
+              style={{ 
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              🎵 Load Demo
+            </button>
             <button onClick={handleNewScoreButtonClick} disabled={loading}>
               New Score
             </button>

@@ -135,7 +135,6 @@ function App() {
           </header>
           <main>
             <ScoreViewer 
-              scoreId={demoScoreId ?? undefined}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
             />
