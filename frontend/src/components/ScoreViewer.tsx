@@ -217,6 +217,7 @@ export function ScoreViewer({
 
   /**
    * Load demo score from IndexedDB (Feature 013)
+   * Sets stacked view and auto-plays the demo
    */
   const handleLoadDemoButtonClick = async () => {
     setLoading(true);
@@ -235,7 +236,14 @@ export function ScoreViewer({
       setScoreId(demoScore.id);
       setIsFileSourced(false);
       resetFileState();
-      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}`);
+      
+      // Set view mode to stacked (better for demo)
+      setViewMode('stacked');
+      
+      // Set auto-play flag (will trigger in useEffect after score loads)
+      setShouldAutoPlay(true);
+      
+      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}, switching to stacked view and auto-playing`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load demo");
     } finally {
@@ -537,12 +545,20 @@ export function ScoreViewer({
    * Auto-play demo when loaded (Feature 013)
    */
   useEffect(() => {
-    if (shouldAutoPlay && score && playbackState.play) {
-      console.log('[ScoreViewer] Auto-playing demo');
-      playbackState.play();
-      setShouldAutoPlay(false); // Reset flag
+    if (shouldAutoPlay && score) {
+      console.log('[ScoreViewer] Auto-playing demo after score loaded');
+      // Small delay to ensure playback state is initialized with new notes
+      const timer = setTimeout(() => {
+        if (playbackState.play) {
+          playbackState.play();
+          console.log('[ScoreViewer] Demo playback started');
+        }
+        setShouldAutoPlay(false); // Reset flag
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [shouldAutoPlay, score, playbackState.play]);
+  }, [shouldAutoPlay, score]);
 
   // Render loading state
   if (loading && !score) {
