@@ -253,24 +253,8 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
                       />
                     </div>
                   ))}
-
-                  <button 
-                    className="add-voice-btn"
-                    onClick={() => addVoice(instrument.id, staff.id)}
-                    disabled={loading}
-                  >
-                    + Add Voice to Staff {staffIdx + 1}
-                  </button>
                 </div>
               ))}
-
-              <button 
-                className="add-staff-btn"
-                onClick={() => addStaff(instrument.id)}
-                disabled={loading}
-              >
-                + Add Staff
-              </button>
             </div>
           )}
         </div>
