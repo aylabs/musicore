@@ -29,7 +29,7 @@ description: "Task list for Feature 014 - Remove Editing Interface"
 
 **Purpose**: Verify development environment ready for UI removal
 
-- [ ] T001 Confirm branch 014-remove-edit-ui is current and up-to-date with main
+- [X] T001 Confirm branch 014-remove-edit-ui is current and up-to-date with main
 
 **Checkpoint**: Development environment ready
 
@@ -55,18 +55,18 @@ description: "Task list for Feature 014 - Remove Editing Interface"
 
 > **CRITICAL**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T002 [P] [US1] Create test file frontend/src/test/components/InstrumentList.test.tsx to verify Add Voice and Add Staff buttons do not render
-- [ ] T003 [P] [US1] Create test file frontend/src/test/components/NoteDisplay.test.tsx to verify Add Note button does not render  
-- [ ] T004 [P] [US1] Add tests to frontend/src/test/components/ScoreViewer.test.tsx to verify Save button and score name input do not render in viewer
+- [X] T002 [P] [US1] Create test file frontend/src/test/components/InstrumentList.test.tsx to verify Add Voice and Add Staff buttons do not render
+- [X] T003 [P] [US1] Create test file frontend/src/test/components/NoteDisplay.test.tsx to verify Add Note button does not render  
+- [X] T004 [P] [US1] Add tests to frontend/src/test/components/ScoreViewer.test.tsx to verify Save button and score name input do not render in viewer
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Remove "Add Voice" button rendering logic from frontend/src/components/InstrumentList.tsx
-- [ ] T006 [P] [US1] Remove "Add Staff" button rendering logic from frontend/src/components/InstrumentList.tsx
-- [ ] T007 [P] [US1] Remove "Add Note" button rendering logic from frontend/src/components/NoteDisplay.tsx
-- [ ] T008 [US1] Remove "Save" button rendering logic from frontend/src/components/ScoreViewer.tsx
-- [ ] T009 [US1] Remove score name input field rendering logic from frontend/src/components/ScoreViewer.tsx
-- [ ] T010 [US1] Remove Ctrl+S (Save) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
+- [X] T005 [P] [US1] Remove "Add Voice" button rendering logic from frontend/src/components/InstrumentList.tsx
+- [X] T006 [P] [US1] Remove "Add Staff" button rendering logic from frontend/src/components/InstrumentList.tsx
+- [X] T007 [P] [US1] Remove "Add Note" button rendering logic from frontend/src/components/NoteDisplay.tsx
+- [X] T008 [US1] Remove "Save" button rendering logic from frontend/src/components/ScoreViewer.tsx
+- [X] T009 [US1] Remove score name input field rendering logic from frontend/src/components/ScoreViewer.tsx
+- [X] T010 [US1] Remove Ctrl+S (Save) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
 
 **Checkpoint**: User Story 1 complete - Score viewer is read-only. Verify tests pass. Manual test: load demo, confirm no editing buttons, playback works.
 
@@ -82,15 +82,15 @@ description: "Task list for Feature 014 - Remove Editing Interface"
 
 > **CRITICAL**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T011 [US2] Add tests to frontend/src/test/components/ScoreViewer.test.tsx to verify "New Score" button does not render in landing state or viewer header
+- [X] T011 [US2] Add tests to frontend/src/test/components/ScoreViewer.test.tsx to verify "New Score" button does not render in landing state or viewer header
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Remove "New Score" button from landing page state in frontend/src/components/ScoreViewer.tsx
-- [ ] T013 [US2] Remove "New Score" button from score viewer header in frontend/src/components/ScoreViewer.tsx
-- [ ] T014 [US2] Remove Ctrl+N (New Score) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
-- [ ] T015 [US2] Remove Ctrl+O (Load from backend) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
-- [ ] T016 [US2] Remove unsaved changes warning (beforeunload event listener) from frontend/src/components/ScoreViewer.tsx
+- [X] T012 [US2] Remove "New Score" button from landing page state in frontend/src/components/ScoreViewer.tsx
+- [X] T013 [US2] Remove "New Score" button from score viewer header in frontend/src/components/ScoreViewer.tsx
+- [X] T014 [US2] Remove Ctrl+N (New Score) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
+- [X] T015 [US2] Remove Ctrl+O (Load from backend) keyboard shortcut handler from frontend/src/components/ScoreViewer.tsx
+- [X] T016 [US2] Remove unsaved changes warning (beforeunload event listener) from frontend/src/components/ScoreViewer.tsx
 
 **Checkpoint**: User Story 2 complete - Landing page streamlined. Verify tests pass. Manual test: open app with no score, confirm only Demo and Import visible.
 
@@ -100,8 +100,8 @@ description: "Task list for Feature 014 - Remove Editing Interface"
 
 **Purpose**: Final validation and deployment readiness
 
-- [ ] T017 [P] Run full frontend test suite with `cd frontend && npm test` to verify no regressions
-- [ ] T018 [P] Build production bundle with `cd frontend && npm run build` to verify no build errors  
+- [X] T017 [P] Run full frontend test suite with `cd frontend && npm test` to verify no regressions
+- [X] T018 [P] Build production bundle with `cd frontend && npm run build` to verify no build errors  
 - [ ] T019 Manual testing on local dev server: load demo, import file, verify playback, check all view modes
 - [ ] T020 Deploy to GitHub Pages and test on tablet device to verify mobile experience  
 - [ ] T021 Run quickstart.md validation: follow user and developer guides to confirm accuracy

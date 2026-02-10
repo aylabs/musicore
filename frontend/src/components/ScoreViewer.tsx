@@ -6,7 +6,7 @@ import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
-import { saveScore as saveScoreToFile, loadScore as loadScoreFromFile, createNewScore as createNewScoreFile } from "../services/file/FileService";
+import { loadScore as loadScoreFromFile } from "../services/file/FileService";
 import { validateScoreFile } from "../services/file/validation";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
@@ -55,7 +55,6 @@ export function ScoreViewer({
   const [pendingAction, setPendingAction] = useState<'load' | 'new' | null>(null);
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
-  const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
   
   // Feature 010: View mode state for toggling between individual and stacked views
@@ -148,46 +147,6 @@ export function ScoreViewer({
   };
   // Explicitly mark as used to avoid build errors (legacy API compatibility)
   void createNewScore;
-
-  /**
-   * Handle New Score button click (Feature 004 T026, T027)
-   */
-  const handleNewScoreButtonClick = () => {
-    // Check for unsaved changes (Feature 004 T027)
-    if (fileState.isModified) {
-      setPendingAction('new');
-      setShowUnsavedWarning(true);
-    } else {
-      // No unsaved changes, create new score directly
-      executeNewScore();
-    }
-  };
-
-  /**
-   * Execute new score creation (Feature 004 T028)
-   */
-  const executeNewScore = () => {
-    try {
-      // Create new empty score with default settings
-      const newScore = createNewScoreFile();
-
-      // Update UI state
-      setScore(newScore);
-      setScoreId(undefined); // Clear scoreId - this is a local score not saved to backend yet
-      setIsFileSourced(true); // Frontend is source of truth for new scores
-
-      // Reset file state (Feature 004 T028)
-      resetFileState();
-      
-      // Clear save filename input
-      setSaveFilename("");
-
-      // Show success notification
-      showSuccessMessage("New score created");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create new score");
-    }
-  };
 
   /**
    * Load demo score from IndexedDB (Feature 013)
@@ -326,30 +285,6 @@ export function ScoreViewer({
   };
 
   /**
-   * Save the current score to a JSON file (Feature 004 T012)
-   * Downloads score as .musicore.json file and updates file state
-   */
-  const handleSaveScore = () => {
-    if (!score) return;
-
-    try {
-      // Use custom filename if provided, otherwise generate from score ID
-      const filename = saveFilename.trim() || `score-${score.id.substring(0, 8)}`;
-      
-      // Save score to file (triggers browser download)
-      saveScoreToFile(score, filename);
-      
-      // Update file state: mark as saved, update timestamp (Feature 004 T012)
-      setFilePath(`${filename}.musicore.json`);
-      
-      // Show success notification (Feature 004 T014)
-      showSuccessMessage("Score saved successfully");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save score");
-    }
-  };
-
-  /**
    * Display success message and auto-dismiss after 3 seconds (Feature 004 T014)
    */
   const showSuccessMessage = (message: string) => {
@@ -409,10 +344,6 @@ export function ScoreViewer({
       // Update file state (Feature 004 T018)
       setFilePath(file.name);
       
-      // Populate save filename input with loaded filename (without extension)
-      const filenameWithoutExt = file.name.replace(/\.musicore\.json$/, '').replace(/\.json$/, '');
-      setSaveFilename(filenameWithoutExt);
-      
       // Show success notification (Feature 004 T022)
       showSuccessMessage("Score loaded successfully");
     } catch (err) {
@@ -424,15 +355,13 @@ export function ScoreViewer({
   };
 
   /**
-   * Confirm action despite unsaved changes (Feature 004 T020, T027)
+   * Confirm action despite unsaved changes (Feature 004 T020)
    */
   const confirmActionWithUnsavedChanges = () => {
     setShowUnsavedWarning(false);
     
     if (pendingAction === 'load') {
       fileInputRef.current?.click();
-    } else if (pendingAction === 'new') {
-      executeNewScore();
     }
     
     setPendingAction(null);

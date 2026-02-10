@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Instrument } from "../types/score";
 import type { PlaybackStatus } from "../types/playback";
-import { apiClient } from "../services/score-api";
 import { NoteDisplay } from "./NoteDisplay";
 import "./InstrumentList.css";
 
@@ -38,10 +37,8 @@ interface InstrumentListProps {
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated, onSync, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
+export function InstrumentList({ instruments, scoreId: _scoreId, onUpdate: _onUpdate, onScoreCreated: _onScoreCreated, onSync: _onSync, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   /**
    * Toggle instrument expansion by index (preserves state across ID changes)
@@ -56,111 +53,6 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
       }
       return next;
     });
-  };
-
-  /**
-   * Add a staff to an instrument
-   */
-  const addStaff = async (instrumentId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // If this is a local score (no scoreId), sync it to backend first
-      let currentScoreId = scoreId;
-      let targetInstrumentId = instrumentId;
-      
-      if (!currentScoreId && onSync) {
-        currentScoreId = await onSync();
-        onScoreCreated?.(currentScoreId);
-        
-        // After sync, fetch score to get correct backend IDs
-        // Match by position since sync preserves order
-        const updatedScore = await apiClient.getScore(currentScoreId);
-        
-        // Find instrument by position in original instruments array
-        const instIndex = instruments.findIndex(i => i.id === instrumentId);
-        const targetInstrument = instIndex >= 0 && updatedScore.instruments[instIndex]
-          ? updatedScore.instruments[instIndex]
-          : updatedScore.instruments[0];
-        
-        if (!targetInstrument) {
-          setError("Could not find instrument after sync");
-          return;
-        }
-        
-        targetInstrumentId = targetInstrument.id;
-      } else if (!currentScoreId) {
-        setError("Cannot add staff: score not loaded");
-        return;
-      }
-      
-      await apiClient.addStaff(currentScoreId, targetInstrumentId);
-      onUpdate(currentScoreId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add staff");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Add a voice to a staff
-   */
-  const addVoice = async (instrumentId: string, staffId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // If this is a local score (no scoreId), sync it to backend first
-      let currentScoreId = scoreId;
-      let targetInstrumentId = instrumentId;
-      let targetStaffId = staffId;
-      
-      if (!currentScoreId && onSync) {
-        currentScoreId = await onSync();
-        onScoreCreated?.(currentScoreId);
-        
-        // After sync, fetch score to get correct backend IDs
-        // Match by position since sync preserves order  
-        const updatedScore = await apiClient.getScore(currentScoreId);
-        
-        // Find instrument by position in original instruments array
-        const instIndex = instruments.findIndex(i => i.id === instrumentId);
-        const originalInstrument = instruments[instIndex];
-        const targetInstrument = instIndex >= 0 && updatedScore.instruments[instIndex]
-          ? updatedScore.instruments[instIndex]
-          : updatedScore.instruments[0];
-        
-        if (!targetInstrument || !originalInstrument) {
-          setError("Could not find instrument after sync");
-          return;
-        }
-        
-        targetInstrumentId = targetInstrument.id;
-        
-        // Find staff by position in original instrument's staves array
-        const staffIdx = originalInstrument.staves.findIndex(s => s.id === staffId);
-        const targetStaff = staffIdx >= 0 && targetInstrument.staves[staffIdx]
-          ? targetInstrument.staves[staffIdx]
-          : targetInstrument.staves[0];
-        
-        if (!targetStaff) {
-          setError("Could not find staff after sync");
-          return;
-        }
-        
-        targetStaffId = targetStaff.id;
-      } else if (!currentScoreId) {
-        setError("Cannot add voice: score not loaded");
-        return;
-      }
-      
-      await apiClient.addVoice(currentScoreId, targetInstrumentId, targetStaffId);
-      onUpdate(currentScoreId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add voice");
-    } finally {
-      setLoading(false);
-    }
   };
 
   /**
@@ -199,8 +91,6 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
 
   return (
     <div className="instrument-list">
-      {error && <div className="error">{error}</div>}
-      
       {instruments.map((instrument, instIdx) => (
         <div key={instrument.id} className="instrument-card">
           <div 
@@ -235,17 +125,7 @@ export function InstrumentList({ instruments, scoreId, onUpdate, onScoreCreated,
                       </div>
                       <NoteDisplay 
                         notes={voice.interval_events}
-                        voiceId={voice.id}
-                        staffId={staff.id}
-                        instrumentId={instrument.id}
-                        scoreId={scoreId}
-                        onUpdate={onUpdate}
-                        onScoreCreated={onScoreCreated}
-                        onSync={onSync}
                         clef={getStaffClef(instrument, staffIdx)}
-                        instrumentIndex={instIdx}
-                        staffIndex={staffIdx}
-                        voiceIndex={voiceIdx}
                         currentTick={currentTick}
                         playbackStatus={playbackStatus}
                         onSeekToTick={onSeekToTick}
