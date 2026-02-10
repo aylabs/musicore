@@ -23,17 +23,16 @@ export default defineConfig({
         background_color: '#1a1a1a',
         display: 'standalone',
         orientation: 'any',
-        scope: '/',
-        start_url: '/',
+        // scope and start_url are automatically set by vite-plugin-pwa based on base path
         icons: [
           {
-            src: '/icons/icon-192x192.png',
+            src: 'icons/icon-192x192.png',  // Relative path (no leading /)
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable',
           },
           {
-            src: '/icons/icon-512x512.png',
+            src: 'icons/icon-512x512.png',  // Relative path (no leading /)
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
