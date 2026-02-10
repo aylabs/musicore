@@ -73,6 +73,24 @@
   </div>
 
   <div class="section">
+    <h2>Advanced Debugging</h2>
+    <p><strong>Chrome DevTools Check:</strong></p>
+    <ol>
+      <li>Open DevTools (F12)</li>
+      <li>Go to Application tab → Manifest</li>
+      <li>Look for "Installability" section</li>
+      <li>If it shows errors, they will be listed there</li>
+      <li>If it shows "No issues", the PWA is installable!</li>
+    </ol>
+    <p><strong>Manual Install (if beforeinstallprompt doesn't fire):</strong></p>
+    <ul>
+      <li><strong>Chrome/Edge Desktop:</strong> Menu (⋮) → "Install Musicore..."</li>
+      <li><strong>Chrome Android:</strong> Menu (⋮) → "Add to Home screen" or "Install app"</li>
+      <li><strong>Safari iOS:</strong> Share button → "Add to Home Screen"</li>
+    </ul>
+  </div>
+
+  <div class="section">
     <h2>Console Logs</h2>
     <pre id="logs" style="max-height: 300px; overflow-y: auto;"></pre>
   </div>
@@ -127,11 +145,23 @@
       updateInstallStatus('⏳ <span class="warning">Not installed yet. Checking installability...</span>');
       log('Not installed, waiting for beforeinstallprompt event...');
       
-      // If no event after 3 seconds, show warning
+      // If no event after 3 seconds, show guidance
       setTimeout(() => {
         if (!deferredPrompt) {
-          updateInstallStatus('⚠️ <span class="warning">beforeinstallprompt event not fired yet. Check manifest and service worker below.</span>');
-          log('⚠️ beforeinstallprompt not fired after 3 seconds', 'warning');
+          const guidance = `
+            ⚠️ <span class="warning">beforeinstallprompt event not fired yet.</span><br><br>
+            <strong>This is normal!</strong> Chrome/Edge have engagement heuristics:<br>
+            • User must interact with the page (click, scroll, navigate)<br>
+            • May require 30+ seconds of engagement<br>
+            • Must not already be installed<br><br>
+            <strong>To install manually:</strong><br>
+            • Chrome/Edge Desktop: Three dots menu → "Install Musicore..."<br>
+            • Chrome Android: Three dots menu → "Add to Home screen" or "Install app"<br>
+            • Safari iOS: Cannot use Chrome install; use Share → "Add to Home Screen"<br><br>
+            <strong>If all checks below are ✅, the PWA is installable!</strong>
+          `;
+          updateInstallStatus(guidance);
+          log('⚠️ beforeinstallprompt not fired after 3 seconds - this is normal, see guidance above', 'warning');
         }
       }, 3000);
     }
