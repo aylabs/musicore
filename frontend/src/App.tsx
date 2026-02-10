@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { OfflineBanner } from './components/OfflineBanner'
+import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
@@ -111,6 +112,7 @@ function App() {
           <main>
             <ScoreViewer />
           </main>
+          <IOSInstallModal />
         </div>
       </FileStateProvider>
     </TempoStateProvider>

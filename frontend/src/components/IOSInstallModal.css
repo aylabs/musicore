@@ -1,0 +1,171 @@
+/**
+ * IOSInstallModal.css
+ * 
+ * Feature 012: PWA Distribution - iOS Install Instructions Styles
+ * 
+ * Tablet-optimized modal for iOS/iPad install instructions.
+ * Uses backdrop blur and centered content for professional appearance.
+ */
+
+/* Modal container (overlay) */
+.ios-install-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Backdrop with blur effect */
+.ios-install-modal__backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Modal content card */
+.ios-install-modal__content {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modal-slide-up 0.3s ease-out;
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Title */
+.ios-install-modal__title {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+/* Description text */
+.ios-install-modal__description {
+  margin: 0 0 1.5rem 0;
+  font-size: 1rem;
+  color: #4a4a4a;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Instruction steps list */
+.ios-install-modal__steps {
+  margin: 0 0 2rem 0;
+  padding-left: 1.5rem;
+  font-size: 1rem;
+  color: #1a1a1a;
+  line-height: 1.8;
+}
+
+.ios-install-modal__steps li {
+  margin-bottom: 0.5rem;
+}
+
+/* Share icon */
+.ios-install-modal__icon {
+  display: inline-block;
+  font-size: 1.25rem;
+  vertical-align: middle;
+  margin: 0 0.25rem;
+  font-weight: bold;
+}
+
+/* Dismiss button */
+.ios-install-modal__button {
+  display: block;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #6366f1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-install-modal__button:hover {
+  background: #4f46e5;
+}
+
+.ios-install-modal__button:active {
+  background: #4338ca;
+  transform: scale(0.98);
+}
+
+.ios-install-modal__button:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Tablet landscape optimization */
+@media (min-width: 768px) {
+  .ios-install-modal__content {
+    max-width: 560px;
+    padding: 2.5rem;
+  }
+
+  .ios-install-modal__title {
+    font-size: 1.75rem;
+  }
+
+  .ios-install-modal__description,
+  .ios-install-modal__steps {
+    font-size: 1.125rem;
+  }
+}
+
+/* Large tablet optimization */
+@media (min-width: 1024px) {
+  .ios-install-modal__content {
+    max-width: 640px;
+    padding: 3rem;
+  }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  .ios-install-modal__content {
+    background: #2a2a2a;
+  }
+
+  .ios-install-modal__title {
+    color: #ffffff;
+  }
+
+  .ios-install-modal__description {
+    color: #cccccc;
+  }
+
+  .ios-install-modal__steps {
+    color: #e0e0e0;
+  }
+}

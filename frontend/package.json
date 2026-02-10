@@ -18,7 +18,12 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tone": "^14.9.17",
-    "vite-plugin-static-copy": "^3.2.0"
+    "vite-plugin-static-copy": "^3.2.0",
+    "workbox-expiration": "^7.4.0",
+    "workbox-precaching": "^7.4.0",
+    "workbox-routing": "^7.4.0",
+    "workbox-strategies": "^7.4.0",
+    "workbox-window": "^7.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -39,6 +44,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18"
   }
 }
