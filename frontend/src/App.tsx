@@ -6,6 +6,7 @@ import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
 import { useOnboarding } from './hooks/useOnboarding'
+import packageJson from '../package.json'
 import './App.css'
 
 /**
@@ -134,7 +135,7 @@ function App() {
             </div>
           )}
           <header className="app-header">
-            <h1>🎵 Musicore</h1>
+            <h1>🎵 Musicore <span style={{ fontSize: '0.5em', color: '#666', fontWeight: 'normal' }}>v{packageJson.version}</span></h1>
           </header>
           <main>
             <ScoreViewer 
