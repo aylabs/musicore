@@ -12,10 +12,16 @@ import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { StackedStaffView } from "./stacked/StackedStaffView";
+import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
+import { demoLoaderService } from "../services/onboarding/demoLoader";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
   scoreId?: string;
+  /** Optional controlled view mode (if not provided, uses internal state with 'individual' default) */
+  viewMode?: ViewMode;
+  /** Optional callback for view mode changes (required if viewMode is controlled) */
+  onViewModeChange?: (mode: ViewMode) => void;
 }
 
 /**
@@ -34,7 +40,11 @@ interface ScoreViewerProps {
  * <ScoreViewer scoreId="123e4567-e89b-12d3-a456-426614174000" />
  * ```
  */
-export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
+export function ScoreViewer({ 
+  scoreId: initialScoreId,
+  viewMode: controlledViewMode,
+  onViewModeChange: controlledOnViewModeChange,
+}: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
   const [loading, setLoading] = useState(false);
@@ -46,9 +56,13 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
   const [saveFilename, setSaveFilename] = useState(""); // Custom filename for saving
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
   
   // Feature 010: View mode state for toggling between individual and stacked views
-  const [viewMode, setViewMode] = useState<ViewMode>('individual');
+  // Use controlled mode if provided, otherwise internal state
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('individual');
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = controlledOnViewModeChange ?? setInternalViewMode;
 
   // File input ref for Load button (Feature 004 T019)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,11 +127,23 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
 
   /**
    * Load a score by ID
+   * Feature 013: Try IndexedDB first (for demo scores), then fall back to API
    */
   const loadScore = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
+      // Try IndexedDB first (for demo scores and imported scores)
+      const indexedDBScore = await loadScoreFromIndexedDB(id);
+      if (indexedDBScore) {
+        console.log(`[ScoreViewer] Loaded score from IndexedDB: ${id}`);
+        setScore(indexedDBScore);
+        setIsFileSourced(false);
+        return;
+      }
+
+      // Fall back to API if not in IndexedDB
+      console.log(`[ScoreViewer] Score not in IndexedDB, trying API: ${id}`);
       const loadedScore = await apiClient.getScore(id);
       setScore(loadedScore);
       setIsFileSourced(false); // Backend is source of truth for API-loaded scores
@@ -186,6 +212,42 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
       showSuccessMessage("New score created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create new score");
+    }
+  };
+
+  /**
+   * Load demo score from IndexedDB (Feature 013)
+   * Sets stacked view and auto-plays the demo
+   */
+  const handleLoadDemoButtonClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Get demo score from IndexedDB
+      const demoScore = await demoLoaderService.getDemoScore();
+      
+      if (!demoScore) {
+        setError("Demo not found. Try refreshing the page.");
+        return;
+      }
+
+      // Load the demo
+      setScore(demoScore);
+      setScoreId(demoScore.id);
+      setIsFileSourced(false);
+      resetFileState();
+      
+      // Set view mode to stacked (better for demo)
+      setViewMode('stacked');
+      
+      // Set auto-play flag (will trigger in useEffect after score loads)
+      setShouldAutoPlay(true);
+      
+      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}, switching to stacked view and auto-playing`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load demo");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -479,6 +541,25 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
   const initialTempo = getInitialTempo();
   const playbackState = usePlayback(allNotes, initialTempo);
 
+  /**
+   * Auto-play demo when loaded (Feature 013)
+   */
+  useEffect(() => {
+    if (shouldAutoPlay && score) {
+      console.log('[ScoreViewer] Auto-playing demo after score loaded');
+      // Small delay to ensure playback state is initialized with new notes
+      const timer = setTimeout(() => {
+        if (playbackState.play) {
+          playbackState.play();
+          console.log('[ScoreViewer] Demo playback started');
+        }
+        setShouldAutoPlay(false); // Reset flag
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoPlay, score]);
+
   // Render loading state
   if (loading && !score) {
     return (
@@ -495,6 +576,18 @@ export function ScoreViewer({ scoreId: initialScoreId }: ScoreViewerProps) {
         <div className="no-score">
           <h2>No Score Loaded</h2>
           <div className="initial-actions">
+            {/* Feature 013: Load demo button */}
+            <button 
+              onClick={handleLoadDemoButtonClick} 
+              disabled={loading}
+              style={{ 
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              🎵 Demo
+            </button>
             <button onClick={handleNewScoreButtonClick} disabled={loading}>
               New Score
             </button>
