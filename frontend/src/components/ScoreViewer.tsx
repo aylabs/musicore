@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
-import * as wasmEngine from "../services/wasm/music-engine";
 import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
@@ -28,11 +27,9 @@ interface ScoreViewerProps {
  * ScoreViewer - Main component for displaying and interacting with a musical score
  * 
  * Features:
- * - Create new scores
  * - Load existing scores by ID
  * - Display full score hierarchy (instruments, staves, voices, notes)
  * - Show structural events (tempo, time signature)
- * - Add instruments to scores
  * - Error handling and loading states
  * 
  * @example
@@ -49,7 +46,6 @@ export function ScoreViewer({
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [instrumentName, setInstrumentName] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [pendingAction, setPendingAction] = useState<'load' | 'new' | null>(null);
@@ -67,7 +63,7 @@ export function ScoreViewer({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // File state management (Feature 004 - Score File Persistence)
-  const { fileState, setFilePath, setModified, resetFileState } = useFileState();
+  const { fileState, setFilePath, resetFileState } = useFileState();
 
   // Load score when scoreId changes (but only for backend-sourced scores)
   useEffect(() => {
@@ -255,33 +251,6 @@ export function ScoreViewer({
     setIsFileSourced(false);
 
     return newScoreId;
-  };
-
-  /**
-   * Add an instrument to the current score
-   * Feature 011: Uses WASM engine for offline capability
-   */
-  const addInstrument = async () => {
-    if (!score || !instrumentName.trim()) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      // Use WASM to add instrument locally (no backend needed)
-      const updatedScore = await wasmEngine.addInstrument(score, instrumentName.trim());
-      setScore(updatedScore);
-      setInstrumentName("");
-      
-      // Mark as file-sourced since we're using WASM (frontend is source of truth)
-      setIsFileSourced(true);
-      
-      // Feature 004 T013: Mark as modified when score is edited
-      setModified(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add instrument");
-    } finally {
-      setLoading(false);
-    }
   };
 
   /**
@@ -600,26 +569,9 @@ export function ScoreViewer({
         ) : undefined}
       />
 
-      {/* Feature 010: Hide Add Instrument control in stacked view */}
-      {viewMode === 'individual' && (
-        <div className="add-instrument">
-          <input
-            type="text"
-            placeholder="Instrument name (e.g., Piano)"
-            value={instrumentName}
-            onChange={(e) => setInstrumentName(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && addInstrument()}
-            disabled={loading}
-          />
-          <button onClick={addInstrument} disabled={loading || !instrumentName.trim()}>
-            Add Instrument
-          </button>
-        </div>
-      )}
-
       {score.instruments.length === 0 ? (
         <div className="no-instruments">
-          <p>No instruments yet. Add one to get started!</p>
+          <p>This score has no instruments. Try importing a MusicXML file or loading the demo.</p>
         </div>
       ) : viewMode === 'individual' ? (
         <InstrumentList 

@@ -63,6 +63,7 @@ npm run dev
 - [ ] Verify **NO "Add Voice" buttons** on staffs
 - [ ] Verify **NO "Add Staff" buttons** on instruments
 - [ ] Verify **NO "Add Note" buttons** in note displays
+- [ ] Verify **NO "Add Instrument" control** (no input field or button)
 - [ ] Verify **NO "Save" button** in header
 - [ ] Verify **NO filename input** field
 
