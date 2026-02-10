@@ -43,6 +43,8 @@ export class DemoLoaderService implements IDemoLoaderService {
    */
   async loadBundledDemo(): Promise<DemoScoreMetadata> {
     try {
+      console.log(`[DemoLoader] Demo path configured as: ${this.demoBundlePath}`);
+      console.log(`[DemoLoader] import.meta.env.BASE_URL = ${import.meta.env.BASE_URL}`);
       console.log(`[DemoLoader] Fetching demo from ${this.demoBundlePath}`);
 
       // 1. Fetch bundled MusicXML
