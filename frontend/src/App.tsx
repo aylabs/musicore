@@ -21,9 +21,11 @@ import './App.css'
 function App() {
   const [wasmLoading, setWasmLoading] = useState(true)
   const [wasmError, setWasmError] = useState<string | null>(null)
+  const [wasmReady, setWasmReady] = useState(false)
   
   // Feature 013: Onboarding hook for first-run demo and view mode preference
-  const { viewMode, setViewMode, isDemoLoading, demoError } = useOnboarding()
+  // CRITICAL: Pass wasmReady to prevent race condition on mobile
+  const { viewMode, setViewMode, isDemoLoading, demoError } = useOnboarding(wasmReady)
 
   useEffect(() => {
     // Initialize WASM module on app startup
@@ -31,6 +33,7 @@ function App() {
       .then(() => {
         console.log('[App] WASM engine ready')
         setWasmLoading(false)
+        setWasmReady(true) // Signal to onboarding hook
       })
       .catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error)

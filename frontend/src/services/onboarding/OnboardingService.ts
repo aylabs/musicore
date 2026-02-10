@@ -57,6 +57,7 @@ export class OnboardingService implements IOnboardingService {
    */
   private async performFirstRunSetup(startTime: number): Promise<void> {
     console.log('[Onboarding] Performing first-run setup...');
+    console.log(`[Onboarding] Timeout set to ${this.config.firstRunTimeoutMs}ms (for mobile compatibility)`);
 
     // Wrap demo loading in timeout promise
     const timeoutPromise = new Promise((_, reject) => {
