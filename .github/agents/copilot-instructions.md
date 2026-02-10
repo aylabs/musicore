@@ -20,6 +20,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (frontend only, uses existing backend API) (010-stacked-staves-view)
 - TypeScript 5.9 (frontend), JavaScript ES2022 (service worker), JSON (manifest) (012-pwa-distribution)
 - Cache Storage API (browser native), IndexedDB (already implemented in Feature 011 for scores) (012-pwa-distribution)
+- TypeScript 5.9 (frontend), Rust 1.75+ (backend WASM module - limited changes) (013-demo-onboarding)
+- Browser Local Storage (for first-run flag and view mode preference), IndexedDB (for demo score storage, already implemented in Feature 011) (013-demo-onboarding)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -40,9 +42,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 013-demo-onboarding: Added TypeScript 5.9 (frontend), Rust 1.75+ (backend WASM module - limited changes)
 - 012-pwa-distribution: Added TypeScript 5.9 (frontend), JavaScript ES2022 (service worker), JSON (manifest)
 - 010-stacked-staves-view: Added TypeScript 5.9, React 19.2 + React, Vite (bundler), Vitest (testing), Tone.js (audio playback)
-- 009-playback-scroll-highlight: Added N/A (no data persistence - scroll/highlight state is ephemeral playback state)
 
 
 <!-- MANUAL ADDITIONS START -->
