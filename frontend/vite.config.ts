@@ -101,6 +101,7 @@ export default defineConfig({
     target: 'esnext'
   },
   server: {
-    https: {}  // Required for PWA service workers (enables self-signed cert)
+    // Use HTTP for E2E tests (PLAYWRIGHT_TEST=1), HTTPS for PWA service workers otherwise
+    https: process.env.PLAYWRIGHT_TEST ? false : {}
   }
 })
