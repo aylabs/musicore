@@ -16,9 +16,9 @@ export default defineConfig({
       registerType: 'autoUpdate',  // Auto-install updates on reload
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'wasm/*'],
       manifest: {
-        name: 'Musicore - Intelligent Music Stand',
+        name: 'Musicore',
         short_name: 'Musicore',
-        description: 'Tablet-native intelligent music stand for practice sessions. Display scores, add annotations, control tempo, and practice with confidence - even offline.',
+        description: 'Tablet-native app for interactive scores, designed for practice and performance. Display scores, control tempo, navigate with ease - even offline.',
         theme_color: '#6366f1',
         background_color: '#1a1a1a',
         display: 'standalone',

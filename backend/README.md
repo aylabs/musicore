@@ -1,6 +1,6 @@
 # Musicore Backend
 
-Rust backend for the Musicore music score editor implementing a hierarchical domain model using Domain-Driven Design and Hexagonal Architecture.
+Rust music engine for Musicore, a tablet-native app for interactive scores, implementing a hierarchical domain model using Domain-Driven Design and Hexagonal Architecture. Compiled to WebAssembly for browser execution.
 
 ## Current Implementation Status
 

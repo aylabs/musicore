@@ -1,22 +1,23 @@
 # Musicore Frontend
 
-React + TypeScript frontend for the Musicore music score editor, built with Vite.
+React + TypeScript Progressive Web Application for Musicore, a tablet-native app for interactive scores, built with Vite.
 
 ## Overview
 
-The frontend provides a complete UI for:
-- Creating and viewing musical scores
-- Adding instruments, staves, and voices
-- Managing notes with MIDI pitch values
-- Displaying score hierarchies with proper formatting
-- Real-time interaction with the backend REST API
+The frontend provides a tablet-optimized PWA for:
+- Viewing musical scores with high-fidelity notation
+- Interactive score navigation (playback, page turns, annotations)
+- Importing MusicXML files via WASM-powered parsing
+- Offline-first experience with local storage
+- Real-time score display and playback integration
 
 ## Tech Stack
 
-- **React 18** - UI library with hooks
+- **React 19** - UI library with hooks
 - **TypeScript** - Type-safe development
 - **Vite** - Fast build tool and dev server
-- **Fetch API** - REST API communication
+- **WASM** - Rust music engine compiled to WebAssembly
+- **PWA** - Service worker for offline capability
 
 ## Prerequisites
 

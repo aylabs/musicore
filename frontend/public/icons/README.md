@@ -39,14 +39,15 @@ This directory must contain the following icon assets for PWA installability:
 ## Design Guidelines
 
 ### Brand Identity
-- **App Name**: Musicore - Intelligent Music Stand
+- **App Name**: Musicore
+- **Tagline**: Interactive scores for practice and performance
 - **Theme Color**: #6366f1 (indigo-500)
 - **Background**: #1a1a1a (dark)
 - **Categories**: music, education, productivity
 
 ### Icon Design Recommendations
 
-1. **Use music-related symbolism**: musical notes (🎵), sheet music (🎼), treble clef, or a stylized music stand
+1. **Use music-related symbolism**: musical notes (🎵), sheet music (🎼), treble clef, or a stylized interactive score display
 2. **Maintain brand color scheme**: Use the indigo (#6366f1) theme color as primary
 3. **Ensure legibility at small sizes**: Simple, clear design that works at 16×16 pixels
 4. **Consider maskable icons**: For Android adaptive icons, ensure important content is within the safe zone (80% circle)

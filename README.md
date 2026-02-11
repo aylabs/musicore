@@ -1,15 +1,21 @@
-# 🎵 Musicore - Music Score Editor
+# 🎵 Musicore
 
-A full-stack music score editor built with Domain-Driven Design and Hexagonal Architecture.
+**🚀 Live App**: [https://aylabs.github.io/musicore/](https://aylabs.github.io/musicore/)
+
+A tablet-native app for interactive scores, designed for practice and performance.
 
 [![Rust](https://img.shields.io/badge/Rust-1.93-orange)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev/)
-[![Axum](https://img.shields.io/badge/Axum-0.7-green)](https://github.com/tokio-rs/axum)
+[![WASM](https://img.shields.io/badge/WASM-WebAssembly-654FF0)](https://webassembly.org/)
+
+---
 
 ## Overview
 
-Musicore is a music score editor implementing a hierarchical domain model with precise timing (960 PPQ) and comprehensive validation. Built following constitutional principles of domain-driven design, API-first development, and test-first practices.
+Musicore is a tablet-native app for interactive scores, designed for practice and performance. Built as a Progressive Web Application (PWA) with Rust music engine compiled to WebAssembly, implementing a hierarchical domain model with precise timing (960 PPQ) and comprehensive validation. Delivers offline-capable, tablet-optimized experience following constitutional principles of domain-driven design, hexagonal architecture, and test-first practices.
+
+**For a quick feature overview**, see [FEATURES.md](FEATURES.md).
 
 ### Features
 

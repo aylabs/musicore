@@ -1,26 +1,30 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.1.0
-Generated: 2026-02-10
+SYNC IMPACT REPORT - Constitution v2.2.0
+Generated: 2026-02-11
 
-VERSION CHANGE: 2.0.0 → 2.1.0
-BUMP RATIONALE: MINOR - Strategic product pivot with updated context and practice-focused guidance
+VERSION CHANGE: 2.1.0 → 2.2.0
+BUMP RATIONALE: MINOR - Strategic vision refinement to "app for interactive scores" with clear practice and performance focus
 
 PRINCIPLES STATUS:
-  ✓ I. Domain-Driven Design (rationale updated for practice context)
+  ✓ I. Domain-Driven Design (rationale updated for interactive scores context)
   ✓ II. Hexagonal Architecture (UNCHANGED)
-  ✓ III. Progressive Web Application Architecture (rationale updated for practice context)
+  ✓ III. Progressive Web Application Architecture (rationale updated for practice and performance scenarios)
   ✓ IV. Precision & Fidelity (UNCHANGED)
-  ✓ V. Test-First Development (rationale updated for practice context)
+  ✓ V. Test-First Development (rationale updated for practice and performance context)
 
 PROJECT CONTEXT UPDATES:
-  + NEW SECTION: Project Context clarifying strategic focus on intelligent music stand for practice
-  + Product Pivot: From general music editor → tablet-native intelligent music stand for practice scenarios
-  + Domain Focus: Score display, annotation, practice aids, performance assistance (versus composition/editing)
+  + VISION REFINEMENT: "platform for interactive scores" → "app for interactive scores, designed for practice and performance"
+  + App Concept: Clear, direct terminology emphasizing the practical application vs abstract platform/companion
+  + Interactive Scores: Dynamic, responsive score interaction vs static display
+  + Performance Scenarios: Live performance, ensemble viewing, performance mode display as core scenarios
+  + Target Users: Musicians (students, professionals, hobbyists, ensembles) for practice and performance
+  + Core Scenarios: Interactive score reading, real-time annotations, playback/tempo integration, hands-free page turns, performance mode
+  + Non-Goals: Clarified composition/engraving/publishing workflows are out of scope
 
 TECHNICAL STANDARDS UPDATES:
-  + Target Platform: Explicitly defined as tablet devices (iPad, Surface, Android tablets)
-  + Technology Stack: Added WASM compilation requirement (wasm-pack, wasm-bindgen)
-  + Performance Constraints: Added offline capability and instant response requirements
+  + Performance Constraints: Updated terminology from "practice features" to "interactive score features"
+  + Score Display: Changed "practice session start" to "session start (practice/performance)"
+  + Offline Capability: Expanded to include "performance aids" alongside practice aids
 
 TEMPLATE CONSISTENCY STATUS:
   ⚠️ plan-template.md - REQUIRES UPDATE
@@ -58,23 +62,19 @@ EXISTING FEATURES REQUIRING MIGRATION GUIDANCE:
     - Legacy "API-First" references in old plans are historical and need not be updated
 
 PERFORMANCE CONSTRAINTS UPDATES:
-  + Added practice-specific requirements: score display latency, annotation responsiveness
-  + Clarified that editing is for practice annotations, not composition
-
-TEMPLATE CONSISTENCY STATUS:
-  ✅ plan-template.md - Already updated for PWA Architecture
-  ✅ spec-template.md - No changes needed (user stories define specific features)
-  ⚠️ tasks-template.md - Consider adding practice-scenario task examples (optional)
+  + Updated from practice-specific to interactive score requirements
+  + Added performance scenario terminology (session start covers practice/performance)
+  + Expanded offline capability from "practice features" to "interactive score features"
 
 EXISTING FEATURES IMPACT:
-  ✅ All existing features (001-011) remain architecturally valid
-  📝 NEW features should emphasize practice scenarios: display quality, annotations, tempo/metronome aids, repeat navigation
-  📝 Editing features should be scoped to practice annotations (markings, fingerings, bowings) vs full composition
+  ✅ All existing features (001-014) remain architecturally valid
+  📝 NEW features should emphasize interactive score scenarios: display quality, annotations, tempo/metronome aids, repeat navigation, performance mode
+  📝 Interactive features serve practice and performance workflows, not composition/engraving
 
 FOLLOW-UP TODOS:
-  1. Update project README to reflect "intelligent music stand for practice" positioning
-  2. Review existing feature specs to ensure practice-first framing (optional)
-  3. Document practice-specific UI/UX patterns (optional)
+  1. ✅ Update project README to reflect "app for interactive scores" positioning (COMPLETED 2026-02-11)
+  2. Review existing feature specs to ensure practice+performance framing (optional)
+  3. Document performance-specific UI/UX patterns (hands-free controls, performance mode display)
 
 DEPRECATION NOTICE:
   - REST API endpoints for music domain operations are NOT removed but are considered legacy
@@ -86,13 +86,13 @@ DEPRECATION NOTICE:
 
 ## Project Context
 
-**Musicore** is a tablet-native intelligent music stand for practice. The application serves musicians during practice sessions by providing high-fidelity score display, practice-oriented annotations, and performance assistance features. While score manipulation capabilities exist, they are scoped to practice workflows (markings, tempo adjustments, repeat navigation) rather than full composition/engraving.
+**Musicore** is a tablet-native app for interactive scores, designed for practice and performance. The application empowers musicians with dynamic score interaction—high-fidelity display, real-time annotations, playback integration, and performance assistance. Interactive scores respond to user input, adapt to practice needs, and enhance live performance workflows. While score manipulation capabilities exist, they serve interactive engagement rather than full composition/engraving.
 
-**Target Users**: Practicing musicians (students, professionals, hobbyists) using tablets as digital music stands during rehearsal and performance preparation.
+**Target Users**: Musicians (students, professionals, hobbyists, ensembles) using tablets for practice sessions, rehearsals, and live performances.
 
-**Core Scenarios**: Score reading during practice, adding fingerings/bowings/markings, tempo/metronome integration, repeat/navigation aids, page turns, annotation sync across devices.
+**Core Scenarios**: Interactive score reading, real-time annotations (fingerings/bowings/markings), playback/tempo integration, repeat/navigation aids, hands-free page turns, performance mode display, annotation sync across devices, ensemble part viewing.
 
-**Non-Goals**: Full music notation editor/engraver (e.g., Finale/Sibelius replacement), professional publishing, orchestral score layout.
+**Non-Goals**: Full music notation editor/engraver (e.g., Finale/Sibelius replacement), professional publishing/typesetting, orchestral score layout tools, composition-focused workflows.
 
 ---
 
@@ -107,7 +107,7 @@ The Music Timeline and all music entities MUST be modeled using Domain-Driven De
 - **Aggregates**: Timeline acts as the aggregate root; all event modifications go through the Timeline
 - **Entity Modeling**: Music concepts are first-class domain entities, not data structures
 
-**Rationale**: Music practice tools require deep domain understanding of notation, performance techniques, and practice workflows. Technical abstractions must not leak into the problem space. DDD ensures the codebase speaks the language of musicians and music theory, whether displaying scores, processing annotations, or providing practice aids.
+**Rationale**: Interactive score platforms require deep domain understanding of notation, performance techniques, and musical workflows. Technical abstractions must not leak into the problem space. DDD ensures the codebase speaks the language of musicians and music theory, whether displaying scores, processing annotations, or providing practice and performance assistance.
 
 ---
 
@@ -130,12 +130,12 @@ The application MUST be architected as a Progressive Web Application (PWA) targe
 
 - **Target Platform**: Tablet devices (iPad, Surface, Android tablets) with modern browser support
 - **WASM Deployment**: Rust music engine compiled to WebAssembly and executed in-browser via wasm-pack
-- **Offline-First**: Core music stand operations (score parsing, display rendering, annotation, playback, practice aids) function without network connectivity
+- **Offline-First**: Core interactive score operations (score parsing, display rendering, annotation, playback, performance aids) function without network connectivity
 - **PWA Requirements**: Web app manifest, service worker for offline support, installable, responsive design optimized for tablet form factors
-- **Client-Side Processing**: Domain logic (MusicXML parsing, score validation, annotation processing, practice utilities) runs locally via WASM module
+- **Client-Side Processing**: Domain logic (MusicXML parsing, score validation, annotation processing, interactive utilities) runs locally via WASM module
 - **Contract Definition**: TypeScript interfaces define contracts between WASM module and frontend (similar to API contracts)
 
-**Rationale**: Tablet devices are the primary platform for digital music stands during practice sessions. Musicians require instant score loading, offline capability (practice rooms often lack reliable WiFi), and app-like experience. WASM enables deploying the Rust music engine directly in the browser, eliminating network latency (<100ms parse times vs 200-500ms with REST API) critical for seamless practice workflows. PWA architecture provides installable, offline-capable experience while maintaining web distribution simplicity and avoiding app store friction.
+**Rationale**: Tablet devices are the primary platform for interactive scores during practice and performance. Musicians require instant score loading, offline capability (rehearsal spaces and performance venues often lack reliable WiFi), and app-like experience. WASM enables deploying the Rust music engine directly in the browser, eliminating network latency (<100ms parse times vs 200-500ms with REST API) critical for seamless musical workflows. PWA architecture provides installable, offline-capable experience while maintaining web distribution simplicity and avoiding app store friction.
 
 ---
 
@@ -161,7 +161,7 @@ All features follow strict Test-Driven Development:
 - **Contract Tests**: API endpoints require contract tests (backend provides what frontend expects)
 - **Domain Tests**: Core music logic tested in isolation without infrastructure dependencies
 
-**Rationale**: Music stand correctness is critical—wrong timing, notation display errors, or annotation failures break user trust during practice sessions. Tests document behavior, prevent regressions, and validate hexagonal boundaries.
+**Rationale**: Interactive score correctness is critical—wrong timing, notation display errors, or annotation failures break user trust during practice and performance. Tests document behavior, prevent regressions, and validate hexagonal boundaries.
 
 ---
 
@@ -189,8 +189,8 @@ All features follow strict Test-Driven Development:
 
 - **Frontend Responsiveness**: User interactions (page turns, annotations, zoom) MUST reflect UI feedback within 16ms (60fps target)
 - **WASM Operations**: Core music operations (parse, validate, annotation processing) MUST complete within 100ms for typical scores
-- **Score Display**: Initial score rendering MUST complete within 200ms for practice session start
-- **Offline Capability**: All practice features (score display, annotations, playback, metronome, practice aids) MUST work without network connectivity
+- **Score Display**: Initial score rendering MUST complete within 200ms for session start (practice/performance)
+- **Offline Capability**: All interactive score features (score display, annotations, playback, metronome, performance aids) MUST work without network connectivity
 - **Timeline Size**: Music engine MUST handle scores with 10,000+ events (large orchestral works, multi-movement pieces) without degradation
 - **WASM Bundle Size**: Module bundle SHOULD be <500KB gzipped for fast initial load on tablets
 - **Tablet Optimization**: Touch targets minimum 44×44px, gesture-friendly controls (pinch-zoom, swipe page turns), portrait/landscape support, legible notation at arm's length viewing distance
@@ -235,4 +235,4 @@ This constitution supersedes all other development practices. Amendments require
 
 ---
 
-**Version**: 2.1.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-10
+**Version**: 2.2.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-11
