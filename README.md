@@ -228,7 +228,7 @@ See repository root for license information.
 
 ---
 
-**Version**: 1.0  
+**Version**: [1.0](https://github.com/aylabs/musicore)  
 **Last Updated**: 2026-02-11  
 **Status**: ✅ PWA deployed to GitHub Pages  
 **Test Coverage**: 596 tests (563 passing, 9 pre-existing failures, 24 skipped)

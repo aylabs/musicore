@@ -61,7 +61,22 @@ function App() {
     return (
       <div className="app">
         <header className="app-header">
-          <h1>🎵 Musicore</h1>
+          <h1>
+            🎵 Musicore{' '}
+            <a 
+              href="https://github.com/aylabs/musicore" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                fontSize: '0.5em', 
+                color: '#999', 
+                fontWeight: 'normal',
+                textDecoration: 'none'
+              }}
+            >
+              v{packageJson.version}
+            </a>
+          </h1>
         </header>
         <main style={{ 
           display: 'flex', 
@@ -83,7 +98,22 @@ function App() {
     return (
       <div className="app">
         <header className="app-header">
-          <h1>🎵 Musicore</h1>
+          <h1>
+            🎵 Musicore{' '}
+            <a 
+              href="https://github.com/aylabs/musicore" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                fontSize: '0.5em', 
+                color: '#999', 
+                fontWeight: 'normal',
+                textDecoration: 'none'
+              }}
+            >
+              v{packageJson.version}
+            </a>
+          </h1>
         </header>
         <main style={{ 
           display: 'flex', 
@@ -147,7 +177,22 @@ function App() {
             </div>
           )}
           <header className="app-header">
-            <h1>🎵 Musicore <span style={{ fontSize: '0.5em', color: '#999', fontWeight: 'normal' }}>v{packageJson.version}</span></h1>
+            <h1>
+              🎵 Musicore{' '}
+              <a 
+                href="https://github.com/aylabs/musicore" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ 
+                  fontSize: '0.5em', 
+                  color: '#999', 
+                  fontWeight: 'normal',
+                  textDecoration: 'none'
+                }}
+              >
+                v{packageJson.version}
+              </a>
+            </h1>
           </header>
           <main>
             <ScoreViewer 

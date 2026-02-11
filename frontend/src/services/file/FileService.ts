@@ -1,4 +1,5 @@
 import type { Score } from '../../types/score';
+import { CURRENT_SCHEMA_VERSION } from '../storage/local-storage';
 
 /**
  * Save a score to a JSON file using browser download
@@ -138,6 +139,7 @@ export function loadScore(file: File): Promise<Score> {
 export function createNewScore(): Score {
   return {
     id: crypto.randomUUID(),
+    schema_version: CURRENT_SCHEMA_VERSION,
     global_structural_events: [
       {
         Tempo: {

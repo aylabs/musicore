@@ -28,7 +28,7 @@ export interface NotationRendererProps {
   /** Callback when note is clicked (User Story 3) */
   onNoteClick?: (noteId: string) => void;
   
-  /** Current horizontal scroll position (for fixed clef positioning) */
+  /** Current horizontal scroll position (deprecated - clef no longer sticky) */
   scrollX?: number;
   
   /** Whether to show the clef (Feature 009: hide during auto-scroll to prevent flickering) */
@@ -52,7 +52,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
-  scrollX = 0,
+  scrollX: _scrollX = 0, // Unused - clef no longer sticky
   showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
@@ -107,23 +107,21 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
         />
       ))}
 
-      {/* Clef symbol - Feature 009: Hide during auto-scroll to prevent flickering */}
+      {/* Clef symbol - Shown only at start of staff (fixed position, not sticky) */}
       {showClef && (
-        <g style={{ transform: `translateX(${scrollX}px)`, willChange: 'transform' }}>
-          <text
-            data-testid={`clef-${layout.clef.type}`}
-            x={layout.clef.x}
-            y={layout.clef.y}
-            fontSize={layout.clef.fontSize}
-            fontFamily="Bravura"
-            fill="black"
-            textAnchor="middle"
-            dominantBaseline="central"
-            opacity={0.60}
-          >
-            {layout.clef.glyphCodepoint}
-          </text>
-        </g>
+        <text
+          data-testid={`clef-${layout.clef.type}`}
+          x={layout.clef.x}
+          y={layout.clef.y}
+          fontSize={layout.clef.fontSize}
+          fontFamily="Bravura"
+          fill="black"
+          textAnchor="middle"
+          dominantBaseline="central"
+          opacity={0.60}
+        >
+          {layout.clef.glyphCodepoint}
+        </text>
       )}
 
       {/* Note heads (positioned SMuFL glyphs) - T055: Virtual scrolling */}

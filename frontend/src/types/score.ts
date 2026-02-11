@@ -126,6 +126,10 @@ export interface Instrument {
 /** Score is the aggregate root containing all musical elements */
 export interface Score {
   id: string; // UUID
+  
+  /** Schema version for data structure evolution (v2 added active_clef) */
+  schema_version: number;
+  
   global_structural_events: GlobalStructuralEvent[];
   instruments: Instrument[];
 }
