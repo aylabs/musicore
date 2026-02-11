@@ -180,7 +180,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText("No Score Loaded")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
     });
 
     // Query for New Score button in landing page
@@ -242,7 +242,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText("No Score Loaded")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
     });
 
     // Verify Import button is present
@@ -261,7 +261,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText("No Score Loaded")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
     });
 
     // Verify Demo button is present on landing page

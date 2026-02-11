@@ -446,7 +446,6 @@ export function ScoreViewer({
     return (
       <div className="score-viewer">
         <div className="no-score">
-          <h2>No Score Loaded</h2>
           <div className="initial-actions">
             {/* Feature 013: Load demo button */}
             <button 
