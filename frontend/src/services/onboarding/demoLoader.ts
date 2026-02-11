@@ -90,11 +90,11 @@ export class DemoLoaderService implements IDemoLoaderService {
 
       // 2. Parse via WASM engine (Feature 011)
       console.log('[DemoLoader] Parsing MusicXML via WASM engine...');
-      const parsedScore = await parseMusicXML(musicXML);
-      console.log(`[DemoLoader] SUCCESS: Parsed score with ${parsedScore.instruments.length} instruments`);
+      const wasmResult = await parseMusicXML(musicXML);
+      console.log(`[DemoLoader] SUCCESS: Parsed score with ${wasmResult.score.instruments.length} instruments`);
 
       // 3. Validate score structure (must have at least 1 instrument)
-      const instrumentCount = parsedScore.instruments?.length ?? 0;
+      const instrumentCount = wasmResult.score.instruments?.length ?? 0;
       if (instrumentCount < 1) {
         throw this.createError(
           'parse_failed',
@@ -104,7 +104,7 @@ export class DemoLoaderService implements IDemoLoaderService {
 
       // 4. Create demo metadata (extend Score with demo properties)
       const demoScore: DemoScoreMetadata = {
-        ...parsedScore,
+        ...wasmResult.score,
         title: 'Canon in D',
         composer: 'Johann Pachelbel',
         isDemoScore: true,

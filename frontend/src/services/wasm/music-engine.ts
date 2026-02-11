@@ -5,6 +5,7 @@ import { getWasmModule, initWasm } from './loader';
 import type { WasmError } from '../../types/wasm-error';
 import { isWasmError, WasmEngineError } from '../../types/wasm-error';
 import type { Score } from '../../types/score';
+import type { ImportWarning } from '../../types/import-warning';
 
 /**
  * Ensure WASM is initialized before calling functions
@@ -45,13 +46,32 @@ function handleWasmError(error: unknown): never {
 // ============================================================================
 
 /**
+ * WASM ImportResult structure returned by parse_musicxml
+ * Matches backend ImportResult from backend/src/ports/importers.rs
+ */
+export interface WasmImportResult {
+  score: Score;
+  statistics: {
+    instrument_count: number;
+    staff_count: number;
+    voice_count: number;
+    note_count: number;
+    duration_ticks: number;
+    warning_count: number;
+    skipped_element_count: number;
+  };
+  warnings: ImportWarning[];
+  partial_import: boolean;
+}
+
+/**
  * Parse MusicXML content using WASM engine
  * 
  * @param xmlContent - MusicXML file content as string
- * @returns Parsed Score object
+ * @returns ImportResult with parsed score, statistics, and warnings
  * @throws WasmEngineError if parsing fails
  */
-export async function parseMusicXML(xmlContent: string): Promise<Score> {
+export async function parseMusicXML(xmlContent: string): Promise<WasmImportResult> {
   await ensureWasmInitialized();
   
   try {
@@ -60,11 +80,11 @@ export async function parseMusicXML(xmlContent: string): Promise<Score> {
       throw new Error('WASM module not initialized');
     }
     
-    // Call the WASM function
+    // Call the WASM function - now returns ImportResult with score, statistics, warnings
     const result = wasmModule.parse_musicxml(xmlContent);
     
     // The result is already a JavaScript object (deserialized by wasm-bindgen)
-    return result as Score;
+    return result as WasmImportResult;
   } catch (error) {
     handleWasmError(error);
   }

@@ -144,16 +144,16 @@ export class MusicXMLImportService {
         xmlContent = await file.text();
       }
 
-      // Parse XML using WASM engine
-      const score = await parseMusicXML(xmlContent);
+      // Parse XML using WASM engine - returns full ImportResult
+      const wasmResult = await parseMusicXML(xmlContent);
 
-      // Build import result
+      // Build import result using WASM-provided data
       const result: ImportResult = {
-        score,
+        score: wasmResult.score,
         metadata: this.buildMetadata(file),
-        statistics: this.buildStatistics(score),
-        warnings: [], // WASM parser in does not return warnings yet
-        partial_import: false,
+        statistics: wasmResult.statistics,
+        warnings: wasmResult.warnings,
+        partial_import: wasmResult.partial_import,
       };
 
       return result;
@@ -243,46 +243,6 @@ export class MusicXMLImportService {
       file_name: file.name,
       // Title and composer would need to be extracted during parsing
       // For now, we don't have access to them after parsing
-    };
-  }
-
-  /**
-   * Build import statistics from score
-   * @param score - Parsed score
-   * @returns Import statistics
-   */
-  private buildStatistics(score: Score): ImportStatistics {
-    let noteCount = 0;
-    let voiceCount = 0;
-    let staffCount = 0;
-    let maxTick = 0;
-
-    // Count notes, voices, and staves across all instruments
-    for (const instrument of score.instruments || []) {
-      for (const staff of instrument.staves || []) {
-        staffCount++;
-        for (const voice of staff.voices || []) {
-          voiceCount++;
-          // Count notes and track max tick
-          for (const note of voice.interval_events || []) {
-            noteCount++;
-            const noteTick = note.start_tick + note.duration_ticks;
-            if (noteTick > maxTick) {
-              maxTick = noteTick;
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      instrument_count: score.instruments?.length || 0,
-      staff_count: staffCount,
-      voice_count: voiceCount,
-      note_count: noteCount,
-      duration_ticks: maxTick,
-      warning_count: 0,
-      skipped_element_count: 0,
     };
   }
 
