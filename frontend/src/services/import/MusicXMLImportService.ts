@@ -17,7 +17,7 @@ import JSZip from 'jszip';
 import type { Score } from "../../types/score";
 import { parseMusicXML } from "../wasm/music-engine";
 import { WasmEngineError } from "../../types/wasm-error";
-import type { ImportWarning, ImportStatistics as EnhancedImportStatistics } from "../../types/import-warning";
+import type { ImportWarning } from "../../types/import-warning";
 
 /**
  * Result of MusicXML import operation
@@ -153,6 +153,7 @@ export class MusicXMLImportService {
         metadata: this.buildMetadata(file),
         statistics: this.buildStatistics(score),
         warnings: [], // WASM parser in does not return warnings yet
+        partial_import: false,
       };
 
       return result;
@@ -280,6 +281,8 @@ export class MusicXMLImportService {
       voice_count: voiceCount,
       note_count: noteCount,
       duration_ticks: maxTick,
+      warning_count: 0,
+      skipped_element_count: 0,
     };
   }
 
