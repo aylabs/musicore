@@ -83,4 +83,28 @@ describe('StaffGroup', () => {
     const notationSvg = screen.getByTestId('notation-svg');
     expect(notationSvg).toBeDefined();
   });
+
+  /**
+   * T010 [US1]: Verify vertical spacing reduction for better screen real estate
+   * Feature 001-staff-display-refinement: Reduce gap between staves by 25%
+   * Previous: 10px margin-bottom, New: 7.5px margin-bottom
+   */
+  it('should have margin-bottom of 7.5px for improved screen real estate', () => {
+    const { container } = render(
+      <StaffGroup
+        instrumentName="Piano"
+        staff={mockStaff}
+        isFirstStaffOfInstrument={true}
+        {...mockPlaybackProps}
+      />
+    );
+
+    // Find the staff-group container element
+    const staffGroup = container.querySelector('.staff-group');
+    expect(staffGroup).toBeDefined();
+
+    // Verify CSS margin-bottom is 7.5px (25% reduction from 10px)
+    const styles = window.getComputedStyle(staffGroup!);
+    expect(styles.marginBottom).toBe('7.5px');
+  });
 });

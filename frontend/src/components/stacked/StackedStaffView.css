@@ -7,6 +7,10 @@
   flex-direction: column;
   height: 100%;
   background: white;
+  /* Tablet: Tapping background toggles playback */
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 }
 
 .stacked-staff-scroll-container {

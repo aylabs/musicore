@@ -26,7 +26,7 @@ export interface ChordSymbolProps {
   /** Staff configuration for positioning */
   staffConfig: StaffConfig;
   
-  /** Optional: Override default vertical offset (default: 30px above staff) */
+  /** Optional: Override default vertical offset (default: 15px above top staff line) */
   verticalOffset?: number;
   
   /** Optional: Font size in pixels (default: 14) */
@@ -43,7 +43,7 @@ export const ChordSymbol: React.FC<ChordSymbolProps> = ({
   notes,
   notePositions,
   staffConfig,
-  verticalOffset = 30,
+  verticalOffset = 15,
   fontSize = 14,
 }) => {
   // Service instances (stateless, can reuse)
@@ -71,10 +71,11 @@ export const ChordSymbol: React.FC<ChordSymbolProps> = ({
       const positionedNote = notePositions.find(pos => pos.id === firstNoteInChord.id);
       const x = positionedNote?.x ?? (chord.tick * staffConfig.pixelsPerTick + staffConfig.marginLeft);
       
-      // Calculate y position (above staff)
-      // Staff top is typically at some baseline, we position above it
-      const staffTop = 50; // Simplified - in real implementation, get from staffConfig
-      const y = staffTop - verticalOffset;
+      // Calculate y position (above staff, closer to center)
+      // Staff center is at viewportHeight/2, top line at center - 2*staffSpace
+      const staffCenter = staffConfig.viewportHeight / 2;
+      const staffTopLine = staffCenter - 2 * staffConfig.staffSpace;
+      const y = staffTopLine - verticalOffset;
       
       // US2: Use full chord symbol (ChordAnalyzer now provides formatted symbol)
       const text = chord.symbol;

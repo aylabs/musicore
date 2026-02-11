@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { StackedStaffView } from './StackedStaffView';
 import type { Score } from '../../types/score';
 
@@ -91,5 +91,23 @@ describe('StackedStaffView', () => {
     const container = screen.getByTestId('stacked-staff-view');
     expect(container).toBeDefined();
     expect(container.classList.contains('stacked-staff-view')).toBe(true);
+  });
+
+  it('should call onTogglePlayback when clicking on container background', () => {
+    const mockTogglePlayback = vi.fn();
+    render(
+      <StackedStaffView 
+        score={mockScore} 
+        {...mockPlaybackProps} 
+        onTogglePlayback={mockTogglePlayback}
+      />
+    );
+
+    // Click directly on the container (not on staff content)
+    const container = screen.getByTestId('stacked-staff-view');
+    fireEvent.click(container);
+
+    // Should call toggle playback callback
+    expect(mockTogglePlayback).toHaveBeenCalledTimes(1);
   });
 });

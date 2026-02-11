@@ -3,23 +3,23 @@
 
 .staff-group {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 15px;
-  margin-bottom: 10px;
+  grid-template-columns: 80px 1fr;
+  gap: 5px;
+  margin-bottom: 7.5px; /* Feature 001: Reduced from 10px for 25% less spacing (US1) */
   align-items: center;
 }
 
 /* When no label present (second staff of multi-staff instrument), use single column */
 .staff-group:not(:has(.staff-label)) {
   grid-template-columns: 1fr;
-  padding-left: 215px; /* Align with labeled staves (200px + 15px gap) */
+  padding-left: 85px; /* Align with labeled staves (80px + 5px gap) */
 }
 
 .staff-label {
   text-align: right;
-  padding-right: 10px;
+  padding-right: 5px;
   font-weight: 600;
-  font-size: 1.1em;
+  font-size: 0.9em;
   color: #333;
   overflow: hidden;
   text-overflow: ellipsis;

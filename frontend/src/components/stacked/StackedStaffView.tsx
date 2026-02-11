@@ -28,6 +28,8 @@ interface StackedStaffViewProps {
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void;
   onUnpinStartTick?: () => void;
+  /** Callback to toggle playback (play/stop) when tapping outside staff regions */
+  onTogglePlayback?: () => void;
 }
 
 export function StackedStaffView({
@@ -35,7 +37,8 @@ export function StackedStaffView({
   currentTick = 0,
   playbackStatus = 'stopped',
   onSeekToTick,
-  onUnpinStartTick
+  onUnpinStartTick,
+  onTogglePlayback
 }: StackedStaffViewProps) {
   // Shared scroll state for all staves
   const [sharedScrollX, setSharedScrollX] = useState(0);
@@ -138,8 +141,20 @@ export function StackedStaffView({
     }
   };
 
+  // Handle clicks on container background (outside staff regions) to toggle playback
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only toggle if clicking directly on the container background, not on staff content
+    if (e.target === e.currentTarget && onTogglePlayback) {
+      onTogglePlayback();
+    }
+  };
+
   return (
-    <div className="stacked-staff-view" data-testid="stacked-staff-view">
+    <div 
+      className="stacked-staff-view" 
+      data-testid="stacked-staff-view"
+      onClick={handleContainerClick}
+    >
       <div
         ref={scrollContainerRef}
         className="stacked-staff-scroll-container"
