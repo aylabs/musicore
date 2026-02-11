@@ -89,6 +89,9 @@ export interface DemoScoreMetadata extends Score {
   
   /** ISO 8601 timestamp when score was loaded into library */
   loadedDate: string;
+  
+  /** Schema version of the demo data structure */
+  schemaVersion?: number;
 }
 
 // ============================================================================
@@ -105,6 +108,9 @@ export interface OnboardingConfig {
   
   /** Path to bundled demo MusicXML file */
   demoBundlePath: string;
+  
+  /** Demo schema version - increment when data structure changes */
+  demoSchemaVersion: number;
   
   /** Whether to show "Reload Demo" UI (false for MVP/P1, true for P3) */
   enableDemoReload: boolean;

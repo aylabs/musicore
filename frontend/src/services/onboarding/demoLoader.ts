@@ -13,7 +13,7 @@ import type {
 } from './types';
 import { ONBOARDING_CONFIG } from './config';
 import { parseMusicXML } from '../wasm/music-engine';
-import { saveScoreToIndexedDB } from '../storage/local-storage';
+import { saveScoreToIndexedDB, deleteScoreFromIndexedDB, getAllScoresFromIndexedDBUnfiltered } from '../storage/local-storage';
 import { getAllScoresFromIndexedDB } from '../storage/local-storage';
 
 /**
@@ -36,6 +36,22 @@ export class DemoLoaderService implements IDemoLoaderService {
     originalError?: Error
   ): DemoLoadingError {
     return { type, message, originalError };
+  }
+
+  /**
+   * Get any existing demo from IndexedDB (ignores schema version)
+   * Private method used for cleanup before reload
+   */
+  private async getAnyExistingDemo(): Promise<DemoScoreMetadata | null> {
+    try {
+      // Use unfiltered version to find demos with ANY schema version (for cleanup)
+      const allScores = await getAllScoresFromIndexedDBUnfiltered();
+      const demoScore = allScores.find((score: any) => score.isDemoScore === true) as DemoScoreMetadata | undefined;
+      return demoScore ?? null;
+    } catch (error) {
+      console.error('[DemoLoader] Error getting existing demo:', error);
+      return null;
+    }
   }
 
   /**
@@ -95,9 +111,17 @@ export class DemoLoaderService implements IDemoLoaderService {
         sourceType: 'bundled',
         bundledPath: this.demoBundlePath,
         loadedDate: new Date().toISOString(),
+        schemaVersion: ONBOARDING_CONFIG.demoSchemaVersion,
       };
 
-      // 5. Store in IndexedDB (Feature 011)
+      // 5. Delete any existing demo (e.g., outdated schema version)
+      const existingDemo = await this.getAnyExistingDemo();
+      if (existingDemo) {
+        console.log('[DemoLoader] Deleting existing demo before saving new version...');
+        await deleteScoreFromIndexedDB(existingDemo.id);
+      }
+
+      // 6. Store in IndexedDB (Feature 011)
       console.log('[DemoLoader] Saving to IndexedDB...');
       await saveScoreToIndexedDB(demoScore);
       console.log(`[DemoLoader] SUCCESS: Demo score stored with ID: ${demoScore.id}`);
@@ -154,6 +178,7 @@ export class DemoLoaderService implements IDemoLoaderService {
 
   /**
    * Get demo score metadata if it exists in library
+   * Returns null if cached demo has outdated schema version
    */
   async getDemoScore(): Promise<DemoScoreMetadata | null> {
     try {
@@ -162,7 +187,20 @@ export class DemoLoaderService implements IDemoLoaderService {
       // Find the demo score (marked with isDemoScore=true)
       const demoScore = allScores.find((score: any) => score.isDemoScore === true) as DemoScoreMetadata | undefined;
       
-      return demoScore ?? null;
+      if (!demoScore) {
+        return null;
+      }
+      
+      // Check schema version - force reload if outdated or missing
+      const currentVersion = ONBOARDING_CONFIG.demoSchemaVersion;
+      const cachedVersion = demoScore.schemaVersion ?? 1; // Default to 1 for old demos
+      
+      if (cachedVersion < currentVersion) {
+        console.log(`[DemoLoader] Demo schema outdated (v${cachedVersion} < v${currentVersion}), will reload`);
+        return null; // Return null to trigger reload
+      }
+      
+      return demoScore;
     } catch (error) {
       console.error('[DemoLoader] Error getting demo score:', error);
       return null;

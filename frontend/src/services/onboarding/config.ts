@@ -26,6 +26,12 @@ export const ONBOARDING_CONFIG: OnboardingConfig = {
   demoBundlePath: `${import.meta.env.BASE_URL}demo/CanonD.musicxml`,
   
   /**
+   * Demo schema version - increment when data structure changes
+   * Forces reload of cached demo to pick up new fields (e.g., active_clef)
+   */
+  demoSchemaVersion: 2,
+  
+  /**
    * Whether to show "Reload Demo" UI
    * false for MVP/P1, true for P3 feature
    */

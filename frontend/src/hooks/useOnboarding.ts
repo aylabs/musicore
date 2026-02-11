@@ -135,6 +135,14 @@ export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult 
         if (demoScore && mounted) {
           setDemoScoreId(demoScore.id);
           console.log(`[useOnboarding] Loaded demo score ID for returning user: ${demoScore.id}`);
+        } else if (!demoScore && mounted) {
+          // Demo might have outdated schema - reload it
+          console.log('[useOnboarding] Demo not found or outdated, reloading...');
+          const reloadedDemo = await demoLoaderService.loadBundledDemo();
+          if (reloadedDemo && mounted) {
+            setDemoScoreId(reloadedDemo.id);
+            console.log(`[useOnboarding] Reloaded demo with new schema: ${reloadedDemo.id}`);
+          }
         }
       } catch (error) {
         console.error('[useOnboarding] Failed to load demo score ID:', error);

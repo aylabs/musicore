@@ -8,6 +8,23 @@ const DB_VERSION = 1;
 const SCORES_STORE = 'scores';
 
 /**
+ * Current schema version - must match backend SCORE_SCHEMA_VERSION
+ * Increment when data structure changes (e.g., v2 added active_clef)
+ */
+export const CURRENT_SCHEMA_VERSION = 2;
+
+/**
+ * Check if a score is compatible with current schema version
+ * @param score - Score to check
+ * @returns true if compatible, false if needs migration/reload
+ */
+function isSchemaCompatible(score: Score): boolean {
+  // Scores without schema_version field are v1 (old format)
+  const scoreVersion = score.schema_version ?? 1;
+  return scoreVersion >= CURRENT_SCHEMA_VERSION;
+}
+
+/**
  * Initialize IndexedDB database
  * @returns Promise<IDBDatabase>
  */
@@ -69,6 +86,7 @@ export async function saveScoreToIndexedDB(score: Score): Promise<void> {
 
 /**
  * Load a score from IndexedDB
+ * Returns null if score has incompatible schema version
  * @param scoreId - UUID of the score to load
  * @returns Promise<Score | null>
  */
@@ -90,6 +108,14 @@ export async function loadScoreFromIndexedDB(scoreId: string): Promise<Score | n
     db.close();
 
     if (score) {
+      // Check schema compatibility
+      if (!isSchemaCompatible(score)) {
+        const scoreVersion = score.schema_version ?? 1;
+        console.warn(`[IndexedDB] Score ${scoreId} has incompatible schema v${scoreVersion} (current: v${CURRENT_SCHEMA_VERSION})`);
+        console.warn('[IndexedDB] Returning null - re-import MusicXML to get updated schema');
+        return null;
+      }
+
       console.log(`[IndexedDB] Score ${scoreId} loaded successfully`);
       // Remove metadata before returning
       const { lastModified, ...scoreWithoutMetadata } = score as Score & { lastModified?: string };
@@ -129,8 +155,35 @@ export async function listScoreIdsFromIndexedDB(): Promise<string[]> {
 }
 
 /**
+ * Get all scores from IndexedDB WITHOUT schema filtering
+ * Internal use only - for cleanup operations that need to see all scores
+ * @returns Promise<Score[]>
+ */
+export async function getAllScoresFromIndexedDBUnfiltered(): Promise<Score[]> {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([SCORES_STORE], 'readonly');
+    const store = transaction.objectStore(SCORES_STORE);
+
+    const allScores = await new Promise<Score[]>((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(new Error(`Failed to get all scores: ${request.error?.message}`));
+    });
+
+    db.close();
+    console.log(`[IndexedDB] Retrieved ${allScores.length} scores (unfiltered)`);
+    return allScores;
+  } catch (error) {
+    console.error('[IndexedDB] Error getting all scores:', error);
+    throw error;
+  }
+}
+
+/**
  * Get all scores from IndexedDB
  * Feature 013: Added for demo score detection
+ * Filters out scores with incompatible schema versions
  * @returns Promise<Score[]>
  */
 export async function getAllScoresFromIndexedDB(): Promise<Score[]> {
@@ -139,15 +192,34 @@ export async function getAllScoresFromIndexedDB(): Promise<Score[]> {
     const transaction = db.transaction([SCORES_STORE], 'readonly');
     const store = transaction.objectStore(SCORES_STORE);
 
-    const scores = await new Promise<Score[]>((resolve, reject) => {
+    const allScores = await new Promise<Score[]>((resolve, reject) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(new Error(`Failed to get all scores: ${request.error?.message}`));
     });
 
+    // Filter out incompatible schema versions
+    const compatibleScores: Score[] = [];
+    const incompatibleScores: Score[] = [];
+
+    for (const score of allScores) {
+      if (isSchemaCompatible(score)) {
+        compatibleScores.push(score);
+      } else {
+        incompatibleScores.push(score);
+        const scoreVersion = score.schema_version ?? 1;
+        console.warn(`[IndexedDB] Score ${score.id} has incompatible schema v${scoreVersion} (current: v${CURRENT_SCHEMA_VERSION})`);
+      }
+    }
+
+    if (incompatibleScores.length > 0) {
+      console.warn(`[IndexedDB] Found ${incompatibleScores.length} score(s) with old schema - they will be hidden`);
+      console.warn('[IndexedDB] Re-import MusicXML files to get updated schema with new features');
+    }
+
     db.close();
-    console.log(`[IndexedDB] Retrieved ${scores.length} scores`);
-    return scores;
+    console.log(`[IndexedDB] Retrieved ${compatibleScores.length} compatible scores (${incompatibleScores.length} filtered)`);
+    return compatibleScores;
   } catch (error) {
     console.error('[IndexedDB] Error getting all scores:', error);
     throw error;

@@ -153,7 +153,13 @@ export function ScoreViewer({
     setError(null);
     try {
       // Get demo score from IndexedDB
-      const demoScore = await demoLoaderService.getDemoScore();
+      let demoScore = await demoLoaderService.getDemoScore();
+      
+      if (!demoScore) {
+        // Demo might have outdated schema - reload it
+        console.log('[ScoreViewer] Demo not found or outdated, reloading...');
+        demoScore = await demoLoaderService.loadBundledDemo();
+      }
       
       if (!demoScore) {
         setError("Demo not found. Try refreshing the page.");

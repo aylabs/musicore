@@ -3,6 +3,7 @@
 
 use wasm_bindgen::prelude::*;
 use crate::domain::importers::musicxml::{MusicXMLParser, MusicXMLConverter};
+use crate::adapters::dtos::ScoreDto;
 use super::error_handling::import_error_to_js;
 
 // ============================================================================
@@ -29,8 +30,11 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
     let score = MusicXMLConverter::convert(doc)
         .map_err(import_error_to_js)?;
     
-    // Serialize Score to JsValue for JavaScript
-    serde_wasm_bindgen::to_value(&score)
+    // Convert to DTO with active_clef field (same as API handlers)
+    let score_dto = ScoreDto::from(&score);
+    
+    // Serialize ScoreDto to JsValue for JavaScript
+    serde_wasm_bindgen::to_value(&score_dto)
         .map_err(|e| {
             JsValue::from_str(&format!("Serialization error: {}", e))
         })
