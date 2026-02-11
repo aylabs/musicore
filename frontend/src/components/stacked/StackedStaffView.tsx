@@ -143,8 +143,9 @@ export function StackedStaffView({
 
   // Handle clicks on container background (outside staff regions) to toggle playback
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only toggle if clicking directly on the container background, not on staff content
-    if (e.target === e.currentTarget && onTogglePlayback) {
+    // Toggle playback when clicking anywhere in the container
+    // Note clicks will stop propagation, so this won't trigger when selecting notes
+    if (onTogglePlayback) {
       onTogglePlayback();
     }
   };

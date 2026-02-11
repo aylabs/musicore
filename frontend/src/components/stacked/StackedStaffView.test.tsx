@@ -93,7 +93,7 @@ describe('StackedStaffView', () => {
     expect(container.classList.contains('stacked-staff-view')).toBe(true);
   });
 
-  it('should call onTogglePlayback when clicking on container background', () => {
+  it('should call onTogglePlayback when clicking anywhere in the view', () => {
     const mockTogglePlayback = vi.fn();
     render(
       <StackedStaffView 
@@ -103,7 +103,7 @@ describe('StackedStaffView', () => {
       />
     );
 
-    // Click directly on the container (not on staff content)
+    // Click anywhere in the container (not just on background - any non-note area)
     const container = screen.getByTestId('stacked-staff-view');
     fireEvent.click(container);
 
