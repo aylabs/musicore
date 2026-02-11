@@ -10,7 +10,10 @@
   /* Tablet: Tapping background toggles playback */
   cursor: pointer;
   user-select: none;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+  /* Remove tap highlight on mobile devices */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .stacked-staff-scroll-container {
