@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
 import { InstrumentList } from "./InstrumentList";
@@ -414,6 +414,18 @@ export function ScoreViewer({
   const playbackState = usePlayback(allNotes, initialTempo);
 
   /**
+   * Toggle playback between play and stop
+   * Used for tablet: tapping outside staff regions in stacked view
+   */
+  const togglePlayback = useCallback(() => {
+    if (playbackState.status === 'playing') {
+      playbackState.stop();
+    } else {
+      playbackState.play();
+    }
+  }, [playbackState]);
+
+  /**
    * Auto-play demo when loaded (Feature 013)
    */
   useEffect(() => {
@@ -603,6 +615,7 @@ export function ScoreViewer({
           playbackStatus={playbackState.status}
           onSeekToTick={playbackState.seekToTick}
           onUnpinStartTick={playbackState.unpinStartTick}
+          onTogglePlayback={togglePlayback}
         />
       )}
 
