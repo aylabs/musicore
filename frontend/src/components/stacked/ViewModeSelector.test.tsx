@@ -12,19 +12,19 @@ describe('ViewModeSelector', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    expect(screen.getByText('Individual View')).toBeDefined();
-    expect(screen.getByText('Stacked View')).toBeDefined();
+    expect(screen.getByText('Instruments View')).toBeDefined();
+    expect(screen.getByText('Play View')).toBeDefined();
   });
 
   it('should highlight the active button', () => {
     const onChange = vi.fn();
     const { rerender } = render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    const individualButton = screen.getByText('Individual View');
+    const individualButton = screen.getByText('Instruments View');
     expect(individualButton.classList.contains('active')).toBe(true);
 
     rerender(<ViewModeSelector currentMode="stacked" onChange={onChange} />);
-    const stackedButton = screen.getByText('Stacked View');
+    const stackedButton = screen.getByText('Play View');
     expect(stackedButton.classList.contains('active')).toBe(true);
   });
 
@@ -32,7 +32,7 @@ describe('ViewModeSelector', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    const stackedButton = screen.getByText('Stacked View');
+    const stackedButton = screen.getByText('Play View');
     fireEvent.click(stackedButton);
 
     expect(onChange).toHaveBeenCalledWith('stacked');
@@ -42,7 +42,7 @@ describe('ViewModeSelector', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    const individualButton = screen.getByText('Individual View');
+    const individualButton = screen.getByText('Instruments View');
     fireEvent.click(individualButton);
 
     expect(onChange).toHaveBeenCalledWith('individual');

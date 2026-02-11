@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
 import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
-import { loadScore as loadScoreFromFile } from "../services/file/FileService";
-import { validateScoreFile } from "../services/file/validation";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
@@ -47,8 +45,6 @@ export function ScoreViewer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'load' | 'new' | null>(null);
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
@@ -59,11 +55,8 @@ export function ScoreViewer({
   const viewMode = controlledViewMode ?? internalViewMode;
   const setViewMode = controlledOnViewModeChange ?? setInternalViewMode;
 
-  // File input ref for Load button (Feature 004 T019)
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // File state management (Feature 004 - Score File Persistence)
-  const { fileState, setFilePath, resetFileState } = useFileState();
+  const { fileState, resetFileState } = useFileState();
 
   // Load score when scoreId changes (but only for backend-sourced scores)
   useEffect(() => {
@@ -260,94 +253,8 @@ export function ScoreViewer({
   };
 
   /**
-   * Display success message and auto-dismiss after 3 seconds (Feature 004 T014)
-   */
-  const showSuccessMessage = (message: string) => {
-    setSuccessMessage(message);
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 3000);
-  };
-
-  /**
-   * Handle Load button click - open file picker (Feature 004 T019)
-   */
-  const handleLoadButtonClick = () => {
-    // Check for unsaved changes (Feature 004 T020)
-    if (fileState.isModified) {
-      setPendingAction('load');
-      setShowUnsavedWarning(true);
-    } else {
-      // No unsaved changes, open file picker directly
-      fileInputRef.current?.click();
-    }
-  };
-
-  /**
-   * Handle file selection from file picker (Feature 004 T019, T021, T022)
-   */
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Reset file input so same file can be selected again
-    event.target.value = '';
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Load file using FileReader API (Feature 004 T018)
-      const loadedScore = await loadScoreFromFile(file);
-
-      // Validate the loaded score (Feature 004 T021)
-      const jsonContent = JSON.stringify(loadedScore);
-      const validationResult = validateScoreFile(jsonContent);
-
-      if (!validationResult.valid) {
-        // Show validation errors (Feature 004 T021)
-        setError(`Invalid score file:\n${validationResult.errors.join('\n')}`);
-        setLoading(false);
-        return;
-      }
-
-      // Score is valid, update state
-      setScore(loadedScore);
-      setScoreId(undefined); // Clear scoreId - this is a file-loaded score not from backend
-      setIsFileSourced(true); // Frontend is source of truth for file-loaded scores
-      
-      // Update file state (Feature 004 T018)
-      setFilePath(file.name);
-      
-      // Show success notification (Feature 004 T022)
-      showSuccessMessage("Score loaded successfully");
-    } catch (err) {
-      // Feature 004 T021: Display error for invalid files
-      setError(err instanceof Error ? err.message : "Failed to load score");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Confirm action despite unsaved changes (Feature 004 T020)
-   */
-  const confirmActionWithUnsavedChanges = () => {
-    setShowUnsavedWarning(false);
-    
-    if (pendingAction === 'load') {
-      fileInputRef.current?.click();
-    }
-    
-    setPendingAction(null);
-  };
-
-  /**
-   * Cancel action, preserve unsaved changes (Feature 004 T020, T027)
-   */
-  const cancelActionWithUnsavedChanges = () => {
-    setShowUnsavedWarning(false);
-    setPendingAction(null);
+   * Load button and file selection handlers removed - Feature 014:
+   * Read-only viewer focuses on Import and Demo loading only.
   };
 
   /**
@@ -483,14 +390,6 @@ export function ScoreViewer({
               disabled={loading}
             />
           </div>
-          {/* Feature 004 T019: Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,.musicore.json"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-          />
           {error && <div className="error">{error}</div>}
           {successMessage && <div className="success">{successMessage}</div>}
         </div>
@@ -511,16 +410,20 @@ export function ScoreViewer({
               <span className="tempo">Tempo: {getInitialTempo()} BPM</span>
               <span className="time-sig">Time: {getInitialTimeSignature()}</span>
             </div>
-            {/* Feature 004 T012, T026: File operation buttons */}
-            <div className="score-actions">
-              <button onClick={handleLoadButtonClick} className="load-button">
-                Load
-              </button>
-              {/* Feature 006: MusicXML Import */}
+          </div>
+
+          {/* Feature 010: Import (left) and View Mode Selector (right) on same line */}
+          <div className="score-toolbar">
+            <div className="toolbar-left">
               <ImportButton
                 onImportComplete={handleMusicXMLImport}
                 buttonText="Import"
               />
+            </div>
+            <div className="toolbar-right">
+              {score && score.instruments.length > 0 && (
+                <ViewModeSelector currentMode={viewMode} onChange={setViewMode} />
+              )}
             </div>
           </div>
 
@@ -528,41 +431,6 @@ export function ScoreViewer({
           {/* Feature 004 T014: Success notification */}
           {successMessage && <div className="success-message">{successMessage}</div>}
         </>
-      )}
-
-      {/* Feature 004 T019: Hidden file input for Load functionality */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json,.musicore.json"
-        style={{ display: 'none' }}
-        onChange={handleFileSelect}
-      />
-
-      {/* Feature 004 T020, T027: Unsaved changes warning dialog */}
-      {showUnsavedWarning && (
-        <div className="modal-overlay">
-          <div className="modal-dialog">
-            <h2>Unsaved Changes</h2>
-            <p>
-              You have unsaved changes. {pendingAction === 'load' ? 'Loading a file' : 'Creating a new score'} will discard them. Continue?
-            </p>
-            <div className="modal-actions">
-              <button onClick={cancelActionWithUnsavedChanges} className="cancel-button">
-                Cancel
-              </button>
-              <button onClick={confirmActionWithUnsavedChanges} className="confirm-button">
-                Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Feature 010: View Mode Selector - Toggle between Individual and Stacked views */}
-      {/* In individual view: show both buttons. In stacked view: integrated with playback controls */}
-      {viewMode === 'individual' && score && score.instruments.length > 0 && (
-        <ViewModeSelector currentMode={viewMode} onChange={setViewMode} />
       )}
 
       {/* Feature 003 - Music Playback: US1 T025 - Playback Controls */}
@@ -579,9 +447,9 @@ export function ScoreViewer({
           <button 
             className="view-mode-button" 
             onClick={() => setViewMode('individual')}
-            aria-label="Switch to individual view"
+            aria-label="Switch to instruments view"
           >
-            Individual View
+            Instruments View
           </button>
         ) : undefined}
       />
