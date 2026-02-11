@@ -28,7 +28,7 @@ interface StackedStaffViewProps {
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void;
   onUnpinStartTick?: () => void;
-  /** Callback to toggle playback (play/stop) when tapping outside staff regions */
+  /** Callback to toggle playback (play/pause) when tapping outside staff regions */
   onTogglePlayback?: () => void;
 }
 

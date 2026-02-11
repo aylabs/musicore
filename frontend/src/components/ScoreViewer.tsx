@@ -414,12 +414,12 @@ export function ScoreViewer({
   const playbackState = usePlayback(allNotes, initialTempo);
 
   /**
-   * Toggle playback between play and stop
+   * Toggle playback between play and pause
    * Used for tablet: tapping outside staff regions in stacked view
    */
   const togglePlayback = useCallback(() => {
     if (playbackState.status === 'playing') {
-      playbackState.stop();
+      playbackState.pause();
     } else {
       playbackState.play();
     }
