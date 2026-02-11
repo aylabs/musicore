@@ -189,9 +189,30 @@ export class MusicXMLImportService {
       // Most .mxl files have a 'musicxml.xml' file at the root
       let xmlFile = zip.file('musicxml.xml');
       
-      // If not found, try other common names
+      // Try common alternative names
       if (!xmlFile) {
-        xmlFile = zip.file(/\.xml$/i)[0]; // Find first .xml file
+        xmlFile = zip.file('score.xml');
+      }
+      
+      // If not found, try to read container.xml to find the main file
+      if (!xmlFile) {
+        const containerFile = zip.file('META-INF/container.xml');
+        if (containerFile) {
+          const containerXml = await containerFile.async('string');
+          // Parse container.xml to extract the full-path attribute
+          const match = containerXml.match(/full-path="([^"]+)"/);
+          if (match && match[1]) {
+            xmlFile = zip.file(match[1]);
+          }
+        }
+      }
+      
+      // Last resort: find first .xml file that's NOT container.xml
+      if (!xmlFile) {
+        const xmlFiles = zip.file(/\.xml$/i).filter(f => 
+          !f.name.includes('container.xml') && !f.name.startsWith('META-INF/')
+        );
+        xmlFile = xmlFiles[0];
       }
       
       if (!xmlFile) {

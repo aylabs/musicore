@@ -156,7 +156,27 @@
   border-radius: 4px;
 }
 
-/* Score page action buttons - matching initial screen styling */
+/* Score toolbar - Import (left) and View Mode Selector (right) on same line */
+.score-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Legacy score-actions styling - kept for backward compatibility */
 .score-actions {
   display: flex;
   gap: 10px;

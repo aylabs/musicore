@@ -4,8 +4,6 @@
 .view-mode-selector {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
-  justify-content: center;
 }
 
 .view-mode-button {

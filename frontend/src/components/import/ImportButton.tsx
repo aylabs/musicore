@@ -151,6 +151,13 @@ export function ImportButton({
       {/* Display success message with statistics */}
       {result && !error && (
         <div className="import-status import-success" role="status">
+          <button
+            className="close-button"
+            onClick={reset}
+            aria-label="Close success message"
+          >
+            ×
+          </button>
           <p className="success-message">
             <strong>✓ Import Successful!</strong>
           </p>
