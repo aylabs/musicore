@@ -711,6 +711,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "clap",
+ "encoding_rs",
  "env_logger",
  "http-body-util",
  "log",

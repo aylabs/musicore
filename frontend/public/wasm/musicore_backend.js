@@ -294,13 +294,13 @@ export function create_score(_title) {
 }
 
 /**
- * Parse MusicXML content and return a Score
+ * Parse MusicXML content and return ImportResult with Score, metadata, statistics, and warnings
  *
  * # Arguments
  * * `xml_content` - MusicXML file content as string
  *
  * # Returns
- * * JsValue representing the parsed Score (serialized as JSON)
+ * * JsValue representing ImportResult (Score with warnings and statistics)
  *
  * # Errors
  * * Returns JsValue error if parsing or conversion fails

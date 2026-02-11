@@ -66,6 +66,19 @@ fn main() {
         Ok(result) => result,
         Err(e) => {
             eprintln!("Error: Import failed: {}", e);
+            // Print detailed error if available
+            if let Some(source) = e.source() {
+                eprintln!("Caused by: {}", source);
+            }
+            // Try to downcast to ImportError for detailed validation errors
+            if let Some(import_err) = e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>() {
+                if let musicore_backend::domain::importers::musicxml::ImportError::ValidationError { errors } = import_err {
+                    eprintln!("Validation errors:");
+                    for err in errors {
+                        eprintln!("  - {}", err);
+                    }
+                }
+            }
             process::exit(2);
         }
     };
@@ -79,10 +92,31 @@ fn main() {
     if !result.warnings.is_empty() && !cli.quiet {
         eprintln!("\nWarnings:");
         for warning in &result.warnings {
-            if let Some(context) = &warning.context {
-                eprintln!("  [{}] {}", context, warning.message);
+            // Build context string from available fields
+            let mut context_parts = Vec::new();
+            if let Some(measure) = warning.measure_number {
+                context_parts.push(format!("measure {}", measure));
+            }
+            if let Some(ref instrument) = warning.instrument_name {
+                context_parts.push(instrument.clone());
+            }
+            if let Some(staff) = warning.staff_number {
+                context_parts.push(format!("staff {}", staff));
+            }
+            if let Some(voice) = warning.voice_number {
+                context_parts.push(format!("voice {}", voice));
+            }
+            
+            let severity_marker = match warning.severity {
+                musicore_backend::domain::importers::musicxml::WarningSeverity::Info => "ℹ",
+                musicore_backend::domain::importers::musicxml::WarningSeverity::Warning => "⚠",
+                musicore_backend::domain::importers::musicxml::WarningSeverity::Error => "✗",
+            };
+            
+            if !context_parts.is_empty() {
+                eprintln!("  {} [{}] {}", severity_marker, context_parts.join(", "), warning.message);
             } else {
-                eprintln!("  {}", warning.message);
+                eprintln!("  {} {}", severity_marker, warning.message);
             }
         }
     }

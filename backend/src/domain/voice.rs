@@ -35,6 +35,14 @@ impl Voice {
         Ok(())
     }
 
+    /// Check if a note can be added without overlapping (non-mutating)
+    /// 
+    /// Returns true if the note can be added safely, false if it would overlap
+    /// with an existing note of the same pitch.
+    pub fn can_add_note(&self, note: &Note) -> bool {
+        !self.has_overlapping_note(note)
+    }
+
     /// Check if a note with a specific pitch overlaps with any existing notes
     pub fn has_overlapping_note(&self, note: &Note) -> bool {
         self.interval_events

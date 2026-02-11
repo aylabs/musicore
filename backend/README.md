@@ -209,6 +209,48 @@ Import Statistics:
 ✓ Score saved to: output.json
 ```
 
+**Resilient Import with Warnings:**
+
+The importer now handles real-world MusicXML files gracefully, providing warnings instead of failing:
+
+```bash
+# Import a complex file with structural issues
+./target/release/musicore-import "music/Moonlight sonata.mxl" --validate-only
+```
+
+Output with warnings:
+
+```
+Import Statistics:
+  Instruments: 1
+  Staves:      2
+  Voices:      4
+  Notes:       1200
+  Duration:    850000 ticks
+
+Warnings:
+  ⚠ Skipping invalid note: Domain validation failed [measure 1, staff 1]
+  ⚠ Skipping invalid note: Domain validation failed [measure 3, staff 1]
+  ...
+  ⚠ Overlapping notes at tick 729840 - note assigned to voice 2 [measure 45, staff 2]
+  ⚠ Overlapping notes at tick 730320 - note assigned to voice 2 [measure 45, staff 2]
+
+✓ Validation successful
+```
+
+**Warning Categories:**
+- **OverlapResolution** (ℹ) - Notes automatically distributed to additional voices
+- **StructuralIssues** (⚠) - Invalid notes skipped (zero duration, malformed data)
+- **MissingElements** (ℹ) - Optional elements omitted (dynamics, articulations)
+- **PartialImport** (✗) - Some sections could not be imported
+
+**Tested Files:**
+- ✅ Bach - Invention No. 1.mxl (466 notes, 0 warnings)
+- ✅ Chopin - Prélude in E Minor.mxl (603 notes, 2 warnings)
+- ✅ Moonlight Sonata.mxl (~1,200 notes, 28 warnings)
+- ✅ Bach - Prelude in C.mxl (2,311 notes, 21 warnings)
+- ✅ Piano Sonata No. 16 in C Major.mxl (2,600 notes, 12 warnings)
+
 **Supported Formats:**
 - `.musicxml` - Uncompressed MusicXML
 - `.xml` - Uncompressed MusicXML (alternative extension)

@@ -17,12 +17,13 @@ import JSZip from 'jszip';
 import type { Score } from "../../types/score";
 import { parseMusicXML } from "../wasm/music-engine";
 import { WasmEngineError } from "../../types/wasm-error";
+import type { ImportWarning, ImportStatistics as EnhancedImportStatistics } from "../../types/import-warning";
 
 /**
  * Result of MusicXML import operation
  */
 export interface ImportResult {
-  /** Successfully imported score */
+  /** Successfully imported score (may be partial if some content skipped) */
   score: Score;
   /** Import metadata (file format, version, etc.) */
   metadata: ImportMetadata;
@@ -30,6 +31,8 @@ export interface ImportResult {
   statistics: ImportStatistics;
   /** Non-fatal warnings during import */
   warnings: ImportWarning[];
+  /** True if some content was skipped due to unrecoverable errors */
+  partial_import: boolean;
 }
 
 /**
@@ -60,17 +63,13 @@ export interface ImportStatistics {
   note_count: number;
   /** Score duration in ticks */
   duration_ticks: number;
+  /** Total warnings generated during import */
+  warning_count: number;
+  /** Number of XML elements skipped (malformed/unparseable) */
+  skipped_element_count: number;
 }
 
-/**
- * Non-fatal warning during import
- */
-export interface ImportWarning {
-  /** Warning message */
-  message: string;
-  /** Context (e.g., "measure 5, voice 2") */
-  context?: string;
-}
+// ImportWarning now imported from ../../types/import-warning.ts (feature 015-musicxml-error-handling)
 
 /**
  * Error response from import API
