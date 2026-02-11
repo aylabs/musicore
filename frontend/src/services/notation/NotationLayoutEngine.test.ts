@@ -236,13 +236,15 @@ describe('NotationLayoutEngine', () => {
     it('should center treble clef vertically on staff', () => {
       const clef = NotationLayoutEngine.calculateClefPosition('Treble', config);
       const centerY = config.viewportHeight / 2;
-      expect(clef.y).toBe(centerY);
+      // T007 [US3]: Updated for staffSpace = 12 (treble clef offset is +1.0 staffSpace)
+      expect(clef.y).toBe(centerY + config.staffSpace);
     });
 
     it('should center bass clef vertically on staff', () => {
       const clef = NotationLayoutEngine.calculateClefPosition('Bass', config);
       const centerY = config.viewportHeight / 2;
-      expect(clef.y).toBe(centerY);
+      // T007 [US3]: Updated for staffSpace = 12 (bass clef offset is -1.0 staffSpace)
+      expect(clef.y).toBe(centerY - config.staffSpace);
     });
 
     it('should set correct clef type', () => {
@@ -783,6 +785,28 @@ describe('NotationLayoutEngine', () => {
 
       expect(result.startIdx).toBe(0);
       expect(result.endIdx).toBe(0);
+    });
+  });
+
+  /**
+   * Configuration tests for staff display (Feature 001-staff-display-refinement)
+   * 
+   * US3: Larger Staff Display - Increase staff height by 20%
+   * Expected: staffSpace = 12px (20% larger than previous 10px)
+   * Staff height = 4 * staffSpace = 48px (from top line to bottom line)
+   */
+  describe('staff configuration', () => {
+    it('should have staffSpace of 12px for 20% larger display', () => {
+      // T005 [US3]: Test for increased staff size for better tablet readability
+      // Staff height = 4 * staffSpace, so staffSpace 12 gives height 48px
+      expect(DEFAULT_STAFF_CONFIG.staffSpace).toBe(12);
+    });
+
+    it('should calculate staff height as 48px (4 * staffSpace)', () => {
+      // T005 [US3]: Verify total staff height from top line to bottom line
+      // With staffSpace = 12, height should be 4 * 12 = 48px
+      const staffHeight = 4 * DEFAULT_STAFF_CONFIG.staffSpace;
+      expect(staffHeight).toBe(48);
     });
   });
 });

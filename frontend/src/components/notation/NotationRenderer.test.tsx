@@ -791,4 +791,87 @@ describe('NotationRenderer', () => {
       expect(note1?.className).not.toContain('highlighted');
     });
   });
+
+  /**
+   * Opacity tests for visual hierarchy (Feature 001-staff-display-refinement)
+   * US2: Enhanced Readability - Lighten structural elements using CSS opacity
+   * 
+   * Visual hierarchy: Notes (1.0) > Clefs/Bars (0.65) > Staff Lines (0.55)
+   */
+  describe('opacity for visual hierarchy', () => {
+    const mockLayout: LayoutGeometry = {
+      notes: [
+        {
+          id: 'note-1',
+          x: 100,
+          y: 100,
+          staffPosition: 0,
+          glyphCodepoint: '\uE1D5',
+          fontSize: 40,
+          midiPitch: 60,
+          startTick: 0,
+          duration: 960,
+        },
+      ],
+      staffLines: [
+        { y: 80, x1: 0, x2: 500, lineNumber: 1, strokeWidth: 1 },
+        { y: 90, x1: 0, x2: 500, lineNumber: 2, strokeWidth: 1 },
+        { y: 100, x1: 0, x2: 500, lineNumber: 3, strokeWidth: 1 },
+        { y: 110, x1: 0, x2: 500, lineNumber: 4, strokeWidth: 1 },
+        { y: 120, x1: 0, x2: 500, lineNumber: 5, strokeWidth: 1 },
+      ],
+      barlines: [
+        { id: 'bar-0', x: 100, tick: 0, y1: 80, y2: 120, measureNumber: 0, strokeWidth: 2 },
+      ],
+      ledgerLines: [],
+      clef: { type: 'Treble', x: 30, y: 100, glyphCodepoint: '\uE050', fontSize: 30 },
+      keySignatureAccidentals: [],
+      totalWidth: 500,
+      totalHeight: 200,
+      marginLeft: 60,
+      visibleNoteIndices: { startIdx: 0, endIdx: 1 },
+    };
+
+    it('should render staff lines with opacity 0.55', () => {
+      // T015 [US2]: Staff lines should have reduced opacity for visual subordination
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      const staffLine1 = container.querySelector('[data-testid="staff-line-1"]');
+      expect(staffLine1).toBeDefined();
+      expect(staffLine1?.getAttribute('opacity')).toBe('0.55');
+    });
+
+    it('should render bar lines with opacity 0.65', () => {
+      // T016 [US2]: Bar lines should have moderate opacity (darker than staff, lighter than notes)
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      const barline = container.querySelector('[data-testid="bar-0"]');
+      expect(barline).toBeDefined();
+      expect(barline?.getAttribute('opacity')).toBe('0.65');
+    });
+
+    it('should render clefs with opacity 0.65', () => {
+      // T017 [US2]: Clefs should have same opacity as bar lines (visible but subordinate)
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      const clef = container.querySelector('[data-testid="clef-Treble"]');
+      expect(clef).toBeDefined();
+      expect(clef?.getAttribute('opacity')).toBe('0.65');
+    });
+
+    it('should render note heads with full opacity (1.0 or no attribute)', () => {
+      // T018 [US2]: Notes should maintain full opacity for maximum prominence
+      const { container } = render(<NotationRenderer layout={mockLayout} />);
+      
+      const note = container.querySelector('[data-testid="note-1"]');
+      expect(note).toBeDefined();
+      
+      const opacity = note?.getAttribute('opacity');
+      // Either explicitly 1.0 or omitted (defaults to 1.0)
+      if (opacity !== null) {
+        expect(opacity).toBe('1');
+      }
+      // If opacity is null, that's also correct (defaults to full opacity)
+    });
+  });
 });

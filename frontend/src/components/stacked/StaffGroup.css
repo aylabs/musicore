@@ -5,7 +5,7 @@
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 15px;
-  margin-bottom: 10px;
+  margin-bottom: 7.5px; /* Feature 001: Reduced from 10px for 25% less spacing (US1) */
   align-items: center;
 }
 

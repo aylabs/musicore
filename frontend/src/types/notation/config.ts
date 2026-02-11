@@ -113,7 +113,7 @@ export interface StaffConfig {
 
 /** Default configuration values */
 export const DEFAULT_STAFF_CONFIG: StaffConfig = {
-  staffSpace: 10,
+  staffSpace: 12,
   pixelsPerTick: 0.1,
   minNoteSpacing: 15,
   viewportWidth: 1200,
