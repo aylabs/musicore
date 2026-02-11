@@ -170,12 +170,20 @@ export function ImportButton({
             <details className="import-warnings">
               <summary>{result.warnings.length} warning(s)</summary>
               <ul>
-                {result.warnings.map((warning, index) => (
-                  <li key={index}>
-                    {warning.context ? `[${warning.context}] ` : ""}
-                    {warning.message}
-                  </li>
-                ))}
+                {result.warnings.map((warning, index) => {
+                  const contextParts = [];
+                  if (warning.measure_number) contextParts.push(`measure ${warning.measure_number}`);
+                  if (warning.instrument_name) contextParts.push(warning.instrument_name);
+                  if (warning.staff_number) contextParts.push(`staff ${warning.staff_number}`);
+                  if (warning.voice_number) contextParts.push(`voice ${warning.voice_number}`);
+                  const context = contextParts.length > 0 ? `[${contextParts.join(', ')}] ` : '';
+                  
+                  return (
+                    <li key={index}>
+                      {context}{warning.message}
+                    </li>
+                  );
+                })}
               </ul>
             </details>
           )}

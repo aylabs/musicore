@@ -169,9 +169,12 @@ musicore/
 
 ## Implementation Progress
 
-**Overall: Features 001-014 Complete**
+**Overall: Features 001-015 Complete**
 
 **Recent Features:**
+- ✅ Feature 015: Resilient MusicXML Import - Error recovery, voice splitting, warning diagnostics
+  - **Validated with**: Moonlight Sonata, Bach Preludes & Inventions, Mozart Piano Sonatas, Chopin Préludes
+  - **Capabilities**: Overlapping note resolution, structural issue recovery, detailed import warnings
 - ✅ Feature 012: PWA Distribution - GitHub Pages deployment, offline-first architecture
 - ✅ Feature 013: Demo & Onboarding - First-run demo score, welcome experience
 - ✅ Feature 014: Remove Editing Interface - Read-only viewer focus

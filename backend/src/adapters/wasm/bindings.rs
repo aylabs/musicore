@@ -2,39 +2,100 @@
 // Exports Rust functions to JavaScript using wasm-bindgen
 
 use wasm_bindgen::prelude::*;
-use crate::domain::importers::musicxml::{MusicXMLParser, MusicXMLConverter};
+use crate::domain::importers::musicxml::{MusicXMLParser, MusicXMLConverter, ImportContext};
 use crate::adapters::dtos::ScoreDto;
+use crate::ports::importers::ImportResult;
 use super::error_handling::import_error_to_js;
 
 // ============================================================================
 // Phase 3: User Story 1 - MusicXML Parsing
 // ============================================================================
 
-/// Parse MusicXML content and return a Score
+/// Parse MusicXML content and return ImportResult with Score, metadata, statistics, and warnings
 ///
 /// # Arguments
 /// * `xml_content` - MusicXML file content as string
 ///
 /// # Returns
-/// * JsValue representing the parsed Score (serialized as JSON)
+/// * JsValue representing ImportResult (Score with warnings and statistics)
 ///
 /// # Errors
 /// * Returns JsValue error if parsing or conversion fails
 #[wasm_bindgen]
 pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
+    // Create import context for warning collection
+    let mut context = ImportContext::new();
+    
     // Parse XML into intermediate MusicXMLDocument
-    let doc = MusicXMLParser::parse(xml_content)
+    let doc = MusicXMLParser::parse(xml_content, &mut context)
         .map_err(import_error_to_js)?;
+    
+    // Store format for metadata
+    let format = format!("MusicXML {}", doc.version);
     
     // Convert MusicXMLDocument to domain Score
-    let score = MusicXMLConverter::convert(doc)
+    let score = MusicXMLConverter::convert(doc, &mut context)
         .map_err(import_error_to_js)?;
     
-    // Convert to DTO with active_clef field (same as API handlers)
+    // Extract warnings and counts from context
+    let skipped_element_count = context.skipped_element_count();
+    let warnings = context.finish();
+    
+    // Calculate statistics
+    let instrument_count = score.instruments.len();
+    let staff_count = score.instruments.iter()
+        .map(|inst| inst.staves.len())
+        .sum();
+    let voice_count = score.instruments.iter()
+        .flat_map(|inst| &inst.staves)
+        .map(|staff| staff.voices.len())
+        .sum();
+    let note_count = score.instruments.iter()
+        .flat_map(|inst| &inst.staves)
+        .flat_map(|staff| &staff.voices)
+        .map(|voice| voice.interval_events.len())
+        .sum();
+    let duration_ticks = score.instruments.iter()
+        .flat_map(|inst| &inst.staves)
+        .flat_map(|staff| &staff.voices)
+        .flat_map(|voice| &voice.interval_events)
+        .map(|note| note.end_tick().value())
+        .max()
+        .unwrap_or(0);
+    
+    // Check if any Error-severity warnings exist (indicates partial import)
+    let partial_import = warnings.iter()
+        .any(|w| matches!(w.severity, crate::domain::importers::musicxml::WarningSeverity::Error));
+    
+    let warning_count = warnings.len();
+    
+    // Convert Score to DTO with active_clef field
     let score_dto = ScoreDto::from(&score);
     
-    // Serialize ScoreDto to JsValue for JavaScript
-    serde_wasm_bindgen::to_value(&score_dto)
+    // Build ImportResult
+    let result = ImportResult {
+        score,
+        metadata: crate::ports::importers::ImportMetadata {
+            format,
+            file_name: None,
+            work_title: None,
+            composer: None,
+        },
+        statistics: crate::ports::importers::ImportStatistics {
+            instrument_count,
+            staff_count,
+            voice_count,
+            note_count,
+            duration_ticks,
+            warning_count,
+            skipped_element_count,
+        },
+        warnings,
+        partial_import,
+    };
+    
+    // Serialize ImportResult to JsValue for JavaScript
+    serde_wasm_bindgen::to_value(&result)
         .map_err(|e| {
             JsValue::from_str(&format!("Serialization error: {}", e))
         })

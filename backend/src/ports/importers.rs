@@ -2,6 +2,7 @@
 
 use std::path::Path;
 use crate::domain::score::Score;
+use crate::domain::importers::musicxml::errors::{ImportWarning, WarningSeverity, WarningCategory};
 use serde::{Deserialize, Serialize};
 
 /// Result type for import operations with metadata and warnings
@@ -15,6 +16,8 @@ pub struct ImportResult {
     pub statistics: ImportStatistics,
     /// Non-fatal warnings during import
     pub warnings: Vec<ImportWarning>,
+    /// Indicates if import was partial (some content skipped due to errors)
+    pub partial_import: bool,
 }
 
 /// Metadata about the imported file
@@ -43,16 +46,14 @@ pub struct ImportStatistics {
     pub note_count: usize,
     /// Score duration in ticks
     pub duration_ticks: u32,
+    /// Number of warnings generated during import
+    pub warning_count: usize,
+    /// Number of elements skipped due to errors
+    pub skipped_element_count: usize,
 }
 
-/// Non-fatal warning during import
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ImportWarning {
-    /// Warning message
-    pub message: String,
-    /// Context (e.g., "measure 5, voice 2")
-    pub context: Option<String>,
-}
+// ImportWarning moved to musicxml/errors.rs (feature 015-musicxml-error-handling)
+// Re-exported through module imports above
 
 /// Port for MusicXML import functionality
 pub trait IMusicXMLImporter {

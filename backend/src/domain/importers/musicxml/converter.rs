@@ -16,6 +16,120 @@ use super::errors::ImportError;
 use super::types::{MusicXMLDocument, PartData, MeasureData, NoteData, MeasureElement};
 use super::timing::Fraction;
 use super::mapper::ElementMapper;
+use super::ImportContext;
+use std::collections::{BTreeMap, HashMap};
+
+/// Voice distributor for resolving overlapping notes by splitting into multiple voices
+/// 
+/// Uses deterministic algorithm: sort notes by (start_tick, pitch), then assign
+/// to first available voice that doesn't have overlapping notes. Maximum 4 voices.
+struct VoiceDistributor {
+    /// Voices being built, keyed by voice number (1-4)
+    voices: HashMap<usize, Voice>,
+    /// Maximum number of voices allowed per staff
+    max_voices: usize,
+}
+
+impl VoiceDistributor {
+    /// Create a new voice distributor with maximum 4 voices
+    fn new() -> Self {
+        Self {
+            voices: HashMap::new(),
+            max_voices: 4,
+        }
+    }
+
+    /// Assign notes to voices deterministically
+    /// 
+    /// # Algorithm
+    /// 1. Sort notes by (start_tick, pitch) using BTreeMap for deterministic iteration
+    /// 2. For each note, try voices 1-4 in order
+    /// 3. Assign to first voice where note doesn't overlap
+    /// 4. If all 4 voices occupied, record warning and skip note
+    /// 
+    /// # Returns
+    /// Vec of voices (may be 1-4 voices depending on overlap patterns)
+    fn assign_voices(
+        notes: Vec<Note>,
+        context: &mut ImportContext,
+    ) -> Result<Vec<Voice>, ImportError> {
+        let mut distributor = Self::new();
+        
+        // Sort notes by (start_tick, pitch) for deterministic processing
+        // BTreeMap provides sorted iteration
+        let mut sorted_notes: BTreeMap<(u32, u8), Note> = BTreeMap::new();
+        for note in notes {
+            let key = (note.start_tick.value(), note.pitch.value());
+            sorted_notes.insert(key, note);
+        }
+        
+        // Assign each note to a voice
+        for ((_tick, _pitch), note) in sorted_notes {
+            distributor.assign_note(note, context)?;
+        }
+        
+        // Extract voices in sorted order (1, 2, 3, 4)
+        let mut result = Vec::new();
+        for voice_num in 1..=distributor.max_voices {
+            if let Some(voice) = distributor.voices.remove(&voice_num) {
+                result.push(voice);
+            }
+        }
+        
+        // Ensure at least one voice always exists
+        if result.is_empty() {
+            result.push(Voice::new());
+        }
+        
+        Ok(result)
+    }
+    
+    /// Assign a single note to the first available voice
+    fn assign_note(&mut self, note: Note, context: &mut ImportContext) -> Result<(), ImportError> {
+        // Save tick for warning messages before moving note
+        let note_tick = note.start_tick.value();
+        
+        // Try voices 1-4 in order
+        for voice_num in 1..=self.max_voices {
+            let voice = self.voices.entry(voice_num).or_insert_with(Voice::new);
+            
+            // Check if note can be added without overlap
+            if voice.can_add_note(&note) {
+                // Add note (should not fail since we just checked)
+                voice.add_note(note)?;
+                
+                // Record warning if we're using voice 2+ (indicates overlap resolution)
+                if voice_num > 1 {
+                    context.warn(
+                        super::WarningSeverity::Warning,
+                        super::WarningCategory::OverlapResolution,
+                        format!(
+                            "Overlapping notes at tick {} - note assigned to voice {}",
+                            note_tick,
+                            voice_num
+                        ),
+                    );
+                }
+                
+                return Ok(());
+            }
+        }
+        
+        // If we get here, all 4 voices are full - skip note with Error warning
+        context.warn(
+            super::WarningSeverity::Error,
+            super::WarningCategory::OverlapResolution,
+            format!(
+                "Voice overflow: Note at tick {} could not be assigned (all 4 voices occupied)",
+                note_tick
+            ),
+        );
+        context.skip_element();
+        
+        Ok(())
+    }
+}
+
 
 /// Context for timing calculations during conversion
 #[derive(Debug, Clone)]
@@ -69,10 +183,11 @@ impl MusicXMLConverter {
     ///
     /// # Arguments
     /// * `doc` - Parsed MusicXML document
+    /// * `context` - Import context for warning collection
     ///
     /// # Returns
     /// Score with all instruments, staves, voices, and events
-    pub fn convert(doc: MusicXMLDocument) -> Result<Score, ImportError> {
+    pub fn convert(doc: MusicXMLDocument, context: &mut ImportContext) -> Result<Score, ImportError> {
         // Create Score with defaults (120 BPM, 4/4 time signature)
         let mut score = Score::new();
 
@@ -94,7 +209,7 @@ impl MusicXMLConverter {
 
         // Convert each part to an Instrument
         for part_data in doc.parts {
-            let instrument = Self::convert_part(part_data)?;
+            let instrument = Self::convert_part(part_data, context)?;
             score.add_instrument(instrument);
         }
 
@@ -102,7 +217,7 @@ impl MusicXMLConverter {
     }
 
     /// Converts PartData to Instrument
-    fn convert_part(part_data: PartData) -> Result<Instrument, ImportError> {
+    fn convert_part(part_data: PartData, context: &mut ImportContext) -> Result<Instrument, ImportError> {
         let name = if part_data.name.is_empty() {
             format!("Instrument {}", part_data.id)
         } else {
@@ -116,11 +231,11 @@ impl MusicXMLConverter {
         // Check staff count and route accordingly
         if part_data.staff_count <= 1 {
             // Single-staff instrument (US1)
-            let staff = Self::convert_staff_for_single_staff(&part_data)?;
+            let staff = Self::convert_staff_for_single_staff(&part_data, context)?;
             instrument.add_staff(staff);
         } else {
             // Multi-staff instrument (US2) - e.g., piano grand staff
-            let staves = Self::convert_multi_staff(&part_data)?;
+            let staves = Self::convert_multi_staff(&part_data, context)?;
             for staff in staves {
                 instrument.add_staff(staff);
             }
@@ -130,7 +245,7 @@ impl MusicXMLConverter {
     }
 
     /// Converts PartData to multiple Staff entities for multi-staff instruments (US2)
-    fn convert_multi_staff(part_data: &PartData) -> Result<Vec<Staff>, ImportError> {
+    fn convert_multi_staff(part_data: &PartData, context: &mut ImportContext) -> Result<Vec<Staff>, ImportError> {
         let mut staves = Vec::new();
         
         // Create a staff for each staff number (1-indexed in MusicXML)
@@ -161,8 +276,13 @@ impl MusicXMLConverter {
             }
             
             // Convert measures to voice, filtering by staff number
-            let voice = Self::convert_voice_for_staff(&part_data.measures, staff_num)?;
-            staff.add_voice(voice);
+            let notes = Self::collect_notes_for_staff(&part_data.measures, staff_num, context)?;
+            let voices = VoiceDistributor::assign_voices(notes, context)?;;
+            
+            // Add all voices to staff
+            for voice in voices {
+                staff.add_voice(voice);
+            }
             
             staves.push(staff);
         }
@@ -171,7 +291,7 @@ impl MusicXMLConverter {
     }
 
     /// Converts PartData to Staff for single-staff instruments (US1)
-    fn convert_staff_for_single_staff(part_data: &PartData) -> Result<Staff, ImportError> {
+    fn convert_staff_for_single_staff(part_data: &PartData, context: &mut ImportContext) -> Result<Staff, ImportError> {
         // Create staff with defaults (Treble clef, C major, 1 voice)
         let mut staff = Staff::new();
         
@@ -198,14 +318,77 @@ impl MusicXMLConverter {
             }
         }
 
-        // Convert measures to voice with notes (no staff filtering for single staff)
-        let voice = Self::convert_voice(&part_data.measures)?;
-        staff.add_voice(voice);
+        // Convert measures to notes, then distribute across voices
+        let notes = Self::collect_notes(&part_data.measures, context)?;
+        let voices = VoiceDistributor::assign_voices(notes, context)?;;
+        
+        // Add all voices to staff
+        for voice in voices {
+            staff.add_voice(voice);
+        }
 
         Ok(staff)
     }
 
-    /// Converts measures to Voice with all notes (for single-staff instruments)
+    /// Collects all notes from measures without adding to voices (for voice distribution)
+    fn collect_notes(measures: &[MeasureData], context: &mut ImportContext) -> Result<Vec<Note>, ImportError> {
+        let mut notes = Vec::new();
+        let mut timing_context = TimingContext::new();
+
+        for measure in measures {
+            // Process attributes first (update divisions, ignore structural events)
+            if let Some(attrs) = &measure.attributes {
+                if let Some(divisions) = attrs.divisions {
+                    timing_context.set_divisions(divisions);
+                }
+                // Note: Tempo, time sig, clef, key are handled at Score/Staff level
+                // They are not added to Voice - Voice only contains Notes
+            }
+
+            // Process musical elements (notes, rests, backup/forward)
+            for element in &measure.elements {
+                match element {
+                    MeasureElement::Note(note_data) => {
+                        // Try to convert note, skip if invalid (e.g., zero duration)
+                        match Self::convert_note(note_data, &mut timing_context) {
+                            Ok(note) => notes.push(note),
+                            Err(e) => {
+                                // Skip malformed note with warning
+                                context.warn(
+                                    super::WarningSeverity::Warning,
+                                    super::WarningCategory::StructuralIssues,
+                                    format!("Skipping invalid note: {}", e),
+                                );
+                                context.skip_element();
+                            }
+                        }
+                    }
+                    MeasureElement::Rest(rest_data) => {
+                        // Advance timing without creating note (rests are implicit)
+                        timing_context.advance_by_duration(rest_data.duration)?;
+                    }
+                    MeasureElement::Backup(duration) => {
+                        // Move timing cursor backward
+                        let fraction = Fraction::from_musicxml(*duration, timing_context.divisions);
+                        let ticks = fraction.to_ticks()?;
+                        if timing_context.current_tick >= ticks as u32 {
+                            timing_context.current_tick -= ticks as u32;
+                        }
+                    }
+                    MeasureElement::Forward(duration) => {
+                        // Move timing cursor forward
+                        timing_context.advance_by_duration(*duration)?;
+                    }
+                }
+            }
+        }
+
+        Ok(notes)
+    }
+
+    /// Converts measures to Voice with all notes (for single-staff instruments) - DEPRECATED
+    /// Use collect_notes + VoiceDistributor instead
+    #[allow(dead_code)]
     fn convert_voice(measures: &[MeasureData]) -> Result<Voice, ImportError> {
         let mut voice = Voice::new();
         let mut timing_context = TimingContext::new();
@@ -250,7 +433,86 @@ impl MusicXMLConverter {
         Ok(voice)
     }
 
-    /// Converts measures to Voice with notes filtered by staff number (for multi-staff instruments)
+    /// Collects notes filtered by staff number (for multi-staff instruments)
+    fn collect_notes_for_staff(measures: &[MeasureData], staff_num: usize, context: &mut ImportContext) -> Result<Vec<Note>, ImportError> {
+        let mut notes = Vec::new();
+        let mut timing_context = TimingContext::new();
+
+        for measure in measures {
+            // Track measure start for backup/forward within THIS measure only
+            let measure_start_tick = timing_context.current_tick;
+            
+            // Process attributes first (update divisions, ignore structural events)
+            if let Some(attrs) = &measure.attributes {
+                if let Some(divisions) = attrs.divisions {
+                    timing_context.set_divisions(divisions);
+                }
+            }
+
+            // Process musical elements, filtering by staff number
+            // Track maximum tick reached in this measure for staff timing
+            let mut max_tick_in_measure = measure_start_tick;
+            
+            for element in &measure.elements {
+                match element {
+                    MeasureElement::Note(note_data) => {
+                        // Only process notes for this staff
+                        if note_data.staff == staff_num {
+                            // Try to convert note, skip if invalid (e.g., zero duration)
+                            match Self::convert_note(note_data, &mut timing_context) {
+                                Ok(note) => {
+                                    notes.push(note);
+                                    // Track the maximum tick reached for this staff in this measure
+                                    max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                                }
+                                Err(e) => {
+                                    // Skip malformed note with warning
+                                    context.warn(
+                                        super::WarningSeverity::Warning,
+                                        super::WarningCategory::StructuralIssues,
+                                        format!("Skipping invalid note: {}", e),
+                                    );
+                                    context.skip_element();
+                                }
+                            }
+                        }
+                        // Notes on other staves don't affect our timing
+                    }
+                    MeasureElement::Rest(rest_data) => {
+                        // Only process rests for this staff
+                        if rest_data.staff == staff_num {
+                            timing_context.advance_by_duration(rest_data.duration)?;
+                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                        }
+                    }
+                    MeasureElement::Backup(_duration) => {
+                        // In multi-staff notation, backup is used to go back and write
+                        // notes for the next staff. We ignore it since each staff tracks
+                        // timing independently. Backup typically happens after all notes
+                        // for staff 1, resetting to measure start to write staff 2.
+                        // Reset to measure start ONLY within this measure
+                        timing_context.current_tick = measure_start_tick;
+                    }
+                    MeasureElement::Forward(duration) => {
+                        // Forward advances time (e.g., for multi-voice within same staff)
+                        // Only apply if it's relevant to this staff's timing
+                        timing_context.advance_by_duration(*duration)?;
+                        max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                    }
+                }
+            }
+            
+            // After processing the measure, ensure timing advances to the end of the measure
+            // This prevents backup from affecting the next measure's start position
+            timing_context.current_tick = max_tick_in_measure;
+        }
+
+        Ok(notes)
+    }
+
+    /// Converts measures to Voice with notes filtered by staff number (for multi-staff instruments) - DEPRECATED
+    /// Use collect_notes_for_staff + VoiceDistributor instead
+    #[allow(dead_code)]
     fn convert_voice_for_staff(measures: &[MeasureData], staff_num: usize) -> Result<Voice, ImportError> {
         let mut voice = Voice::new();
         let mut timing_context = TimingContext::new();
@@ -414,7 +676,8 @@ mod tests {
         doc.parts.push(part);
 
         // Convert to Score
-        let result = MusicXMLConverter::convert(doc);
+        let mut context = ImportContext::new();
+        let result = MusicXMLConverter::convert(doc, &mut context);
         assert!(result.is_ok(), "Conversion should succeed: {:?}", result.err());
 
         let score = result.unwrap();

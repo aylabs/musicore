@@ -17,7 +17,11 @@ A tablet-native app for interactive scores, designed for practice and performanc
 - **Proportional spacing** based on musical timing
 
 ### 🎵 Score Management
-- **MusicXML import** - Load industry-standard MusicXML files
+- **MusicXML import** - Load industry-standard MusicXML files with resilient error handling
+  - **Overlapping note resolution** - Automatically distributes notes to multiple voices
+  - **Structural issue recovery** - Gracefully handles invalid notes (zero duration, malformed data)
+  - **Import warnings** - Detailed diagnostics (OverlapResolution, StructuralIssues, MissingElements, PartialImport)
+  - **Validated with real-world files** - Successfully imports Moonlight Sonata, Bach Preludes, Mozart Sonatas, Chopin Préludes
 - **Demo score** on first launch for immediate exploration
 - **Offline storage** - Scores persist locally using IndexedDB
 - **View-only mode** - Focus on reading and performance (editing removed)

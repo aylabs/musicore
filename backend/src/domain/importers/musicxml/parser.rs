@@ -7,6 +7,7 @@ use std::io::BufRead;
 
 use super::errors::ImportError;
 use super::types::*;
+use super::ImportContext;
 
 /// Parses MusicXML documents into intermediate data structures
 pub struct MusicXMLParser;
@@ -16,10 +17,11 @@ impl MusicXMLParser {
     ///
     /// # Arguments
     /// * `xml_content` - Raw XML string from .musicxml or .mxl file
+    /// * `context` - Import context for warning collection
     ///
     /// # Returns
     /// MusicXMLDocument with all parts, measures, and elements
-    pub fn parse(xml_content: &str) -> Result<MusicXMLDocument, ImportError> {
+    pub fn parse(xml_content: &str, context: &mut ImportContext) -> Result<MusicXMLDocument, ImportError> {
         let mut reader = Reader::from_str(xml_content);
         reader.trim_text(true);
 

@@ -1,6 +1,6 @@
 // Integration tests for MusicXML Import - Feature 006-musicxml-import
 
-use musicore_backend::domain::importers::musicxml::{MusicXMLParser, MusicXMLImporter, CompressionHandler};
+use musicore_backend::domain::importers::musicxml::{MusicXMLParser, MusicXMLImporter, CompressionHandler, ImportContext};
 use musicore_backend::ports::importers::IMusicXMLImporter;
 use std::path::Path;
 use std::env;
@@ -16,7 +16,8 @@ fn test_parse_simple_melody() {
         .expect("Failed to load simple_melody.musicxml");
     
     // Parse into MusicXMLDocument
-    let doc = MusicXMLParser::parse(&xml_content)
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(&xml_content, &mut context)
         .expect("Failed to parse simple_melody.musicxml");
     
     // Verify document structure
@@ -76,7 +77,8 @@ fn test_parse_malformed_xml() {
     let xml_content = CompressionHandler::load_content(fixture_path)
         .expect("Failed to load malformed.xml");
     
-    let result = MusicXMLParser::parse(&xml_content);
+    let mut context = ImportContext::new();
+    let result = MusicXMLParser::parse(&xml_content, &mut context);
     
     assert!(result.is_err(), "Expected parse error for malformed XML");
     
@@ -124,7 +126,8 @@ fn test_parse_note_with_pitch() {
   </part>
 </score-partwise>"#;
     
-    let doc = MusicXMLParser::parse(xml).expect("Failed to parse");
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
     
     assert_eq!(doc.parts.len(), 1);
     let measure = &doc.parts[0].measures[0];
@@ -164,7 +167,8 @@ fn test_parse_rest() {
   </part>
 </score-partwise>"#;
     
-    let doc = MusicXMLParser::parse(xml).expect("Failed to parse");
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
     
     let measure = &doc.parts[0].measures[0];
     match &measure.elements[0] {
