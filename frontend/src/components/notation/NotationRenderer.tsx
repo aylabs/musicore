@@ -58,7 +58,10 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   pixelsPerTick = 0.1,
   highlightedNoteIds = [], // T021: Default to empty array
 }) => {
-  const handleNoteClick = (noteId: string) => {
+  const handleNoteClick = (noteId: string, e: React.MouseEvent) => {
+    // Stop propagation to prevent triggering container's playback toggle
+    e.stopPropagation();
+    
     if (onNoteClick) {
       onNoteClick(noteId);
     }
@@ -155,7 +158,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
             fill={selectedNoteId === note.id ? 'blue' : 'black'}
             textAnchor="middle"
             dominantBaseline="central"
-            onClick={() => handleNoteClick(note.id)}
+            onClick={(e) => handleNoteClick(note.id, e)}
             style={{ cursor: 'pointer' }}
           >
             {note.glyphCodepoint}

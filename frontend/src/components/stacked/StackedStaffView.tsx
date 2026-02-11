@@ -28,7 +28,7 @@ interface StackedStaffViewProps {
   playbackStatus?: PlaybackStatus;
   onSeekToTick?: (tick: number) => void;
   onUnpinStartTick?: () => void;
-  /** Callback to toggle playback (play/stop) when tapping outside staff regions */
+  /** Callback to toggle playback (play/pause) when tapping outside staff regions */
   onTogglePlayback?: () => void;
 }
 
@@ -142,9 +142,10 @@ export function StackedStaffView({
   };
 
   // Handle clicks on container background (outside staff regions) to toggle playback
-  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only toggle if clicking directly on the container background, not on staff content
-    if (e.target === e.currentTarget && onTogglePlayback) {
+  const handleContainerClick = () => {
+    // Toggle playback when clicking anywhere in the container
+    // Note clicks will stop propagation, so this won't trigger when selecting notes
+    if (onTogglePlayback) {
       onTogglePlayback();
     }
   };
