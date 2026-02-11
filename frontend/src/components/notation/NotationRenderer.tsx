@@ -86,7 +86,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           y2={line.y}
           stroke="black"
           strokeWidth={line.strokeWidth}
-          opacity={0.55}
+          opacity={0.50}
         />
       ))}
 
@@ -116,7 +116,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
             fill="black"
             textAnchor="middle"
             dominantBaseline="central"
-            opacity={0.65}
+            opacity={0.60}
           >
             {layout.clef.glyphCodepoint}
           </text>
@@ -174,7 +174,7 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           y2={barline.y2}
           stroke="black"
           strokeWidth={barline.strokeWidth}
-          opacity={0.65}
+          opacity={0.60}
         />
       ))}
 

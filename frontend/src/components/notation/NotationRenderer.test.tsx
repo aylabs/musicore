@@ -832,31 +832,31 @@ describe('NotationRenderer', () => {
       visibleNoteIndices: { startIdx: 0, endIdx: 1 },
     };
 
-    it('should render staff lines with opacity 0.55', () => {
+    it('should render staff lines with opacity 0.50', () => {
       // T015 [US2]: Staff lines should have reduced opacity for visual subordination
       const { container } = render(<NotationRenderer layout={mockLayout} />);
       
       const staffLine1 = container.querySelector('[data-testid="staff-line-1"]');
       expect(staffLine1).toBeDefined();
-      expect(staffLine1?.getAttribute('opacity')).toBe('0.55');
+      expect(staffLine1?.getAttribute('opacity')).toBe('0.5');
     });
 
-    it('should render bar lines with opacity 0.65', () => {
+    it('should render bar lines with opacity 0.60', () => {
       // T016 [US2]: Bar lines should have moderate opacity (darker than staff, lighter than notes)
       const { container } = render(<NotationRenderer layout={mockLayout} />);
       
       const barline = container.querySelector('[data-testid="bar-0"]');
       expect(barline).toBeDefined();
-      expect(barline?.getAttribute('opacity')).toBe('0.65');
+      expect(barline?.getAttribute('opacity')).toBe('0.6');
     });
 
-    it('should render clefs with opacity 0.65', () => {
+    it('should render clefs with opacity 0.60', () => {
       // T017 [US2]: Clefs should have same opacity as bar lines (visible but subordinate)
       const { container } = render(<NotationRenderer layout={mockLayout} />);
       
       const clef = container.querySelector('[data-testid="clef-Treble"]');
       expect(clef).toBeDefined();
-      expect(clef?.getAttribute('opacity')).toBe('0.65');
+      expect(clef?.getAttribute('opacity')).toBe('0.6');
     });
 
     it('should render note heads with full opacity (1.0 or no attribute)', () => {
