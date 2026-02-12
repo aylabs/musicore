@@ -29,3 +29,8 @@ release/
 *.rs.bk
 *.rlib
 *.prof*
+
+# Testing
+test-results/
+playwright-report/
+*-analysis.txt

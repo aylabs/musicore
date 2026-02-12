@@ -86,8 +86,10 @@ Tested with 5 real-world classical piano pieces:
 ## Test Results
 
 ✅ **Backend**: 161 tests passing (0 failures)  
-✅ **Frontend**: 573 tests passing (7 pre-existing UI failures unrelated)  
-✅ **WASM Module**: Built successfully (256K module, 32K JS bindings)
+✅ **Frontend**: 577 tests passing (573 unit + 4 integration)  
+✅ **E2E**: 2 Playwright tests (Chromium browser)
+✅ **WASM Module**: Built successfully (256K module, 32K JS bindings)  
+✅ **Docker**: Multi-stage build passing
 
 ## Documentation Updates
 
@@ -108,6 +110,44 @@ Tested with 5 real-world classical piano pieces:
 
 None. All existing tests pass, backward compatibility maintained.
 
+## Post-MVP Stabilization
+
+### Bug Fixes (Production Deployment)
+
+**Issue 1: TypeScript Compilation Errors** (commit dfeb0d6)
+- Fixed ImportButton context string building (was accessing undefined properties)
+- Added missing `partial_import` and `statistics` fields to ImportResult interface
+- Docker build now succeeds without TypeScript errors
+
+**Issue 2: PWA Runtime Crash** (commit 040bb30)
+- **Root cause**: WASM returns `WasmImportResult` structure but frontend expected `Score` directly
+- **Fix**: Updated `parseMusicXML()` to return full `WasmImportResult` (with score, statistics, warnings)
+- **Impact**: All WASM callers updated to access `result.score` instead of treating result as Score
+- **Error fixed**: `TypeError: a.instruments is not iterable` in production PWA
+
+### Testing Infrastructure (commit 91c85a5)
+
+**Why Added**: All 573 unit tests mock WASM module → never test real Rust↔JS boundary. The PWA crash bug passed all tests but failed in production.
+
+**New Test Coverage**:
+- ✅ **WASM Contract Tests** (4 tests): Validate TypeScript interfaces match Rust structures
+- ✅ **Playwright E2E Tests** (2 tests): Load real WASM in Chromium, test full import flow
+- ✅ **Test Fixtures**: Simple C-scale MusicXML file for integration testing
+- ✅ **Configuration**: Conditional HTTPS in Vite (HTTP for E2E), auto dev server in Playwright
+
+**What This Catches**:
+- ✓ Wrong return types from WASM
+- ✓ Missing properties in interfaces
+- ✓ Runtime crashes in browser
+- ✓ Integration bugs at Rust↔JS boundary
+
+**Test Commands**:
+```bash
+npm test                    # Unit + integration tests
+npm run test:e2e           # E2E tests (headless)
+npm run test:e2e:ui        # E2E tests (debug mode)
+```
+
 ## Future Enhancements (Not in MVP)
 
 - **User Story 2**: Missing/invalid elements (dynamics, articulations, lyrics)
@@ -117,7 +157,13 @@ None. All existing tests pass, backward compatibility maintained.
 
 ## Files Changed
 
-28 files, 2,605 insertions, 67 deletions
+**4 commits, 35 files changed, ~2,800 insertions, ~70 deletions**
+
+**Commits**:
+1. `629abc6` - Feature 015 MVP implementation (resilient MusicXML import)
+2. `dfeb0d6` - Fix TypeScript compilation errors in frontend
+3. `040bb30` - Fix WASM ImportResult structure handling (PWA crash)
+4. `91c85a5` - Add Playwright E2E and WASM contract integration tests
 
 **Backend** (13 files):
 - `backend/Cargo.toml` - Added encoding_rs dependency
@@ -131,9 +177,18 @@ None. All existing tests pass, backward compatibility maintained.
 - `backend/tests/musicxml_import_test.rs` - Added ImportContext to tests
 - `frontend/public/wasm/*` - Updated WASM artifacts
 
-**Frontend** (2 files):
+**Frontend** (9 files):
 - `frontend/src/types/import-warning.ts` - New TypeScript contracts
-- `frontend/src/services/import/MusicXMLImportService.ts` - Extended types
+- `frontend/src/services/import/MusicXMLImportService.ts` - Extended types, use WASM statistics
+- `frontend/src/services/wasm/music-engine.ts` - Return WasmImportResult structure
+- `frontend/src/services/onboarding/demoLoader.ts` - Access result.score.instruments
+- `frontend/src/components/import/ImportButton.tsx` - Fix context string building
+- `frontend/playwright.config.ts` - E2E test configuration
+- `frontend/e2e/import-musicxml.spec.ts` - 2 E2E tests for import flow
+- `frontend/tests/integration/wasm-import.test.ts` - 4 WASM contract tests
+- `frontend/tests/fixtures/simple-c-scale.musicxml` - Test fixture
+- `frontend/vite.config.ts` - Conditional HTTPS for E2E testing
+- `frontend/package.json` - Added Playwright dependency + test scripts
 
 **Documentation** (3 files):
 - `FEATURES.md`, `README.md`, `backend/README.md`
