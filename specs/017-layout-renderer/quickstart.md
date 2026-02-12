@@ -2,7 +2,7 @@
 
 *Feature 017 - Developer Integration Guide*
 
-This guide shows how to integrate the layout-driven renderer into the music notation viewer.
+This guide shows how to integrate the SVG-based layout renderer into the music notation viewer.
 
 ---
 
@@ -13,21 +13,20 @@ This guide shows how to integrate the layout-driven renderer into the music nota
 The renderer depends on Feature 016's layout computation. Ensure you have:
 
 1. **Layout engine built**: `cd backend && cargo build --target wasm32-unknown-unknown`
-2. **WASM bindings working**: `frontend/src/wasm/` contains layout.wasm
-3. **layoutUtils.ts available**: `frontend/src/utils/layoutUtils.ts` with 47 passing tests
+2. **WASM bindings working**: `frontend/src/wasm/` contains layout types
+3. **Test fixtures available**: `frontend/tests/fixtures/`contains layout JSON files
 
 Verify prerequisites:
 
 ```bash
-# Check WASM build
-ls frontend/src/wasm/layout.wasm
+# Check layout types
+ls frontend/src/wasm/layout.ts
 
-# Run layout tests
-cd backend && cargo test layout
-cd ../frontend && npm test layoutUtils.test.ts
+# Run tests
+cd frontend && npm test
 ```
 
-**Expected output**: All tests passing, WASM file present.
+**Expected output**: All tests passing (168 passing total).
 
 ---
 
@@ -35,36 +34,46 @@ cd ../frontend && npm test layoutUtils.test.ts
 
 ### 1. No additional dependencies needed
 
-The renderer uses Canvas 2D API (browser built-in) and existing Feature 016 dependencies.
+The renderer uses SVG DOM API (browser built-in). The Bravura SMuFL font is already configured.
 
-Verify Bravura font is loaded (already in project):
+Verify Bravura font is loaded:
 
 ```typescript
-// In frontend/src/app.tsx or layout.tsx
-import '@/assets/fonts/bravura.css';
+// Font should be available via RenderConfig
+import { createDefaultConfig } from '@/utils/renderUtils';
+
+const config = createDefaultConfig();
+console.log(config.fontFamily); // 'Bravura'
 ```
 
 ---
 
 ## Basic Usage
 
-### 2. Create LayoutRenderer instance
+### 2. Import LayoutRenderer component
 
 ```typescript
-// In ScoreViewer.tsx or equivalent component
+// In your React component
 import { LayoutRenderer } from '@/components/LayoutRenderer';
-import type { RenderConfig } from '@/types/RenderConfig';
+import { createDefaultConfig } from '@/utils/renderUtils';
+import type { GlobalLayout } from '@/wasm/layout';
+import type { Viewport } from '@/types/Viewport';
 
-const canvas = canvasRef.current; // HTMLCanvasElement from useRef
-const config: RenderConfig = {
-  pixelsPerSpace: 10,
-  fontFamily: 'Bravura',
-  backgroundColor: '#FFFFFF',
-  staffLineColor: '#000000',
-  glyphColor: '#000000'
-};
+// Load layout from fixture or compute from score
+import violinLayout from '@/tests/fixtures/violin_10_measures.json';
 
-const renderer = new LayoutRenderer(canvas, config);
+function ScoreDisplay() {
+  const layout = violinLayout as GlobalLayout;
+  const config = createDefaultConfig();
+  const viewport: Viewport = {
+    x: 0,
+    y: 0,
+    width: 1200,
+    height: 800
+  };
+
+  return <LayoutRenderer layout={layout} config={config} viewport={viewport} />;
+}
 ```
 
 ---
@@ -72,132 +81,208 @@ const renderer = new LayoutRenderer(canvas, config);
 ### 3. Compute layout (using Feature 016)
 
 ```typescript
-import { computeLayout } from '@/utils/layoutUtils';
+// If you have a CompiledScore from Feature 015
+import { computeLayout } from '@/wasm/layout';
 import type { CompiledScore } from '@/types/CompiledScore';
-import type { LayoutConfig } from '@/types/LayoutConfig';
 
 const score: CompiledScore = /* ... loaded from backend */;
-const layoutConfig: LayoutConfig = {
-  pageWidth: 800, // Logical units (800 ÷ 20 = 40 staff spaces)
-  marginTop: 40,
-  marginBottom: 40,
-  systemSpacing: 80
-};
 
-const layout = computeLayout(score, layoutConfig);
+// Compute layout with default settings
+const layout = computeLayout(score);
+
+// Use in renderer
+<LayoutRenderer layout={layout} config={config} viewport={viewport} />
 ```
 
 ---
 
-### 4. Render on canvas
+### 4. Render with viewport control
+
+The renderer uses viewBox for resolution-independent rendering:
 
 ```typescript
-import type { Viewport } from '@/types/Viewport';
+import { useState } from 'react';
 
-const viewport: Viewport = {
-  x: 0,
-  y: 0, // Top of score
-  width: canvas.width,
-  height: canvas.height
-};
+function ZoomableScore() {
+  const [viewport, setViewport] = useState<Viewport>({
+    x: 0,
+    y: 0,
+    width: 1200,
+    height: 800
+  });
 
-renderer.render(layout, viewport);
+  const handleZoomIn = () => {
+    setViewport(prev => ({
+      ...prev,
+      width: prev.width / 1.2,
+      height: prev.height / 1.2
+    }));
+  };
+
+  return (
+    <div>
+      <button onClick={handleZoomIn}>Zoom In</button>
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    </div>
+  );
+}
+```
+
 ```
 
 ---
 
 ## Integration Example: ScoreViewer Component
 
-Complete integration with scroll handling:
+Complete integration with scroll handling and zoom controls:
 
 ```typescript
-// frontend/src/components/ScoreViewer.tsx
-import React, { useRef, useEffect, useState } from 'react';
-import { LayoutRenderer } from './LayoutRenderer';
-import { computeLayout } from '@/utils/layoutUtils';
-import type { CompiledScore } from '@/types/CompiledScore';
-import type { GlobalLayout } from '@/types/GlobalLayout';
-import type { RenderConfig } from '@/types/RenderConfig';
-import type { Viewport } from '@/types/Viewport';
+// frontend/src/pages/ScoreViewer.tsx (T066-T067)
+import { Component, createRef, type RefObject } from 'react';
+import { LayoutRenderer } from '../components/LayoutRenderer';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { createDefaultConfig } from '../utils/renderUtils';
+import type { GlobalLayout } from '../wasm/layout';
+import type { RenderConfig } from '../types/RenderConfig';
+import type { Viewport } from '../types/Viewport';
 
 interface ScoreViewerProps {
-  score: CompiledScore;
-  pixelsPerSpace?: number;
+  layout: GlobalLayout | null;
+  darkMode?: boolean;
 }
 
-export const ScoreViewer: React.FC<ScoreViewerProps> = ({
-  score,
-  pixelsPerSpace = 10
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [renderer, setRenderer] = useState<LayoutRenderer | null>(null);
-  const [layout, setLayout] = useState<GlobalLayout | null>(null);
-  const [scrollY, setScrollY] = useState(0);
+interface ScoreViewerState {
+  viewport: Viewport;
+  zoom: number;
+  config: RenderConfig;
+}
 
-  // Initialize renderer and compute layout
-  useEffect(() => {
-    if (!canvasRef.current) return;
+export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
+  private containerRef: RefObject<HTMLDivElement>;
+  private scrollTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Create renderer
-    const config: RenderConfig = {
-      pixelsPerSpace,
+  constructor(props: ScoreViewerProps) {
+    super(props);
+    this.containerRef = createRef<HTMLDivElement>();
+
+    const config = props.darkMode
+      ? this.createDarkModeConfig()
+      : createDefaultConfig();
+
+    this.state = {
+      viewport: { x: 0, y: 0, width: 1200, height: 800 },
+      zoom: 1.0,
+      config,
+    };
+  }
+
+  private createDarkModeConfig(): RenderConfig {
+    return {
+      fontSize: 40,
       fontFamily: 'Bravura',
-      backgroundColor: '#FFFFFF',
-      staffLineColor: '#000000',
-      glyphColor: '#000000'
+      backgroundColor: '#1E1E1E',
+      staffLineColor: '#CCCCCC',
+      glyphColor: '#FFFFFF',
     };
-    const newRenderer = new LayoutRenderer(canvasRef.current, config);
-    setRenderer(newRenderer);
+  }
 
-    // Compute layout
-    const layoutConfig = {
-      pageWidth: 800, // 40 staff spaces
-      marginTop: 40,
-      marginBottom: 40,
-      systemSpacing: 80
-    };
-    const computedLayout = computeLayout(score, layoutConfig);
-    setLayout(computedLayout);
-  }, [score, pixelsPerSpace]);
+  componentDidMount(): void {
+    const container = this.containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', this.handleScroll);
+      this.updateViewport();
+    }
+  }
 
-  // Render on scroll
-  useEffect(() => {
-    if (!renderer || !layout || !canvasRef.current) return;
+  componentWillUnmount(): void {
+    const container = this.containerRef.current;
+    if (container) {
+      container.removeEventListener('scroll', this.handleScroll);
+    }
+    if (this.scrollTimer) {
+      clearTimeout(this.scrollTimer);
+    }
+  }
 
-    const viewport: Viewport = {
-      x: 0,
-      y: scrollY,
-      width: canvasRef.current.width,
-      height: canvasRef.current.height
-    };
-
-    renderer.render(layout, viewport);
-  }, [renderer, layout, scrollY]);
-
-  // Scroll event handler
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollY(e.currentTarget.scrollTop);
+  private handleScroll = (): void => {
+    if (this.scrollTimer) {
+      clearTimeout(this.scrollTimer);
+    }
+    this.scrollTimer = setTimeout(() => this.updateViewport(), 16);
   };
 
-  return (
-    <div
-      className="score-viewer"
-      onScroll={handleScroll}
-      style={{
-        width: '100%',
-        height: '100vh',
-        overflowY: 'scroll'
-      }}
-    >
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        style={{ display: 'block' }}
-      />
-    </div>
-  );
-};
+  private updateViewport(): void {
+    const container = this.containerRef.current;
+    if (!container || !this.props.layout) return;
+
+    const { zoom } = this.state;
+    const scrollTop = container.scrollTop;
+    const clientHeight = container.clientHeight;
+
+    this.setState({
+      viewport: {
+        x: 0,
+        y: scrollTop / zoom,
+        width: 1200,
+        height: clientHeight / zoom,
+      },
+    });
+  }
+
+  private handleZoomIn = (): void => {
+    this.setState(
+      (prev) => ({ zoom: Math.min(prev.zoom * 1.2, 4.0) }),
+      () => this.updateViewport()
+    );
+  };
+
+  private handleZoomOut = (): void => {
+    this.setState(
+      (prev) => ({ zoom: Math.max(prev.zoom / 1.2, 0.25) }),
+      () => this.updateViewport()
+    );
+  };
+
+  render() {
+    const { layout } = this.props;
+    const { viewport, zoom, config } = this.state;
+
+    if (!layout) {
+      return <div>No score loaded</div>;
+    }
+
+    const totalHeight = layout.total_height * zoom;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        {/* Zoom Controls */}
+        <div style={{ padding: '12px', backgroundColor: '#F5F5F5' }}>
+          <button onClick={this.handleZoomOut}>−</button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button onClick={this.handleZoomIn}>+</button>
+        </div>
+
+        {/* Scroll Container */}
+        <div
+          ref={this.containerRef}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            backgroundColor: config.backgroundColor,
+          }}
+        >
+          <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+            <div style={{ position: 'sticky', top: 0, height: '100vh' }}>
+              <ErrorBoundary>
+                <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+              </ErrorBoundary>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
 ```
 
 ---
@@ -206,74 +291,84 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
 
 ### Zoom Levels
 
-Adjust `pixelsPerSpace` for zoom functionality:
+Zoom is controlled via viewport dimensions (viewBox manipulation):
 
 ```typescript
-// Normal zoom (10px per staff space)
-const normalConfig: RenderConfig = {
-  pixelsPerSpace: 10,
-  /* ... */
+// Normal zoom (1.0x)
+const normalViewport: Viewport = {
+  x: 0,
+  y: 0,
+  width: 1200,
+  height: 800
 };
 
-// Zoomed in 2x (20px per staff space)
-const zoomedInConfig: RenderConfig = {
-  pixelsPerSpace: 20,
-  /* ... */
+// Zoomed in 2x (viewport shows half the area)
+const zoomedInViewport: Viewport = {
+  x: 0,
+  y: 0,
+  width: 600,   // Half width
+  height: 400   // Half height
 };
 
-// Zoomed out (8px per staff space)
-const zoomedOutConfig: RenderConfig = {
-  pixelsPerSpace: 8,
-  /* ... */
+// Zoomed out 0.5x (viewport shows double the area)
+const zoomedOutViewport: Viewport = {
+  x: 0,
+  y: 0,
+  width: 2400,  // Double width
+  height: 1600  // Double height
 };
 ```
 
-**Note**: Zoom changes rendering scale only. Layout computation is resolution-independent (uses logical units).
+**Note**: Zoom changes viewport size only. Layout computation is resolution-independent (uses logical units). SVG viewBox handles rendering at any scale.
 
 ---
 
 ### Dark Mode
 
-Customize colors for dark theme:
+Customize colors via RenderConfig:
 
 ```typescript
-const darkModeConfig: RenderConfig = {
-  pixelsPerSpace: 10,
+import { createDefaultConfig } from '@/utils/renderUtils';
+
+// Light mode (default)
+const lightConfig = createDefaultConfig();
+
+// Dark mode
+const darkConfig: RenderConfig = {
+  fontSize: 40,
   fontFamily: 'Bravura',
   backgroundColor: '#1E1E1E', // Dark gray
   staffLineColor: '#CCCCCC',  // Light gray
   glyphColor: '#FFFFFF'       // White
 };
 
-const renderer = new LayoutRenderer(canvas, darkModeConfig);
+// Use in renderer
+<LayoutRenderer layout={layout} config={darkConfig} viewport={viewport} />
 ```
 
 ---
 
-### Retina Display Support
+### High-DPI Display Support
 
-For high-DPI displays, scale canvas backing store:
+SVG rendering is automatically resolution-independent - no special handling needed for Retina/high-DPI displays.
 
-```typescript
-const canvas = canvasRef.current;
-const dpr = window.devicePixelRatio || 1;
+The browser's SVG engine handles:
+- Pixel density scaling (2x, 3x, etc.)
+- Crisp rendering at any zoom level
+- Font rendering at device resolution
 
-// Set display size (CSS pixels)
-canvas.style.width = `${width}px`;
-canvas.style.height = `${height}px`;
+**Why SVG?**
+- Resolution-independent by design
+- Sharp rendering on all devices (phones, tablets, 4K displays)
+- No manual scaling or DPI calculations needed
+- Better accessibility (text remains text, not rasterized)
 
-// Set backing store size (physical pixels)
-canvas.width = width * dpr;
-canvas.height = height * dpr;
-
-// Scale pixelsPerSpace for retina
-const config: RenderConfig = {
-  pixelsPerSpace: 10 * dpr, // 20 on 2x retina
-  /* ... */
-};
-
-const renderer = new LayoutRenderer(canvas, config);
-```
+**Trade-offs vs Canvas**:
+- ✅ Simpler code (no DPI scaling)
+- ✅ Better for accessibility
+- ✅ Easier debugging (inspect DOM)
+- ❌ Less pixel-perfect control
+- ❌ Reliant on browser SVG engine performance
 
 ---
 
@@ -281,25 +376,54 @@ const renderer = new LayoutRenderer(canvas, config);
 
 ### Unit Tests
 
-Test coordinate conversion and basic rendering:
+Test rendering utilities and component behavior:
 
 ```typescript
-// frontend/tests/unit/LayoutRenderer.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { LayoutRenderer } from '@/components/LayoutRenderer';
-import type { RenderConfig } from '@/types/RenderConfig';
+// frontend/tests/unit/renderUtils.test.ts
+import { describe, it, expect } from 'vitest';
+import { getVisibleSystems, createDefaultConfig } from '@/utils/renderUtils';
+import type { System } from '@/wasm/layout';
+import type { Viewport } from '@/types/Viewport';
 
-describe('LayoutRenderer', () => {
-  let canvas: HTMLCanvasElement;
-  let config: RenderConfig;
-  let renderer: LayoutRenderer;
+describe('renderUtils', () => {
+  it('creates default config', () => {
+    const config = createDefaultConfig();
+    
+    expect(config.fontSize).toBe(40);
+    expect(config.fontFamily).toBe('Bravura');
+    expect(config.backgroundColor).toBe('#FFFFFF');
+  });
 
-  beforeEach(() => {
-    canvas = document.createElement('canvas');
-    canvas.width = 800;
-    canvas.height = 600;
+  it('finds visible systems via binary search', () => {
+    const systems: System[] = [
+      { index: 0, bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 }, ... },
+      { index: 1, bounding_box: { x_position: 0, y_position: 300, width: 1200, height: 280 }, ... },
+      { index: 2, bounding_box: { x_position: 0, y_position: 600, width: 1200, height: 280 }, ... },
+    ];
 
-    config = {
+    const viewport: Viewport = { x: 0, y: 250, width: 1200, height: 400 };
+    const visible = getVisibleSystems(systems, viewport);
+
+    expect(visible.length).toBe(2); // Systems 1 and 2
+    expect(visible[0].index).toBe(1);
+    expect(visible[1].index).toBe(2);
+  });
+
+  it('renders without errors', () => {
+    const layout = loadFixture('violin_10_measures.json');
+    const config = createDefaultConfig();
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
+
+    const { container } = render(
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    );
+
+    expect(container.querySelector('svg')).toBeTruthy();
+  });
+});
+```
+
+---
       pixelsPerSpace: 10,
       fontFamily: 'Bravura',
       backgroundColor: '#FFFFFF',
@@ -334,43 +458,59 @@ describe('LayoutRenderer', () => {
 
 ### Visual Comparison Tests
 
-Compare against existing renderer (integration test):
+Verify visual accuracy with happy-dom tests:
 
 ```typescript
-// frontend/tests/integration/VisualComparison.test.ts
+// frontend/tests/integration/VisualComparison.test.tsx
 import { describe, it, expect } from 'vitest';
-import { test } from '@playwright/test';
-import { VisualComparison } from '@/testing/VisualComparison';
-import { loadFixture } from '@/testing/fixtures';
+import { render } from '@testing-library/react';
+import { LayoutRenderer } from '@/components/LayoutRenderer';
+import { createDefaultConfig } from '@/utils/renderUtils';
+import type { GlobalLayout } from '@/wasm/layout';
 
-test('Single voice rendering matches existing renderer', async ({ page }) => {
-  await page.goto('/score-viewer');
+describe('VisualComparison Tests', () => {
+  it('renders single voice staff correctly', () => {
+    const layout: GlobalLayout = loadFixture('violin_10_measures.json');
+    const config = createDefaultConfig();
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
 
-  // Setup: Load fixture
-  const score = await loadFixture('piano_10_measures.json');
-  await page.evaluate((s) => window.loadScore(s), score);
+    const { container } = render(
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    );
 
-  // Render with both renderers
-  const oldCanvas = page.locator('#old-renderer-canvas');
-  const newCanvas = page.locator('#new-renderer-canvas');
+    // Verify SVG structure
+    const svg = container.querySelector('svg');
+    expect(svg).toBeTruthy();
+    expect(svg?.getAttribute('viewBox')).toBe('0 0 1200 800');
 
-  // Capture screenshots
-  const oldSnapshot = await oldCanvas.screenshot({ type: 'png' });
-  const newSnapshot = await newCanvas.screenshot({ type: 'png' });
+    // Verify staff lines rendered
+    const staffLines = container.querySelectorAll('line[stroke]');
+    expect(staffLines.length).toBeGreaterThan(0);
 
-  // Compare (5% tolerance)
-  const comparison = new VisualComparison(oldCanvas, newCanvas, 5);
-  const result = comparison.compareRenderers(score);
+    // Verify glyphs rendered
+    const glyphs = container.querySelectorAll('text');
+    expect(glyphs.length).toBeGreaterThan(0);
+  });
 
-  // Assert pass
-  expect(result.passed).toBe(true);
-  expect(result.pixelDiffPercentage).toBeLessThan(5);
+  it('renders multi-staff layout with brace', () => {
+    const layout: GlobalLayout = loadFixture('piano_8_measures.json');
+    const config = createDefaultConfig();
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
 
-  // Save diff on failure
-  if (!result.passed) {
-    await saveDiffImage(result.diffImage, 'test-results/piano-10-diff.png');
-    console.error(`Visual diff: ${result.pixelDiffPercentage}%`);
-  }
+    const { container } = render(
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    );
+
+    // Verify brace glyph rendered
+    const braces = Array.from(container.querySelectorAll('text')).filter(
+      (el) => el.textContent?.includes('\uE000') // Bravura brace
+    );
+    expect(braces.length).toBeGreaterThan(0);
+
+    // Verify multiple staff groups
+    const staffLines = container.querySelectorAll('line[stroke]');
+    expect(staffLines.length).toBeGreaterThanOrEqual(10); // 2 staves × 5 lines
+  });
 });
 ```
 
@@ -378,45 +518,56 @@ test('Single voice rendering matches existing renderer', async ({ page }) => {
 
 ### Performance Tests
 
-Validate 60fps scrolling with Chrome DevTools:
+Validate 60fps rendering with Vitest:
 
 ```typescript
-// frontend/tests/performance/ScrollPerformance.test.ts
-import { test } from '@playwright/test';
-import { chromium } from 'playwright';
+// frontend/tests/performance/Virtualization.test.tsx
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+import { LayoutRenderer } from '@/components/LayoutRenderer';
+import { createDefaultConfig } from '@/utils/renderUtils';
+import { getVisibleSystems } from '@/utils/renderUtils';
+import type { GlobalLayout } from '@/wasm/layout';
 
-test('60fps scrolling with 200 systems', async () => {
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
+describe('Performance Validation', () => {
+  it('renders viewport in <16ms (60fps budget)', () => {
+    const layout: GlobalLayout = loadFixture('score_100_measures.json');
+    const config = createDefaultConfig();
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
 
-  // Enable performance profiling
-  const client = await page.context().newCDPSession(page);
-  await client.send('Performance.enable');
+    const startTime = performance.now();
+    const { container } = render(
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    );
+    const renderTime = performance.now() - startTime;
 
-  // Load heavy score
-  await page.goto('/score-viewer');
-  const score = await loadFixture('piano_200_measures.json');
-  await page.evaluate((s) => window.loadScore(s), score);
+    expect(renderTime).toBeLessThan(16);
+  });
 
-  // Measure scroll performance
-  const metrics: number[] = [];
-  for (let i = 0; i < 100; i++) {
-    const start = performance.now();
-    await page.evaluate(() => window.scrollBy(0, 100));
-    const end = performance.now();
-    metrics.push(end - start);
-  }
+  it('queries visible systems in <1ms', () => {
+    const layout: GlobalLayout = loadFixture('score_100_measures.json');
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
 
-  // Assert 60fps (< 16ms per frame)
-  const avgFrameTime = metrics.reduce((a, b) => a + b) / metrics.length;
-  expect(avgFrameTime).toBeLessThan(16);
+    const startTime = performance.now();
+    const visibleSystems = getVisibleSystems(layout.systems, viewport);
+    const queryTime = performance.now() - startTime;
 
-  // Assert no dropped frames
-  const droppedFrames = metrics.filter(t => t > 16).length;
-  expect(droppedFrames).toBe(0);
+    expect(queryTime).toBeLessThan(1);
+    expect(visibleSystems.length).toBeGreaterThan(0);
+  });
 
-  await browser.close();
+  it('keeps DOM node count <600 per viewport', () => {
+    const layout: GlobalLayout = loadFixture('score_100_measures.json');
+    const config = createDefaultConfig();
+    const viewport = { x: 0, y: 0, width: 1200, height: 800 };
+
+    const { container } = render(
+      <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+    );
+
+    const nodeCount = container.querySelectorAll('*').length;
+    expect(nodeCount).toBeLessThan(600);
+  });
 });
 ```
 
@@ -424,14 +575,23 @@ test('60fps scrolling with 200 systems', async () => {
 
 ## Debugging
 
-### Canvas Inspector (Chrome DevTools)
+### SVG Inspector (Browser DevTools)
 
-View Canvas draw calls:
+View SVG structure:
 
-1. Open Chrome DevTools → **More tools** → **Layers**
-2. Scroll to trigger render
-3. Inspect **Canvas** layer → See draw calls (fillText, strokeRect)
-4. Verify **<10 draw calls per system** (via GlyphRun batching)
+1. Open DevTools → **Elements** tab
+2. Find `<svg>` element with viewBox attribute
+3. Inspect children: `<rect>` (background), `<line>` (staff lines), `<text>` (glyphs)
+4. Verify **only visible systems rendered** (check DOM node count)
+
+**Expected structure**:
+```html
+<svg viewBox="0 0 1200 800" width="100%" height="100%">
+  <rect fill="#FFFFFF" x="0" y="0" width="1200" height="800" />
+  <line x1="0" y1="100" x2="1200" y2="100" stroke="#000000" />
+  <text x="50" y="100" font-family="Bravura">...</text>
+</svg>
+```
 
 ---
 
@@ -440,17 +600,22 @@ View Canvas draw calls:
 Add debug overlay to see system boundaries:
 
 ```typescript
-// In LayoutRenderer.ts
+// Add to LayoutRenderer.tsx renderSVG()
+const DEBUG_MODE = true;
+
 if (DEBUG_MODE) {
-  for (const system of layout.systems) {
-    ctx.strokeStyle = 'red';
-    ctx.strokeRect(
-      this.logicalToPixels(system.x),
-      this.logicalToPixels(system.y),
-      this.logicalToPixels(system.width),
-      this.logicalToPixels(system.height)
-    );
-  }
+  visibleSystems.forEach((system) => {
+    const { x_position, y_position, width, height } = system.bounding_box;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x_position.toString());
+    rect.setAttribute('y', y_position.toString());
+    rect.setAttribute('width', width.toString());
+    rect.setAttribute('height', height.toString());
+    rect.setAttribute('fill', 'none');
+    rect.setAttribute('stroke', 'red');
+    rect.setAttribute('stroke-width', '2');
+    svgElement.appendChild(rect);
+  });
 }
 ```
 
@@ -458,83 +623,122 @@ if (DEBUG_MODE) {
 
 ### Performance Profiling
 
-Log render times:
+Monitor render times with console warnings:
 
 ```typescript
-// In ScoreViewer.tsx
-const renderStart = performance.now();
-renderer.render(layout, viewport);
-const renderEnd = performance.now();
+// Already implemented in LayoutRenderer.tsx (T060)
+private renderSVG(): void {
+  const startTime = performance.now();
+  
+  // ... rendering logic ...
+  
+  const renderTime = performance.now() - startTime;
+  if (renderTime > 16) {
+    console.warn(
+      `LayoutRenderer: Slow frame detected - ${renderTime.toFixed(2)}ms`,
+      { viewport, systemCount, visibleSystemCount, renderTime }
+    );
+  }
+}
+```
 
-console.log(`Render time: ${(renderEnd - renderStart).toFixed(2)}ms`);
-// Should be <16ms for 60fps
+**Expected output** (no warnings for normal viewports):
+```
+// No output = good performance
+// Warning only if render exceeds 16ms (60fps budget)
 ```
 
 ---
 
 ## Troubleshooting
 
-### Issue: Canvas Blank After Render
+### Issue: SVG Not Rendering/Empty Output
 
-**Symptom**: Canvas shows white background, no notation visible.
+**Symptom**: No notation visible, empty SVG element.
 
 **Causes**:
-1. Bravura font not loaded (glyphs render as squares)
+1. Bravura font not loaded (glyphs render as missing characters)
 2. Viewport Y out of range (no systems visible)
-3. Canvas dimensions zero (not in DOM yet)
+3. Layout or viewport is null/undefined
 
 **Solution**:
 
 ```typescript
 // 1. Verify font loaded
 document.fonts.ready.then(() => {
-  console.log('Fonts loaded:', document.fonts.check('10px Bravura'));
-  renderer.render(layout, viewport);
+  console.log('Fonts loaded:', document.fonts.check('40px Bravura'));
+  // Trigger re-render if font was loading
 });
 
 // 2. Check viewport bounds
 console.log('Viewport:', viewport);
-console.log('Layout systems:', layout.systems.length);
-console.log('Layout total height:', layout.systems[layout.systems.length - 1].y);
+console.log('Layout systems:', layout?.systems?.length);
+const lastSystem = layout?.systems[layout.systems.length - 1];
+console.log('Layout total height:', lastSystem?.bounding_box.y_position);
 
-// 3. Verify canvas dimensions
-console.log('Canvas:', canvas.width, canvas.height);
+// 3. Verify visible systems
+const visibleSystems = getVisibleSystems(layout.systems, viewport);
+console.log('Visible systems:', visibleSystems.length);
 ```
 
 ---
 
-### Issue: Blurry Rendering on Retina Displays
+### Issue: SVG Looks Pixelated/Blurry
 
-**Symptom**: Notation appears fuzzy or pixelated on high-DPI screens.
+**Symptom**: Notation appears pixelated or blurry on any display.
 
-**Solution**: Scale canvas backing store (see "Retina Display Support" above).
+**Cause**: SVG is resolution-independent; this suggests incorrect fontSize or browser zoom.
+
+**Solution**:
+
+```typescript
+// 1. Check fontSize in config
+const config = createDefaultConfig();
+console.log('Font size:', config.fontSize); // Should be 40 (staff space = 20 units)
+
+// 2. Verify viewBox matches viewport
+const svg = document.querySelector('svg');
+console.log('ViewBox:', svg?.getAttribute('viewBox'));
+// Should be "0 0 {viewport.width} {viewport.height}"
+
+// 3. Check browser zoom level
+console.log('Device pixel ratio:', window.devicePixelRatio);
+// 1.0 = 100%, 2.0 = 200%, etc.
+```
+
+**Note**: SVG rendering is handled by the browser; blurriness is usually a config issue, not a display issue.
 
 ---
 
 ### Issue: Performance Below 60fps
 
-**Symptom**: Scrolling feels laggy, frame times >16ms.
+**Symptom**: Scrolling feels laggy, slow frame warnings in console.
 
 **Causes**:
-1. Too many draw calls (GlyphRun batching not working)
-2. Not using virtualization (rendering all systems, not just visible)
-3. Canvas too large (excessive pixels to fill)
+1. Not using virtualization (rendering all systems, not just visible)
+2. Viewport too large (too many DOM nodes)
+3. Complex layout (multi-staff with many glyphs)
 
 **Solution**:
 
 ```typescript
-// 1. Verify batching
-console.log('GlyphRuns per system:', layout.systems[0].glyphRuns.length);
-// Should be <10 (not 100+)
-
-// 2. Verify virtualization
+// 1. Verify virtualization working
 const visibleSystems = getVisibleSystems(layout.systems, viewport);
-console.log('Rendering systems:', visibleSystems.length);
-// Should be 3-5 (not all 40)
+console.log('Visible systems:', visibleSystems.length, '/', layout.systems.length);
+// Should be 3-5 visible (not all 40)
+
+// 2. Count DOM nodes
+const container = document.querySelector('#score-container');
+const nodeCount = container?.querySelectorAll('*').length;
+console.log('DOM nodes:', nodeCount);
+// Should be <600 (not 5000+)
 
 // 3. Profile with Chrome DevTools
 // Performance tab → Record → Scroll → Stop
-// Check "Rendering" times (should be <10ms)
+// Check "Rendering" times (should be <10ms per frame)
+
+// 4. Check render warnings in console
+// "Slow frame detected - XXms" warnings indicate performance issues
 ```
 
 ---
@@ -543,28 +747,40 @@ console.log('Rendering systems:', visibleSystems.length);
 
 After integrating the renderer:
 
-1. **Run visual comparison tests**: `npm test VisualComparison.test.ts`
+1. **Run all tests**: `npm test` (168 tests should pass)
 2. **Profile performance**: Chrome DevTools → Performance → Record scroll
-3. **Compare with existing renderer**: Check pixel diff <5%
-4. **Test on tablet devices**: iPad, Surface, Android tablet
-5. **Validate zoom levels**: Test 0.8x, 1.0x, 1.5x, 2.0x zoom
+3. **Test interactive demo**: Load RendererDemo.tsx with 3 sample layouts
+4. **Test on mobile devices**: iPad, Surface, Android tablet
+5. **Validate zoom levels**: Test 0.25x, 1.0x, 2.0x, 4.0x zoom
 6. **Test dark mode**: Verify color contrast and readability
+7. **Review validation report**: See [VALIDATION.md](./VALIDATION.md) for comprehensive test results
 
 ---
 
 ## API Reference
 
-For detailed API documentation, see:
+For detailed implementation documentation, see:
 
-- [LayoutRenderer.ts](./contracts/LayoutRenderer.ts) - Main renderer interface
-- [RenderConfig.ts](./contracts/RenderConfig.ts) - Configuration options
-- [Viewport.ts](./contracts/Viewport.ts) - Viewport definition
-- [VisualComparison.ts](./contracts/VisualComparison.ts) - Testing utilities
+- [LayoutRenderer.tsx](../../frontend/src/components/LayoutRenderer.tsx) - Main SVG renderer component
+- [renderUtils.ts](../../frontend/src/utils/renderUtils.ts) - Configuration and rendering utilities
+- [ScoreViewer.tsx](../../frontend/src/pages/ScoreViewer.tsx) - Integration component with scroll/zoom
+- [ErrorBoundary.tsx](../../frontend/src/components/ErrorBoundary.tsx) - Error handling
+- [RendererDemo.tsx](../../frontend/src/pages/RendererDemo.tsx) - Interactive demo page
+
+**TypeScript Types**:
+- `RenderConfig` - Renderer configuration (fontSize, colors, fontFamily)
+- `Viewport` - Viewport definition (x, y, width, height in logical units)
+- `GlobalLayout` - Layout structure from Rust engine (systems, total_height)
+- `System` - Individual system with bounding_box and staff_groups
 
 ---
 
 ## Support
 
+**Test Results**: [VALIDATION.md](./VALIDATION.md) - Comprehensive validation with 168 tests  
+**Implementation Tasks**: [tasks.md](./tasks.md) - Complete task breakdown (74 tasks)  
+**Technical Plan**: [plan.md](./plan.md) - Architecture and technical decisions  
+**Layout Engine**: `specs/016-rust-layout-engine/` - Feature 016 Rust WASM layout engine  
+
 **Issues**: GitHub Issues for bug reports  
-**Documentation**: See `specs/017-layout-renderer/` for full specification  
-**Layout Engine**: See `specs/016-rust-layout-engine/` for Feature 016 details
+**Documentation**: See `specs/017-layout-renderer/` for full Feature 017 specification

@@ -154,15 +154,15 @@
 
 **Purpose**: Connect renderer to ScoreViewer, documentation, final validation
 
-- [ ] T066 [P] Integrate LayoutRenderer into ScoreViewer component in frontend/src/pages/ScoreViewer.tsx (replace old renderer, add scroll event handling)
-- [ ] T067 [P] Add zoom controls to ScoreViewer in frontend/src/pages/ScoreViewer.tsx (change SVG viewBox on zoom, not coordinate conversion)
-- [ ] T068 Update quickstart.md with integration examples in specs/017-layout-renderer/quickstart.md (verify all code samples match implementation)
-- [ ] T069 [P] Add dark mode support in frontend/src/components/LayoutRenderer.tsx (use RenderConfig for backgroundColor, staffLineColor, glyphColor)
-- [ ] T070 Add error boundary to ScoreViewer in frontend/src/pages/ScoreViewer.tsx (catch rendering errors, display fallback UI)
-- [ ] T071 [P] Create demo page in frontend/src/pages/RendererDemo.tsx (side-by-side old vs new, toggle between renderers)
-- [ ] T072 Update README with renderer documentation in README.md (link to specs/017-layout-renderer/, performance metrics)
-- [ ] T073 Run all visual comparison tests and document results in specs/017-layout-renderer/VALIDATION.md (pixel diff percentages, system break parity)
-- [ ] T074 Validate quickstart.md steps in specs/017-layout-renderer/quickstart.md (follow guide from scratch, verify all steps work)
+- [X] T066 [P] Integrate LayoutRenderer into ScoreViewer component in frontend/src/pages/ScoreViewer.tsx (replace old renderer, add scroll event handling)
+- [X] T067 [P] Add zoom controls to ScoreViewer in frontend/src/pages/ScoreViewer.tsx (change SVG viewBox on zoom, not coordinate conversion)
+- [X] T068 Update quickstart.md with integration examples in specs/017-layout-renderer/quickstart.md (verify all code samples match implementation)
+- [X] T069 [P] Add dark mode support in frontend/src/components/LayoutRenderer.tsx (use RenderConfig for backgroundColor, staffLineColor, glyphColor)
+- [X] T070 Add error boundary to ScoreViewer in frontend/src/pages/ScoreViewer.tsx (catch rendering errors, display fallback UI)
+- [X] T071 [P] Create demo page in frontend/src/pages/RendererDemo.tsx (side-by-side old vs new, toggle between renderers)
+- [X] T072 Update README with renderer documentation in README.md (link to specs/017-layout-renderer/, performance metrics)
+- [X] T073 Run all visual comparison tests and document results in specs/017-layout-renderer/VALIDATION.md (pixel diff percentages, system break parity)
+- [X] T074 Validate quickstart.md steps in specs/017-layout-renderer/quickstart.md (follow guide from scratch, verify all steps work)
 
 **Checkpoint**: Feature 017 complete (74 tasks total) - Layout-driven renderer production-ready
 

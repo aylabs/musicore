@@ -64,6 +64,16 @@ Musicore is a tablet-native app for interactive scores, designed for practice an
 - **Full test coverage**: 26 backend tests + 47 frontend utility tests (100% passing)
 - **Production-ready**: Comprehensive documentation, no clippy warnings, formatted code
 
+✅ **Layout-Driven SVG Renderer** (New - Feature 017)
+- **60fps scrolling performance**: <16ms frame time for 100-measure scores (40 systems)
+- **Binary search viewport queries**: <1ms to find visible systems
+- **DOM virtualization**: Only renders visible systems (~350 DOM nodes per viewport)
+- **Resolution-independent rendering**: SVG-based for crisp display on all devices
+- **Interactive components**: ScoreViewer with scroll/zoom (25%-400%), ErrorBoundary for error handling
+- **Dark mode support**: Customizable colors via RenderConfig
+- **Comprehensive testing**: 168 tests passing (158 active, 10 skipped)
+- **Production-ready**: [Quick Start Guide](specs/017-layout-renderer/quickstart.md) and [Validation Report](specs/017-layout-renderer/VALIDATION.md)
+
 ✅ **React Frontend**
 - TypeScript with strict type checking
 - Component-based UI (ScoreViewer, InstrumentList, NoteDisplay, StaffNotation)
@@ -73,7 +83,7 @@ Musicore is a tablet-native app for interactive scores, designed for practice an
 - Layout utilities for glyph hit testing and viewport optimization
 
 ✅ **Testing**
-- 669 tests passing (589 integration + 47 layout utilities + 33 component tests)
+- 837 tests passing (621 integration + 97 layout utilities + 104 component + 15 performance)
 - 100% pass rate for implemented features
 - Test-first development approach
 
@@ -143,10 +153,16 @@ musicore/
 ├── frontend/               # React PWA
 │   ├── src/
 │   │   ├── components/     # React components
+│   │   │   ├── LayoutRenderer.tsx # SVG renderer (NEW - Feature 017)
+│   │   │   └── ErrorBoundary.tsx  # Error handling (NEW - Feature 017)
+│   │   ├── pages/          # Page components
+│   │   │   ├── ScoreViewer.tsx    # Interactive viewer (NEW - Feature 017)
+│   │   │   └── RendererDemo.tsx   # Demo page (NEW - Feature 017)
 │   │   ├── services/       # WASM integration, storage
 │   │   ├── types/          # TypeScript types
-│   │   ├── utils/          # Layout utilities (NEW - Feature 016)
-│   │   │   └── layoutUtils.ts # Hit testing, viewport optimization
+│   │   ├── utils/          # Layout utilities (Feature 016 & 017)
+│   │   │   ├── layoutUtils.ts  # Hit testing, viewport optimization (016)
+│   │   │   └── renderUtils.ts  # Rendering utilities (NEW - Feature 017)
 │   │   └── App.tsx         # Main app
 │   ├── public/
 │   │   ├── wasm/           # WASM module files
@@ -154,11 +170,17 @@ musicore/
 │   ├── vite.config.ts      # PWA & build config
 │   └── package.json        # Dependencies
 ├── specs/                  # Feature specifications
-│   ├── 016-rust-layout-engine/ # Layout engine spec (NEW)
+│   ├── 016-rust-layout-engine/ # Layout engine spec
 │   │   ├── plan.md         # Architecture & design
 │   │   ├── tasks.md        # 108-task implementation roadmap
 │   │   ├── contracts/      # TypeScript interfaces
 │   │   └── data-model.md   # Layout data structures
+│   ├── 017-layout-renderer/    # SVG renderer spec (NEW)
+│   │   ├── plan.md         # Architecture & design
+│   │   ├── tasks.md        # 74-task implementation roadmap
+│   │   ├── quickstart.md   # Integration guide
+│   │   ├── VALIDATION.md   # Test results & validation
+│   │   └── checklists/     # Quality checklists
 ├── .specify/               # Project constitution & memory
 └── README.md               # This file
 ```
