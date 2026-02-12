@@ -1,0 +1,318 @@
+/**
+ * LayoutRenderer Component
+ * Feature 017 - SVG-based music notation renderer
+ * 
+ * Renders music notation using exact glyph positions computed by
+ * Feature 016 (Rust Layout Engine). Uses SVG DOM with viewBox for
+ * resolution-independent display.
+ */
+
+import { Component, createRef, RefObject } from 'react';
+import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun } from '../wasm/layout';
+import type { RenderConfig } from '../types/RenderConfig';
+import type { Viewport } from '../types/Viewport';
+import { 
+  validateRenderConfig, 
+  validateViewport,
+  getVisibleSystems,
+  createSVGElement,
+  createSVGGroup,
+  svgNS,
+} from '../utils/renderUtils';
+
+/**
+ * Props for LayoutRenderer component
+ */
+export interface LayoutRendererProps {
+  /** Computed layout from Feature 016's computeLayout() */
+  layout: GlobalLayout | null;
+  /** Rendering configuration (colors, fonts, sizing) */
+  config: RenderConfig;
+  /** Visible viewport region (for virtualization) */
+  viewport: Viewport;
+  /** Optional CSS class name for SVG element */
+  className?: string;
+}
+
+/**
+ * LayoutRenderer component implementation
+ * 
+ * @example
+ * ```tsx
+ * import { computeLayout } from '../wasm/layout';
+ * import { createDefaultConfig } from '../utils/renderUtils';
+ * 
+ * function ScoreDisplay({ score }) {
+ *   const layout = computeLayout(score, { max_system_width: 1200 });
+ *   const config = createDefaultConfig();
+ *   const viewport = { x: 0, y: 0, width: 1200, height: 800 };
+ * 
+ *   return <LayoutRenderer layout={layout} config={config} viewport={viewport} />;
+ * }
+ * ```
+ */
+export class LayoutRenderer extends Component<LayoutRendererProps> {
+  /** Reference to SVG element for direct DOM manipulation */
+  private svgRef: RefObject<SVGSVGElement>;
+
+  constructor(props: LayoutRendererProps) {
+    super(props);
+    this.svgRef = createRef<SVGSVGElement>();
+
+    // Validate config on construction
+    validateRenderConfig(props.config);
+    validateViewport(props.viewport);
+  }
+
+  /**
+   * Render SVG after component mounts
+   */
+  componentDidMount(): void {
+    this.renderSVG();
+  }
+
+  /**
+   * Re-render SVG when props change
+   */
+  componentDidUpdate(prevProps: LayoutRendererProps): void {
+    // Re-render if layout, config, or viewport changed
+    if (
+      prevProps.layout !== this.props.layout ||
+      prevProps.config !== this.props.config ||
+      prevProps.viewport !== this.props.viewport
+    ) {
+      this.renderSVG();
+    }
+  }
+
+  /**
+   * Main rendering entry point (Task T016).
+   * Clears SVG, queries visible systems, renders them.
+   */
+  private renderSVG(): void {
+    const svg = this.svgRef.current;
+    if (!svg) {
+      console.warn('LayoutRenderer: SVG ref not available');
+      return;
+    }
+
+    const { layout, viewport, config } = this.props;
+
+    // Handle missing layout (Task T022)
+    if (!layout) {
+      this.renderError(svg, 'No layout available');
+      return;
+    }
+
+    // Clear existing content
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+
+    // Set background color
+    svg.style.backgroundColor = config.backgroundColor;
+
+    // Set viewBox to match layout coordinate system (Task T021)
+    // Use logical units from layout engine (staff space = 20)
+    svg.setAttribute(
+      'viewBox',
+      `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`
+    );
+
+    // Query visible systems using virtualization (Task T009)
+    const visibleSystems = getVisibleSystems(layout.systems, viewport);
+
+    // Create document fragment for efficient DOM insertion (Task T059)
+    const fragment = document.createDocumentFragment();
+
+    // Render each visible system (Task T017)
+    for (const system of visibleSystems) {
+      const systemGroup = this.renderSystem(system, 0, 0);
+      fragment.appendChild(systemGroup);
+    }
+
+    // Append all systems at once
+    svg.appendChild(fragment);
+  }
+
+  /**
+   * Renders a single music system (Task T017).
+   * Called by renderSVG() for each visible system.
+   * 
+   * @param system - System to render (from GlobalLayout.systems)
+   * @param offsetX - X offset in logical units (typically 0 for left-aligned)
+   * @param offsetY - Y offset in logical units (for viewport scrolling)
+   * @returns SVG group element containing system content
+   */
+  private renderSystem(system: System, offsetX: number, offsetY: number): SVGGElement {
+    const systemGroup = createSVGGroup();
+    
+    // Apply transform to position system (Task T017)
+    const x = system.bounding_box.x_position + offsetX;
+    const y = system.bounding_box.y_position + offsetY;
+    systemGroup.setAttribute('transform', `translate(${x}, ${y})`);
+    systemGroup.setAttribute('data-system-index', system.index.toString());
+
+    // Render each staff group (Task T018)
+    for (const staffGroup of system.staff_groups) {
+      const staffGroupElement = this.renderStaffGroup(staffGroup);
+      systemGroup.appendChild(staffGroupElement);
+    }
+
+    return systemGroup;
+  }
+
+  /**
+   * Renders staff lines, braces, brackets for a group of staves (Task T018).
+   * 
+   * @param staffGroup - Staff group from system.staffGroups
+   * @returns SVG group element containing staff group content
+   */
+  private renderStaffGroup(staffGroup: StaffGroup): SVGGElement {
+    const staffGroupElement = createSVGGroup();
+    staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
+
+    // Render braces/brackets (Tasks T045, T046 - US3, deferred to Phase 5)
+    // For now, just render staves
+
+    // Render each staff (Task T019)
+    for (const staff of staffGroup.staves) {
+      const staffElement = this.renderStaff(staff);
+      staffGroupElement.appendChild(staffElement);
+    }
+
+    return staffGroupElement;
+  }
+
+  /**
+   * Renders 5 horizontal staff lines using SVG <line> elements (Task T019).
+   * 
+   * @param staff - Staff from staffGroup.staves
+   * @returns SVG group element containing staff lines and glyphs
+   */
+  private renderStaff(staff: Staff): SVGGElement {
+    const staffElement = createSVGGroup();
+    staffElement.setAttribute('class', 'staff');
+
+    const { config } = this.props;
+
+    // Render 5 staff lines (Task T019)
+    for (const staffLine of staff.staff_lines) {
+      const line = createSVGElement('line');
+      line.setAttribute('x1', staffLine.start_x.toString());
+      line.setAttribute('y1', staffLine.y_position.toString());
+      line.setAttribute('x2', staffLine.end_x.toString());
+      line.setAttribute('y2', staffLine.y_position.toString());
+      line.setAttribute('stroke', config.staffLineColor);
+      line.setAttribute('stroke-width', '1');
+      staffElement.appendChild(line);
+    }
+
+    // Render glyph runs (Task T020)
+    for (const glyphRun of staff.glyph_runs) {
+      const glyphRunElement = this.renderGlyphRun(glyphRun);
+      staffElement.appendChild(glyphRunElement);
+    }
+
+    // Render structural glyphs (clefs, key signatures, time signatures)
+    for (const glyph of staff.structural_glyphs) {
+      const glyphElement = this.renderGlyph(glyph, config);
+      staffElement.appendChild(glyphElement);
+    }
+
+    return staffElement;
+  }
+
+  /**
+   * Renders a batch of identical glyphs via SVG <text> elements (Task T020).
+   * Leverages Feature 016's GlyphRun batching for performance.
+   * 
+   * @param run - Glyph run from system.glyphRuns
+   * @returns SVG group element containing glyph batch
+   */
+  private renderGlyphRun(run: GlyphRun): SVGGElement {
+    const glyphRunGroup = createSVGGroup();
+    glyphRunGroup.setAttribute('class', 'glyph-run');
+
+    const { config } = this.props;
+
+    // Render each glyph in the run (Task T020)
+    for (const glyph of run.glyphs) {
+      const glyphElement = this.renderGlyph(glyph, config);
+      glyphRunGroup.appendChild(glyphElement);
+    }
+
+    return glyphRunGroup;
+  }
+
+  /**
+   * Renders a single glyph as SVG <text> element with SMuFL codepoint.
+   * 
+   * @param glyph - Glyph to render
+   * @param config - Rendering configuration
+   * @returns SVG text element
+   */
+  private renderGlyph(glyph: any, config: RenderConfig): SVGTextElement {
+    const text = createSVGElement('text');
+    
+    text.setAttribute('x', glyph.position.x.toString());
+    text.setAttribute('y', glyph.position.y.toString());
+    text.setAttribute('font-family', config.fontFamily);
+    text.setAttribute('font-size', config.fontSize.toString());
+    text.setAttribute('fill', config.glyphColor);
+    
+    // Set SMuFL codepoint as text content (Task T020)
+    // Handle invalid codepoints (Task T023)
+    try {
+      text.textContent = glyph.codepoint;
+    } catch (error) {
+      // Render placeholder for invalid codepoint (Task T023)
+      console.warn(`Invalid SMuFL codepoint: ${glyph.codepoint}`, error);
+      text.textContent = '\u25A1'; // Empty square placeholder
+      text.setAttribute('fill', '#FF0000'); // Red to indicate error
+    }
+
+    return text;
+  }
+
+  /**
+   * Renders error message when layout is missing (Task T022).
+   * 
+   * @param svg - SVG element to render error into
+   * @param message - Error message to display
+   */
+  private renderError(svg: SVGSVGElement, message: string): void {
+    // Clear existing content
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+
+    const text = createSVGElement('text');
+    text.setAttribute('x', '50%');
+    text.setAttribute('y', '50%');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-family', 'system-ui, sans-serif');
+    text.setAttribute('font-size', '16');
+    text.setAttribute('fill', '#999999');
+    text.textContent = message;
+
+    svg.appendChild(text);
+  }
+
+  /**
+   * React render method - returns SVG element
+   */
+  render() {
+    const { className } = this.props;
+    
+    return (
+      <svg
+        ref={this.svgRef}
+        className={className}
+        xmlns={svgNS}
+        style={{ width: '100%', height: '100%' }}
+      />
+    );
+  }
+}
