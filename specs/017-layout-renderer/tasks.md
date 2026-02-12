@@ -92,11 +92,11 @@
 - [X] T036 [US2] Create saveDiffImage() utility in frontend/src/testing/VisualComparison.ts (save ImageData to PNG in test-results/)
 - [X] T037 [US2] Unit test for VisualComparison.computePixelDiff() in frontend/tests/unit/VisualComparison.test.ts (identical images = 0%, completely different = 100%)
 - [X] T038 [P] [US2] Unit test for VisualComparison.captureSnapshot() in frontend/tests/unit/VisualComparison.test.ts (returns valid ImageData with correct dimensions)
-- [ ] T039 [US2] Playwright test: visual comparison for violin_10_measures in frontend/tests/integration/VisualComparison.test.ts (old vs new renderer, <5% diff)
-- [ ] T040 [US2] Playwright test: visual comparison for piano_8_measures in frontend/tests/integration/VisualComparison.test.ts (<5% diff threshold)
-- [ ] T041 [US2] Playwright test: verify system break parity in frontend/tests/integration/VisualComparison.test.ts (both renderers break at same measures ±1 system)
-- [ ] T042 [US2] Integration test: compare notehead positions in frontend/tests/integration/VisualComparison.test.ts (average <2 pixel difference)
-- [ ] T043 [US2] Integration test: save diff image on failure in frontend/tests/integration/VisualComparison.test.ts (test-results/[test-name]-diff.png)
+- [X] T039 [US2] Playwright test: visual comparison for violin_10_measures in frontend/tests/integration/VisualComparison.test.ts (old vs new renderer, <5% diff)
+- [X] T040 [US2] Playwright test: visual comparison for piano_8_measures in frontend/tests/integration/VisualComparison.test.ts (<5% diff threshold)
+- [X] T041 [US2] Playwright test: verify system break parity in frontend/tests/integration/VisualComparison.test.ts (both renderers break at same measures ±1 system)
+- [X] T042 [US2] Integration test: compare notehead positions in frontend/tests/integration/VisualComparison.test.ts (average <2 pixel difference)
+- [X] T043 [US2] Integration test: save diff image on failure in frontend/tests/integration/VisualComparison.test.ts (test-results/[test-name]-diff.png)
 
 **Checkpoint**: User Story 2 complete (13 tasks) - Visual comparison harness functional, validates renderer correctness
 
