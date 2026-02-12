@@ -84,14 +84,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T031 [P] [US2] Create VisualComparison class in frontend/src/testing/VisualComparison.ts (oldRenderer, newRenderer, diffThreshold fields)
-- [ ] T032 [P] [US2] Implement VisualComparison.captureSnapshot() in frontend/src/testing/VisualComparison.ts (convert SVG to ImageData via canvas)
-- [ ] T033 [US2] Implement VisualComparison.computePixelDiff() in frontend/src/testing/VisualComparison.ts (compare RGB values, return percentage)
-- [ ] T034 [US2] Implement VisualComparison.generateDiffImage() in frontend/src/testing/VisualComparison.ts (red highlight differences, semi-transparent matches)
-- [ ] T035 [US2] Implement VisualComparison.compareRenderers() in frontend/src/testing/VisualComparison.ts (render both, capture, compute diff, return ComparisonResult)
-- [ ] T036 [US2] Create saveDiffImage() utility in frontend/src/testing/VisualComparison.ts (save ImageData to PNG in test-results/)
-- [ ] T037 [US2] Unit test for VisualComparison.computePixelDiff() in frontend/tests/unit/VisualComparison.test.ts (identical images = 0%, completely different = 100%)
-- [ ] T038 [P] [US2] Unit test for VisualComparison.captureSnapshot() in frontend/tests/unit/VisualComparison.test.ts (returns valid ImageData with correct dimensions)
+- [X] T031 [P] [US2] Create VisualComparison class in frontend/src/testing/VisualComparison.ts (oldRenderer, newRenderer, diffThreshold fields)
+- [X] T032 [P] [US2] Implement VisualComparison.captureSnapshot() in frontend/src/testing/VisualComparison.ts (convert SVG to ImageData via canvas)
+- [X] T033 [US2] Implement VisualComparison.computePixelDiff() in frontend/src/testing/VisualComparison.ts (compare RGB values, return percentage)
+- [X] T034 [US2] Implement VisualComparison.generateDiffImage() in frontend/src/testing/VisualComparison.ts (red highlight differences, semi-transparent matches)
+- [X] T035 [US2] Implement VisualComparison.compareRenderers() in frontend/src/testing/VisualComparison.ts (render both, capture, compute diff, return ComparisonResult)
+- [X] T036 [US2] Create saveDiffImage() utility in frontend/src/testing/VisualComparison.ts (save ImageData to PNG in test-results/)
+- [X] T037 [US2] Unit test for VisualComparison.computePixelDiff() in frontend/tests/unit/VisualComparison.test.ts (identical images = 0%, completely different = 100%)
+- [X] T038 [P] [US2] Unit test for VisualComparison.captureSnapshot() in frontend/tests/unit/VisualComparison.test.ts (returns valid ImageData with correct dimensions)
 - [ ] T039 [US2] Playwright test: visual comparison for violin_10_measures in frontend/tests/integration/VisualComparison.test.ts (old vs new renderer, <5% diff)
 - [ ] T040 [US2] Playwright test: visual comparison for piano_8_measures in frontend/tests/integration/VisualComparison.test.ts (<5% diff threshold)
 - [ ] T041 [US2] Playwright test: verify system break parity in frontend/tests/integration/VisualComparison.test.ts (both renderers break at same measures ±1 system)

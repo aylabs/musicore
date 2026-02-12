@@ -1,11 +1,8 @@
 /**
  * Integration Tests for Single Voice Rendering (User Story 1)
  * Feature 017 - LayoutRenderer Component
- * 
- * Tests end-to-end rendering with realistic layout data.
+ * \n * Tests end-to-end rendering with realistic layout data.
  * Uses violin_10_measures.json fixture (3 systems, 10 glyphs, 1 treble clef).
- * 
- * @vitest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

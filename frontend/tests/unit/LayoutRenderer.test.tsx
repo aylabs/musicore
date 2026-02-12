@@ -1,8 +1,6 @@
 /**
  * Unit Tests for LayoutRenderer Component
  * Feature 017 - Tests for US1: Render Single Voice
- * 
- * @vitest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
