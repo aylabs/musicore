@@ -173,8 +173,13 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     staffGroupElement.setAttribute('data-staff-group', 'true');
     staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
 
-    // Render braces/brackets (Tasks T045, T046 - US3, deferred to Phase 5)
-    // For now, just render staves
+    // Render braces/brackets if multi-staff (Tasks T045, T046 - US3)
+    if (staffGroup.staves.length > 1 && staffGroup.bracket_type !== 'None') {
+      const bracketElement = this.renderBracket(staffGroup);
+      if (bracketElement) {
+        staffGroupElement.appendChild(bracketElement);
+      }
+    }
 
     // Render each staff (Task T019)
     for (const staff of staffGroup.staves) {
@@ -183,6 +188,92 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     }
 
     return staffGroupElement;
+  }
+
+  /**
+   * Renders brace or bracket for multi-staff instrument (Tasks T045, T046).
+   * 
+   * @param staffGroup - Staff group with multiple staves
+   * @returns SVG group element with brace/bracket glyph, or null if not applicable
+   */
+  private renderBracket(staffGroup: StaffGroup): SVGGElement | null {
+    if (staffGroup.staves.length < 2) {
+      return null;
+    }
+
+    const { config } = this.props;
+    const bracketGroup = createSVGGroup();
+    bracketGroup.setAttribute('class', 'bracket');
+
+    // Calculate vertical span of all staves
+    const firstStaff = staffGroup.staves[0];
+    const lastStaff = staffGroup.staves[staffGroup.staves.length - 1];
+    
+    const topY = firstStaff.staff_lines[0].y_position;
+    const bottomY = lastStaff.staff_lines[lastStaff.staff_lines.length - 1].y_position;
+    const centerY = (topY + bottomY) / 2;
+    const height = bottomY - topY;
+
+    // SMuFL brace/bracket glyphs
+    let codepoint: string;
+    let xPosition: number = 10; // Left margin before staff lines
+    
+    if (staffGroup.bracket_type === 'Brace') {
+      // Task T045: Brace rendering
+      codepoint = '\uE000'; // SMuFL: brace
+      
+      // Render brace glyph
+      const braceGlyph = this.renderGlyph(
+        {
+          position: { x: xPosition, y: centerY },
+          bounding_box: { x_position: xPosition - 5, y_position: topY, width: 20, height },
+          codepoint,
+          source_reference: {
+            instrument_id: staffGroup.instrument_id,
+            staff_index: 0,
+            voice_index: 0,
+            event_index: 0,
+          },
+        },
+        config
+      );
+      
+      // Apply vertical scaling to stretch brace to cover staff height
+      const scale = height / 160; // Brace natural height ~160 logical units
+      braceGlyph.setAttribute('transform', `scale(1, ${scale.toFixed(3)})`);
+      braceGlyph.setAttribute('data-bracket-type', 'brace');
+      
+      bracketGroup.appendChild(braceGlyph);
+      
+    } else if (staffGroup.bracket_type === 'Bracket') {
+      // Task T046: Bracket rendering
+      codepoint = '\uE002'; // SMuFL: bracket
+      
+      // Render bracket glyph
+      const bracketGlyph = this.renderGlyph(
+        {
+          position: { x: xPosition, y: centerY },
+          bounding_box: { x_position: xPosition - 5, y_position: topY, width: 20, height },
+          codepoint,
+          source_reference: {
+            instrument_id: staffGroup.instrument_id,
+            staff_index: 0,
+            voice_index: 0,
+            event_index: 0,
+          },
+        },
+        config
+      );
+      
+      // Apply vertical scaling for bracket
+      const scale = height / 160;
+      bracketGlyph.setAttribute('transform', `scale(1, ${scale.toFixed(3)})`);
+      bracketGlyph.setAttribute('data-bracket-type', 'bracket');
+      
+      bracketGroup.appendChild(bracketGlyph);
+    }
+
+    return bracketGroup;
   }
 
   /**

@@ -105,7 +105,9 @@ describe('LayoutRenderer Component', () => {
 
       const svg = container.querySelector('svg');
       expect(svg).toBeTruthy();
-      expect(svg?.className.baseVal).toBe('test-class');
+      // Check className attribute (happy-dom compatible)
+      const classAttr = svg?.getAttribute('class');
+      expect(classAttr).toBe('test-class');
     });
 
     it('should render SVG element', () => {
@@ -680,6 +682,23 @@ describe('LayoutRenderer Component', () => {
   });
 
   describe('Background Color (T021)', () => {
+    // Helper to normalize color format (hex or rgb to hex for comparison)
+    const normalizeColor = (color: string): string => {
+      if (color.startsWith('#')) {
+        return color.toLowerCase();
+      }
+      if (color.startsWith('rgb(')) {
+        const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (match) {
+          const [, r, g, b] = match;
+          return '#' + [r, g, b]
+            .map(n => parseInt(n).toString(16).padStart(2, '0'))
+            .join('');
+        }
+      }
+      return color.toLowerCase();
+    };
+
     it('should set background color from config', () => {
       const { container } = render(
         <LayoutRenderer
@@ -690,7 +709,9 @@ describe('LayoutRenderer Component', () => {
       );
 
       const svg = container.querySelector('svg') as SVGSVGElement;
-      expect(svg?.style.backgroundColor).toBe('rgb(255, 255, 255)');
+      const bgColor = svg?.style.backgroundColor;
+      // happy-dom returns '#FFFFFF', jsdom returns 'rgb(255, 255, 255)'
+      expect(normalizeColor(bgColor)).toBe('#ffffff');
     });
 
     it('should update background color when config changes', () => {
@@ -712,7 +733,355 @@ describe('LayoutRenderer Component', () => {
       );
 
       const svg = container.querySelector('svg') as SVGSVGElement;
-      expect(svg?.style.backgroundColor).toBe('rgb(30, 30, 30)');
+      const bgColor = svg?.style.backgroundColor;
+      // happy-dom returns '#1E1E1E', jsdom returns 'rgb(30, 30, 30)'
+      expect(normalizeColor(bgColor)).toBe('#1e1e1e');
+    });
+  });
+
+  // ============================================================================
+  // Task T049: Unit test for brace rendering
+  // ============================================================================
+
+  describe('Brace Rendering (T049)', () => {
+    it('should render brace for multi-staff instrument', () => {
+      const layoutWithBrace: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'piano',
+                bracket_type: 'Brace',
+                staves: [
+                  {
+                    staff_lines: [
+                      { y_position: 0, start_x: 80, end_x: 1180 },
+                      { y_position: 5, start_x: 80, end_x: 1180 },
+                      { y_position: 10, start_x: 80, end_x: 1180 },
+                      { y_position: 15, start_x: 80, end_x: 1180 },
+                      { y_position: 20, start_x: 80, end_x: 1180 },
+                    ],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [
+                      { y_position: 120, start_x: 80, end_x: 1180 },
+                      { y_position: 125, start_x: 80, end_x: 1180 },
+                      { y_position: 130, start_x: 80, end_x: 1180 },
+                      { y_position: 135, start_x: 80, end_x: 1180 },
+                      { y_position: 140, start_x: 80, end_x: 1180 },
+                    ],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutWithBrace}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      // Verify brace element exists
+      const brace = container.querySelector('[data-bracket-type="brace"]');
+      expect(brace).toBeTruthy();
+      expect(brace?.tagName).toBe('text');
+    });
+
+    it('should render brace with correct SMuFL codepoint', () => {
+      const layoutWithBrace: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'piano',
+                bracket_type: 'Brace',
+                staves: [
+                  {
+                    staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [{ y_position: 120, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutWithBrace}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      const brace = container.querySelector('[data-bracket-type="brace"]');
+      expect(brace?.textContent).toBe('\uE000'); // SMuFL brace
+    });
+
+    it('should apply vertical scaling to brace', () => {
+      const layoutWithBrace: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'piano',
+                bracket_type: 'Brace',
+                staves: [
+                  {
+                    staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [{ y_position: 140, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutWithBrace}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      const brace = container.querySelector('[data-bracket-type="brace"]');
+      const transform = brace?.getAttribute('transform');
+      
+      expect(transform).toBeTruthy();
+      expect(transform).toMatch(/scale\(1,\s*[\d.]+\)/);
+    });
+
+    it('should not render brace for single-staff instrument', () => {
+      const layoutSingleStaff: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 100 },
+            staff_groups: [
+              {
+                instrument_id: 'violin',
+                bracket_type: 'None',
+                staves: [
+                  {
+                    staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 100,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutSingleStaff}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 100 }}
+        />
+      );
+
+      const brace = container.querySelector('[data-bracket-type="brace"]');
+      expect(brace).toBeNull();
+    });
+  });
+
+  // ============================================================================
+  // Task T050: Unit test for bracket rendering
+  // ============================================================================
+
+  describe('Bracket Rendering (T050)', () => {
+    it('should render bracket for multi-staff instrument', () => {
+      const layoutWithBracket: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'strings',
+                bracket_type: 'Bracket',
+                staves: [
+                  {
+                    staff_lines: [
+                      { y_position: 0, start_x: 80, end_x: 1180 },
+                      { y_position: 5, start_x: 80, end_x: 1180 },
+                      { y_position: 10, start_x: 80, end_x: 1180 },
+                      { y_position: 15, start_x: 80, end_x: 1180 },
+                      { y_position: 20, start_x: 80, end_x: 1180 },
+                    ],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [
+                      { y_position: 120, start_x: 80, end_x: 1180 },
+                      { y_position: 125, start_x: 80, end_x: 1180 },
+                      { y_position: 130, start_x: 80, end_x: 1180 },
+                      { y_position: 135, start_x: 80, end_x: 1180 },
+                      { y_position: 140, start_x: 80, end_x: 1180 },
+                    ],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutWithBracket}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      // Verify bracket element exists
+      const bracket = container.querySelector('[data-bracket-type="bracket"]');
+      expect(bracket).toBeTruthy();
+      expect(bracket?.tagName).toBe('text');
+    });
+
+    it('should render bracket with correct SMuFL codepoint', () => {
+      const layoutWithBracket: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'strings',
+                bracket_type: 'Bracket',
+                staves: [
+                  {
+                    staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [{ y_position: 120, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutWithBracket}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      const bracket = container.querySelector('[data-bracket-type="bracket"]');
+      expect(bracket?.textContent).toBe('\uE002'); // SMuFL bracket
+    });
+
+    it('should not render bracket when bracket_type is None', () => {
+      const layoutNoBracket: GlobalLayout = {
+        systems: [
+          {
+            index: 0,
+            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            staff_groups: [
+              {
+                instrument_id: 'woodwinds',
+                bracket_type: 'None',
+                staves: [
+                  {
+                    staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                  {
+                    staff_lines: [{ y_position: 120, start_x: 80, end_x: 1180 }],
+                    glyph_runs: [],
+                    structural_glyphs: [],
+                  } as Staff,
+                ],
+              },
+            ],
+            tick_range: { start_tick: 0, end_tick: 960 },
+          } as System,
+        ],
+        total_width: 1200,
+        total_height: 280,
+        units_per_space: 20.0,
+      };
+
+      const { container } = render(
+        <LayoutRenderer
+          layout={layoutNoBracket}
+          config={validConfig}
+          viewport={{ x: 0, y: 0, width: 1200, height: 280 }}
+        />
+      );
+
+      const bracket = container.querySelector('[data-bracket-type]');
+      expect(bracket).toBeNull();
     });
   });
 });

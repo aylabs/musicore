@@ -110,18 +110,18 @@
 
 ### Implementation for User Story 3
 
-- [ ] T044 [P] [US3] Create test fixture: 8-measure piano score in frontend/tests/fixtures/piano_8_measures.json (treble + bass clefs)
-- [ ] T045 [US3] Implement brace rendering in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (draw SMuFL brace glyph if staff_groups[].bracket_type === Brace)
-- [ ] T046 [US3] Implement bracket rendering in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (draw SMuFL bracket glyph if bracket_type === Bracket)
-- [ ] T047 [US3] Handle multi-staff spacing in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (use layout.staff_lines[0].y_position differences)
-- [ ] T048 [US3] Ensure vertical alignment of simultaneous notes in LayoutRenderer.renderGlyphRun() in frontend/src/components/LayoutRenderer.tsx (same tick = same x-position from layout)
-- [ ] T049 [US3] Unit test for brace rendering in frontend/tests/unit/LayoutRenderer.test.ts (verify SMuFL brace glyph at correct position)
-- [ ] T050 [P] [US3] Unit test for bracket rendering in frontend/tests/unit/LayoutRenderer.test.ts (verify SMuFL bracket glyph)
-- [ ] T051 [US3] Integration test: render piano_8_measures in frontend/tests/integration/MultiStaff.test.ts (verify 2 staves present)
-- [ ] T052 [US3] Integration test: verify staff spacing in frontend/tests/integration/MultiStaff.test.ts (vertical separation matches layout.staff_lines[].y_position)
-- [ ] T053 [US3] Integration test: verify brace in frontend/tests/integration/MultiStaff.test.ts (brace glyph connects both staves)
-- [ ] T054 [US3] Integration test: verify vertical alignment in frontend/tests/integration/MultiStaff.test.ts (simultaneous notes have identical x-positions ±1 pixel)
-- [ ] T055 [US3] Playwright test: visual comparison for piano_8_measures in frontend/tests/integration/VisualComparison.test.ts (multi-staff <5% diff vs old renderer)
+- [X] T044 [P] [US3] Create test fixture: 8-measure piano score in frontend/tests/fixtures/piano_8_measures.json (treble + bass clefs)
+- [X] T045 [US3] Implement brace rendering in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (draw SMuFL brace glyph if staff_groups[].bracket_type === Brace)
+- [X] T046 [US3] Implement bracket rendering in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (draw SMuFL bracket glyph if bracket_type === Bracket)
+- [X] T047 [US3] Handle multi-staff spacing in LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (use layout.staff_lines[0].y_position differences)
+- [X] T048 [US3] Ensure vertical alignment of simultaneous notes in LayoutRenderer.renderGlyphRun() in frontend/src/components/LayoutRenderer.tsx (same tick = same x-position from layout)
+- [X] T049 [US3] Unit test for brace rendering in frontend/tests/unit/LayoutRenderer.test.ts (verify SMuFL brace glyph at correct position)
+- [X] T050 [P] [US3] Unit test for bracket rendering in frontend/tests/unit/LayoutRenderer.test.ts (verify SMuFL bracket glyph)
+- [X] T051 [US3] Integration test: render piano_8_measures in frontend/tests/integration/MultiStaff.test.ts (verify 2 staves present)
+- [X] T052 [US3] Integration test: verify staff spacing in frontend/tests/integration/MultiStaff.test.ts (vertical separation matches layout.staff_lines[].y_position)
+- [X] T053 [US3] Integration test: verify brace in frontend/tests/integration/MultiStaff.test.ts (brace glyph connects both staves)
+- [X] T054 [US3] Integration test: verify vertical alignment in frontend/tests/integration/MultiStaff.test.ts (simultaneous notes have identical x-positions ±1 pixel)
+- [X] T055 [US3] Playwright test: visual comparison for piano_8_measures in frontend/tests/integration/VisualComparison.test.ts (multi-staff <5% diff vs old renderer)
 
 **Checkpoint**: User Story 3 complete (12 tasks) - Multi-staff rendering functional, piano scores work correctly
 
