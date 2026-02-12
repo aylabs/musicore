@@ -6,7 +6,7 @@
  * instead of crashing the entire application.
  */
 
-import { Component, ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 
 /**
  * Props for ErrorBoundary component

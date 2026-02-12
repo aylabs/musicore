@@ -1,13 +1,13 @@
 // MusicXML Parser - Feature 006-musicxml-import
 // Parses MusicXML documents using quick-xml streaming parser
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::io::BufRead;
 
+use super::ImportContext;
 use super::errors::ImportError;
 use super::types::*;
-use super::ImportContext;
 
 /// Parses MusicXML documents into intermediate data structures
 pub struct MusicXMLParser;
@@ -21,7 +21,10 @@ impl MusicXMLParser {
     ///
     /// # Returns
     /// MusicXMLDocument with all parts, measures, and elements
-    pub fn parse(xml_content: &str, context: &mut ImportContext) -> Result<MusicXMLDocument, ImportError> {
+    pub fn parse(
+        xml_content: &str,
+        context: &mut ImportContext,
+    ) -> Result<MusicXMLDocument, ImportError> {
         let mut reader = Reader::from_str(xml_content);
         reader.trim_text(true);
 
@@ -70,11 +73,12 @@ impl MusicXMLParser {
                         for attr in e.attributes() {
                             if let Ok(attr) = attr {
                                 if attr.key.as_ref() == b"id" {
-                                    current_part_id = Some(String::from_utf8_lossy(&attr.value).to_string());
+                                    current_part_id =
+                                        Some(String::from_utf8_lossy(&attr.value).to_string());
                                 }
                             }
                         }
-                        
+
                         if let Some(part_id) = current_part_id.clone() {
                             let part_data = Self::parse_part(reader, &part_id, &doc.part_names)?;
                             doc.parts.push(part_data);
@@ -124,7 +128,8 @@ impl MusicXMLParser {
                         for attr in e.attributes() {
                             if let Ok(attr) = attr {
                                 if attr.key.as_ref() == b"id" {
-                                    current_part_id = Some(String::from_utf8_lossy(&attr.value).to_string());
+                                    current_part_id =
+                                        Some(String::from_utf8_lossy(&attr.value).to_string());
                                 }
                             }
                         }
@@ -142,7 +147,8 @@ impl MusicXMLParser {
                     b"score-part" => {
                         // Store part name mapping when closing score-part element
                         if let Some(ref part_id) = current_part_id {
-                            doc.part_names.insert(part_id.clone(), current_part_name.clone());
+                            doc.part_names
+                                .insert(part_id.clone(), current_part_name.clone());
                         }
                         current_part_id = None;
                         current_part_name.clear();
@@ -212,7 +218,7 @@ impl MusicXMLParser {
                                 }
                             }
                         }
-                        
+
                         let measure = Self::parse_measure(reader, measure_number)?;
                         part.measures.push(measure);
                     }
@@ -272,7 +278,10 @@ impl MusicXMLParser {
     ///   <note>...</note>
     /// </measure>
     /// ```
-    fn parse_measure<B: BufRead>(reader: &mut Reader<B>, measure_number: i32) -> Result<MeasureData, ImportError> {
+    fn parse_measure<B: BufRead>(
+        reader: &mut Reader<B>,
+        measure_number: i32,
+    ) -> Result<MeasureData, ImportError> {
         let mut measure = MeasureData {
             number: measure_number,
             attributes: None,
@@ -464,7 +473,9 @@ impl MusicXMLParser {
     }
 
     /// Parses <time> element
-    fn parse_time_signature<B: BufRead>(reader: &mut Reader<B>) -> Result<TimeSignatureData, ImportError> {
+    fn parse_time_signature<B: BufRead>(
+        reader: &mut Reader<B>,
+    ) -> Result<TimeSignatureData, ImportError> {
         let mut time = TimeSignatureData {
             beats: 4,
             beat_type: 4,
@@ -680,7 +691,9 @@ impl MusicXMLParser {
     }
 
     /// Parses <backup> or <forward> duration element
-    fn parse_duration_element<B: BufRead>(reader: &mut Reader<B>) -> Result<Option<i32>, ImportError> {
+    fn parse_duration_element<B: BufRead>(
+        reader: &mut Reader<B>,
+    ) -> Result<Option<i32>, ImportError> {
         let mut buf = Vec::new();
         let mut duration = None;
 
@@ -695,7 +708,9 @@ impl MusicXMLParser {
                     }
                     _ => {}
                 },
-                Ok(Event::End(e)) if e.name().as_ref() == b"backup" || e.name().as_ref() == b"forward" => {
+                Ok(Event::End(e))
+                    if e.name().as_ref() == b"backup" || e.name().as_ref() == b"forward" =>
+                {
                     break;
                 }
                 Err(e) => {

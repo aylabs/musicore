@@ -6,7 +6,7 @@
  * and zoom controls for production use.
  */
 
-import { Component, createRef, RefObject } from 'react';
+import { Component, createRef, type RefObject } from 'react';
 import { LayoutRenderer } from '../components/LayoutRenderer';
 import { createDefaultConfig } from '../utils/renderUtils';
 import type { GlobalLayout } from '../wasm/layout';
@@ -66,14 +66,14 @@ interface ScoreViewerState {
  */
 export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
-  private containerRef: RefObject<HTMLDivElement>;
+  private containerRef: RefObject<HTMLDivElement | null>;
   
   /** Debounce timer for scroll events */
   private scrollTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: ScoreViewerProps) {
     super(props);
-    this.containerRef = createRef<HTMLDivElement>();
+    this.containerRef = createRef();
 
     const baseConfig = props.config || createDefaultConfig();
     const config = props.darkMode ? this.createDarkModeConfig(baseConfig) : baseConfig;

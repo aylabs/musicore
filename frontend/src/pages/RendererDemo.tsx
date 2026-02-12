@@ -12,9 +12,9 @@
 import { Component } from 'react';
 import { ScoreViewer } from './ScoreViewer';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import violinLayout from '../tests/fixtures/violin_10_measures.json';
-import pianoLayout from '../tests/fixtures/piano_8_measures.json';
-import longScoreLayout from '../tests/fixtures/score_100_measures.json';
+import violinLayout from '../../tests/fixtures/violin_10_measures.json';
+import pianoLayout from '../../tests/fixtures/piano_8_measures.json';
+import longScoreLayout from '../../tests/fixtures/score_100_measures.json';
 import type { GlobalLayout } from '../wasm/layout';
 
 /**

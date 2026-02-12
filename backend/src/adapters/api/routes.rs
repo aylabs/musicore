@@ -1,14 +1,14 @@
 use axum::{
-    routing::{delete, get, post},
     Router,
+    routing::{delete, get, post},
 };
-use tower_http::trace::TraceLayer;
 use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 
 use super::handlers::{
-    add_clef_event, add_instrument, add_key_signature_event, add_note, add_staff,
-    add_tempo_event, add_time_signature_event, add_voice, create_score, delete_score,
-    get_score, list_scores, AppState,
+    AppState, add_clef_event, add_instrument, add_key_signature_event, add_note, add_staff,
+    add_tempo_event, add_time_signature_event, add_voice, create_score, delete_score, get_score,
+    list_scores,
 };
 use super::import::import_musicxml;
 

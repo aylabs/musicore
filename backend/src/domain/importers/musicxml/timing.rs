@@ -64,11 +64,7 @@ impl Fraction {
 fn gcd(a: i64, b: i64) -> i64 {
     let a = a.abs();
     let b = b.abs();
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    if b == 0 { a } else { gcd(b, a % b) }
 }
 
 #[cfg(test)]
@@ -93,7 +89,7 @@ mod tests {
         // divisions=768, triplet eighth=256 (1/3 of quarter note at 768 divisions)
         // Expected: (256 * 960) / 768 = 245760 / 768 = 320 ticks (exact after normalization)
         let fraction = Fraction::from_musicxml(256, 768);
-        
+
         // After normalization, should be 320/1 (exact)
         assert_eq!(fraction.numerator, 320);
         assert_eq!(fraction.denominator, 1);

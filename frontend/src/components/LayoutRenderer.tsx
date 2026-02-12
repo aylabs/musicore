@@ -7,7 +7,7 @@
  * resolution-independent display.
  */
 
-import { Component, createRef, RefObject } from 'react';
+import { Component, createRef, type RefObject } from 'react';
 import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun } from '../wasm/layout';
 import type { RenderConfig } from '../types/RenderConfig';
 import type { Viewport } from '../types/Viewport';
@@ -53,11 +53,11 @@ export interface LayoutRendererProps {
  */
 export class LayoutRenderer extends Component<LayoutRendererProps> {
   /** Reference to SVG element for direct DOM manipulation */
-  private svgRef: RefObject<SVGSVGElement>;
+  private svgRef: RefObject<SVGSVGElement | null>;
 
   constructor(props: LayoutRendererProps) {
     super(props);
-    this.svgRef = createRef<SVGSVGElement>();
+    this.svgRef = createRef();
 
     // Validate config on construction
     validateRenderConfig(props.config);

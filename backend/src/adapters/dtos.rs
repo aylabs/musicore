@@ -1,18 +1,15 @@
 // Shared DTOs for API and WASM adapters
 // These DTOs add computed fields like active_clef to domain entities
 
-use serde::{Deserialize, Serialize};
 use crate::domain::{
-    score::Score,
+    events::{global::GlobalStructuralEvent, staff::StaffStructuralEvent},
     instrument::Instrument,
+    score::Score,
     staff::Staff,
-    voice::Voice,
     value_objects::Clef,
-    events::{
-        global::GlobalStructuralEvent,
-        staff::StaffStructuralEvent,
-    },
+    voice::Voice,
 };
+use serde::{Deserialize, Serialize};
 
 // ===== Response DTOs with computed fields (Feature 007) =====
 
@@ -20,7 +17,7 @@ use crate::domain::{
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StaffDto {
     pub id: String,
-    pub active_clef: Clef,  // NEW: Derived from first ClefEvent
+    pub active_clef: Clef, // NEW: Derived from first ClefEvent
     pub staff_structural_events: Vec<StaffStructuralEvent>,
     pub voices: Vec<Voice>,
 }
@@ -28,14 +25,15 @@ pub struct StaffDto {
 impl From<&Staff> for StaffDto {
     fn from(staff: &Staff) -> Self {
         // Find first ClefEvent in staff_structural_events, default to Treble
-        let active_clef = staff.staff_structural_events
+        let active_clef = staff
+            .staff_structural_events
             .iter()
             .find_map(|event| match event {
                 StaffStructuralEvent::Clef(clef_event) => Some(clef_event.clef),
                 _ => None,
             })
             .unwrap_or(Clef::Treble);
-        
+
         Self {
             id: staff.id.to_string(),
             active_clef,
@@ -73,12 +71,12 @@ const SCORE_SCHEMA_VERSION: u32 = 2;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ScoreDto {
     pub id: String,
-    
+
     /// Schema version for data structure evolution
     /// v1: Original structure
     /// v2: Added active_clef to StaffDto
     pub schema_version: u32,
-    
+
     pub global_structural_events: Vec<GlobalStructuralEvent>,
     pub instruments: Vec<InstrumentDto>,
 }

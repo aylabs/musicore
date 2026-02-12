@@ -1,4 +1,7 @@
-use crate::domain::{ids::NoteId, value_objects::{Pitch, Tick}};
+use crate::domain::{
+    ids::NoteId,
+    value_objects::{Pitch, Tick},
+};
 use serde::{Deserialize, Serialize};
 
 /// Note represents a musical note with timing and pitch
@@ -15,7 +18,7 @@ impl Note {
         if duration_ticks == 0 {
             return Err("duration_ticks must be greater than 0");
         }
-        
+
         Ok(Self {
             id: NoteId::new(),
             start_tick,

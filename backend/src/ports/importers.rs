@@ -1,9 +1,9 @@
 // Port for MusicXML import - feature 006-musicxml-import
 
-use std::path::Path;
+use crate::domain::importers::musicxml::errors::{ImportWarning, WarningCategory, WarningSeverity};
 use crate::domain::score::Score;
-use crate::domain::importers::musicxml::errors::{ImportWarning, WarningSeverity, WarningCategory};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Result type for import operations with metadata and warnings
 #[derive(Debug, Clone, Serialize, Deserialize)]

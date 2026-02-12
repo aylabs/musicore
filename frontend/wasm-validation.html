@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Layout Engine Validation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .test-result.pass {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .test-result.fail {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .test-result.info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .status {
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        .status.pass { background: #28a745; color: white; }
+        .status.fail { background: #dc3545; color: white; }
+        .metric {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 5px 10px;
+            background: #e9ecef;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦀 Rust Layout Engine WASM Validation</h1>
+    
+    <div class="test-section">
+        <h2>Initialization Status</h2>
+        <div id="init-status">
+            <p>Loading WASM module...</p>
+        </div>
+        <button id="init-btn" onclick="initWasm()">Initialize WASM</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 1: Basic Layout Computation</h2>
+        <p>Computes layout for a minimal single-note score.</p>
+        <button id="test1-btn" onclick="runTest1()" disabled>Run Test 1</button>
+        <div id="test1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Multi-Measure Score (50 measures)</h2>
+        <p>Loads 50-measure piano fixture and verifies system structure.</p>
+        <button id="test2-btn" onclick="runTest2()" disabled>Run Test 2</button>
+        <div id="test2-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Determinism Validation</h2>
+        <p>Verifies same input produces byte-identical JSON output (5 iterations).</p>
+        <button id="test3-btn" onclick="runTest3()" disabled>Run Test 3</button>
+        <div id="test3-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Configuration Sensitivity</h2>
+        <p>Tests different max_system_width values produce different layouts.</p>
+        <button id="test4-btn" onclick="runTest4()" disabled>Run Test 4</button>
+        <div id="test4-results"></div>
+    </div>
+
+    <script type="module">
+        import init, { compute_layout_wasm } from './src/wasm/musicore_backend.js';
+
+        window.wasmModule = null;
+        window.compute_layout_wasm = null;
+
+        // Minimal test score
+        window.minimalScore = {
+            id: 'test-score',
+            title: 'Validation Test',
+            instruments: [{
+                id: 'piano',
+                name: 'Piano',
+                staves: [{
+                    staff_lines: 5,
+                    initial_clef: 'treble',
+                    voices: [{
+                        events: [{
+                            tick: 0,
+                            duration_ticks: 960,
+                            note_type: 'note',
+                            pitch: { step: 'C', octave: 4, alter: 0 }
+                        }]
+                    }]
+                }]
+            }],
+            tempo_changes: [{ tick: 0, bpm: 120.0 }]
+        };
+
+        window.initWasm = async function() {
+            const statusDiv = document.getElementById('init-status');
+            try {
+                statusDiv.innerHTML = '<p>⏳ Loading WASM module...</p>';
+                await init();
+                window.compute_layout_wasm = compute_layout_wasm;
+                
+                statusDiv.innerHTML = `
+                    <div class="test-result pass">
+                        <span class="status pass">✓ PASS</span> WASM module loaded successfully!
+                        <br>Function available: ${typeof compute_layout_wasm === 'function' ? 'YES' : 'NO'}
+                    </div>
+                `;
+                
+                // Enable test buttons
+                document.getElementById('test1-btn').disabled = false;
+                document.getElementById('test2-btn').disabled = false;
+                document.getElementById('test3-btn').disabled = false;
+                document.getElementById('test4-btn').disabled = false;
+                document.getElementById('init-btn').disabled = true;
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="test-result fail">
+                        <span class="status fail">✗ FAIL</span> Failed to load WASM module
+                        <br>Error: ${error.message}
+                    </div>
+                `;
+                console.error('WASM initialization failed:', error);
+            }
+        };
+
+        window.runTest1 = function() {
+            const resultsDiv = document.getElementById('test1-results');
+            try {
+                resultsDiv.innerHTML = '<p>⏳ Computing layout...</p>';
+                
+                const scoreJson = JSON.stringify(window.minimalScore);
+                const configJson = JSON.stringify({});
+                
+                const startTime = performance.now();
+                const resultJson = compute_layout_wasm(scoreJson, configJson);
+                const elapsed = (performance.now() - startTime).toFixed(2);
+                
+                const layout = JSON.parse(resultJson);
+                
+                // Verify structure
+                const checks = {
+                    'Has systems array': Array.isArray(layout.systems),
+                    'Has total_width': typeof layout.total_width === 'number',
+                    'Has total_height': typeof layout.total_height === 'number',
+                    'Has units_per_space': typeof layout.units_per_space === 'number',
+                    'At least 1 system': layout.systems.length > 0,
+                    'System has bounding_box': layout.systems[0]?.bounding_box != null,
+                    'System has staff_groups': Array.isArray(layout.systems[0]?.staff_groups),
+                    'System has tick_range': layout.systems[0]?.tick_range != null
+                };
+                
+                const allPass = Object.values(checks).every(v => v === true);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result ${allPass ? 'pass' : 'fail'}">
+                        <span class="status ${allPass ? 'pass' : 'fail'}">${allPass ? '✓ PASS' : '✗ FAIL'}</span>
+                        Basic layout computation
+                        <br><span class="metric">Time: ${elapsed}ms</span>
+                        <span class="metric">Systems: ${layout.systems.length}</span>
+                        <br><br>Checks:
+                        ${Object.entries(checks).map(([k, v]) => 
+                            `<br>  ${v ? '✓' : '✗'} ${k}`
+                        ).join('')}
+                    </div>
+                    <details>
+                        <summary>Layout Output (JSON)</summary>
+                        <pre>${JSON.stringify(layout, null, 2)}</pre>
+                    </details>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result fail">
+                        <span class="status fail">✗ FAIL</span> Test 1 failed
+                        <br>Error: ${error.message}
+                    </div>
+                `;
+                console.error('Test 1 failed:', error);
+            }
+        };
+
+        window.runTest2 = async function() {
+            const resultsDiv = document.getElementById('test2-results');
+            try {
+                resultsDiv.innerHTML = '<p>⏳ Loading fixture and computing layout...</p>';
+                
+                // Fetch the 50-measure fixture
+                const response = await fetch('../backend/tests/fixtures/piano_50_measures.json');
+                const score = await response.json();
+                
+                const scoreJson = JSON.stringify(score);
+                const configJson = JSON.stringify({});
+                
+                const startTime = performance.now();
+                const resultJson = compute_layout_wasm(scoreJson, configJson);
+                const elapsed = (performance.now() - startTime).toFixed(2);
+                
+                const layout = JSON.parse(resultJson);
+                
+                // Count glyphs
+                let totalGlyphs = 0;
+                for (const system of layout.systems) {
+                    for (const staffGroup of system.staff_groups) {
+                        for (const staff of staffGroup.staves) {
+                            for (const run of staff.glyph_runs) {
+                                totalGlyphs += run.glyphs.length;
+                            }
+                            totalGlyphs += staff.structural_glyphs.length;
+                        }
+                    }
+                }
+                
+                const checks = {
+                    'Systems created': layout.systems.length > 0,
+                    'Multiple systems (line breaking)': layout.systems.length > 1,
+                    'Systems indexed sequentially': layout.systems.every((s, i) => s.index === i),
+                    'All systems have tick_range': layout.systems.every(s => s.tick_range != null),
+                    'Glyphs positioned': totalGlyphs > 0,
+                    'Total dimensions set': layout.total_width > 0 && layout.total_height > 0
+                };
+                
+                const allPass = Object.values(checks).every(v => v === true);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result ${allPass ? 'pass' : 'fail'}">
+                        <span class="status ${allPass ? 'pass' : 'fail'}">${allPass ? '✓ PASS' : '✗ FAIL'}</span>
+                        50-measure piano score layout
+                        <br><span class="metric">Time: ${elapsed}ms</span>
+                        <span class="metric">Systems: ${layout.systems.length}</span>
+                        <span class="metric">Glyphs: ${totalGlyphs}</span>
+                        <span class="metric">Width: ${layout.total_width.toFixed(1)}</span>
+                        <span class="metric">Height: ${layout.total_height.toFixed(1)}</span>
+                        <br><br>Checks:
+                        ${Object.entries(checks).map(([k, v]) => 
+                            `<br>  ${v ? '✓' : '✗'} ${k}`
+                        ).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result fail">
+                        <span class="status fail">✗ FAIL</span> Test 2 failed
+                        <br>Error: ${error.message}
+                    </div>
+                `;
+                console.error('Test 2 failed:', error);
+            }
+        };
+
+        window.runTest3 = function() {
+            const resultsDiv = document.getElementById('test3-results');
+            try {
+                resultsDiv.innerHTML = '<p>⏳ Running determinism test (5 iterations)...</p>';
+                
+                const scoreJson = JSON.stringify(window.minimalScore);
+                const configJson = JSON.stringify({ max_system_width: 1200, system_height: 200 });
+                
+                const results = [];
+                const hashes = new Set();
+                
+                const startTime = performance.now();
+                for (let i = 0; i < 5; i++) {
+                    const resultJson = compute_layout_wasm(scoreJson, configJson);
+                    results.push(resultJson);
+                    
+                    // Simple hash for comparison
+                    let hash = 0;
+                    for (let j = 0; j < resultJson.length; j++) {
+                        hash = ((hash << 5) - hash) + resultJson.charCodeAt(j);
+                        hash = hash & hash;
+                    }
+                    hashes.add(hash);
+                }
+                const elapsed = (performance.now() - startTime).toFixed(2);
+                
+                // Byte-identical check
+                const firstResult = results[0];
+                const allIdentical = results.every(r => r === firstResult);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result ${allIdentical ? 'pass' : 'fail'}">
+                        <span class="status ${allIdentical ? 'pass' : 'fail'}">${allIdentical ? '✓ PASS' : '✗ FAIL'}</span>
+                        Determinism validation
+                        <br><span class="metric">Iterations: 5</span>
+                        <span class="metric">Time: ${elapsed}ms</span>
+                        <span class="metric">Unique outputs: ${hashes.size}</span>
+                        <br><br>
+                        ${allIdentical ? 
+                            '✓ All 5 iterations produced byte-identical JSON output' : 
+                            '✗ Output varies between iterations (non-deterministic)'}
+                        <br>JSON length: ${firstResult.length} bytes
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result fail">
+                        <span class="status fail">✗ FAIL</span> Test 3 failed
+                        <br>Error: ${error.message}
+                    </div>
+                `;
+                console.error('Test 3 failed:', error);
+            }
+        };
+
+        window.runTest4 = function() {
+            const resultsDiv = document.getElementById('test4-results');
+            try {
+                resultsDiv.innerHTML = '<p>⏳ Testing configuration sensitivity...</p>';
+                
+                const scoreJson = JSON.stringify(window.minimalScore);
+                
+                // Test with different max_system_width values
+                const configs = [
+                    { max_system_width: 600 },
+                    { max_system_width: 1200 },
+                    { max_system_width: 2400 }
+                ];
+                
+                const layouts = configs.map(config => {
+                    const configJson = JSON.stringify(config);
+                    const resultJson = compute_layout_wasm(scoreJson, configJson);
+                    return JSON.parse(resultJson);
+                });
+                
+                const widths = layouts.map(l => l.total_width);
+                const systemCounts = layouts.map(l => l.systems.length);
+                
+                // Verify values are different
+                const widthsUnique = new Set(widths).size > 1;
+                const configsAffectLayout = layouts.some((l, i) => i === 0 || 
+                    JSON.stringify(l) !== JSON.stringify(layouts[0]));
+                
+                const allPass = widthsUnique && configsAffectLayout;
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result ${allPass ? 'pass' : 'fail'}">
+                        <span class="status ${allPass ? 'pass' : 'fail'}">${allPass ? '✓ PASS' : '✗ FAIL'}</span>
+                        Configuration sensitivity
+                        <br><br>Results:
+                        ${configs.map((cfg, i) => `
+                            <br>  Width ${cfg.max_system_width}: 
+                            ${systemCounts[i]} systems, total width ${widths[i].toFixed(1)}
+                        `).join('')}
+                        <br><br>
+                        ${allPass ? 
+                            '✓ Different configurations produce different layouts (not hardcoded)' : 
+                            '✗ Configuration changes do not affect output'}
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result fail">
+                        <span class="status fail">✗ FAIL</span> Test 4 failed
+                        <br>Error: ${error.message}
+                    </div>
+                `;
+                console.error('Test 4 failed:', error);
+            }
+        };
+
+        // Auto-initialize on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('init-btn').click();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

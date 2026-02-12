@@ -25,27 +25,35 @@ impl Default for InMemoryScoreRepository {
 
 impl ScoreRepository for InMemoryScoreRepository {
     fn save(&self, score: Score) -> Result<(), PersistenceError> {
-        let mut scores = self.scores.lock()
+        let mut scores = self
+            .scores
+            .lock()
             .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
         scores.insert(score.id, score);
         Ok(())
     }
 
     fn find_by_id(&self, id: ScoreId) -> Result<Option<Score>, PersistenceError> {
-        let scores = self.scores.lock()
+        let scores = self
+            .scores
+            .lock()
             .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
         Ok(scores.get(&id).cloned())
     }
 
     fn delete(&self, id: ScoreId) -> Result<(), PersistenceError> {
-        let mut scores = self.scores.lock()
+        let mut scores = self
+            .scores
+            .lock()
             .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
         scores.remove(&id);
         Ok(())
     }
 
     fn list_all(&self) -> Result<Vec<Score>, PersistenceError> {
-        let scores = self.scores.lock()
+        let scores = self
+            .scores
+            .lock()
             .map_err(|e| PersistenceError::StorageError(format!("Lock error: {}", e)))?;
         Ok(scores.values().cloned().collect())
     }

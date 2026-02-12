@@ -36,9 +36,9 @@ fn main() {
     println!("Right hand (treble clef) - C major chord:");
     let treble_voice = &mut piano.staves[0].voices[0];
     let right_hand_notes = [
-        (72, "C5"),  // MIDI 72 = C5
-        (76, "E5"),  // MIDI 76 = E5
-        (79, "G5"),  // MIDI 79 = G5
+        (72, "C5"), // MIDI 72 = C5
+        (76, "E5"), // MIDI 76 = E5
+        (79, "G5"), // MIDI 79 = G5
     ];
 
     for &(pitch, name) in &right_hand_notes {
@@ -51,9 +51,9 @@ fn main() {
     println!("\nLeft hand (bass clef) - C major chord:");
     let bass_voice = &mut piano.staves[1].voices[0];
     let left_hand_notes = [
-        (48, "C3"),  // MIDI 48 = C3
-        (52, "E3"),  // MIDI 52 = E3
-        (55, "G3"),  // MIDI 55 = G3
+        (48, "C3"), // MIDI 48 = C3
+        (52, "E3"), // MIDI 52 = E3
+        (55, "G3"), // MIDI 55 = G3
     ];
 
     for &(pitch, name) in &left_hand_notes {
@@ -68,7 +68,17 @@ fn main() {
     println!("\n=== Score Summary ===");
     println!("Instruments: {}", score.instruments.len());
     println!("Staves: {}", score.instruments[0].staves.len());
-    println!("Right hand notes: {}", score.instruments[0].staves[0].voices[0].interval_events.len());
-    println!("Left hand notes: {}", score.instruments[0].staves[1].voices[0].interval_events.len());
+    println!(
+        "Right hand notes: {}",
+        score.instruments[0].staves[0].voices[0]
+            .interval_events
+            .len()
+    );
+    println!(
+        "Left hand notes: {}",
+        score.instruments[0].staves[1].voices[0]
+            .interval_events
+            .len()
+    );
     println!("\n✓ Two-staff piano score created successfully!");
 }

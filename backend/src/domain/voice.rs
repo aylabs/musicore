@@ -1,8 +1,4 @@
-use crate::domain::{
-    errors::DomainError,
-    events::note::Note,
-    ids::VoiceId,
-};
+use crate::domain::{errors::DomainError, events::note::Note, ids::VoiceId};
 use serde::{Deserialize, Serialize};
 
 /// Voice contains interval events (notes) within a staff
@@ -25,9 +21,10 @@ impl Voice {
         // Check for overlapping notes with the same pitch
         for existing_note in &self.interval_events {
             if existing_note.pitch == note.pitch && existing_note.overlaps_with(&note) {
-                return Err(DomainError::ConstraintViolation(
-                    format!("Note with pitch {} overlaps with existing note at the same pitch", note.pitch.value())
-                ));
+                return Err(DomainError::ConstraintViolation(format!(
+                    "Note with pitch {} overlaps with existing note at the same pitch",
+                    note.pitch.value()
+                )));
             }
         }
 
@@ -36,7 +33,7 @@ impl Voice {
     }
 
     /// Check if a note can be added without overlapping (non-mutating)
-    /// 
+    ///
     /// Returns true if the note can be added safely, false if it would overlap
     /// with an existing note of the same pitch.
     pub fn can_add_note(&self, note: &Note) -> bool {

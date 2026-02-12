@@ -3,6 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './sw-registration'
+import { initLayoutEngine } from './wasm/layout'
+
+// Initialize WASM layout engine (T061)
+initLayoutEngine().then(() => {
+  console.log('Layout engine WASM module initialized');
+}).catch((error) => {
+  console.error('Failed to initialize layout engine:', error);
+});
 
 // Register service worker (T020-T021)
 registerServiceWorker({

@@ -1,11 +1,11 @@
 // WASM Bindings - Feature 011-wasm-music-engine
 // Exports Rust functions to JavaScript using wasm-bindgen
 
-use wasm_bindgen::prelude::*;
-use crate::domain::importers::musicxml::{MusicXMLParser, MusicXMLConverter, ImportContext};
-use crate::adapters::dtos::ScoreDto;
-use crate::ports::importers::ImportResult;
 use super::error_handling::import_error_to_js;
+use crate::adapters::dtos::ScoreDto;
+use crate::domain::importers::musicxml::{ImportContext, MusicXMLConverter, MusicXMLParser};
+use crate::ports::importers::ImportResult;
+use wasm_bindgen::prelude::*;
 
 // ============================================================================
 // Phase 3: User Story 1 - MusicXML Parsing
@@ -25,53 +25,59 @@ use super::error_handling::import_error_to_js;
 pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
     // Create import context for warning collection
     let mut context = ImportContext::new();
-    
+
     // Parse XML into intermediate MusicXMLDocument
-    let doc = MusicXMLParser::parse(xml_content, &mut context)
-        .map_err(import_error_to_js)?;
-    
+    let doc = MusicXMLParser::parse(xml_content, &mut context).map_err(import_error_to_js)?;
+
     // Store format for metadata
     let format = format!("MusicXML {}", doc.version);
-    
+
     // Convert MusicXMLDocument to domain Score
-    let score = MusicXMLConverter::convert(doc, &mut context)
-        .map_err(import_error_to_js)?;
-    
+    let score = MusicXMLConverter::convert(doc, &mut context).map_err(import_error_to_js)?;
+
     // Extract warnings and counts from context
     let skipped_element_count = context.skipped_element_count();
     let warnings = context.finish();
-    
+
     // Calculate statistics
     let instrument_count = score.instruments.len();
-    let staff_count = score.instruments.iter()
-        .map(|inst| inst.staves.len())
-        .sum();
-    let voice_count = score.instruments.iter()
+    let staff_count = score.instruments.iter().map(|inst| inst.staves.len()).sum();
+    let voice_count = score
+        .instruments
+        .iter()
         .flat_map(|inst| &inst.staves)
         .map(|staff| staff.voices.len())
         .sum();
-    let note_count = score.instruments.iter()
+    let note_count = score
+        .instruments
+        .iter()
         .flat_map(|inst| &inst.staves)
         .flat_map(|staff| &staff.voices)
         .map(|voice| voice.interval_events.len())
         .sum();
-    let duration_ticks = score.instruments.iter()
+    let duration_ticks = score
+        .instruments
+        .iter()
         .flat_map(|inst| &inst.staves)
         .flat_map(|staff| &staff.voices)
         .flat_map(|voice| &voice.interval_events)
         .map(|note| note.end_tick().value())
         .max()
         .unwrap_or(0);
-    
+
     // Check if any Error-severity warnings exist (indicates partial import)
-    let partial_import = warnings.iter()
-        .any(|w| matches!(w.severity, crate::domain::importers::musicxml::WarningSeverity::Error));
-    
+    let partial_import = warnings.iter().any(|w| {
+        matches!(
+            w.severity,
+            crate::domain::importers::musicxml::WarningSeverity::Error
+        )
+    });
+
     let warning_count = warnings.len();
-    
+
     // Convert Score to DTO with active_clef field
     let score_dto = ScoreDto::from(&score);
-    
+
     // Build ImportResult
     let result = ImportResult {
         score,
@@ -93,34 +99,29 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
         warnings,
         partial_import,
     };
-    
+
     // Serialize ImportResult to JsValue for JavaScript
     serde_wasm_bindgen::to_value(&result)
-        .map_err(|e| {
-            JsValue::from_str(&format!("Serialization error: {}", e))
-        })
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
 
 // ============================================================================
 // Phase 4: User Story 2 - Domain Operations
 // ============================================================================
 
+use super::error_handling::to_js_error;
 use crate::domain::{
-    score::Score,
-    instrument::Instrument,
-    staff::Staff,
-    voice::Voice,
     events::{
-        note::Note,
-        tempo::TempoEvent,
+        clef::ClefEvent, key_signature::KeySignatureEvent, note::Note, tempo::TempoEvent,
         time_signature::TimeSignatureEvent,
-        clef::ClefEvent,
-        key_signature::KeySignatureEvent,
     },
     ids::{InstrumentId, StaffId, VoiceId},
-    value_objects::{Tick, BPM, Clef, KeySignature},
+    instrument::Instrument,
+    score::Score,
+    staff::Staff,
+    value_objects::{BPM, Clef, KeySignature, Tick},
+    voice::Voice,
 };
-use super::error_handling::to_js_error;
 
 /// Helper function to parse key signature string to sharps/flats count
 /// Examples: "C" -> 0, "G" -> 1, "D" -> 2, "F" -> -1, "Bb" -> -2
@@ -135,7 +136,7 @@ fn parse_key_signature(key: &str) -> Result<i8, JsValue> {
         "B" => Ok(5),
         "F#" => Ok(6),
         "C#" => Ok(7),
-        // Major keys with flats  
+        // Major keys with flats
         "F" => Ok(-1),
         "Bb" => Ok(-2),
         "Eb" => Ok(-3),
@@ -160,7 +161,10 @@ fn parse_key_signature(key: &str) -> Result<i8, JsValue> {
         "Bbm" => Ok(-5),
         "Ebm" => Ok(-6),
         "Abm" => Ok(-7),
-        _ => Err(JsValue::from_str(&format!("Invalid key signature: {}", key))),
+        _ => Err(JsValue::from_str(&format!(
+            "Invalid key signature: {}",
+            key
+        ))),
     }
 }
 
@@ -174,7 +178,7 @@ fn parse_key_signature(key: &str) -> Result<i8, JsValue> {
 #[wasm_bindgen]
 pub fn create_score(_title: Option<String>) -> Result<JsValue, JsValue> {
     let score = Score::new();
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -191,10 +195,10 @@ pub fn create_score(_title: Option<String>) -> Result<JsValue, JsValue> {
 pub fn add_instrument(score_js: JsValue, name: &str) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let instrument = Instrument::new(name.to_string());
     score.add_instrument(instrument);
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -211,17 +215,19 @@ pub fn add_instrument(score_js: JsValue, name: &str) -> Result<JsValue, JsValue>
 pub fn add_staff(score_js: JsValue, instrument_id: &str) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let instrument_id = InstrumentId::parse(instrument_id)
         .map_err(|e| JsValue::from_str(&format!("Invalid instrument ID: {}", e)))?;
-    
-    let instrument = score.instruments.iter_mut()
+
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| JsValue::from_str("Instrument not found"))?;
-    
+
     let staff = Staff::new();
     instrument.add_staff(staff);
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -238,10 +244,10 @@ pub fn add_staff(score_js: JsValue, instrument_id: &str) -> Result<JsValue, JsVa
 pub fn add_voice(score_js: JsValue, staff_id: &str) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let staff_id = StaffId::parse(staff_id)
         .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
-    
+
     // Find the staff in any instrument
     let mut found = false;
     for instrument in &mut score.instruments {
@@ -252,11 +258,11 @@ pub fn add_voice(score_js: JsValue, staff_id: &str) -> Result<JsValue, JsValue> 
             break;
         }
     }
-    
+
     if !found {
         return Err(JsValue::from_str("Staff not found"));
     }
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -274,30 +280,29 @@ pub fn add_voice(score_js: JsValue, staff_id: &str) -> Result<JsValue, JsValue> 
 pub fn add_note(score_js: JsValue, voice_id: &str, note_js: JsValue) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let note: Note = serde_wasm_bindgen::from_value(note_js)
         .map_err(|e| JsValue::from_str(&format!("Note deserialization error: {}", e)))?;
-    
+
     let voice_id = VoiceId::parse(voice_id)
         .map_err(|e| JsValue::from_str(&format!("Invalid voice ID: {}", e)))?;
-    
+
     // Find the voice in any staff in any instrument
     let mut found = false;
     'outer: for instrument in &mut score.instruments {
         for staff in &mut instrument.staves {
             if let Ok(voice) = staff.get_voice_mut(voice_id) {
-                voice.add_note(note.clone())
-                    .map_err(to_js_error)?;
+                voice.add_note(note.clone()).map_err(to_js_error)?;
                 found = true;
                 break 'outer;
             }
         }
     }
-    
+
     if !found {
         return Err(JsValue::from_str("Voice not found"));
     }
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -315,15 +320,13 @@ pub fn add_note(score_js: JsValue, voice_id: &str, note_js: JsValue) -> Result<J
 pub fn add_tempo_event(score_js: JsValue, tick: u32, bpm: u16) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
-    let bpm_value = BPM::new(bpm)
-        .map_err(|e| JsValue::from_str(e))?;
-    
+
+    let bpm_value = BPM::new(bpm).map_err(|e| JsValue::from_str(e))?;
+
     let tempo_event = TempoEvent::new(Tick::new(tick), bpm_value);
-    
-    score.add_tempo_event(tempo_event)
-        .map_err(to_js_error)?;
-    
+
+    score.add_tempo_event(tempo_event).map_err(to_js_error)?;
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -343,20 +346,17 @@ pub fn add_time_signature_event(
     score_js: JsValue,
     tick: u32,
     numerator: u8,
-    denominator: u8
+    denominator: u8,
 ) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
-    let time_sig_event = TimeSignatureEvent::new(
-        Tick::new(tick),
-        numerator,
-        denominator
-    );
-    
-    score.add_time_signature_event(time_sig_event)
+
+    let time_sig_event = TimeSignatureEvent::new(Tick::new(tick), numerator, denominator);
+
+    score
+        .add_time_signature_event(time_sig_event)
         .map_err(to_js_error)?;
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -376,39 +376,43 @@ pub fn add_clef_event(
     score_js: JsValue,
     staff_id: &str,
     tick: u32,
-    clef_type: &str
+    clef_type: &str,
 ) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let staff_id = StaffId::parse(staff_id)
         .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
-    
+
     let clef = match clef_type.to_lowercase().as_str() {
         "treble" => Clef::Treble,
         "bass" => Clef::Bass,
         "alto" => Clef::Alto,
         "tenor" => Clef::Tenor,
-        _ => return Err(JsValue::from_str(&format!("Invalid clef type: {}", clef_type))),
+        _ => {
+            return Err(JsValue::from_str(&format!(
+                "Invalid clef type: {}",
+                clef_type
+            )));
+        }
     };
-    
+
     let clef_event = ClefEvent::new(Tick::new(tick), clef);
-    
+
     // Find the staff in any instrument
     let mut found = false;
     for instrument in &mut score.instruments {
         if let Ok(staff) = instrument.get_staff_mut(staff_id) {
-            staff.add_clef_event(clef_event)
-                .map_err(to_js_error)?;
+            staff.add_clef_event(clef_event).map_err(to_js_error)?;
             found = true;
             break;
         }
     }
-    
+
     if !found {
         return Err(JsValue::from_str("Staff not found"));
     }
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
@@ -428,37 +432,35 @@ pub fn add_key_signature_event(
     score_js: JsValue,
     staff_id: &str,
     tick: u32,
-    key: &str
+    key: &str,
 ) -> Result<JsValue, JsValue> {
     let mut score: Score = serde_wasm_bindgen::from_value(score_js)
         .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-    
+
     let staff_id = StaffId::parse(staff_id)
         .map_err(|e| JsValue::from_str(&format!("Invalid staff ID: {}", e)))?;
-    
+
     let sharps = parse_key_signature(key)?;
-    let key_signature = KeySignature::new(sharps)
-        .map_err(|e| JsValue::from_str(e))?;
-    
+    let key_signature = KeySignature::new(sharps).map_err(|e| JsValue::from_str(e))?;
+
     let key_sig_event = KeySignatureEvent::new(Tick::new(tick), key_signature);
-    
+
     // Find the staff in any instrument
     let mut found = false;
     for instrument in &mut score.instruments {
         if let Ok(staff) = instrument.get_staff_mut(staff_id) {
-            staff.add_key_signature_event(key_sig_event)
+            staff
+                .add_key_signature_event(key_sig_event)
                 .map_err(to_js_error)?;
             found = true;
             break;
         }
     }
-    
+
     if !found {
         return Err(JsValue::from_str("Staff not found"));
     }
-    
+
     serde_wasm_bindgen::to_value(&score)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
-
-

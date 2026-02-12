@@ -25,9 +25,9 @@ pub struct MusicXMLDocument {
 /// Metadata from <encoding> element
 #[derive(Debug, Clone)]
 pub struct EncodingMetadata {
-    pub software: Option<String>,       // e.g., "MuseScore 4.2.1"
+    pub software: Option<String>, // e.g., "MuseScore 4.2.1"
     pub encoding_date: Option<String>,
-    pub supports: Vec<String>,          // MusicXML feature flags
+    pub supports: Vec<String>, // MusicXML feature flags
 }
 
 /// Represents a <part> element (single instrument)

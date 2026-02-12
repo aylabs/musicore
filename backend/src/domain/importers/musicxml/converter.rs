@@ -1,26 +1,26 @@
 // MusicXML to Domain Converter - Feature 006-musicxml-import
 // Transforms MusicXML intermediate representation to domain entities
 
-use crate::domain::score::Score;
-use crate::domain::instrument::Instrument;
-use crate::domain::staff::Staff;
-use crate::domain::voice::Voice;
+use crate::domain::events::clef::ClefEvent;
+use crate::domain::events::key_signature::KeySignatureEvent;
 use crate::domain::events::note::Note;
 use crate::domain::events::tempo::TempoEvent;
 use crate::domain::events::time_signature::TimeSignatureEvent;
-use crate::domain::events::key_signature::KeySignatureEvent;
-use crate::domain::events::clef::ClefEvent;
-use crate::domain::value_objects::{Tick, BPM};
+use crate::domain::instrument::Instrument;
+use crate::domain::score::Score;
+use crate::domain::staff::Staff;
+use crate::domain::value_objects::{BPM, Tick};
+use crate::domain::voice::Voice;
 
-use super::errors::ImportError;
-use super::types::{MusicXMLDocument, PartData, MeasureData, NoteData, MeasureElement};
-use super::timing::Fraction;
-use super::mapper::ElementMapper;
 use super::ImportContext;
+use super::errors::ImportError;
+use super::mapper::ElementMapper;
+use super::timing::Fraction;
+use super::types::{MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData};
 use std::collections::{BTreeMap, HashMap};
 
 /// Voice distributor for resolving overlapping notes by splitting into multiple voices
-/// 
+///
 /// Uses deterministic algorithm: sort notes by (start_tick, pitch), then assign
 /// to first available voice that doesn't have overlapping notes. Maximum 4 voices.
 struct VoiceDistributor {
@@ -40,13 +40,13 @@ impl VoiceDistributor {
     }
 
     /// Assign notes to voices deterministically
-    /// 
+    ///
     /// # Algorithm
     /// 1. Sort notes by (start_tick, pitch) using BTreeMap for deterministic iteration
     /// 2. For each note, try voices 1-4 in order
     /// 3. Assign to first voice where note doesn't overlap
     /// 4. If all 4 voices occupied, record warning and skip note
-    /// 
+    ///
     /// # Returns
     /// Vec of voices (may be 1-4 voices depending on overlap patterns)
     fn assign_voices(
@@ -54,7 +54,7 @@ impl VoiceDistributor {
         context: &mut ImportContext,
     ) -> Result<Vec<Voice>, ImportError> {
         let mut distributor = Self::new();
-        
+
         // Sort notes by (start_tick, pitch) for deterministic processing
         // BTreeMap provides sorted iteration
         let mut sorted_notes: BTreeMap<(u32, u8), Note> = BTreeMap::new();
@@ -62,12 +62,12 @@ impl VoiceDistributor {
             let key = (note.start_tick.value(), note.pitch.value());
             sorted_notes.insert(key, note);
         }
-        
+
         // Assign each note to a voice
         for ((_tick, _pitch), note) in sorted_notes {
             distributor.assign_note(note, context)?;
         }
-        
+
         // Extract voices in sorted order (1, 2, 3, 4)
         let mut result = Vec::new();
         for voice_num in 1..=distributor.max_voices {
@@ -75,29 +75,29 @@ impl VoiceDistributor {
                 result.push(voice);
             }
         }
-        
+
         // Ensure at least one voice always exists
         if result.is_empty() {
             result.push(Voice::new());
         }
-        
+
         Ok(result)
     }
-    
+
     /// Assign a single note to the first available voice
     fn assign_note(&mut self, note: Note, context: &mut ImportContext) -> Result<(), ImportError> {
         // Save tick for warning messages before moving note
         let note_tick = note.start_tick.value();
-        
+
         // Try voices 1-4 in order
         for voice_num in 1..=self.max_voices {
             let voice = self.voices.entry(voice_num).or_insert_with(Voice::new);
-            
+
             // Check if note can be added without overlap
             if voice.can_add_note(&note) {
                 // Add note (should not fail since we just checked)
                 voice.add_note(note)?;
-                
+
                 // Record warning if we're using voice 2+ (indicates overlap resolution)
                 if voice_num > 1 {
                     context.warn(
@@ -105,16 +105,15 @@ impl VoiceDistributor {
                         super::WarningCategory::OverlapResolution,
                         format!(
                             "Overlapping notes at tick {} - note assigned to voice {}",
-                            note_tick,
-                            voice_num
+                            note_tick, voice_num
                         ),
                     );
                 }
-                
+
                 return Ok(());
             }
         }
-        
+
         // If we get here, all 4 voices are full - skip note with Error warning
         context.warn(
             super::WarningSeverity::Error,
@@ -125,11 +124,10 @@ impl VoiceDistributor {
             ),
         );
         context.skip_element();
-        
+
         Ok(())
     }
 }
-
 
 /// Context for timing calculations during conversion
 #[derive(Debug, Clone)]
@@ -165,11 +163,11 @@ impl TimingContext {
     fn current_tick(&self) -> Tick {
         Tick::new(self.current_tick)
     }
-    
+
     fn last_note_tick(&self) -> Tick {
         Tick::new(self.last_note_tick)
     }
-    
+
     fn update_last_note_tick(&mut self) {
         self.last_note_tick = self.current_tick;
     }
@@ -187,21 +185,25 @@ impl MusicXMLConverter {
     ///
     /// # Returns
     /// Score with all instruments, staves, voices, and events
-    pub fn convert(doc: MusicXMLDocument, context: &mut ImportContext) -> Result<Score, ImportError> {
+    pub fn convert(
+        doc: MusicXMLDocument,
+        context: &mut ImportContext,
+    ) -> Result<Score, ImportError> {
         // Create Score with defaults (120 BPM, 4/4 time signature)
         let mut score = Score::new();
 
         // Set global tempo if specified in document
         if doc.default_tempo > 0.0 {
-            let bpm = BPM::new(doc.default_tempo as u16).map_err(|e| ImportError::ValidationError {
-                errors: vec![format!("Invalid tempo: {}", e)],
-            })?;
+            let bpm =
+                BPM::new(doc.default_tempo as u16).map_err(|e| ImportError::ValidationError {
+                    errors: vec![format!("Invalid tempo: {}", e)],
+                })?;
             let tempo_event = TempoEvent::new(Tick::new(0), bpm);
-            
+
             // Clear default tempo and add document tempo
             score.global_structural_events.clear();
             score.add_tempo_event(tempo_event)?;
-            
+
             // Re-add default time signature
             let time_sig = TimeSignatureEvent::new(Tick::new(0), 4, 4);
             score.add_time_signature_event(time_sig)?;
@@ -217,7 +219,10 @@ impl MusicXMLConverter {
     }
 
     /// Converts PartData to Instrument
-    fn convert_part(part_data: PartData, context: &mut ImportContext) -> Result<Instrument, ImportError> {
+    fn convert_part(
+        part_data: PartData,
+        context: &mut ImportContext,
+    ) -> Result<Instrument, ImportError> {
         let name = if part_data.name.is_empty() {
             format!("Instrument {}", part_data.id)
         } else {
@@ -227,7 +232,7 @@ impl MusicXMLConverter {
         // Create instrument with default staff, then clear
         let mut instrument = Instrument::new(name);
         instrument.staves.clear();
-        
+
         // Check staff count and route accordingly
         if part_data.staff_count <= 1 {
             // Single-staff instrument (US1)
@@ -245,56 +250,65 @@ impl MusicXMLConverter {
     }
 
     /// Converts PartData to multiple Staff entities for multi-staff instruments (US2)
-    fn convert_multi_staff(part_data: &PartData, context: &mut ImportContext) -> Result<Vec<Staff>, ImportError> {
+    fn convert_multi_staff(
+        part_data: &PartData,
+        context: &mut ImportContext,
+    ) -> Result<Vec<Staff>, ImportError> {
         let mut staves = Vec::new();
-        
+
         // Create a staff for each staff number (1-indexed in MusicXML)
         for staff_num in 1..=part_data.staff_count {
             let mut staff = Staff::new();
-            
+
             // Clear default events - we'll add from attributes
             staff.staff_structural_events.clear();
             staff.voices.clear();
-            
+
             // Extract attributes from first measure for this staff
             if let Some(first_measure) = part_data.measures.first() {
                 if let Some(attrs) = &first_measure.attributes {
                     // Find clef for this staff number
-                    if let Some(clef_data) = attrs.clefs.iter().find(|c| c.staff_number == staff_num) {
+                    if let Some(clef_data) =
+                        attrs.clefs.iter().find(|c| c.staff_number == staff_num)
+                    {
                         let clef = ElementMapper::map_clef(&clef_data.sign, clef_data.line)?;
                         let clef_event = ClefEvent::new(Tick::new(0), clef);
                         staff.add_clef_event(clef_event)?;
                     }
-                    
+
                     // Key signature (shared across all staves)
                     if let Some(key_data) = &attrs.key {
-                        let key_sig = ElementMapper::map_key(key_data.fifths, Some(&key_data.mode))?;
+                        let key_sig =
+                            ElementMapper::map_key(key_data.fifths, Some(&key_data.mode))?;
                         let key_event = KeySignatureEvent::new(Tick::new(0), key_sig);
                         staff.add_key_signature_event(key_event)?;
                     }
                 }
             }
-            
+
             // Convert measures to voice, filtering by staff number
             let notes = Self::collect_notes_for_staff(&part_data.measures, staff_num, context)?;
-            let voices = VoiceDistributor::assign_voices(notes, context)?;;
-            
+            let voices = VoiceDistributor::assign_voices(notes, context)?;
+
             // Add all voices to staff
             for voice in voices {
                 staff.add_voice(voice);
             }
-            
+
             staves.push(staff);
         }
-        
+
         Ok(staves)
     }
 
     /// Converts PartData to Staff for single-staff instruments (US1)
-    fn convert_staff_for_single_staff(part_data: &PartData, context: &mut ImportContext) -> Result<Staff, ImportError> {
+    fn convert_staff_for_single_staff(
+        part_data: &PartData,
+        context: &mut ImportContext,
+    ) -> Result<Staff, ImportError> {
         // Create staff with defaults (Treble clef, C major, 1 voice)
         let mut staff = Staff::new();
-        
+
         // Clear default events - we'll add from attributes
         staff.staff_structural_events.clear();
         staff.voices.clear();
@@ -308,7 +322,7 @@ impl MusicXMLConverter {
                     let clef_event = ClefEvent::new(Tick::new(0), clef);
                     staff.add_clef_event(clef_event)?;
                 }
-                
+
                 // Add key signature from first measure
                 if let Some(key_data) = &attrs.key {
                     let key_sig = ElementMapper::map_key(key_data.fifths, Some(&key_data.mode))?;
@@ -320,8 +334,8 @@ impl MusicXMLConverter {
 
         // Convert measures to notes, then distribute across voices
         let notes = Self::collect_notes(&part_data.measures, context)?;
-        let voices = VoiceDistributor::assign_voices(notes, context)?;;
-        
+        let voices = VoiceDistributor::assign_voices(notes, context)?;
+
         // Add all voices to staff
         for voice in voices {
             staff.add_voice(voice);
@@ -331,7 +345,10 @@ impl MusicXMLConverter {
     }
 
     /// Collects all notes from measures without adding to voices (for voice distribution)
-    fn collect_notes(measures: &[MeasureData], context: &mut ImportContext) -> Result<Vec<Note>, ImportError> {
+    fn collect_notes(
+        measures: &[MeasureData],
+        context: &mut ImportContext,
+    ) -> Result<Vec<Note>, ImportError> {
         let mut notes = Vec::new();
         let mut timing_context = TimingContext::new();
 
@@ -434,14 +451,18 @@ impl MusicXMLConverter {
     }
 
     /// Collects notes filtered by staff number (for multi-staff instruments)
-    fn collect_notes_for_staff(measures: &[MeasureData], staff_num: usize, context: &mut ImportContext) -> Result<Vec<Note>, ImportError> {
+    fn collect_notes_for_staff(
+        measures: &[MeasureData],
+        staff_num: usize,
+        context: &mut ImportContext,
+    ) -> Result<Vec<Note>, ImportError> {
         let mut notes = Vec::new();
         let mut timing_context = TimingContext::new();
 
         for measure in measures {
             // Track measure start for backup/forward within THIS measure only
             let measure_start_tick = timing_context.current_tick;
-            
+
             // Process attributes first (update divisions, ignore structural events)
             if let Some(attrs) = &measure.attributes {
                 if let Some(divisions) = attrs.divisions {
@@ -452,7 +473,7 @@ impl MusicXMLConverter {
             // Process musical elements, filtering by staff number
             // Track maximum tick reached in this measure for staff timing
             let mut max_tick_in_measure = measure_start_tick;
-            
+
             for element in &measure.elements {
                 match element {
                     MeasureElement::Note(note_data) => {
@@ -463,7 +484,8 @@ impl MusicXMLConverter {
                                 Ok(note) => {
                                     notes.push(note);
                                     // Track the maximum tick reached for this staff in this measure
-                                    max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                                    max_tick_in_measure =
+                                        max_tick_in_measure.max(timing_context.current_tick);
                                 }
                                 Err(e) => {
                                     // Skip malformed note with warning
@@ -482,7 +504,8 @@ impl MusicXMLConverter {
                         // Only process rests for this staff
                         if rest_data.staff == staff_num {
                             timing_context.advance_by_duration(rest_data.duration)?;
-                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                            max_tick_in_measure =
+                                max_tick_in_measure.max(timing_context.current_tick);
                         }
                     }
                     MeasureElement::Backup(_duration) => {
@@ -501,7 +524,7 @@ impl MusicXMLConverter {
                     }
                 }
             }
-            
+
             // After processing the measure, ensure timing advances to the end of the measure
             // This prevents backup from affecting the next measure's start position
             timing_context.current_tick = max_tick_in_measure;
@@ -513,14 +536,17 @@ impl MusicXMLConverter {
     /// Converts measures to Voice with notes filtered by staff number (for multi-staff instruments) - DEPRECATED
     /// Use collect_notes_for_staff + VoiceDistributor instead
     #[allow(dead_code)]
-    fn convert_voice_for_staff(measures: &[MeasureData], staff_num: usize) -> Result<Voice, ImportError> {
+    fn convert_voice_for_staff(
+        measures: &[MeasureData],
+        staff_num: usize,
+    ) -> Result<Voice, ImportError> {
         let mut voice = Voice::new();
         let mut timing_context = TimingContext::new();
 
         for measure in measures {
             // Track measure start for backup/forward within THIS measure only
             let measure_start_tick = timing_context.current_tick;
-            
+
             // Process attributes first (update divisions, ignore structural events)
             if let Some(attrs) = &measure.attributes {
                 if let Some(divisions) = attrs.divisions {
@@ -531,7 +557,7 @@ impl MusicXMLConverter {
             // Process musical elements, filtering by staff number
             // Track maximum tick reached in this measure for staff timing
             let mut max_tick_in_measure = measure_start_tick;
-            
+
             for element in &measure.elements {
                 match element {
                     MeasureElement::Note(note_data) => {
@@ -540,7 +566,8 @@ impl MusicXMLConverter {
                             let note = Self::convert_note(note_data, &mut timing_context)?;
                             voice.add_note(note)?;
                             // Track the maximum tick reached for this staff in this measure
-                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                            max_tick_in_measure =
+                                max_tick_in_measure.max(timing_context.current_tick);
                         }
                         // Notes on other staves don't affect our timing
                     }
@@ -548,7 +575,8 @@ impl MusicXMLConverter {
                         // Only process rests for this staff
                         if rest_data.staff == staff_num {
                             timing_context.advance_by_duration(rest_data.duration)?;
-                            max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
+                            max_tick_in_measure =
+                                max_tick_in_measure.max(timing_context.current_tick);
                         }
                     }
                     MeasureElement::Backup(_duration) => {
@@ -567,7 +595,7 @@ impl MusicXMLConverter {
                     }
                 }
             }
-            
+
             // After processing the measure, ensure timing advances to the end of the measure
             // This prevents backup from affecting the next measure's start position
             timing_context.current_tick = max_tick_in_measure;
@@ -582,11 +610,12 @@ impl MusicXMLConverter {
         timing_context: &mut TimingContext,
     ) -> Result<Note, ImportError> {
         // Extract pitch
-        let pitch_data = note_data.pitch.as_ref().ok_or_else(|| {
-            ImportError::InvalidStructure {
+        let pitch_data = note_data
+            .pitch
+            .as_ref()
+            .ok_or_else(|| ImportError::InvalidStructure {
                 reason: "Note missing pitch data".to_string(),
-            }
-        })?;
+            })?;
 
         // Map pitch to domain Pitch value object
         let pitch = ElementMapper::map_pitch(pitch_data.step, pitch_data.octave, pitch_data.alter)?;
@@ -598,7 +627,7 @@ impl MusicXMLConverter {
         } else {
             timing_context.current_tick()
         };
-        
+
         let fraction = Fraction::from_musicxml(note_data.duration, timing_context.divisions);
         let duration_ticks = fraction.to_ticks()?;
 
@@ -610,10 +639,11 @@ impl MusicXMLConverter {
         }
 
         // Create Note using domain constructor
-        let note = Note::new(tick, duration_ticks as u32, pitch)
-            .map_err(|e: &'static str| ImportError::ValidationError {
+        let note = Note::new(tick, duration_ticks as u32, pitch).map_err(|e: &'static str| {
+            ImportError::ValidationError {
                 errors: vec![e.to_string()],
-            })?;
+            }
+        })?;
 
         Ok(note)
     }
@@ -678,7 +708,11 @@ mod tests {
         // Convert to Score
         let mut context = ImportContext::new();
         let result = MusicXMLConverter::convert(doc, &mut context);
-        assert!(result.is_ok(), "Conversion should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Conversion should succeed: {:?}",
+            result.err()
+        );
 
         let score = result.unwrap();
         assert_eq!(score.instruments.len(), 1, "Expected 1 instrument");
@@ -731,7 +765,11 @@ mod tests {
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
-        assert!(result.is_ok(), "Note conversion should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Note conversion should succeed: {:?}",
+            result.err()
+        );
 
         let note = result.unwrap();
         assert_eq!(note.pitch.value(), 60); // Middle C
@@ -783,7 +821,11 @@ mod tests {
         }];
 
         let result = MusicXMLConverter::convert_voice(&measures);
-        assert!(result.is_ok(), "Voice conversion should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Voice conversion should succeed: {:?}",
+            result.err()
+        );
 
         let voice = result.unwrap();
         assert_eq!(voice.interval_events.len(), 2, "Expected 2 notes");
@@ -853,10 +895,18 @@ mod tests {
         }];
 
         let result = MusicXMLConverter::convert_voice(&measures);
-        assert!(result.is_ok(), "Voice conversion should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Voice conversion should succeed: {:?}",
+            result.err()
+        );
 
         let voice = result.unwrap();
-        assert_eq!(voice.interval_events.len(), 3, "Expected 3 notes (2-note chord + 1 sequential)");
+        assert_eq!(
+            voice.interval_events.len(),
+            3,
+            "Expected 3 notes (2-note chord + 1 sequential)"
+        );
 
         // First note: D5 at tick 0
         assert_eq!(voice.interval_events[0].pitch.value(), 74); // D5
@@ -865,12 +915,20 @@ mod tests {
 
         // Second note: F#5 at tick 0 (chord note - same as previous)
         assert_eq!(voice.interval_events[1].pitch.value(), 78); // F#5
-        assert_eq!(voice.interval_events[1].start_tick.value(), 0, "Chord note should start at same tick as first note");
+        assert_eq!(
+            voice.interval_events[1].start_tick.value(),
+            0,
+            "Chord note should start at same tick as first note"
+        );
         assert_eq!(voice.interval_events[1].duration_ticks, 1920);
 
         // Third note: C#5 at tick 1920 (after the chord)
         assert_eq!(voice.interval_events[2].pitch.value(), 73); // C#5
-        assert_eq!(voice.interval_events[2].start_tick.value(), 1920, "Sequential note should start after chord duration");
+        assert_eq!(
+            voice.interval_events[2].start_tick.value(),
+            1920,
+            "Sequential note should start after chord duration"
+        );
         assert_eq!(voice.interval_events[2].duration_ticks, 1920);
     }
 }
