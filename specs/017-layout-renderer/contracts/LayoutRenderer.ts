@@ -16,12 +16,12 @@ import type { Viewport } from './Viewport';
 
 /**
  * Core renderer that transforms layout engine's computed positions
- * into Canvas 2D drawing operations.
+ * into SVG DOM elements.
  * 
  * @example
  * ```typescript
- * const renderer = new LayoutRenderer(canvasElement, {
- *   pixelsPerSpace: 10,
+ * const renderer = new LayoutRenderer(svgElement, {
+ *   fontSize: 20,
  *   fontFamily: 'Bravura',
  *   backgroundColor: '#FFFFFF',
  *   staffLineColor: '#000000',
@@ -35,22 +35,16 @@ import type { Viewport } from './Viewport';
  */
 export interface LayoutRenderer {
   /**
-   * Target canvas element for rendering.
+   * Target SVG element for rendering.
    * Must be in DOM and have non-zero dimensions.
    */
-  readonly canvas: HTMLCanvasElement;
+  readonly svg: SVGSVGElement;
   
   /**
    * Rendering configuration (colors, scaling, fonts).
    * Immutable after construction.
    */
   readonly config: RenderConfig;
-  
-  /**
-   * Canvas 2D rendering context.
-   * Cached from canvas.getContext('2d') for performance.
-   */
-  readonly ctx: CanvasRenderingContext2D;
   
   /**
    * Main rendering entry point.
@@ -93,7 +87,7 @@ export interface LayoutRenderer {
   renderStaffGroup(staffGroup: StaffGroup): void;
   
   /**
-   * Renders 5 horizontal staff lines using strokeRect().
+   * Renders 5 horizontal staff lines using SVG <line> elements.
    * 
    * @param staff - Staff from staffGroup.staves
    * 
@@ -102,7 +96,7 @@ export interface LayoutRenderer {
   renderStaff(staff: Staff): void;
   
   /**
-   * Renders a batch of identical glyphs (e.g., noteheads) via fillText().
+   * Renders a batch of identical glyphs (e.g., noteheads) via SVG <text> elements.
    * Leverages Feature 016's GlyphRun batching for performance.
    * 
    * @param run - Glyph run from system.glyphRuns
@@ -110,25 +104,6 @@ export interface LayoutRenderer {
    * @internal
    */
   renderGlyphRun(run: GlyphRun): void;
-  
-  /**
-   * Converts layout engine's logical units to screen pixels.
-   * 
-   * Formula: pixels = logical * (config.pixelsPerSpace / 20)
-   * 
-   * @param logical - Logical units from layout engine (staff space = 20)
-   * @returns Screen pixels
-   * 
-   * @example
-   * ```typescript
-   * // Staff space (20 logical units) → 10 pixels at default zoom
-   * const pixels = renderer.logicalToPixels(20); // 10
-   * 
-   * // Staff line spacing (5 logical units) → 2.5 pixels
-   * const lineSpacing = renderer.logicalToPixels(5); // 2.5
-   * ```
-   */
-  logicalToPixels(logical: number): number;
 }
 
 /**
@@ -137,9 +112,9 @@ export interface LayoutRenderer {
  * @example
  * ```typescript
  * const options: LayoutRendererOptions = {
- *   canvas: document.getElementById('score-canvas') as HTMLCanvasElement,
+ *   svg: document.getElementById('score-svg') as SVGSVGElement,
  *   config: {
- *     pixelsPerSpace: 10,
+ *     fontSize: 20,
  *     fontFamily: 'Bravura',
  *     backgroundColor: '#FFFFFF',
  *     staffLineColor: '#000000',
@@ -152,10 +127,10 @@ export interface LayoutRenderer {
  */
 export interface LayoutRendererOptions {
   /**
-   * Target canvas element for rendering.
+   * Target SVG element for rendering.
    * Must be in DOM with non-zero width/height.
    */
-  canvas: HTMLCanvasElement;
+  svg: SVGSVGElement;
   
   /**
    * Rendering configuration.

@@ -13,7 +13,7 @@
  * @example Default configuration (tablet, 10" display):
  * ```typescript
  * const config: RenderConfig = {
- *   pixelsPerSpace: 10,
+ *   fontSize: 20,
  *   fontFamily: 'Bravura',
  *   backgroundColor: '#FFFFFF',
  *   staffLineColor: '#000000',
@@ -24,7 +24,7 @@
  * @example Zoomed in (2x magnification):
  * ```typescript
  * const zoomed: RenderConfig = {
- *   pixelsPerSpace: 20, // 2x staff space size
+ *   fontSize: 40, // 2x font size
  *   fontFamily: 'Bravura',
  *   backgroundColor: '#FFFFFF',
  *   staffLineColor: '#000000',
@@ -35,7 +35,7 @@
  * @example Dark mode:
  * ```typescript
  * const darkMode: RenderConfig = {
- *   pixelsPerSpace: 10,
+ *   fontSize: 20,
  *   fontFamily: 'Bravura',
  *   backgroundColor: '#1E1E1E',
  *   staffLineColor: '#CCCCCC',
@@ -45,27 +45,27 @@
  */
 export interface RenderConfig {
   /**
-   * Pixels per staff space for coordinate conversion.
+   * Font size for SMuFL text elements (logical units).
    * 
-   * - Default: 10px (typical tablet display)
-   * - Range: 8-20px (zoom levels)
-   * - Formula: pixels = logicalUnits * (pixelsPerSpace / 20)
+   * - Default: 20 (matches staff space logical units)
+   * - Range: 16-40 (zoom levels)
+   * - Used directly in SVG viewBox coordinate system
    * 
    * @validation Must be > 0
    * 
    * @example
    * ```typescript
-   * // Normal zoom (10px per staff space)
-   * pixelsPerSpace: 10
+   * // Normal zoom (20 logical units per staff space)
+   * fontSize: 20
    * 
-   * // Zoomed in 2x (20px per staff space)
-   * pixelsPerSpace: 20
+   * // Zoomed in 2x (40 logical units)
+   * fontSize: 40
    * 
-   * // Zoomed out (8px per staff space)
-   * pixelsPerSpace: 8
+   * // Zoomed out (16 logical units)
+   * fontSize: 16
    * ```
    */
-  pixelsPerSpace: number;
+  fontSize: number;
   
   /**
    * Font family for SMuFL glyphs.
@@ -81,7 +81,7 @@ export interface RenderConfig {
   fontFamily: string;
   
   /**
-   * Canvas background color (CSS color string).
+   * SVG background color (CSS color string).
    * 
    * - Default: "#FFFFFF" (white)
    * - Supports hex, rgb(), hsl(), named colors
@@ -102,7 +102,7 @@ export interface RenderConfig {
    * Staff line stroke color (CSS color string).
    * 
    * - Default: "#000000" (black)
-   * - Used for 5-line staff via strokeRect()
+   * - Used for 5-line staff via SVG <line> elements
    * 
    * @validation Must be valid CSS color
    * 
@@ -118,7 +118,7 @@ export interface RenderConfig {
    * Glyph fill color (CSS color string).
    * 
    * - Default: "#000000" (black)
-   * - Used for noteheads, clefs, accidentals via fillText()
+   * - Used for noteheads, clefs, accidentals via SVG <text> elements
    * 
    * @validation Must be valid CSS color
    * 
@@ -138,14 +138,14 @@ export interface RenderConfig {
  * 
  * @param config - Configuration to validate
  * 
- * @throws Error if pixelsPerSpace <= 0
+ * @throws Error if fontSize <= 0
  * @throws Error if fontFamily is empty
  * @throws Error if any color is invalid CSS
  * 
  * @example
  * ```typescript
  * const config: RenderConfig = {
- *   pixelsPerSpace: 10,
+ *   fontSize: 20,
  *   fontFamily: 'Bravura',
  *   backgroundColor: '#FFFFFF',
  *   staffLineColor: '#000000',
@@ -155,7 +155,7 @@ export interface RenderConfig {
  * validateRenderConfig(config); // OK
  * 
  * const invalid: RenderConfig = {
- *   pixelsPerSpace: -5, // Invalid!
+ *   fontSize: -5, // Invalid!
  *   fontFamily: '',
  *   backgroundColor: 'invalid-color',
  *   staffLineColor: '#000000',
@@ -174,7 +174,7 @@ export function validateRenderConfig(config: RenderConfig): void;
  * 
  * @example
  * ```typescript
- * const renderer = new LayoutRenderer(canvas, createDefaultConfig());
+ * const renderer = new LayoutRenderer(svg, createDefaultConfig());
  * ```
  */
 export function createDefaultConfig(): RenderConfig;
@@ -182,13 +182,13 @@ export function createDefaultConfig(): RenderConfig;
 /**
  * Creates dark mode RenderConfig variant.
  * 
- * @param pixelsPerSpace - Optional zoom level (default: 10)
+ * @param fontSize - Optional zoom level (default: 20)
  * @returns RenderConfig with dark mode colors
  * 
  * @example
  * ```typescript
- * const darkConfig = createDarkModeConfig(12); // Dark mode + 1.2x zoom
- * const renderer = new LayoutRenderer(canvas, darkConfig);
+ * const darkConfig = createDarkModeConfig(24); // Dark mode + 1.2x zoom
+ * const renderer = new LayoutRenderer(svg, darkConfig);
  * ```
  */
-export function createDarkModeConfig(pixelsPerSpace?: number): RenderConfig;
+export function createDarkModeConfig(fontSize?: number): RenderConfig;

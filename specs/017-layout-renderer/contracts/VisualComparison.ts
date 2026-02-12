@@ -89,14 +89,14 @@ export interface ComparisonResult {
 /**
  * Automated visual comparison tool for renderer testing.
  * 
- * Renders same score on two canvases (old vs new renderer),
- * captures pixel data, computes diff percentage, generates report.
+ * Renders same score on two SVG elements (old vs new renderer),
+ * captures pixel data via intermediate canvas, computes diff percentage, generates report.
  * 
  * @example
  * ```typescript
  * const comparison = new VisualComparison(
- *   oldCanvas,
- *   newCanvas,
+ *   oldSvg,
+ *   newSvg,
  *   5  // 5% threshold
  * );
  * 
@@ -108,16 +108,16 @@ export interface ComparisonResult {
  */
 export interface VisualComparison {
   /**
-   * Canvas with existing renderer (baseline).
+   * SVG with existing renderer (baseline).
    * Must have same dimensions as newRenderer.
    */
-  readonly oldRenderer: HTMLCanvasElement;
+  readonly oldRenderer: SVGSVGElement;
   
   /**
-   * Canvas with new renderer being tested.
+   * SVG with new renderer being tested.
    * Must have same dimensions as oldRenderer.
    */
-  readonly newRenderer: HTMLCanvasElement;
+  readonly newRenderer: SVGSVGElement;
   
   /**
    * Acceptable pixel diff percentage (default: 5%).
@@ -135,8 +135,8 @@ export interface VisualComparison {
    * 
    * Algorithm:
    * 1. Compute layout from score
-   * 2. Render on both canvases
-   * 3. Capture snapshots via getImageData()
+   * 2. Render on both SVG elements
+   * 3. Convert SVG to ImageData via intermediate canvas
    * 4. Compute pixel diff percentage
    * 5. Generate diff image with red highlights
    * 6. Return ComparisonResult with pass/fail
@@ -144,7 +144,7 @@ export interface VisualComparison {
    * @param score - CompiledScore to render
    * @returns ComparisonResult with diff analysis
    * 
-   * @throws Error if canvases have different dimensions
+   * @throws Error if SVG elements have different dimensions
    * @throws Error if score is invalid
    * 
    * @example
@@ -161,18 +161,20 @@ export interface VisualComparison {
   compareRenderers(score: CompiledScore): ComparisonResult;
   
   /**
-   * Captures canvas pixel data for comparison.
+   * Captures SVG pixel data for comparison by converting to ImageData.
    * 
-   * @param canvas - Canvas to capture
+   * Uses intermediate canvas to convert SVG to raster image.
+   * 
+   * @param svg - SVG element to capture
    * @returns ImageData with RGBA pixel values
    * 
    * @example
    * ```typescript
-   * const snapshot = comparison.captureSnapshot(canvas);
+   * const snapshot = comparison.captureSnapshot(svg);
    * console.log(`Captured ${snapshot.width}x${snapshot.height} pixels`);
    * ```
    */
-  captureSnapshot(canvas: HTMLCanvasElement): ImageData;
+  captureSnapshot(svg: SVGSVGElement): ImageData;
   
   /**
    * Computes percentage of differing pixels between two images.
@@ -230,8 +232,8 @@ export interface VisualComparison {
  * @example
  * ```typescript
  * const options: VisualComparisonOptions = {
- *   oldRenderer: document.getElementById('old-canvas') as HTMLCanvasElement,
- *   newRenderer: document.getElementById('new-canvas') as HTMLCanvasElement,
+ *   oldRenderer: document.getElementById('old-svg') as SVGSVGElement,
+ *   newRenderer: document.getElementById('new-svg') as SVGSVGElement,
  *   diffThreshold: 5  // 5% acceptable difference
  * };
  * 
@@ -240,14 +242,14 @@ export interface VisualComparison {
  */
 export interface VisualComparisonOptions {
   /**
-   * Canvas with existing renderer (baseline).
+   * SVG with existing renderer (baseline).
    */
-  oldRenderer: HTMLCanvasElement;
+  oldRenderer: SVGSVGElement;
   
   /**
-   * Canvas with new renderer being tested.
+   * SVG with new renderer being tested.
    */
-  newRenderer: HTMLCanvasElement;
+  newRenderer: SVGSVGElement;
   
   /**
    * Acceptable diff percentage (default: 5%).

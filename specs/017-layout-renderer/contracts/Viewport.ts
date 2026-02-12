@@ -9,7 +9,7 @@
 /**
  * Viewport defining visible region of score.
  * 
- * Coordinates in pixels, origin at top-left (standard Canvas coordinate system).
+ * Coordinates in logical units, origin at top-left (SVG viewBox coordinate system).
  * Used for virtualization: only render systems intersecting viewport.
  * 
  * @example Tablet landscape (iPad Pro 12.9"):
@@ -17,19 +17,19 @@
  * const viewport: Viewport = {
  *   x: 0,
  *   y: 0,
- *   width: 1366,
- *   height: 1024
+ *   width: 1600,  // viewBox width in logical units
+ *   height: 1200
  * };
  * renderer.render(layout, viewport);
  * ```
  * 
- * @example Scrolled 500px down:
+ * @example Scrolled 500 logical units down:
  * ```typescript
  * const viewport: Viewport = {
  *   x: 0,
- *   y: 500,  // Scroll position
- *   width: 1366,
- *   height: 1024
+ *   y: 500,  // Scroll position in logical units
+ *   width: 1600,
+ *   height: 1200
  * };
  * renderer.render(layout, viewport);
  * ```
@@ -39,15 +39,15 @@
  * const viewport: Viewport = {
  *   x: 0,
  *   y: 0,
- *   width: 1024,
- *   height: 1366
+ *   width: 1200,
+ *   height: 1600
  * };
  * renderer.render(layout, viewport);
  * ```
  */
 export interface Viewport {
   /**
-   * Left edge of visible region (pixels).
+   * Left edge of visible region (logical units).
    * 
    * - Always 0 for vertical scroll (full width visible)
    * - Non-zero for horizontal scroll (future support)
@@ -62,53 +62,53 @@ export interface Viewport {
   x: number;
   
   /**
-   * Top edge of visible region (pixels).
+   * Top edge of visible region (logical units).
    * 
    * - 0 at top of score
    * - Increases as user scrolls down
-   * - Maps to window.scrollY in ScoreViewer component
+   * - Maps to SVG viewBox y coordinate
    * 
    * @validation Must be >= 0
    * 
    * @example
    * ```typescript
    * y: 0    // Top of score visible
-   * y: 500  // Scrolled 500px down
+   * y: 500  // Scrolled 500 logical units down
    * y: 1500 // Scrolled to 3rd system group
    * ```
    */
   y: number;
   
   /**
-   * Viewport width (pixels).
+   * Viewport width (logical units).
    * 
-   * - Typically canvas.width
-   * - Matches device screen width (minus margins)
+   * - Typically from SVG viewBox width
+   * - Matches layout engine coordinate system
    * 
    * @validation Must be > 0
    * 
    * @example
    * ```typescript
-   * width: 1366  // iPad Pro 12.9" landscape
-   * width: 1024  // iPad Pro 12.9" portrait
-   * width: 800   // Desktop narrow window
+   * width: 1600  // Standard viewBox width
+   * width: 1200  // Narrower viewport
+   * width: 800   // Compact view
    * ```
    */
   width: number;
   
   /**
-   * Viewport height (pixels).
+   * Viewport height (logical units).
    * 
-   * - Typically canvas.height
-   * - Matches device screen height (minus UI chrome)
+   * - Typically from SVG viewBox height
+   * - Matches layout engine coordinate system
    * 
    * @validation Must be > 0
    * 
    * @example
    * ```typescript
-   * height: 1024  // iPad Pro 12.9" landscape
-   * height: 1366  // iPad Pro 12.9" portrait
-   * height: 600   // Desktop short window
+   * height: 1200  // Standard viewBox height
+   * height: 1600  // Taller viewport
+   * height: 600   // Short view
    * ```
    */
   height: number;
@@ -135,21 +135,21 @@ export interface Viewport {
 export function validateViewport(viewport: Viewport): void;
 
 /**
- * Creates viewport from canvas element dimensions.
+ * Creates viewport from SVG element viewBox dimensions.
  * 
- * @param canvas - Canvas element to measure
- * @param scrollY - Current scroll position (default: 0)
- * @returns Viewport matching canvas size at scroll position
+ * @param svg - SVG element to measure viewBox
+ * @param scrollY - Current scroll position in logical units (default: 0)
+ * @returns Viewport matching SVG viewBox at scroll position
  * 
  * @example
  * ```typescript
- * const canvas = document.getElementById('score-canvas') as HTMLCanvasElement;
- * const viewport = createViewportFromCanvas(canvas, window.scrollY);
+ * const svg = document.getElementById('score-svg') as SVGSVGElement;
+ * const viewport = createViewportFromSVG(svg, currentScrollY);
  * renderer.render(layout, viewport);
  * ```
  */
-export function createViewportFromCanvas(
-  canvas: HTMLCanvasElement,
+export function createViewportFromSVG(
+  svg: SVGSVGElement,
   scrollY?: number
 ): Viewport;
 
@@ -157,8 +157,8 @@ export function createViewportFromCanvas(
  * Checks if system bounding box intersects viewport.
  * Used internally by getVisibleSystems() for binary search.
  * 
- * @param systemY - System top Y coordinate (pixels)
- * @param systemHeight - System height (pixels)
+ * @param systemY - System top Y coordinate (logical units)
+ * @param systemHeight - System height (logical units)
  * @param viewport - Viewport to test against
  * @returns True if system is visible within viewport
  * 
@@ -183,16 +183,16 @@ export function intersectsViewport(
 ): boolean;
 
 /**
- * Calculates total viewport area in square pixels.
- * Used for performance metrics (pixels/sec throughput).
+ * Calculates total viewport area in square logical units.
+ * Used for performance metrics (logical units/sec throughput).
  * 
  * @param viewport - Viewport to measure
- * @returns Area in square pixels
+ * @returns Area in square logical units
  * 
  * @example
  * ```typescript
  * const viewport = { x: 0, y: 0, width: 800, height: 600 };
- * const area = getViewportArea(viewport); // 480000 square pixels
+ * const area = getViewportArea(viewport); // 480000 square logical units
  * ```
  */
 export function getViewportArea(viewport: Viewport): number;
