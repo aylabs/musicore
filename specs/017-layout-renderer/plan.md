@@ -12,14 +12,15 @@ Create a new Canvas-based renderer that displays instrument voices using exact g
 ## Technical Context
 
 **Language/Version**: TypeScript 5.0+, React 19  
-**Primary Dependencies**: Canvas 2D API (browser native), Feature 016 WASM bindings (musicore_backend), layoutUtils.ts (47 unit tests)  
+**Primary Dependencies**: SVG (browser native DOM API), Feature 016 WASM bindings (musicore_backend), layoutUtils.ts (47 unit tests)  
 **Storage**: N/A (stateless rendering, layout cached in IndexedDB by parent component)  
 **Testing**: Vitest (unit tests), Playwright (visual comparison screenshots), Chrome DevTools Performance (60fps validation)  
-**Target Platform**: Tablet devices (iPad/Surface/Android) via PWA, Chrome 57+, Safari 11+, modern browser Canvas 2D support  
+**Target Platform**: Tablet devices (iPad/Surface/Android) via PWA, Chrome 57+, Safari 11+, modern browser SVG support  
 **Project Type**: Web (React frontend addition, no backend changes)  
-**Performance Goals**: 60fps scrolling (≤16ms frame time), <1ms visible system query, <10 draw calls per system via GlyphRun batching  
-**Constraints**: ±2 pixel positioning tolerance after logical→pixel conversion, <5% visual difference vs current renderer, offline-capable (no network dependencies)  
-**Scale/Scope**: 100-measure scores (40 systems), 2000+ glyphs, side-by-side comparison test harness
+**Performance Goals**: 60fps scrolling (≤16ms frame time), <1ms visible system query, ~400 DOM nodes per score via GlyphRun batching  
+**Constraints**: SVG viewBox for resolution independence, <5% visual difference vs current renderer, offline-capable (no network dependencies)  
+**Scale/Scope**: 100-measure scores (40 systems), 2000+ glyphs batched to ~400 SVG elements, side-by-side comparison test harness
+**Migration Path**: If 60fps not achieved with SVG, profile bottlenecks and implement Canvas 2D fallback renderer with same interface
 
 ## Constitution Check
 
@@ -61,11 +62,11 @@ Create a new Canvas-based renderer that displays instrument voices using exact g
 **Status**: **PASS**
 
 **Evidence**:
-- Target platform: Tablet devices (iPad, Surface, Android) with Canvas 2D support
+- Target platform: Tablet devices (iPad, Surface, Android) with SVG support
 - WASM integration: Uses Feature 016's WASM-compiled layout engine via computeLayout()
-- Offline-capable: All rendering operations work without network (Canvas API is browser-native, layout precomputed locally)
-- Client-side processing: Rendering happens entirely in browser via Canvas 2D API
-- Tablet-optimized: Touch-friendly viewport scrolling, 60fps performance requirement
+- Offline-capable: All rendering operations work without network (SVG is browser-native DOM, layout precomputed locally)
+- Client-side processing: Rendering happens entirely in browser via SVG DOM API
+- Tablet-optimized: Touch-friendly viewport scrolling, 60fps performance goal
 
 ---
 
@@ -78,8 +79,8 @@ Create a new Canvas-based renderer that displays instrument voices using exact g
 **Evidence**:
 - Renderer respects layout engine's 960 PPQ precision: Uses TickRange from GlobalLayout without modification
 - No timing calculations in renderer: All tick-based logic delegated to layout engine (already validated in Feature 016)
-- Floating point only for spatial positions: x, y coordinates in logical units (acceptable per Feature 016 design)
-- Coordinate conversion maintains precision: logical→pixel conversion uses formula with minimal rounding (±2 pixel tolerance acceptable for visual display)
+- Uses logical units directly: SVG viewBox works in layout engine's coordinate system (staff space = 20 logical units)
+- No coordinate conversion errors: SVG scales viewBox to screen pixels natively, no manual conversion needed
 
 ---
 
@@ -99,7 +100,7 @@ Create a new Canvas-based renderer that displays instrument voices using exact g
 
 ---
 
-**Constitution Check Summary**: All 5 principles satisfied. No violations, no complexity exceptions required. Renderer is a pure adapter layer that transforms layout domain into visual output using browser Canvas API.
+**Constitution Check Summary**: All 5 principles satisfied. No violations, no complexity exceptions required. Renderer is a pure adapter layer that transforms layout domain into visual output using browser SVG DOM API. **Migration path available**: If 60fps not achieved, Canvas 2D fallback can be implemented with same interface.
 
 ## Project Structure
 
