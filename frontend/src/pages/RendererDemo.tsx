@@ -291,7 +291,9 @@ const styles = {
   },
   viewerContainer: {
     flex: 1,
-    overflow: 'hidden',
+    overflow: 'hidden', // Let ScoreViewer handle its own scrolling
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
   footer: {
     padding: '16px 24px',

@@ -270,7 +270,7 @@ const styles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column' as const,
-    height: '100vh',
+    height: '100%',
     width: '100%',
   },
   controls: {
