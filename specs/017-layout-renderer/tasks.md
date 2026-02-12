@@ -135,16 +135,16 @@
 
 ### Implementation for User Story 4
 
-- [ ] T056 [P] [US4] Create test fixture: 100-measure score in frontend/tests/fixtures/score_100_measures.json (40 systems)
-- [ ] T057 [US4] Implement DOM virtualization in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (remove off-screen systems from DOM)
-- [ ] T058 [US4] Add viewport tracking to LayoutRenderer in frontend/src/components/LayoutRenderer.tsx (update viewport on scroll events)
-- [ ] T059 [US4] Optimize DOM insertion with DocumentFragment in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (batch all system groups)
-- [ ] T060 [US4] Add performance monitoring in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (log render time if >16ms, warn on slow frames)
-- [ ] T061 [US4] Performance test: getVisibleSystems query time in frontend/tests/performance/Virtualization.test.ts (100 systems, <1ms query via Chrome DevTools)
-- [ ] T062 [US4] Performance test: 60fps scrolling in frontend/tests/performance/ScrollPerformance.test.ts (scroll 100-measure score, no dropped frames)
-- [ ] T063 [US4] Performance test: DOM node count in frontend/tests/performance/Virtualization.test.ts (verify ~400 nodes per score via GlyphRun batching, not 2000+)
-- [ ] T064 [US4] Performance test: visible system query in frontend/tests/performance/Virtualization.test.ts (binary search completes <1ms for 40 systems)
-- [ ] T065 [US4] Chrome DevTools profiling in frontend/tests/performance/ScrollPerformance.test.ts (capture Performance timeline, verify frame times <16ms)
+- [X] T056 [P] [US4] Create test fixture: 100-measure score in frontend/tests/fixtures/score_100_measures.json (40 systems)
+- [X] T057 [US4] Implement DOM virtualization in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (remove off-screen systems from DOM)
+- [X] T058 [US4] Add viewport tracking to LayoutRenderer in frontend/src/components/LayoutRenderer.tsx (update viewport on scroll events)
+- [X] T059 [US4] Optimize DOM insertion with DocumentFragment in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (batch all system groups)
+- [X] T060 [US4] Add performance monitoring in LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (log render time if >16ms, warn on slow frames)
+- [X] T061 [US4] Performance test: getVisibleSystems query time in frontend/tests/performance/Virtualization.test.ts (100 systems, <1ms query via Chrome DevTools)
+- [X] T062 [US4] Performance test: 60fps scrolling in frontend/tests/performance/ScrollPerformance.test.ts (scroll 100-measure score, no dropped frames)
+- [X] T063 [US4] Performance test: DOM node count in frontend/tests/performance/Virtualization.test.ts (verify ~400 nodes per score via GlyphRun batching, not 2000+)
+- [X] T064 [US4] Performance test: visible system query in frontend/tests/performance/Virtualization.test.ts (binary search completes <1ms for 40 systems)
+- [X] T065 [US4] Chrome DevTools profiling in frontend/tests/performance/ScrollPerformance.test.ts (capture Performance timeline, verify frame times <16ms)
 
 **Checkpoint**: User Story 4 complete (10 tasks) - Performance validated, 60fps achieved with long scores
 

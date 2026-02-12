@@ -88,8 +88,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   /**
    * Main rendering entry point (Task T016).
    * Clears SVG, queries visible systems, renders them.
+   * Includes performance monitoring (T060).
    */
   private renderSVG(): void {
+    const startTime = performance.now();
+    
     const svg = this.svgRef.current;
     if (!svg) {
       console.warn('LayoutRenderer: SVG ref not available');
@@ -133,6 +136,20 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Append all systems at once
     svg.appendChild(fragment);
+
+    // Performance monitoring (T060): Warn if render exceeds 16ms (60fps budget)
+    const renderTime = performance.now() - startTime;
+    if (renderTime > 16) {
+      console.warn(
+        `LayoutRenderer: Slow frame detected - ${renderTime.toFixed(2)}ms (threshold: 16ms for 60fps)`,
+        {
+          viewport,
+          systemCount: layout.systems.length,
+          visibleSystemCount: visibleSystems.length,
+          renderTime: `${renderTime.toFixed(2)}ms`
+        }
+      );
+    }
   }
 
   /**
