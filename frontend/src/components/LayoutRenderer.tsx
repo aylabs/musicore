@@ -170,6 +170,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    */
   private renderStaffGroup(staffGroup: StaffGroup): SVGGElement {
     const staffGroupElement = createSVGGroup();
+    staffGroupElement.setAttribute('data-staff-group', 'true');
     staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
 
     // Render braces/brackets (Tasks T045, T046 - US3, deferred to Phase 5)

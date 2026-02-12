@@ -54,23 +54,23 @@
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create LayoutRenderer class skeleton in frontend/src/components/LayoutRenderer.tsx (SVGSVGElement, config fields, empty render method)
-- [ ] T015 [P] [US1] Create test fixture: 10-measure single-staff score in frontend/tests/fixtures/violin_10_measures.json
-- [ ] T016 [US1] Implement LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (remove existing elements, query visible systems, create DocumentFragment)
-- [ ] T017 [US1] Implement LayoutRenderer.renderSystem() in frontend/src/components/LayoutRenderer.tsx (create SVG <g> with transform for system)
-- [ ] T018 [US1] Implement LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (render braces/brackets, iterate staves)
-- [ ] T019 [US1] Implement LayoutRenderer.renderStaff() in frontend/src/components/LayoutRenderer.tsx (draw 5 SVG <line> elements for staff lines at exact y-positions from layout)
-- [ ] T020 [US1] Implement LayoutRenderer.renderGlyphRun() in frontend/src/components/LayoutRenderer.tsx (create SVG <text> element per GlyphRun with SMuFL codepoint)
-- [ ] T021 [US1] Set SVG viewBox in LayoutRenderer.render() to use logical units from GlobalLayout (staff space = 20 logical units)
-- [ ] T022 [US1] Add error handling in LayoutRenderer.render() for missing GlobalLayout (display error message, no crashes)
-- [ ] T023 [US1] Add error handling for invalid SMuFL codepoints (render placeholder box with hex value, log warning)
-- [ ] T024 [US1] Unit test for LayoutRenderer instantiation in frontend/tests/unit/LayoutRenderer.test.ts (constructor validates config)
-- [ ] T025 [P] [US1] Unit test for LayoutRenderer.renderStaff() in frontend/tests/unit/LayoutRenderer.test.ts (5 lines at correct y-positions)
-- [ ] T026 [P] [US1] Unit test for LayoutRenderer.renderGlyphRun() in frontend/tests/unit/LayoutRenderer.test.ts (SVG <text> with correct x, y, codepoint)
-- [ ] T027 [US1] Integration test: render violin_10_measures fixture in frontend/tests/integration/SingleVoice.test.ts (verify SVG has systems, staves, glyphs)
-- [ ] T028 [US1] Integration test: verify notehead positions in frontend/tests/integration/SingleVoice.test.ts (extract <text> elements, check x/y within ±2 pixels of layout)
-- [ ] T029 [US1] Integration test: verify staff line positions in frontend/tests/integration/SingleVoice.test.ts (5 <line> elements per staff at layout.staff_lines[].y_position)
-- [ ] T030 [US1] Integration test: verify system boundaries in frontend/tests/integration/SingleVoice.test.ts (SVG <g> transforms match layout.systems[].bounding_box)
+- [X] T014 [P] [US1] Create LayoutRenderer class skeleton in frontend/src/components/LayoutRenderer.tsx (SVGSVGElement, config fields, empty render method)
+- [X] T015 [P] [US1] Create test fixture: 10-measure single-staff score in frontend/tests/fixtures/violin_10_measures.json
+- [X] T016 [US1] Implement LayoutRenderer.render() in frontend/src/components/LayoutRenderer.tsx (remove existing elements, query visible systems, create DocumentFragment)
+- [X] T017 [US1] Implement LayoutRenderer.renderSystem() in frontend/src/components/LayoutRenderer.tsx (create SVG <g> with transform for system)
+- [X] T018 [US1] Implement LayoutRenderer.renderStaffGroup() in frontend/src/components/LayoutRenderer.tsx (render braces/brackets, iterate staves)
+- [X] T019 [US1] Implement LayoutRenderer.renderStaff() in frontend/src/components/LayoutRenderer.tsx (draw 5 SVG <line> elements for staff lines at exact y-positions from layout)
+- [X] T020 [US1] Implement LayoutRenderer.renderGlyphRun() in frontend/src/components/LayoutRenderer.tsx (create SVG <text> element per GlyphRun with SMuFL codepoint)
+- [X] T021 [US1] Set SVG viewBox in LayoutRenderer.render() to use logical units from GlobalLayout (staff space = 20 logical units)
+- [X] T022 [US1] Add error handling in LayoutRenderer.render() for missing GlobalLayout (display error message, no crashes)
+- [X] T023 [US1] Add error handling for invalid SMuFL codepoints (render placeholder box with hex value, log warning)
+- [X] T024 [US1] Unit test for LayoutRenderer instantiation in frontend/tests/unit/LayoutRenderer.test.ts (constructor validates config)
+- [X] T025 [P] [US1] Unit test for LayoutRenderer.renderStaff() in frontend/tests/unit/LayoutRenderer.test.ts (5 lines at correct y-positions)
+- [X] T026 [P] [US1] Unit test for LayoutRenderer.renderGlyphRun() in frontend/tests/unit/LayoutRenderer.test.ts (SVG <text> with correct x, y, codepoint)
+- [X] T027 [US1] Integration test: render violin_10_measures fixture in frontend/tests/integration/SingleVoice.test.ts (verify SVG has systems, staves, glyphs)
+- [X] T028 [US1] Integration test: verify notehead positions in frontend/tests/integration/SingleVoice.test.ts (extract <text> elements, check x/y within ±2 pixels of layout)
+- [X] T029 [US1] Integration test: verify staff line positions in frontend/tests/integration/SingleVoice.test.ts (5 <line> elements per staff at layout.staff_lines[].y_position)
+- [X] T030 [US1] Integration test: verify system boundaries in frontend/tests/integration/SingleVoice.test.ts (SVG <g> transforms match layout.systems[].bounding_box)
 
 **Checkpoint**: User Story 1 complete (17 tasks) - Single-voice rendering functional and independently testable
 
