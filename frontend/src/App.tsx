@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
+import { RendererDemo } from './pages/RendererDemo'
 import { OfflineBanner } from './components/OfflineBanner'
 import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
@@ -18,11 +19,15 @@ import './App.css'
  * Feature 008: Added TempoStateProvider for tempo change support
  * Feature 011: Added WASM music engine initialization
  * Feature 013: Added onboarding with demo music on first run
+ * Feature 017: Added RendererDemo route (access with ?demo=true)
  */
 function App() {
   const [wasmLoading, setWasmLoading] = useState(true)
   const [wasmError, setWasmError] = useState<string | null>(null)
   const [wasmReady, setWasmReady] = useState(false)
+  
+  // Feature 017: Check URL for demo mode (?demo=true)
+  const [showDemo, setShowDemo] = useState(false)
   
   // Mobile debug console (eruda) - enable with ?debug=true
   useEffect(() => {
@@ -33,6 +38,12 @@ function App() {
         console.log('[App] Eruda mobile debug console initialized');
         console.log('[App] Access console by tapping the floating button');
       });
+    }
+    
+    // Feature 017: Check for demo mode
+    if (urlParams.get('demo') === 'true') {
+      console.log('[App] Demo mode enabled - showing RendererDemo');
+      setShowDemo(true);
     }
   }, []);
   
@@ -152,6 +163,35 @@ function App() {
   }
 
   // Normal app render once WASM is ready
+  
+  // Feature 017: Show RendererDemo if ?demo=true parameter is present
+  if (showDemo) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>
+            🎵 Musicore - Layout Renderer Demo{' '}
+            <a 
+              href="/"
+              style={{ 
+                fontSize: '0.5em', 
+                color: '#999', 
+                fontWeight: 'normal',
+                textDecoration: 'none',
+                marginLeft: '1rem'
+              }}
+            >
+              ← Back to App
+            </a>
+          </h1>
+        </header>
+        <main>
+          <RendererDemo />
+        </main>
+      </div>
+    )
+  }
+  
   return (
     <TempoStateProvider>
       <FileStateProvider>
