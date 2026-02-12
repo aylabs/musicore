@@ -17,12 +17,12 @@
 
 **Purpose**: Project initialization and type definitions shared across all user stories
 
-- [ ] T001 Create TypeScript interfaces in frontend/src/types/LayoutRenderer.ts from contracts/LayoutRenderer.ts
-- [ ] T002 [P] Create TypeScript interfaces in frontend/src/types/RenderConfig.ts from contracts/RenderConfig.ts
-- [ ] T003 [P] Create TypeScript interfaces in frontend/src/types/Viewport.ts from contracts/Viewport.ts
-- [ ] T004 [P] Create TypeScript interfaces in frontend/src/types/VisualComparison.ts from contracts/VisualComparison.ts
-- [ ] T005 Verify Feature 016 WASM bindings available in frontend/src/wasm/layout.wasm
-- [ ] T006 Verify Feature 016 layoutUtils available in frontend/src/utils/layoutUtils.ts (47 tests)
+- [X] T001 Create TypeScript interfaces in frontend/src/types/LayoutRenderer.ts from contracts/LayoutRenderer.ts
+- [X] T002 [P] Create TypeScript interfaces in frontend/src/types/RenderConfig.ts from contracts/RenderConfig.ts
+- [X] T003 [P] Create TypeScript interfaces in frontend/src/types/Viewport.ts from contracts/Viewport.ts
+- [X] T004 [P] Create TypeScript interfaces in frontend/src/types/VisualComparison.ts from contracts/VisualComparison.ts
+- [X] T005 Verify Feature 016 WASM bindings available in frontend/src/wasm/layout.wasm
+- [X] T006 Verify Feature 016 layoutUtils available in frontend/src/utils/layoutUtils.ts (47 tests)
 
 **Checkpoint**: Type definitions complete, dependencies verified - user story implementation can begin
 
