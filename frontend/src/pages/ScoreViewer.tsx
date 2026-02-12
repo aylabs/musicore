@@ -163,11 +163,15 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const { zoom } = this.state;
     const scrollTop = container.scrollTop;
     const clientHeight = container.clientHeight;
+    
+    // Account for top padding (20px converted to logical units)
+    const paddingTop = 20;
+    const paddingLogicalUnits = paddingTop / zoom;
 
     // Calculate viewport in logical units
     // Zoom affects the visible area: higher zoom = smaller viewport
     const viewportHeight = clientHeight / zoom;
-    const viewportY = scrollTop / zoom;
+    const viewportY = Math.max(0, (scrollTop / zoom) - paddingLogicalUnits);
 
     this.setState({
       viewport: {
@@ -226,7 +230,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
 
     // Calculate scroll container height based on layout and zoom
-    const totalHeight = layout.total_height * zoom;
+    // Add top and bottom padding for better visibility
+    const paddingTop = 20;
+    const paddingBottom = 40;
+    const totalHeight = (layout.total_height * zoom) + paddingTop + paddingBottom;
 
     return (
       <div style={styles.wrapper}>
@@ -252,8 +259,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
             backgroundColor: config.backgroundColor,
           }}
         >
-          <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
-            <div style={{ position: 'sticky', top: 0, height: '100vh' }}>
+          <div style={{ height: `${totalHeight}px`, position: 'relative', paddingTop: '20px', paddingBottom: '40px' }}>
+            <div style={{ position: 'sticky', top: 0, height: '100%' }}>
               <LayoutRenderer layout={layout} config={config} viewport={viewport} />
             </div>
           </div>
