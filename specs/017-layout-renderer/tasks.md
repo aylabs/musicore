@@ -34,13 +34,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Create RenderConfig factory in frontend/src/utils/renderUtils.ts (createDefaultConfig, createDarkModeConfig, validateRenderConfig)
-- [ ] T008 [P] Create Viewport utilities in frontend/src/utils/renderUtils.ts (createViewportFromSVG, intersectsViewport, getViewportArea)
-- [ ] T009 [P] Implement getVisibleSystems() binary search in frontend/src/utils/renderUtils.ts (O(log n) system query)
-- [ ] T010 Create SVG namespace constants and helper functions in frontend/src/utils/renderUtils.ts (svgNS, createSVGElement, createSVGGroup)
-- [ ] T011 Unit test for RenderConfig validation in frontend/tests/unit/renderUtils.test.ts (validateRenderConfig throws on invalid)
-- [ ] T012 [P] Unit test for getVisibleSystems in frontend/tests/unit/renderUtils.test.ts (binary search correctness, <1ms performance)
-- [ ] T013 [P] Unit test for Viewport utilities in frontend/tests/unit/renderUtils.test.ts (intersectsViewport, createViewportFromSVG)
+- [X] T007 Create RenderConfig factory in frontend/src/utils/renderUtils.ts (createDefaultConfig, createDarkModeConfig, validateRenderConfig)
+- [X] T008 [P] Create Viewport utilities in frontend/src/utils/renderUtils.ts (createViewportFromSVG, intersectsViewport, getViewportArea)
+- [X] T009 [P] Implement getVisibleSystems() binary search in frontend/src/utils/renderUtils.ts (O(log n) system query)
+- [X] T010 Create SVG namespace constants and helper functions in frontend/src/utils/renderUtils.ts (svgNS, createSVGElement, createSVGGroup)
+- [X] T011 Unit test for RenderConfig validation in frontend/tests/unit/renderUtils.test.ts (validateRenderConfig throws on invalid)
+- [X] T012 [P] Unit test for getVisibleSystems in frontend/tests/unit/renderUtils.test.ts (binary search correctness, <1ms performance)
+- [X] T013 [P] Unit test for Viewport utilities in frontend/tests/unit/renderUtils.test.ts (intersectsViewport, createViewportFromSVG)
 
 **Checkpoint**: Foundation ready (13 tasks) - user story implementation can now begin in parallel
 
