@@ -1,0 +1,759 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "global_structural_events": [
+    {
+      "Tempo": {
+        "tick": {
+          "value": 0
+        },
+        "bpm": {
+          "value": 120
+        }
+      }
+    },
+    {
+      "TimeSignature": {
+        "tick": {
+          "value": 0
+        },
+        "numerator": 4,
+        "denominator": 4
+      }
+    }
+  ],
+  "instruments": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "name": "Piano",
+      "instrument_type": "piano",
+      "staves": [
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440002",
+          "staff_structural_events": [
+            {
+              "Clef": {
+                "tick": {
+                  "value": 0
+                },
+                "clef": "Treble"
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": {
+                  "value": 0
+                },
+                "fifths": 0
+              }
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440003",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440010",
+                  "start_tick": {
+                    "value": 0
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 60
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440011",
+                  "start_tick": {
+                    "value": 960
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 62
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440012",
+                  "start_tick": {
+                    "value": 1920
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440013",
+                  "start_tick": {
+                    "value": 2880
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 65
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440014",
+                  "start_tick": {
+                    "value": 3840
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440015",
+                  "start_tick": {
+                    "value": 5760
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 69
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440016",
+                  "start_tick": {
+                    "value": 6720
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 71
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440017",
+                  "start_tick": {
+                    "value": 7200
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 72
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440018",
+                  "start_tick": {
+                    "value": 7680
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 74
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440019",
+                  "start_tick": {
+                    "value": 11520
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 72
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440020",
+                  "start_tick": {
+                    "value": 15360
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 69
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440021",
+                  "start_tick": {
+                    "value": 19200
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440022",
+                  "start_tick": {
+                    "value": 23040
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 65
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440023",
+                  "start_tick": {
+                    "value": 30720
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440024",
+                  "start_tick": {
+                    "value": 34560
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 62
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440025",
+                  "start_tick": {
+                    "value": 38400
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 60
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440099",
+                  "start_tick": {
+                    "value": 184320
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 72
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440010",
+                  "start_tick": {
+                    "value": 192000
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 60
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440011",
+                  "start_tick": {
+                    "value": 192960
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 62
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440012",
+                  "start_tick": {
+                    "value": 193920
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440013",
+                  "start_tick": {
+                    "value": 194880
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 65
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440014",
+                  "start_tick": {
+                    "value": 195840
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440015",
+                  "start_tick": {
+                    "value": 197760
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 69
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440016",
+                  "start_tick": {
+                    "value": 198720
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 71
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440017",
+                  "start_tick": {
+                    "value": 199200
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 72
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440018",
+                  "start_tick": {
+                    "value": 199680
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 74
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440019",
+                  "start_tick": {
+                    "value": 203520
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 72
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440020",
+                  "start_tick": {
+                    "value": 207360
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 69
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440021",
+                  "start_tick": {
+                    "value": 211200
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440022",
+                  "start_tick": {
+                    "value": 215040
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 65
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440023",
+                  "start_tick": {
+                    "value": 222720
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440024",
+                  "start_tick": {
+                    "value": 226560
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 62
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440025",
+                  "start_tick": {
+                    "value": 230400
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 60
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440099",
+                  "start_tick": {
+                    "value": 376320
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 72
+                  }
+                }
+              ]
+            },
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440004",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440030",
+                  "start_tick": {
+                    "value": 1920
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440031",
+                  "start_tick": {
+                    "value": 7680
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440032",
+                  "start_tick": {
+                    "value": 11520
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 69
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440030",
+                  "start_tick": {
+                    "value": 21120
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 64
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440031",
+                  "start_tick": {
+                    "value": 26880
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 67
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440032",
+                  "start_tick": {
+                    "value": 30720
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 69
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440005",
+          "staff_structural_events": [
+            {
+              "Clef": {
+                "tick": {
+                  "value": 0
+                },
+                "clef": "Bass"
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": {
+                  "value": 0
+                },
+                "fifths": 0
+              }
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440006",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440040",
+                  "start_tick": {
+                    "value": 0
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440041",
+                  "start_tick": {
+                    "value": 3840
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 50
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440042",
+                  "start_tick": {
+                    "value": 7680
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440043",
+                  "start_tick": {
+                    "value": 11520
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 53
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440044",
+                  "start_tick": {
+                    "value": 15360
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 55
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440045",
+                  "start_tick": {
+                    "value": 19200
+                  },
+                  "duration_ticks": 7680,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440046",
+                  "start_tick": {
+                    "value": 30720
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440047",
+                  "start_tick": {
+                    "value": 34560
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 50
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440048",
+                  "start_tick": {
+                    "value": 38400
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440098",
+                  "start_tick": {
+                    "value": 184320
+                  },
+                  "duration_ticks": 7680,
+                  "pitch": {
+                    "value": 36
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440040",
+                  "start_tick": {
+                    "value": 192000
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440041",
+                  "start_tick": {
+                    "value": 195840
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 50
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440042",
+                  "start_tick": {
+                    "value": 199680
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440043",
+                  "start_tick": {
+                    "value": 203520
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 53
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440044",
+                  "start_tick": {
+                    "value": 207360
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 55
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440045",
+                  "start_tick": {
+                    "value": 211200
+                  },
+                  "duration_ticks": 7680,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440046",
+                  "start_tick": {
+                    "value": 222720
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440047",
+                  "start_tick": {
+                    "value": 226560
+                  },
+                  "duration_ticks": 480,
+                  "pitch": {
+                    "value": 50
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440048",
+                  "start_tick": {
+                    "value": 230400
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 48
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440098",
+                  "start_tick": {
+                    "value": 376320
+                  },
+                  "duration_ticks": 7680,
+                  "pitch": {
+                    "value": 36
+                  }
+                }
+              ]
+            },
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440007",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440050",
+                  "start_tick": {
+                    "value": 960
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440051",
+                  "start_tick": {
+                    "value": 5760
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 55
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440052",
+                  "start_tick": {
+                    "value": 15360
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 50
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440050",
+                  "start_tick": {
+                    "value": 24000
+                  },
+                  "duration_ticks": 960,
+                  "pitch": {
+                    "value": 52
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440051",
+                  "start_tick": {
+                    "value": 28800
+                  },
+                  "duration_ticks": 1920,
+                  "pitch": {
+                    "value": 55
+                  }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440052",
+                  "start_tick": {
+                    "value": 38400
+                  },
+                  "duration_ticks": 3840,
+                  "pitch": {
+                    "value": 50
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

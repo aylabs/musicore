@@ -1,0 +1,595 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440100",
+  "global_structural_events": [
+    {
+      "Tempo": {
+        "tick": { "value": 0 },
+        "bpm": { "value": 120 }
+      }
+    },
+    {
+      "Tempo": {
+        "tick": { "value": 384000 },
+        "bpm": { "value": 140 }
+      }
+    },
+    {
+      "TimeSignature": {
+        "tick": { "value": 0 },
+        "numerator": 4,
+        "denominator": 4
+      }
+    }
+  ],
+  "instruments": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440101",
+      "name": "Piano",
+      "instrument_type": "piano",
+      "staves": [
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440102",
+          "staff_structural_events": [
+            {
+              "Clef": {
+                "tick": { "value": 0 },
+                "clef": "Treble"
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": { "value": 0 },
+                "fifths": 0
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": { "value": 192000 },
+                "fifths": 2
+              }
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440103",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440200",
+                  "start_tick": { "value": 0 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 60 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440201",
+                  "start_tick": { "value": 3840 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 64 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440202",
+                  "start_tick": { "value": 7680 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440203",
+                  "start_tick": { "value": 11520 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 72 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440204",
+                  "start_tick": { "value": 19200 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 69 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440205",
+                  "start_tick": { "value": 23040 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 65 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440206",
+                  "start_tick": { "value": 30720 },
+                  "duration_ticks": 480,
+                  "pitch": { "value": 62 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440207",
+                  "start_tick": { "value": 38400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 60 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440208",
+                  "start_tick": { "value": 46080 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 64 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440209",
+                  "start_tick": { "value": 53760 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440210",
+                  "start_tick": { "value": 61440 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 71 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440211",
+                  "start_tick": { "value": 76800 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 74 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440212",
+                  "start_tick": { "value": 96000 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 72 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440213",
+                  "start_tick": { "value": 115200 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 69 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440214",
+                  "start_tick": { "value": 134400 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440215",
+                  "start_tick": { "value": 153600 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 65 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440216",
+                  "start_tick": { "value": 172800 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 62 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440217",
+                  "start_tick": { "value": 192000 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 64 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440218",
+                  "start_tick": { "value": 230400 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440219",
+                  "start_tick": { "value": 268800 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 71 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440220",
+                  "start_tick": { "value": 307200 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 74 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440221",
+                  "start_tick": { "value": 345600 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 76 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440222",
+                  "start_tick": { "value": 384000 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 79 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440223",
+                  "start_tick": { "value": 422400 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 76 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440224",
+                  "start_tick": { "value": 460800 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 74 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440225",
+                  "start_tick": { "value": 499200 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 72 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440226",
+                  "start_tick": { "value": 537600 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 69 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440227",
+                  "start_tick": { "value": 576000 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440228",
+                  "start_tick": { "value": 614400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 65 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440229",
+                  "start_tick": { "value": 652800 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 64 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440230",
+                  "start_tick": { "value": 691200 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 62 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440231",
+                  "start_tick": { "value": 729600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 72 }
+                }
+              ]
+            },
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440104",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440250",
+                  "start_tick": { "value": 1920 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 64 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440251",
+                  "start_tick": { "value": 15360 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 67 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440252",
+                  "start_tick": { "value": 42240 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 69 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440253",
+                  "start_tick": { "value": 84480 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 72 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440254",
+                  "start_tick": { "value": 126720 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 74 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440255",
+                  "start_tick": { "value": 211200 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 71 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440256",
+                  "start_tick": { "value": 326400 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 76 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440257",
+                  "start_tick": { "value": 441600 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 79 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440258",
+                  "start_tick": { "value": 556800 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 74 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440259",
+                  "start_tick": { "value": 672000 },
+                  "duration_ticks": 1920,
+                  "pitch": { "value": 71 }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "770e8400-e29b-41d4-a716-446655440105",
+          "staff_structural_events": [
+            {
+              "Clef": {
+                "tick": { "value": 0 },
+                "clef": "Bass"
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": { "value": 0 },
+                "fifths": 0
+              }
+            },
+            {
+              "KeySignature": {
+                "tick": { "value": 192000 },
+                "fifths": 2
+              }
+            }
+          ],
+          "voices": [
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440106",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440300",
+                  "start_tick": { "value": 0 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440301",
+                  "start_tick": { "value": 3840 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440302",
+                  "start_tick": { "value": 7680 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440303",
+                  "start_tick": { "value": 15360 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 53 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440304",
+                  "start_tick": { "value": 23040 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440305",
+                  "start_tick": { "value": 38400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440306",
+                  "start_tick": { "value": 46080 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440307",
+                  "start_tick": { "value": 61440 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440308",
+                  "start_tick": { "value": 76800 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440309",
+                  "start_tick": { "value": 96000 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440310",
+                  "start_tick": { "value": 115200 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440311",
+                  "start_tick": { "value": 134400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 53 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440312",
+                  "start_tick": { "value": 153600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440313",
+                  "start_tick": { "value": 172800 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440314",
+                  "start_tick": { "value": 192000 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440315",
+                  "start_tick": { "value": 230400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440316",
+                  "start_tick": { "value": 268800 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440317",
+                  "start_tick": { "value": 307200 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440318",
+                  "start_tick": { "value": 345600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440319",
+                  "start_tick": { "value": 384000 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440320",
+                  "start_tick": { "value": 422400 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440321",
+                  "start_tick": { "value": 460800 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440322",
+                  "start_tick": { "value": 499200 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440323",
+                  "start_tick": { "value": 537600 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 53 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440324",
+                  "start_tick": { "value": 576000 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440325",
+                  "start_tick": { "value": 614400 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 45 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440326",
+                  "start_tick": { "value": 652800 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 43 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440327",
+                  "start_tick": { "value": 691200 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 41 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440328",
+                  "start_tick": { "value": 729600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 36 }
+                }
+              ]
+            },
+            {
+              "id": "880e8400-e29b-41d4-a716-446655440107",
+              "interval_events": [
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440350",
+                  "start_tick": { "value": 960 },
+                  "duration_ticks": 960,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440351",
+                  "start_tick": { "value": 11520 },
+                  "duration_ticks": 3840,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440352",
+                  "start_tick": { "value": 30720 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440353",
+                  "start_tick": { "value": 69120 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 53 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440354",
+                  "start_tick": { "value": 107520 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440355",
+                  "start_tick": { "value": 145920 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440356",
+                  "start_tick": { "value": 184320 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440357",
+                  "start_tick": { "value": 249600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 52 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440358",
+                  "start_tick": { "value": 403200 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 55 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440359",
+                  "start_tick": { "value": 518400 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 50 }
+                },
+                {
+                  "id": "990e8400-e29b-41d4-a716-446655440360",
+                  "start_tick": { "value": 633600 },
+                  "duration_ticks": 7680,
+                  "pitch": { "value": 48 }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

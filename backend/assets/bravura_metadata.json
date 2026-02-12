@@ -1,0 +1,86 @@
+{
+  "glyphBBoxes": {
+    "noteheadBlack": {
+      "bBoxNE": [1.18, 0.5],
+      "bBoxSW": [0.0, -0.5]
+    },
+    "noteheadHalf": {
+      "bBoxNE": [1.18, 0.5],
+      "bBoxSW": [0.0, -0.5]
+    },
+    "noteheadWhole": {
+      "bBoxNE": [1.63, 0.5],
+      "bBoxSW": [0.0, -0.5]
+    },
+    "gClef": {
+      "bBoxNE": [3.59, 4.0],
+      "bBoxSW": [0.0, -3.0]
+    },
+    "fClef": {
+      "bBoxNE": [2.94, 1.0],
+      "bBoxSW": [0.0, -1.0]
+    },
+    "cClef": {
+      "bBoxNE": [2.5, 2.0],
+      "bBoxSW": [0.0, -2.0]
+    },
+    "accidentalSharp": {
+      "bBoxNE": [1.18, 1.5],
+      "bBoxSW": [0.0, -1.5]
+    },
+    "accidentalFlat": {
+      "bBoxNE": [0.63, 2.5],
+      "bBoxSW": [0.0, -0.5]
+    },
+    "accidentalNatural": {
+      "bBoxNE": [0.75, 1.5],
+      "bBoxSW": [0.0, -1.5]
+    },
+    "timeSig0": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig1": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig2": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig3": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig4": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig5": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig6": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig7": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig8": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    },
+    "timeSig9": {
+      "bBoxNE": [1.02, 2.0],
+      "bBoxSW": [0.0, 0.0]
+    }
+  },
+  "engravingDefaults": {
+    "staffLineThickness": 0.13,
+    "stemThickness": 0.12,
+    "beamThickness": 0.5,
+    "beamSpacing": 0.25
+  }
+}
