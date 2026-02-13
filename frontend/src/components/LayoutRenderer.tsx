@@ -8,7 +8,7 @@
  */
 
 import { Component, createRef, type RefObject } from 'react';
-import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun } from '../wasm/layout';
+import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun, BarLine } from '../wasm/layout';
 import type { RenderConfig } from '../types/RenderConfig';
 import type { Viewport } from '../types/Viewport';
 import { 
@@ -124,17 +124,6 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Query visible systems using virtualization (Task T009)
     const visibleSystems = getVisibleSystems(layout.systems, viewport);
-
-    // Debug logging for performance demo
-    if (layout.systems.length > 10) {
-      console.log('LayoutRenderer.renderSVG:', {
-        viewport,
-        totalSystems: layout.systems.length,
-        visibleSystemCount: visibleSystems.length,
-        visibleIndexes: visibleSystems.map(s => s.index),
-        firstSystemBounds: layout.systems[0]?.bounding_box
-      });
-    }
 
     // Create document fragment for efficient DOM insertion (Task T059)
     const fragment = document.createDocumentFragment();
@@ -323,6 +312,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Render 5 staff lines (Task T019)
     for (const staffLine of staff.staff_lines) {
+      // Validate staff line position
+      if (isNaN(staffLine.y_position) || isNaN(staffLine.start_x) || isNaN(staffLine.end_x)) {
+        console.error('Invalid staff line position:', staffLine);
+        continue; // Skip this staff line
+      }
+      
       const line = createSVGElement('line');
       line.setAttribute('x1', staffLine.start_x.toString());
       line.setAttribute('y1', staffLine.y_position.toString());
@@ -331,6 +326,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       line.setAttribute('stroke', config.staffLineColor);
       line.setAttribute('stroke-width', '1');
       staffElement.appendChild(line);
+    }
+
+    // Render bar lines (measure separators)
+    if (staff.bar_lines) {
+      for (const barLine of staff.bar_lines) {
+        const barLineElement = this.renderBarLine(barLine, config);
+        staffElement.appendChild(barLineElement);
+      }
     }
 
     // Render glyph runs (Task T020)
@@ -347,6 +350,82 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     }
 
     return staffElement;
+  }
+
+  /**
+   * Renders a bar line (vertical line separating measures).
+   * 
+   * @param barLine - Bar line data from staff
+   * @param config - Render configuration
+   * @returns SVG group element containing bar line(s)
+   */
+  private renderBarLine(barLine: BarLine, config: RenderConfig): SVGGElement {
+    const barLineGroup = createSVGGroup();
+    barLineGroup.setAttribute('class', 'bar-line');
+
+    const strokeColor = config.staffLineColor;
+    const thinWidth = 1.5;
+    const thickWidth = 4;
+
+    switch (barLine.bar_type) {
+      case 'Single':
+        // Single thin line
+        const singleLine = createSVGElement('line');
+        singleLine.setAttribute('x1', barLine.x_position.toString());
+        singleLine.setAttribute('y1', barLine.y_start.toString());
+        singleLine.setAttribute('x2', barLine.x_position.toString());
+        singleLine.setAttribute('y2', barLine.y_end.toString());
+        singleLine.setAttribute('stroke', strokeColor);
+        singleLine.setAttribute('stroke-width', thinWidth.toString());
+        barLineGroup.appendChild(singleLine);
+        break;
+
+      case 'Double':
+        // Two thin lines
+        const spacing = 4; // Space between double bar lines
+        const doubleLine1 = createSVGElement('line');
+        doubleLine1.setAttribute('x1', (barLine.x_position - spacing / 2).toString());
+        doubleLine1.setAttribute('y1', barLine.y_start.toString());
+        doubleLine1.setAttribute('x2', (barLine.x_position - spacing / 2).toString());
+        doubleLine1.setAttribute('y2', barLine.y_end.toString());
+        doubleLine1.setAttribute('stroke', strokeColor);
+        doubleLine1.setAttribute('stroke-width', thinWidth.toString());
+        barLineGroup.appendChild(doubleLine1);
+
+        const doubleLine2 = createSVGElement('line');
+        doubleLine2.setAttribute('x1', (barLine.x_position + spacing / 2).toString());
+        doubleLine2.setAttribute('y1', barLine.y_start.toString());
+        doubleLine2.setAttribute('x2', (barLine.x_position + spacing / 2).toString());
+        doubleLine2.setAttribute('y2', barLine.y_end.toString());
+        doubleLine2.setAttribute('stroke', strokeColor);
+        doubleLine2.setAttribute('stroke-width', thinWidth.toString());
+        barLineGroup.appendChild(doubleLine2);
+        break;
+
+      case 'Final':
+        // Thin line + thick line
+        const finalSpacing = 4;
+        const thinLine = createSVGElement('line');
+        thinLine.setAttribute('x1', (barLine.x_position - finalSpacing - thickWidth / 2).toString());
+        thinLine.setAttribute('y1', barLine.y_start.toString());
+        thinLine.setAttribute('x2', (barLine.x_position - finalSpacing - thickWidth / 2).toString());
+        thinLine.setAttribute('y2', barLine.y_end.toString());
+        thinLine.setAttribute('stroke', strokeColor);
+        thinLine.setAttribute('stroke-width', thinWidth.toString());
+        barLineGroup.appendChild(thinLine);
+
+        const thickLine = createSVGElement('line');
+        thickLine.setAttribute('x1', (barLine.x_position + thickWidth / 2).toString());
+        thickLine.setAttribute('y1', barLine.y_start.toString());
+        thickLine.setAttribute('x2', (barLine.x_position + thickWidth / 2).toString());
+        thickLine.setAttribute('y2', barLine.y_end.toString());
+        thickLine.setAttribute('stroke', strokeColor);
+        thickLine.setAttribute('stroke-width', thickWidth.toString());
+        barLineGroup.appendChild(thickLine);
+        break;
+    }
+
+    return barLineGroup;
   }
 
   /**
@@ -386,8 +465,17 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string): SVGTextElement {
     const text = createSVGElement('text');
     
-    text.setAttribute('x', glyph.position.x.toString());
-    text.setAttribute('y', glyph.position.y.toString());
+    // Validate position values to catch NaN errors
+    if (isNaN(glyph.position.x) || isNaN(glyph.position.y)) {
+      console.error('Invalid glyph position:', glyph);
+      // Use fallback position instead of crashing
+      text.setAttribute('x', '0');
+      text.setAttribute('y', '0');
+    } else {
+      text.setAttribute('x', glyph.position.x.toString());
+      text.setAttribute('y', glyph.position.y.toString());
+    }
+    
     text.setAttribute('font-family', fontFamily);
     text.setAttribute('font-size', fontSize.toString());
     text.setAttribute('fill', color);

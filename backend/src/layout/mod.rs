@@ -19,8 +19,8 @@ pub mod wasm;
 
 pub use breaker::MeasureInfo;
 pub use types::{
-    BoundingBox, BracketType, Color, GlobalLayout, Glyph, GlyphRun, Point, SourceReference, Staff,
-    StaffGroup, StaffLine, System, TickRange,
+    BarLine, BarLineType, BoundingBox, BracketType, Color, GlobalLayout, Glyph, GlyphRun, Point,
+    SourceReference, Staff, StaffGroup, StaffLine, System, TickRange,
 };
 
 /// Configuration for layout computation
@@ -41,8 +41,8 @@ impl Default for LayoutConfig {
         Self {
             max_system_width: 800.0,
             units_per_space: 20.0, // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
-            system_spacing: 150.0,
-            system_height: 200.0,
+            system_spacing: 550.0, // Increased spacing to accommodate larger grand staff
+            system_height: 480.0, // Height for grand staff with 14 staff spaces separation
         }
     }
 }
@@ -96,6 +96,15 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             let mut staves = Vec::new();
 
             for (staff_index, staff_data) in instrument.staves.iter().enumerate() {
+                // Calculate vertical offset for this staff (same formula as create_staff_lines)
+                // Staff spacing: 14 staff spaces between staves (provides clear separation for piano grand staff)
+                let staff_vertical_offset = staff_index as f32 * 14.0 * config.units_per_space;
+
+                // Calculate left margin needed for structural glyphs
+                // Clef (~60 units) + key sig (15 * sharps) + time sig (~50 units) + spacing (~60 units)
+                let key_sig_width = staff_data.key_sharps.abs() as f32 * 15.0;
+                let left_margin = 170.0 + key_sig_width;
+                
                 // Position glyphs for this staff within the system's tick range
                 let glyphs = position_glyphs_for_staff(
                     staff_data,
@@ -104,6 +113,8 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     config.units_per_space,
                     &instrument.id,
                     staff_index,
+                    left_margin,
+                    staff_vertical_offset,
                 );
 
                 // Batch glyphs for efficient rendering
@@ -116,11 +127,57 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     config.units_per_space,
                 );
 
-                // Create staff with batched glyphs
+                // T036-T037: Generate structural glyphs (clef, time sig, key sig) at system start
+                let mut structural_glyphs = Vec::new();
+
+                // Position clef at x=20 (left margin)
+                let clef_glyph = positioner::position_clef(
+                    &staff_data.clef,
+                    20.0,
+                    config.units_per_space,
+                    staff_vertical_offset,
+                );
+                structural_glyphs.push(clef_glyph);
+
+                // Position key signature after clef (x=80)
+                let key_sig_glyphs = positioner::position_key_signature(
+                    staff_data.key_sharps,
+                    &staff_data.clef,
+                    80.0,
+                    config.units_per_space,
+                    staff_vertical_offset,
+                );
+                structural_glyphs.extend(key_sig_glyphs);
+
+                // Position time signature after key signature
+                // Key sig takes ~15 units per accidental, so calculate dynamic x position
+                let key_sig_width = staff_data.key_sharps.abs() as f32 * 15.0;
+                let time_sig_x = 80.0 + key_sig_width + 20.0; // Add 20 unit gap
+                let time_sig_glyphs = positioner::position_time_signature(
+                    staff_data.time_numerator,
+                    staff_data.time_denominator,
+                    time_sig_x,
+                    config.units_per_space,
+                    staff_vertical_offset,
+                );
+                structural_glyphs.extend(time_sig_glyphs);
+
+                // Create bar lines at measure boundaries
+                let bar_lines = create_bar_lines(
+                    &measure_infos,
+                    &system.tick_range,
+                    staff_index,
+                    left_margin,
+                    system.bounding_box.width,
+                    config.units_per_space,
+                );
+
+                // Create staff with batched glyphs and structural glyphs
                 let staff = Staff {
                     staff_lines,
                     glyph_runs,
-                    structural_glyphs: vec![], // TODO: Add clefs, key sigs, time sigs
+                    structural_glyphs,
+                    bar_lines,
                 };
 
                 staves.push(staff);
@@ -175,6 +232,7 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
 
     // Extract notes from all instruments
     if let Some(instruments) = score["instruments"].as_array() {
+        
         for instrument in instruments {
             if let Some(staves) = instrument["staves"].as_array() {
                 // Collect all unique timing positions across all staves
@@ -187,12 +245,25 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
                 for staff in staves {
                     if let Some(voices) = staff["voices"].as_array() {
                         for voice in voices {
-                            if let Some(notes) = voice["interval_events"].as_array() {
+                            // Try both "interval_events" (Score format) and "notes" (converted format)
+                            let notes_array = voice["interval_events"].as_array()
+                                .or_else(|| voice["notes"].as_array());
+                            
+                            if let Some(notes) = notes_array {
+                                
                                 for note in notes {
-                                    let _duration =
-                                        note["duration_ticks"].as_u64().unwrap_or(960) as u32;
-                                    let start_tick =
-                                        note["start_tick"]["value"].as_u64().unwrap_or(0) as u32;
+                                    // Support multiple field name formats:
+                                    // Format 1 (Score): start_tick, duration_ticks
+                                    // Format 2 (LayoutView): tick, duration
+                                    // Format 3 (nested): start_tick.value
+                                    let start_tick = note["start_tick"].as_u64()
+                                        .or_else(|| note["tick"].as_u64())
+                                        .or_else(|| note["start_tick"]["value"].as_u64())
+                                        .unwrap_or(0) as u32;
+                                    
+                                    let _duration = note["duration_ticks"].as_u64()
+                                        .or_else(|| note["duration"].as_u64())
+                                        .unwrap_or(960) as u32;
 
                                     // Determine which measure this note belongs to (4/4 = 3840 ticks per measure)
                                     let measure_index = (start_tick / 3840) as usize;
@@ -244,6 +315,10 @@ struct InstrumentData {
 #[derive(Debug, Clone)]
 struct StaffData {
     voices: Vec<VoiceData>,
+    clef: String,           // e.g., "Treble", "Bass", "Alto", "Tenor"
+    time_numerator: u8,     // e.g., 4 for 4/4 time
+    time_denominator: u8,   // e.g., 4 for 4/4 time
+    key_sharps: i8,         // Positive for sharps, negative for flats, 0 for C major
 }
 
 /// Represents a voice with interval events (notes)
@@ -276,6 +351,12 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
             if let Some(staves_array) = instrument["staves"].as_array() {
                 for staff in staves_array {
                     let mut voices = Vec::new();
+
+                    // Extract structural metadata (with defaults)
+                    let clef = staff["clef"].as_str().unwrap_or("Treble").to_string();
+                    let time_numerator = staff["time_signature"]["numerator"].as_u64().unwrap_or(4) as u8;
+                    let time_denominator = staff["time_signature"]["denominator"].as_u64().unwrap_or(4) as u8;
+                    let key_sharps = staff["key_signature"]["sharps"].as_i64().unwrap_or(0) as i8;
 
                     if let Some(voices_array) = staff["voices"].as_array() {
                         eprintln!("[extract_instruments] Found {} voices in staff", voices_array.len());
@@ -329,7 +410,13 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                         }
                     }
 
-                    staves.push(StaffData { voices });
+                    staves.push(StaffData {
+                        voices,
+                        clef,
+                        time_numerator,
+                        time_denominator,
+                        key_sharps,
+                    });
                 }
             }
 
@@ -348,6 +435,8 @@ fn position_glyphs_for_staff(
     units_per_space: f32,
     instrument_id: &str,
     staff_index: usize,
+    left_margin: f32,
+    staff_vertical_offset: f32,
 ) -> Vec<Glyph> {
     let mut all_glyphs = Vec::new();
 
@@ -367,13 +456,15 @@ fn position_glyphs_for_staff(
         }
 
         // Calculate horizontal offsets for notes based on their tick positions
+        // Notes start after the left margin (structural glyphs)
         let tick_span = (tick_range.end_tick - tick_range.start_tick) as f32;
+        let available_width = system_width - left_margin;
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
             .map(|(_, start_tick, _)| {
                 let relative_tick = (*start_tick - tick_range.start_tick) as f32;
                 let position_ratio = relative_tick / tick_span;
-                position_ratio * system_width
+                left_margin + (position_ratio * available_width)
             })
             .collect();
 
@@ -381,10 +472,12 @@ fn position_glyphs_for_staff(
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &horizontal_offsets,
+            &staff_data.clef,  // Pass clef type for correct pitch positioning
             units_per_space,
             instrument_id,
             staff_index,
             voice_index,
+            staff_vertical_offset,
         );
 
         all_glyphs.extend(glyphs);
@@ -400,8 +493,8 @@ fn create_staff_lines(
     units_per_space: f32,
 ) -> [StaffLine; 5] {
     // Each staff is vertically offset based on its index
-    // Staff spacing: 10 staff spaces (100 logical units at default scale)
-    let staff_vertical_offset = staff_index as f32 * 10.0 * units_per_space;
+    // Staff spacing: 14 staff spaces (280 logical units at default scale of 20)
+    let staff_vertical_offset = staff_index as f32 * 14.0 * units_per_space;
 
     // Create 5 evenly spaced lines (2 staff spaces apart = 20 logical units)
     let mut lines = Vec::new();
@@ -416,6 +509,87 @@ fn create_staff_lines(
 
     // Convert Vec to array (guaranteed to have exactly 5 elements)
     lines.try_into().unwrap()
+}
+
+/// Create bar lines for a single staff at measure boundaries
+///
+/// # Arguments
+/// * `measure_infos` - All measures with their tick ranges and widths
+/// * `tick_range` - The system's tick range
+/// * `staff_index` - Index of staff for vertical positioning
+/// * `left_margin` - Left margin where music content starts
+/// * `system_width` - Total width of the system
+/// * `units_per_space` - Scaling factor
+///
+/// # Returns
+/// Vector of bar lines positioned at measure boundaries
+fn create_bar_lines(
+    measure_infos: &[breaker::MeasureInfo],
+    tick_range: &TickRange,
+    staff_index: usize,
+    left_margin: f32,
+    system_width: f32,
+    units_per_space: f32,
+) -> Vec<BarLine> {
+    let mut bar_lines = Vec::new();
+    
+    // Calculate staff vertical offset
+    let staff_vertical_offset = staff_index as f32 * 14.0 * units_per_space;
+    
+    // Y positions for top and bottom staff lines
+    let y_start = staff_vertical_offset; // Top line (line 0)
+    let y_end = staff_vertical_offset + (4.0 * 2.0 * units_per_space); // Bottom line (line 4)
+    
+    // Find measures that overlap with this system's tick range
+    let measures_in_system: Vec<&breaker::MeasureInfo> = measure_infos
+        .iter()
+        .filter(|m| m.start_tick < tick_range.end_tick && m.end_tick > tick_range.start_tick)
+        .collect();
+    
+    if measures_in_system.is_empty() {
+        return bar_lines;
+    }
+    
+    // Calculate available width for measures (excluding left margin)
+    let available_width = system_width - left_margin;
+    let tick_span = (tick_range.end_tick - tick_range.start_tick) as f32;
+    
+    // Add bar lines at the end of each measure
+    for measure in &measures_in_system {
+        let measure_end_tick = measure.end_tick;
+        
+        // Skip if measure end is beyond system range
+        if measure_end_tick > tick_range.end_tick {
+            continue;
+        }
+        
+        // Calculate x position based on tick position
+        let relative_tick = (measure_end_tick - tick_range.start_tick) as f32;
+        let position_ratio = relative_tick / tick_span;
+        let x_position = left_margin + (position_ratio * available_width);
+        
+        // Determine bar line type
+        let bar_type = if measure_end_tick == tick_range.end_tick {
+            // Check if this is the very last measure in the entire score
+            let is_last_measure = measure_infos.last().map(|m| m.end_tick) == Some(measure_end_tick);
+            if is_last_measure {
+                BarLineType::Final
+            } else {
+                BarLineType::Single
+            }
+        } else {
+            BarLineType::Single
+        };
+        
+        bar_lines.push(BarLine {
+            x_position,
+            y_start,
+            y_end,
+            bar_type,
+        });
+    }
+    
+    bar_lines
 }
 
 #[cfg(test)]
@@ -459,9 +633,9 @@ mod tests {
         assert_eq!(staff_0[0].y_position, 0.0);
         assert_eq!(staff_0[4].y_position, 160.0);
 
-        // Second staff (staff_index = 1) - should be offset by 10 staff spaces (200 units)
+        // Second staff (staff_index = 1) - should be offset by 14 staff spaces (280 units)
         let staff_1 = create_staff_lines(1, system_width, units_per_space);
-        let expected_offset = 10.0 * units_per_space; // 200 units
+        let expected_offset = 14.0 * units_per_space; // 280 units
         assert_eq!(staff_1[0].y_position, expected_offset);
         assert_eq!(staff_1[4].y_position, expected_offset + 160.0);
     }
@@ -483,5 +657,72 @@ mod tests {
         assert_eq!(lines_scale_25[0].y_position, 0.0);
         assert_eq!(lines_scale_25[1].y_position, 50.0);  // 2 * 25
         assert_eq!(lines_scale_25[4].y_position, 200.0); // 4 * 2 * 25
+    }
+
+    /// T029: Integration test for structural glyph generation
+    #[test]
+    fn test_structural_glyphs_populated() {
+        // Create a minimal score with clef, time sig, and key sig
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "violin",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 1 },  // G major (1 sharp)
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 60, "tick": 0, "duration": 960 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        // Verify at least one system was created
+        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        let system = &layout.systems[0];
+
+        // Verify at least one staff group exists
+        assert!(!system.staff_groups.is_empty(), "Should have at least one staff group");
+        let staff_group = &system.staff_groups[0];
+
+        // Verify at least one staff exists
+        assert!(!staff_group.staves.is_empty(), "Should have at least one staff");
+        let staff = &staff_group.staves[0];
+
+        // Verify structural glyphs are populated
+        assert!(
+            !staff.structural_glyphs.is_empty(),
+            "structural_glyphs should be populated with clef, time sig, and key sig"
+        );
+
+        // Should have at least:
+        // - 1 clef
+        // - 2 time signature digits (numerator + denominator)
+        // - 1 key signature accidental (G major = 1 sharp)
+        // Total: >= 4 glyphs
+        assert!(
+            staff.structural_glyphs.len() >= 4,
+            "Expected at least 4 structural glyphs (clef + 2 time sig digits + 1 key sig accidental), got {}",
+            staff.structural_glyphs.len()
+        );
+
+        // Verify first glyph is a clef (starts with 'E' in SMuFL codepoint range)
+        let first_glyph = &staff.structural_glyphs[0];
+        // Extract first Unicode scalar value from codepoint string
+        if let Some(first_char) = first_glyph.codepoint.chars().next() {
+            let clef_codepoint = first_char as u32;
+            assert!(
+                (0xE050..=0xE07F).contains(&clef_codepoint),
+                "First glyph should be a clef (U+E050-U+E07F), got U+{:04X}",
+                clef_codepoint
+            );
+        } else {
+            panic!("Glyph codepoint is empty");
+        }
     }
 }

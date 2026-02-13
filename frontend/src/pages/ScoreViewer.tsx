@@ -85,7 +85,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         x: 0,
         y: 0,
         width: 1200,
-        height: 800,
+        height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: props.initialZoom || 1.0,
       scrollTop: 0,
@@ -130,13 +130,18 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
-   * Update config when dark mode changes
+   * Update config when dark mode changes, and update viewport when layout changes
    */
   componentDidUpdate(prevProps: ScoreViewerProps): void {
     if (prevProps.darkMode !== this.props.darkMode) {
       const baseConfig = this.props.config || createDefaultConfig();
       const config = this.props.darkMode ? this.createDarkModeConfig(baseConfig) : baseConfig;
       this.setState({ config });
+    }
+    
+    // Update viewport when layout changes (new score loaded)
+    if (prevProps.layout !== this.props.layout && this.props.layout) {
+      this.updateViewport();
     }
   }
 
@@ -172,25 +177,16 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Add padding to viewport to show glyphs that extend beyond system bounds
     // Use extra padding to show more systems and avoid sudden pop-in
     const viewportPadding = 150; // Extra space top/bottom for smooth scrolling
-    const viewportHeight = (clientHeight / zoom) + viewportPadding;
+    
+    // When at top of page (not scrolled), use full layout height to show all systems
+    // Otherwise use small viewport for efficient virtualized rendering
+    const viewportHeight = scrollTop === 0 
+      ? this.props.layout.total_height + viewportPadding
+      : (clientHeight / zoom) + viewportPadding;
+    
     // Allow negative Y to show glyphs above first system (e.g., clef at y=-10)
     const viewportY = (scrollTop / zoom) - (viewportPadding / 2);
     const viewportWidth = this.props.layout.total_width;
-
-    // Debug logging for performance demo
-    if (this.props.layout.systems.length > 10) {
-      console.log('updateViewport:', {
-        scrollTop,
-        clientHeight,
-        zoom,
-        viewportY,
-        viewportHeight,
-        viewportBottom: viewportY + viewportHeight,
-        firstSystemY: this.props.layout.systems[0]?.bounding_box.y_position,
-        totalSystems: this.props.layout.systems.length,
-        containerTopPos: Math.max(0, viewportY * zoom)
-      });
-    }
 
     this.setState({
       viewport: {

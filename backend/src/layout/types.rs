@@ -70,6 +70,8 @@ pub struct Staff {
     pub glyph_runs: Vec<GlyphRun>,
     /// Clefs, key signatures, time signatures at staff start
     pub structural_glyphs: Vec<Glyph>,
+    /// Vertical bar lines that separate measures
+    pub bar_lines: Vec<BarLine>,
 }
 
 /// Single horizontal line in a staff
@@ -84,6 +86,33 @@ pub struct StaffLine {
     /// Right edge of line in logical units
     #[serde(serialize_with = "round_f32")]
     pub end_x: f32,
+}
+
+/// Vertical bar line that separates measures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BarLine {
+    /// Horizontal position in logical units
+    #[serde(serialize_with = "round_f32")]
+    pub x_position: f32,
+    /// Top of bar line (y-coordinate of top staff line)
+    #[serde(serialize_with = "round_f32")]
+    pub y_start: f32,
+    /// Bottom of bar line (y-coordinate of bottom staff line)
+    #[serde(serialize_with = "round_f32")]
+    pub y_end: f32,
+    /// Type of bar line (single, double, final)
+    pub bar_type: BarLineType,
+}
+
+/// Type of bar line
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BarLineType {
+    /// Single thin line (normal measure separator)
+    Single,
+    /// Double thin lines (section ending)
+    Double,
+    /// Thin + thick lines (final bar line at end of piece)
+    Final,
 }
 
 /// Batches consecutive glyphs with identical drawing properties

@@ -104,24 +104,24 @@
 
 ### Tests for US3 ⚠️ RED Phase
 
-- [ ] T026 [P] [US3] Unit test for position_clef() in backend/src/layout/positioner.rs with treble/bass/alto/tenor clefs
-- [ ] T027 [P] [US3] Unit test for position_time_signature() verifying stacked digits at correct y-positions
-- [ ] T028 [P] [US3] Unit test for position_key_signature() with sharps/flats at standard positions
-- [ ] T029 [P] [US3] Integration test verifying structural_glyphs array populated with clef + time sig + key sig
+- [X] T026 [P] [US3] Unit test for position_clef() in backend/src/layout/positioner.rs with treble/bass/alto/tenor clefs
+- [X] T027 [P] [US3] Unit test for position_time_signature() verifying stacked digits at correct y-positions
+- [X] T028 [P] [US3] Unit test for position_key_signature() with sharps/flats at standard positions
+- [X] T029 [P] [US3] Integration test verifying structural_glyphs array populated with clef + time sig + key sig
 
 ### Implementation for US3 🟢 GREEN Phase
 
-- [ ] T030 [P] [US3] Implement position_clef() in backend/src/layout/positioner.rs with SMuFL codepoints (Treble=U+E050, Bass=U+E062, Alto=U+E05C, Tenor=U+E05D)
-- [ ] T031 [P] [US3] Add clef vertical positioning: treble on 2nd line, bass on 4th line, alto/tenor centered
-- [ ] T032 [P] [US3] Implement position_time_signature() with stacked numerator/denominator digits (U+E080-U+E089)
-- [ ] T033 [P] [US3] Add time signature vertical centering on staff (numerator above middle line, denominator below)
-- [ ] T034 [P] [US3] Implement position_key_signature() with sharp (U+E262) and flat (U+E260) glyphs
-- [ ] T035 [P] [US3] Add key signature positioning tables for each clef type (sharps: F C G D A E B, flats: B E A D G C F)
-- [ ] T036 [US3] Update compute_layout() in backend/src/layout/mod.rs to call position_structural_glyphs() for each staff
-- [ ] T037 [US3] Populate structural_glyphs array in Staff struct with clef, time sig, key sig
-- [ ] T038 [US3] Add SMuFL metrics for structural glyphs to backend/src/layout/metrics.rs (bounding boxes)
-- [ ] T039 [US3] Test with violin fixture - verify treble clef, 4/4 time sig appear at expected positions
-- [ ] T040 [US3] Test key signature rendering with various keys (C major, G major, F major, D major, Bb major)
+- [X] T030 [P] [US3] Implement position_clef() in backend/src/layout/positioner.rs with SMuFL codepoints (Treble=U+E050, Bass=U+E062, Alto=U+E05C, Tenor=U+E05D)
+- [X] T031 [P] [US3] Add clef vertical positioning: treble on 2nd line, bass on 4th line, alto/tenor centered
+- [X] T032 [P] [US3] Implement position_time_signature() with stacked numerator/denominator digits (U+E080-U+E089)
+- [X] T033 [P] [US3] Add time signature vertical centering on staff (numerator above middle line, denominator below)
+- [X] T034 [P] [US3] Implement position_key_signature() with sharp (U+E262) and flat (U+E260) glyphs
+- [X] T035 [P] [US3] Add key signature positioning tables for each clef type (sharps: F C G D A E B, flats: B E A D G C F)
+- [X] T036 [US3] Update compute_layout() in backend/src/layout/mod.rs to call position_structural_glyphs() for each staff
+- [X] T037 [US3] Populate structural_glyphs array in Staff struct with clef, time sig, key sig
+- [X] T038 [US3] Add SMuFL metrics for structural glyphs to backend/src/layout/metrics.rs (bounding boxes)
+- [X] T039 [US3] Test with violin fixture - verify treble clef, 4/4 time sig appear at expected positions
+- [X] T040 [US3] Test key signature rendering with various keys (C major, G major, F major, D major, Bb major)
 
 **Checkpoint**: Clefs, time signatures, key signatures render correctly ✅ US3 COMPLETE
 

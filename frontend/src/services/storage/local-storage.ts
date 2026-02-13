@@ -14,17 +14,6 @@ const SCORES_STORE = 'scores';
 export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
- * Check if a score is compatible with current schema version
- * @param score - Score to check
- * @returns true if compatible, false if needs migration/reload
- */
-function isSchemaCompatible(score: Score): boolean {
-  // Scores without schema_version field are v1 (old format)
-  const scoreVersion = score.schema_version ?? 1;
-  return scoreVersion >= CURRENT_SCHEMA_VERSION;
-}
-
-/**
  * Initialize IndexedDB database
  * @returns Promise<IDBDatabase>
  */
@@ -108,11 +97,14 @@ export async function loadScoreFromIndexedDB(scoreId: string): Promise<Score | n
     db.close();
 
     if (score) {
-      // Check schema compatibility
-      if (!isSchemaCompatible(score)) {
-        const scoreVersion = score.schema_version ?? 1;
+      const scoreVersion = score.schema_version ?? 1;
+      
+      // If old schema, delete it and return null to force re-fetch
+      // Migration is unreliable without complete ClefEvent data
+      if (scoreVersion < CURRENT_SCHEMA_VERSION) {
         console.warn(`[IndexedDB] Score ${scoreId} has incompatible schema v${scoreVersion} (current: v${CURRENT_SCHEMA_VERSION})`);
-        console.warn('[IndexedDB] Returning null - re-import MusicXML to get updated schema');
+        console.warn('[IndexedDB] Deleting cached score to force re-fetch with correct schema');
+        await deleteScoreFromIndexedDB(scoreId);
         return null;
       }
 
@@ -203,11 +195,13 @@ export async function getAllScoresFromIndexedDB(): Promise<Score[]> {
     const incompatibleScores: Score[] = [];
 
     for (const score of allScores) {
-      if (isSchemaCompatible(score)) {
+      const scoreVersion = score.schema_version ?? 1;
+      const isCompatible = scoreVersion >= CURRENT_SCHEMA_VERSION;
+      
+      if (isCompatible) {
         compatibleScores.push(score);
       } else {
         incompatibleScores.push(score);
-        const scoreVersion = score.schema_version ?? 1;
         console.warn(`[IndexedDB] Score ${score.id} has incompatible schema v${scoreVersion} (current: v${CURRENT_SCHEMA_VERSION})`);
       }
     }

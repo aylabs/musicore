@@ -64,8 +64,10 @@ impl From<&Instrument> for InstrumentDto {
 }
 
 /// Schema version for the Score DTO structure
-/// Increment when adding/changing fields (e.g., active_clef added in v2)
-const SCORE_SCHEMA_VERSION: u32 = 2;
+/// Increment when adding/changing fields
+/// v2: active_clef added to StaffDto
+/// v3: WASM now returns ScoreDto instead of raw Score
+const SCORE_SCHEMA_VERSION: u32 = 3;
 
 /// DTO for Score containing InstrumentDtos with schema versioning
 #[derive(Debug, Serialize, Deserialize)]

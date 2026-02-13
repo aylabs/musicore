@@ -3,10 +3,10 @@
     {
       "index": 0,
       "bounding_box": {
-        "x_position": 0,
-        "y_position": 0,
         "width": 1200,
-        "height": 200
+        "height": 200,
+        "x": 0,
+        "y": 0
       },
       "staff_groups": [
         {
@@ -14,19 +14,47 @@
           "staves": [
             {
               "staff_lines": [
-                { "y_position": 0, "start_x": 0, "end_x": 1200 },
-                { "y_position": 5, "start_x": 0, "end_x": 1200 },
-                { "y_position": 10, "start_x": 0, "end_x": 1200 },
-                { "y_position": 15, "start_x": 0, "end_x": 1200 },
-                { "y_position": 20, "start_x": 0, "end_x": 1200 }
+                {
+                  "y_position": 0,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 5,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 10,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 15,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 20,
+                  "start_x": 0,
+                  "end_x": 1200
+                }
               ],
               "glyph_runs": [
                 {
                   "glyphs": [
                     {
-                      "position": { "x": 100, "y": 10 },
-                      "bounding_box": { "x_position": 95, "y_position": 5, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 100,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -35,9 +63,17 @@
                       }
                     },
                     {
-                      "position": { "x": 150, "y": 15 },
-                      "bounding_box": { "x_position": 145, "y_position": 10, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 150,
+                        "y": 15
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 145,
+                        "y": 10
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -46,9 +82,17 @@
                       }
                     },
                     {
-                      "position": { "x": 200, "y": 5 },
-                      "bounding_box": { "x_position": 195, "y_position": 0, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 200,
+                        "y": 5
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 0
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -57,9 +101,17 @@
                       }
                     },
                     {
-                      "position": { "x": 250, "y": 10 },
-                      "bounding_box": { "x_position": 245, "y_position": 5, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 250,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 245,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -70,15 +122,28 @@
                   ],
                   "font_family": "Bravura",
                   "font_size": 40.0,
-                  "color": { "r": 0, "g": 0, "b": 0, "a": 255 },
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
                   "opacity": 1.0
                 }
               ],
               "structural_glyphs": [
                 {
-                  "position": { "x": 20, "y": 10 },
-                  "bounding_box": { "x_position": 15, "y_position": -10, "width": 20, "height": 40 },
-                  "codepoint": "\uE050",
+                  "position": {
+                    "x": 20,
+                    "y": 10
+                  },
+                  "bounding_box": {
+                    "width": 20,
+                    "height": 40,
+                    "x": 15,
+                    "y": -10
+                  },
+                  "codepoint": "\ue050",
                   "source_reference": {
                     "instrument_id": "violin-1",
                     "staff_index": 0,
@@ -92,15 +157,18 @@
           "bracket_type": "None"
         }
       ],
-      "tick_range": { "start_tick": 0, "end_tick": 3840 }
+      "tick_range": {
+        "start_tick": 0,
+        "end_tick": 3840
+      }
     },
     {
       "index": 1,
       "bounding_box": {
-        "x_position": 0,
-        "y_position": 220,
         "width": 1200,
-        "height": 200
+        "height": 200,
+        "x": 0,
+        "y": 220
       },
       "staff_groups": [
         {
@@ -108,19 +176,47 @@
           "staves": [
             {
               "staff_lines": [
-                { "y_position": 0, "start_x": 0, "end_x": 1200 },
-                { "y_position": 5, "start_x": 0, "end_x": 1200 },
-                { "y_position": 10, "start_x": 0, "end_x": 1200 },
-                { "y_position": 15, "start_x": 0, "end_x": 1200 },
-                { "y_position": 20, "start_x": 0, "end_x": 1200 }
+                {
+                  "y_position": 0,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 5,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 10,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 15,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 20,
+                  "start_x": 0,
+                  "end_x": 1200
+                }
               ],
               "glyph_runs": [
                 {
                   "glyphs": [
                     {
-                      "position": { "x": 100, "y": 15 },
-                      "bounding_box": { "x_position": 95, "y_position": 10, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 100,
+                        "y": 15
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 10
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -129,9 +225,17 @@
                       }
                     },
                     {
-                      "position": { "x": 150, "y": 10 },
-                      "bounding_box": { "x_position": 145, "y_position": 5, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 150,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 145,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -140,9 +244,17 @@
                       }
                     },
                     {
-                      "position": { "x": 200, "y": 5 },
-                      "bounding_box": { "x_position": 195, "y_position": 0, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 200,
+                        "y": 5
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 0
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -153,7 +265,12 @@
                   ],
                   "font_family": "Bravura",
                   "font_size": 40.0,
-                  "color": { "r": 0, "g": 0, "b": 0, "a": 255 },
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
                   "opacity": 1.0
                 }
               ],
@@ -163,15 +280,18 @@
           "bracket_type": "None"
         }
       ],
-      "tick_range": { "start_tick": 3840, "end_tick": 7680 }
+      "tick_range": {
+        "start_tick": 3840,
+        "end_tick": 7680
+      }
     },
     {
       "index": 2,
       "bounding_box": {
-        "x_position": 0,
-        "y_position": 440,
         "width": 1200,
-        "height": 200
+        "height": 200,
+        "x": 0,
+        "y": 440
       },
       "staff_groups": [
         {
@@ -179,19 +299,47 @@
           "staves": [
             {
               "staff_lines": [
-                { "y_position": 0, "start_x": 0, "end_x": 1200 },
-                { "y_position": 5, "start_x": 0, "end_x": 1200 },
-                { "y_position": 10, "start_x": 0, "end_x": 1200 },
-                { "y_position": 15, "start_x": 0, "end_x": 1200 },
-                { "y_position": 20, "start_x": 0, "end_x": 1200 }
+                {
+                  "y_position": 0,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 5,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 10,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 15,
+                  "start_x": 0,
+                  "end_x": 1200
+                },
+                {
+                  "y_position": 20,
+                  "start_x": 0,
+                  "end_x": 1200
+                }
               ],
               "glyph_runs": [
                 {
                   "glyphs": [
                     {
-                      "position": { "x": 100, "y": 10 },
-                      "bounding_box": { "x_position": 95, "y_position": 5, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 100,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -200,9 +348,17 @@
                       }
                     },
                     {
-                      "position": { "x": 150, "y": 15 },
-                      "bounding_box": { "x_position": 145, "y_position": 10, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 150,
+                        "y": 15
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 145,
+                        "y": 10
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -211,9 +367,17 @@
                       }
                     },
                     {
-                      "position": { "x": 200, "y": 20 },
-                      "bounding_box": { "x_position": 195, "y_position": 15, "width": 10, "height": 10 },
-                      "codepoint": "\uE0A4",
+                      "position": {
+                        "x": 200,
+                        "y": 20
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 15
+                      },
+                      "codepoint": "\ue0a4",
                       "source_reference": {
                         "instrument_id": "violin-1",
                         "staff_index": 0,
@@ -224,7 +388,12 @@
                   ],
                   "font_family": "Bravura",
                   "font_size": 40.0,
-                  "color": { "r": 0, "g": 0, "b": 0, "a": 255 },
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
                   "opacity": 1.0
                 }
               ],
@@ -234,7 +403,10 @@
           "bracket_type": "None"
         }
       ],
-      "tick_range": { "start_tick": 7680, "end_tick": 9600 }
+      "tick_range": {
+        "start_tick": 7680,
+        "end_tick": 9600
+      }
     }
   ],
   "total_width": 1200,

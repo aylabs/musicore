@@ -4,8 +4,24 @@
 use super::error_handling::import_error_to_js;
 use crate::adapters::dtos::ScoreDto;
 use crate::domain::importers::musicxml::{ImportContext, MusicXMLConverter, MusicXMLParser};
-use crate::ports::importers::ImportResult;
+use crate::ports::importers::{ImportMetadata, ImportStatistics};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+/// WASM-specific import result that uses ScoreDto (with active_clef) instead of raw Score
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WasmImportResult {
+    /// Score as DTO with computed fields like active_clef
+    pub score: ScoreDto,
+    /// Import metadata (file format, version, etc.)
+    pub metadata: ImportMetadata,
+    /// Import statistics (note count, duration, etc.)
+    pub statistics: ImportStatistics,
+    /// Non-fatal warnings during import
+    pub warnings: Vec<crate::domain::importers::musicxml::ImportWarning>,
+    /// Indicates if import was partial (some content skipped due to errors)
+    pub partial_import: bool,
+}
 
 // ============================================================================
 // Phase 3: User Story 1 - MusicXML Parsing
@@ -78,16 +94,16 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
     // Convert Score to DTO with active_clef field
     let score_dto = ScoreDto::from(&score);
 
-    // Build ImportResult
-    let result = ImportResult {
-        score,
-        metadata: crate::ports::importers::ImportMetadata {
+    // Build WasmImportResult using ScoreDto (has active_clef)
+    let result = WasmImportResult {
+        score: score_dto,  // Use DTO instead of raw Score
+        metadata: ImportMetadata {
             format,
             file_name: None,
             work_title: None,
             composer: None,
         },
-        statistics: crate::ports::importers::ImportStatistics {
+        statistics: ImportStatistics {
             instrument_count,
             staff_count,
             voice_count,
@@ -100,7 +116,7 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
         partial_import,
     };
 
-    // Serialize ImportResult to JsValue for JavaScript
+    // Serialize WasmImportResult to JsValue for JavaScript
     serde_wasm_bindgen::to_value(&result)
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }

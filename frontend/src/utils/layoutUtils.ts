@@ -21,10 +21,10 @@ import type {
  */
 export function containsPoint(box: BoundingBox, point: Point): boolean {
   return (
-    point.x >= box.x_position &&
-    point.x <= box.x_position + box.width &&
-    point.y >= box.y_position &&
-    point.y <= box.y_position + box.height
+    point.x >= box.x &&
+    point.x <= box.x + box.width &&
+    point.y >= box.y &&
+    point.y <= box.y + box.height
   );
 }
 
@@ -37,10 +37,10 @@ export function containsPoint(box: BoundingBox, point: Point): boolean {
  */
 export function intersects(box1: BoundingBox, box2: BoundingBox): boolean {
   return !(
-    box1.x_position + box1.width < box2.x_position ||
-    box2.x_position + box2.width < box1.x_position ||
-    box1.y_position + box1.height < box2.y_position ||
-    box2.y_position + box2.height < box1.y_position
+    box1.x + box1.width < box2.x ||
+    box2.x + box2.width < box1.x ||
+    box1.y + box1.height < box2.y ||
+    box2.y + box2.height < box1.y
   );
 }
 

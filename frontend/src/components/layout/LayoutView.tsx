@@ -16,7 +16,7 @@ interface LayoutViewProps {
 
 /**
  * Convert Score to format expected by computeLayout
- * For now, extracts first voice from first instrument
+ * Processes all staves from first instrument (needed for piano grand staff)
  */
 function convertScoreToLayoutFormat(score: Score): any {
   // Start with first instrument
@@ -25,37 +25,74 @@ function convertScoreToLayoutFormat(score: Score): any {
     throw new Error('No instruments in score');
   }
 
-  // Get first staff
-  const firstStaff = firstInstrument.staves[0];
-  if (!firstStaff) {
-    throw new Error('No staves in instrument');
+  // Extract time signature from global structural events (default to 4/4)
+  let timeSignature = { numerator: 4, denominator: 4 };
+  const firstTimeSigEvent = score.global_structural_events.find((e: any) => 'TimeSignature' in e);
+  if (firstTimeSigEvent) {
+    const timeSig = (firstTimeSigEvent as any).TimeSignature;
+    timeSignature = {
+      numerator: timeSig.numerator,
+      denominator: timeSig.denominator,
+    };
   }
 
-  // Get first voice
-  const firstVoice = firstStaff.voices[0];
-  if (!firstVoice) {
-    throw new Error('No voices in staff');
-  }
+  // Process all staves from the instrument (piano has 2: treble + bass)
+  const convertedStaves = firstInstrument.staves.map((staff: any) => {
+    // Get first voice from this staff
+    const firstVoice = staff.voices[0];
+    if (!firstVoice) {
+      throw new Error('No voices in staff');
+    }
 
-  // For debugging: create a minimal score structure
-  // This format needs to match what the Rust WASM expects
+    // Extract key signature from staff structural events (default to 0 = C major)
+    let keySharps = 0;
+    const firstKeySigEvent = staff.staff_structural_events.find((e: any) => 'KeySignature' in e);
+    if (firstKeySigEvent) {
+      const keySig = (firstKeySigEvent as any).KeySignature.key;
+      // Map key signature enum to number of sharps/flats
+      const keyMap: { [key: string]: number } = {
+        'CMajor': 0, 'AMinor': 0,
+        'GMajor': 1, 'EMinor': 1,
+        'DMajor': 2, 'BMinor': 2,
+        'AMajor': 3, 'FSharpMinor': 3,
+        'EMajor': 4, 'CSharpMinor': 4,
+        'BMajor': 5, 'GSharpMinor': 5,
+        'FSharpMajor': 6, 'DSharpMinor': 6,
+        'CSharpMajor': 7, 'ASharpMinor': 7,
+        'FMajor': -1, 'DMinor': -1,
+        'BFlatMajor': -2, 'GMinor': -2,
+        'EFlatMajor': -3, 'CMinor': -3,
+        'AFlatMajor': -4, 'FMinor': -4,
+        'DFlatMajor': -5, 'BFlatMinor': -5,
+        'GFlatMajor': -6, 'EFlatMinor': -6,
+        'CFlatMajor': -7, 'AFlatMinor': -7,
+      };
+      keySharps = keyMap[keySig] || 0;
+    }
+
+    return {
+      clef: staff.active_clef,
+      time_signature: timeSignature,
+      key_signature: { sharps: keySharps },
+      voices: [{
+        notes: firstVoice.interval_events.map((note: any) => ({
+          tick: note.start_tick,
+          duration: note.duration_ticks,
+          pitch: note.pitch,
+          articulation: null,
+        }))
+      }]
+    };
+  });
+
+  // Create score structure matching Rust WASM expectations
   return {
     instruments: [{
       id: firstInstrument.id,
       name: firstInstrument.name,
-      staves: [{
-        clef: firstStaff.active_clef,
-        voices: [{
-          notes: firstVoice.interval_events.map((note: any) => ({
-            tick: note.start_tick,
-            duration: note.duration_ticks,
-            pitch: note.pitch,
-            articulation: null,
-          }))
-        }]
-      }]
+      staves: convertedStaves
     }],
-    // Extract tempo and time signature from g global_structural_events
+    // Extract tempo and time signature from global_structural_events
     tempo_changes: score.global_structural_events
       .filter((e: any) => 'Tempo' in e)
       .map((e: any) => e.Tempo),
@@ -92,7 +129,7 @@ export function LayoutView({ score }: LayoutViewProps) {
         const result = await computeLayout(layoutInput, {
           max_system_width: 1200,
           system_height: 200,
-          system_spacing: 220,
+          system_spacing: 300,
           units_per_space: 20, // 20 logical units = 1 staff space
         });
 

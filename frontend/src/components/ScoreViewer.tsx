@@ -164,6 +164,7 @@ export function ScoreViewer({
       setScore(demoScore);
       setScoreId(demoScore.id);
       setIsFileSourced(false);
+      setSkipNextLoad(true); // Skip the loadScore() useEffect since we already have the score
       resetFileState();
       
       // Set view mode to stacked (better for demo)
