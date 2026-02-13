@@ -125,6 +125,17 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Query visible systems using virtualization (Task T009)
     const visibleSystems = getVisibleSystems(layout.systems, viewport);
 
+    // Debug logging for performance demo
+    if (layout.systems.length > 10) {
+      console.log('LayoutRenderer.renderSVG:', {
+        viewport,
+        totalSystems: layout.systems.length,
+        visibleSystemCount: visibleSystems.length,
+        visibleIndexes: visibleSystems.map(s => s.index),
+        firstSystemBounds: layout.systems[0]?.bounding_box
+      });
+    }
+
     // Create document fragment for efficient DOM insertion (Task T059)
     const fragment = document.createDocumentFragment();
 
@@ -165,8 +176,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const systemGroup = createSVGGroup();
     
     // Apply transform to position system (Task T017)
-    const x = system.bounding_box.x_position + offsetX;
-    const y = system.bounding_box.y_position + offsetY;
+    const x = system.bounding_box.x + offsetX;
+    const y = system.bounding_box.y + offsetY;
     systemGroup.setAttribute('transform', `translate(${x}, ${y})`);
     systemGroup.setAttribute('data-system-index', system.index.toString());
 
@@ -239,11 +250,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       // Task T045: Brace rendering
       codepoint = '\uE000'; // SMuFL: brace
       
-      // Render brace glyph
+      // Render brace glyph with SMuFL standard fontSize 80
       const braceGlyph = this.renderGlyph(
         {
-          position: { x: xPosition, y: centerY },
-          bounding_box: { x_position: xPosition - 5, y_position: topY, width: 20, height },
+          position: { x: 0, y: 0 }, // Position via transform instead
+          bounding_box: { x: xPosition - 5, y: topY, width: 20, height },
           codepoint,
           source_reference: {
             instrument_id: staffGroup.instrument_id,
@@ -252,12 +263,15 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
             event_index: 0,
           },
         },
-        config
+        config.fontFamily,
+        80,
+        config.glyphColor
       );
       
       // Apply vertical scaling to stretch brace to cover staff height
+      // Use transform pattern: translate to position, then scale
       const scale = height / 160; // Brace natural height ~160 logical units
-      braceGlyph.setAttribute('transform', `scale(1, ${scale.toFixed(3)})`);
+      braceGlyph.setAttribute('transform', `translate(${xPosition}, ${centerY}) scale(1, ${scale.toFixed(3)})`);
       braceGlyph.setAttribute('data-bracket-type', 'brace');
       
       bracketGroup.appendChild(braceGlyph);
@@ -266,11 +280,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       // Task T046: Bracket rendering
       codepoint = '\uE002'; // SMuFL: bracket
       
-      // Render bracket glyph
+      // Render bracket glyph with SMuFL standard fontSize 80
       const bracketGlyph = this.renderGlyph(
         {
-          position: { x: xPosition, y: centerY },
-          bounding_box: { x_position: xPosition - 5, y_position: topY, width: 20, height },
+          position: { x: 0, y: 0 }, // Position via transform instead
+          bounding_box: { x: xPosition - 5, y: topY, width: 20, height },
           codepoint,
           source_reference: {
             instrument_id: staffGroup.instrument_id,
@@ -279,12 +293,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
             event_index: 0,
           },
         },
-        config
+        config.fontFamily,
+        80,
+        config.glyphColor
       );
       
       // Apply vertical scaling for bracket
       const scale = height / 160;
-      bracketGlyph.setAttribute('transform', `scale(1, ${scale.toFixed(3)})`);
+      bracketGlyph.setAttribute('transform', `translate(${xPosition}, ${centerY}) scale(1, ${scale.toFixed(3)})`);
       bracketGlyph.setAttribute('data-bracket-type', 'bracket');
       
       bracketGroup.appendChild(bracketGlyph);
@@ -325,7 +341,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Render structural glyphs (clefs, key signatures, time signatures)
     for (const glyph of staff.structural_glyphs) {
-      const glyphElement = this.renderGlyph(glyph, config);
+      // Structural glyphs use SMuFL standard: fontSize 80 = 4 staff spaces = 1em
+      const glyphElement = this.renderGlyph(glyph, config.fontFamily, 80, config.glyphColor);
       staffElement.appendChild(glyphElement);
     }
 
@@ -343,11 +360,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const glyphRunGroup = createSVGGroup();
     glyphRunGroup.setAttribute('class', 'glyph-run');
 
-    const { config } = this.props;
+    // Use the GlyphRun's font properties, not the generic config
+    const fontFamily = run.font_family || 'Bravura';
+    const fontSize = run.font_size || 40;
+    const color = run.color ? `rgb(${run.color.r}, ${run.color.g}, ${run.color.b})` : '#000000';
 
     // Render each glyph in the run (Task T020)
     for (const glyph of run.glyphs) {
-      const glyphElement = this.renderGlyph(glyph, config);
+      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color);
       glyphRunGroup.appendChild(glyphElement);
     }
 
@@ -358,17 +378,25 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Renders a single glyph as SVG <text> element with SMuFL codepoint.
    * 
    * @param glyph - Glyph to render
-   * @param config - Rendering configuration
+   * @param fontFamily - Font family (e.g., 'Bravura')
+   * @param fontSize - Font size in logical units
+   * @param color - Fill color
    * @returns SVG text element
    */
-  private renderGlyph(glyph: any, config: RenderConfig): SVGTextElement {
+  private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string): SVGTextElement {
     const text = createSVGElement('text');
     
     text.setAttribute('x', glyph.position.x.toString());
     text.setAttribute('y', glyph.position.y.toString());
-    text.setAttribute('font-family', config.fontFamily);
-    text.setAttribute('font-size', config.fontSize.toString());
-    text.setAttribute('fill', config.glyphColor);
+    text.setAttribute('font-family', fontFamily);
+    text.setAttribute('font-size', fontSize.toString());
+    text.setAttribute('fill', color);
+    
+    // SMuFL noteheads should be vertically centered on staff lines
+    // Use 'middle' to center horizontally on X coordinate
+    // Use 'middle' baseline to center vertically on Y coordinate (staff line position)
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
     
     // Set SMuFL codepoint as text content (Task T020)
     // Handle invalid codepoints (Task T023)

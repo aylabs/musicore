@@ -40,7 +40,7 @@ impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
             max_system_width: 800.0,
-            units_per_space: 10.0,
+            units_per_space: 20.0, // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
             system_spacing: 150.0,
             system_height: 200.0,
         }
@@ -264,7 +264,11 @@ struct NoteEvent {
 fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
     let mut instruments = Vec::new();
 
+    // DEBUG: Log the entire input to see what we're receiving
+    eprintln!("[extract_instruments] Input score: {}", serde_json::to_string_pretty(score).unwrap_or_else(|_| "cannot serialize".to_string()));
+
     if let Some(instruments_array) = score["instruments"].as_array() {
+        eprintln!("[extract_instruments] Found {} instruments", instruments_array.len());
         for instrument in instruments_array {
             let id = instrument["id"].as_str().unwrap_or("unknown").to_string();
             let mut staves = Vec::new();
@@ -274,17 +278,41 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                     let mut voices = Vec::new();
 
                     if let Some(voices_array) = staff["voices"].as_array() {
+                        eprintln!("[extract_instruments] Found {} voices in staff", voices_array.len());
                         for voice in voices_array {
                             let mut notes = Vec::new();
 
-                            if let Some(interval_events) = voice["interval_events"].as_array() {
-                                for event in interval_events {
-                                    let pitch =
-                                        event["pitch"]["value"].as_u64().unwrap_or(60) as u8;
-                                    let start_tick =
-                                        event["start_tick"]["value"].as_u64().unwrap_or(0) as u32;
-                                    let duration_ticks =
-                                        event["duration_ticks"].as_u64().unwrap_or(960) as u32;
+                            // T008-T009: Support both "notes" (LayoutView format) and "interval_events" (CompiledScore format)
+                            // Check "notes" first for frontend fixtures, fall back to "interval_events" for backward compatibility
+                            eprintln!("[extract_instruments] Voice keys: {:?}", voice.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+                            
+                            let note_array = voice["notes"].as_array()
+                                .or_else(|| voice["interval_events"].as_array());
+
+                            if let Some(notes_data) = note_array {
+                                eprintln!("[extract_instruments] Found {} notes in voice", notes_data.len());
+                                for note_item in notes_data {
+                                    // Handle both formats:
+                                    // Format 1 (notes): {tick: 0, duration: 960, pitch: 60}
+                                    // Format 2 (interval_events): {start_tick: {value: 0}, duration_ticks: 960, pitch: {value: 60}}
+                                    
+                                    let pitch = if let Some(p) = note_item["pitch"].as_u64() {
+                                        p as u8  // Format 1: direct value
+                                    } else {
+                                        note_item["pitch"]["value"].as_u64().unwrap_or(60) as u8  // Format 2: nested
+                                    };
+                                    
+                                    let start_tick = if let Some(t) = note_item["tick"].as_u64() {
+                                        t as u32  // Format 1: "tick"
+                                    } else {
+                                        note_item["start_tick"]["value"].as_u64().unwrap_or(0) as u32  // Format 2: nested
+                                    };
+                                    
+                                    let duration_ticks = if let Some(d) = note_item["duration"].as_u64() {
+                                        d as u32  // Format 1: "duration"
+                                    } else {
+                                        note_item["duration_ticks"].as_u64().unwrap_or(960) as u32  // Format 2
+                                    };
 
                                     notes.push(NoteEvent {
                                         pitch,
@@ -292,6 +320,9 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                                         duration_ticks,
                                     });
                                 }
+                                eprintln!("[extract_instruments] Extracted {} notes from voice", notes.len());
+                            } else {
+                                eprintln!("[extract_instruments] WARNING: No 'notes' or 'interval_events' array found in voice");
                             }
 
                             voices.push(VoiceData { notes });
@@ -385,4 +416,72 @@ fn create_staff_lines(
 
     // Convert Vec to array (guaranteed to have exactly 5 elements)
     lines.try_into().unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// T011: Unit test for create_staff_lines() verifying 5 lines with 20-unit spacing
+    #[test]
+    fn test_create_staff_lines_spacing() {
+        let units_per_space = 20.0;
+        let system_width = 1200.0;
+        let staff_index = 0;
+
+        let lines = create_staff_lines(staff_index, system_width, units_per_space);
+
+        // Verify exactly 5 lines
+        assert_eq!(lines.len(), 5, "Should have exactly 5 staff lines");
+
+        // Verify y-positions with 40-unit spacing (2 * units_per_space)
+        assert_eq!(lines[0].y_position, 0.0, "Line 0 should be at y=0");
+        assert_eq!(lines[1].y_position, 40.0, "Line 1 should be at y=40");
+        assert_eq!(lines[2].y_position, 80.0, "Line 2 should be at y=80");
+        assert_eq!(lines[3].y_position, 120.0, "Line 3 should be at y=120");
+        assert_eq!(lines[4].y_position, 160.0, "Line 4 should be at y=160");
+
+        // Verify all lines span full system width
+        for (i, line) in lines.iter().enumerate() {
+            assert_eq!(line.start_x, 0.0, "Line {} should start at x=0", i);
+            assert_eq!(line.end_x, system_width, "Line {} should end at system_width", i);
+        }
+    }
+
+    /// T011: Unit test for multi-staff layout with correct vertical offsetting
+    #[test]
+    fn test_create_staff_lines_multi_staff() {
+        let units_per_space = 20.0;
+        let system_width = 1200.0;
+
+        // First staff (staff_index = 0)
+        let staff_0 = create_staff_lines(0, system_width, units_per_space);
+        assert_eq!(staff_0[0].y_position, 0.0);
+        assert_eq!(staff_0[4].y_position, 160.0);
+
+        // Second staff (staff_index = 1) - should be offset by 10 staff spaces (200 units)
+        let staff_1 = create_staff_lines(1, system_width, units_per_space);
+        let expected_offset = 10.0 * units_per_space; // 200 units
+        assert_eq!(staff_1[0].y_position, expected_offset);
+        assert_eq!(staff_1[4].y_position, expected_offset + 160.0);
+    }
+
+    /// T011: Unit test for different units_per_space values
+    #[test]
+    fn test_create_staff_lines_scale_independence() {
+        let system_width = 1200.0;
+        let staff_index = 0;
+
+        // Test with different scale (units_per_space = 10)
+        let lines_scale_10 = create_staff_lines(staff_index, system_width, 10.0);
+        assert_eq!(lines_scale_10[0].y_position, 0.0);
+        assert_eq!(lines_scale_10[1].y_position, 20.0);  // 2 * 10
+        assert_eq!(lines_scale_10[4].y_position, 80.0);  // 4 * 2 * 10
+
+        // Test with different scale (units_per_space = 25)
+        let lines_scale_25 = create_staff_lines(staff_index, system_width, 25.0);
+        assert_eq!(lines_scale_25[0].y_position, 0.0);
+        assert_eq!(lines_scale_25[1].y_position, 50.0);  // 2 * 25
+        assert_eq!(lines_scale_25[4].y_position, 200.0); // 4 * 2 * 25
+    }
 }

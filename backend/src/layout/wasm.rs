@@ -5,23 +5,27 @@
 use crate::layout::{LayoutConfig, compute_layout};
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
+use serde_wasm_bindgen;
+
+#[cfg(target_arch = "wasm32")]
+use web_sys::console;
 
 /// WASM-compatible wrapper for compute_layout
 ///
-/// Takes JSON strings as input and returns JSON string output to avoid
-/// complex type marshalling across WASM boundary.
+/// Takes JSON strings as input and returns JsValue output to avoid
+/// Unicode encoding issues with string serialization.
 ///
 /// # Arguments
 /// * `score_json` - CompiledScore as JSON string
 /// * `config_json` - LayoutConfig as JSON string (optional, uses defaults if empty)
 ///
 /// # Returns
-/// GlobalLayout serialized as JSON string
+/// GlobalLayout as JsValue (JavaScript object)
 ///
 /// # Errors
 /// Returns JS error if JSON parsing or layout computation fails
 #[wasm_bindgen]
-pub fn compute_layout_wasm(score_json: &str, config_json: &str) -> Result<String, JsValue> {
+pub fn compute_layout_wasm(score_json: &str, config_json: &str) -> Result<JsValue, JsValue> {
     // Parse score JSON
     let score: Value = serde_json::from_str(score_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse score JSON: {}", e)))?;
@@ -36,12 +40,28 @@ pub fn compute_layout_wasm(score_json: &str, config_json: &str) -> Result<String
 
     // Compute layout
     let layout = compute_layout(&score, &config);
+    
+    // DEBUG: Inspect first glyph codepoint before serialization
+    #[cfg(target_arch = "wasm32")]
+    if let Some(system) = layout.systems.first() {
+        if let Some(staff_group) = system.staff_groups.first() {
+            if let Some(staff) = staff_group.staves.first() {
+                if let Some(glyph_run) = staff.glyph_runs.first() {
+                    if let Some(first_glyph) = glyph_run.glyphs.first() {
+                        let first_char = first_glyph.codepoint.chars().next().unwrap_or('\0');
+                        console::log_1(&format!(
+                            "[WASM compute_layout] First glyph codepoint='{}' (len={}, first_char U+{:04X})", 
+                            first_glyph.codepoint, first_glyph.codepoint.len(), first_char as u32
+                        ).into());
+                    }
+                }
+            }
+        }
+    }
 
-    // Serialize back to JSON
-    let layout_json = serde_json::to_string(&layout)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize layout: {}", e)))?;
-
-    Ok(layout_json)
+    // Serialize to JsValue using serde-wasm-bindgen (preserves Unicode correctly)
+    serde_wasm_bindgen::to_value(&layout)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize layout: {}", e)))
 }
 
 /// WASM-compatible version of LayoutConfig for TypeScript bindings

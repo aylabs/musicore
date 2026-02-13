@@ -861,6 +861,7 @@ dependencies = [
  "tower-http",
  "uuid",
  "wasm-bindgen",
+ "web-sys",
  "zip",
 ]
 

@@ -37,6 +37,8 @@ interface ScoreViewerState {
   zoom: number;
   /** Rendering configuration (supports dark mode) */
   config: RenderConfig;
+  /** Current scroll position in pixels */
+  scrollTop: number;
 }
 
 /**
@@ -86,6 +88,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         height: 800,
       },
       zoom: props.initialZoom || 1.0,
+      scrollTop: 0,
       config,
     };
   }
@@ -163,23 +166,40 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const { zoom } = this.state;
     const scrollTop = container.scrollTop;
     const clientHeight = container.clientHeight;
-    
-    // Account for top padding (20px converted to logical units)
-    const paddingTop = 20;
-    const paddingLogicalUnits = paddingTop / zoom;
 
     // Calculate viewport in logical units
     // Zoom affects the visible area: higher zoom = smaller viewport
-    const viewportHeight = clientHeight / zoom;
-    const viewportY = Math.max(0, (scrollTop / zoom) - paddingLogicalUnits);
+    // Add padding to viewport to show glyphs that extend beyond system bounds
+    // Use extra padding to show more systems and avoid sudden pop-in
+    const viewportPadding = 150; // Extra space top/bottom for smooth scrolling
+    const viewportHeight = (clientHeight / zoom) + viewportPadding;
+    // Allow negative Y to show glyphs above first system (e.g., clef at y=-10)
+    const viewportY = (scrollTop / zoom) - (viewportPadding / 2);
+    const viewportWidth = this.props.layout.total_width;
+
+    // Debug logging for performance demo
+    if (this.props.layout.systems.length > 10) {
+      console.log('updateViewport:', {
+        scrollTop,
+        clientHeight,
+        zoom,
+        viewportY,
+        viewportHeight,
+        viewportBottom: viewportY + viewportHeight,
+        firstSystemY: this.props.layout.systems[0]?.bounding_box.y_position,
+        totalSystems: this.props.layout.systems.length,
+        containerTopPos: Math.max(0, viewportY * zoom)
+      });
+    }
 
     this.setState({
       viewport: {
         x: 0,
         y: viewportY,
-        width: 1200, // Fixed width in logical units
+        width: viewportWidth,
         height: viewportHeight,
       },
+      scrollTop,
     });
   }
 
@@ -219,7 +239,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    */
   render() {
     const { layout } = this.props;
-    const { viewport, zoom, config } = this.state;
+    const { viewport, zoom, config, scrollTop } = this.state;
 
     if (!layout) {
       return (
@@ -229,18 +249,16 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       );
     }
 
-    // Calculate scroll container height based on layout and zoom
-    // Add top and bottom padding for better visibility
-    const paddingTop = 20;
-    const paddingBottom = 40;
-    const totalHeight = (layout.total_height * zoom) + paddingTop + paddingBottom;
+    // Calculate scroll container dimensions based on layout and zoom
+    const totalHeight = layout.total_height * zoom;
+    const totalWidth = layout.total_width * zoom;
 
     return (
       <div style={styles.wrapper}>
         {/* Zoom Controls (T067) */}
         <div style={styles.controls}>
           <button onClick={this.handleZoomOut} style={styles.button} title="Zoom Out">
-            −
+            -
           </button>
           <span style={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
           <button onClick={this.handleZoomIn} style={styles.button} title="Zoom In">
@@ -259,8 +277,20 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
             backgroundColor: config.backgroundColor,
           }}
         >
-          <div style={{ height: `${totalHeight}px`, position: 'relative', paddingTop: '20px', paddingBottom: '40px' }}>
-            <div style={{ position: 'sticky', top: 0, height: '100%' }}>
+          <div style={{ 
+            height: `${totalHeight}px`,
+            width: `${totalWidth}px`,
+            position: 'relative',
+          }}>
+            {/* SVG container positioned at scroll position (not viewport.y which includes padding) */}
+            <div style={{
+              position: 'absolute',
+              top: `${scrollTop}px`,
+              left: 0,
+              width: `${totalWidth}px`,
+              height: `${viewport.height * zoom}px`,
+              pointerEvents: 'none',
+            }}>
               <LayoutRenderer layout={layout} config={config} viewport={viewport} />
             </div>
           </div>
@@ -295,6 +325,7 @@ const styles = {
     border: '1px solid #CCCCCC',
     borderRadius: '4px',
     backgroundColor: '#FFFFFF',
+    color: '#000000',
     cursor: 'pointer',
     userSelect: 'none' as const,
   },

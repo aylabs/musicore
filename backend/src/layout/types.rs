@@ -110,8 +110,8 @@ pub struct Glyph {
     pub position: Point,
     /// Hit-testing rectangle including ledger lines
     pub bounding_box: BoundingBox,
-    /// SMuFL Unicode codepoint (e.g., '\u{E0A4}' = quarter notehead)
-    pub codepoint: char,
+    /// SMuFL Unicode codepoint as string (e.g., "\u{E0A4}" = quarter notehead)
+    pub codepoint: String,
     /// Link back to CompiledScore element for interaction
     pub source_reference: SourceReference,
 }

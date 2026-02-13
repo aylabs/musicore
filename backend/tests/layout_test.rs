@@ -627,43 +627,55 @@ mod breaker_tests {
 mod positioner_tests {
     use super::*;
 
-    /// T048: Unit test for pitch_to_y mapping (C4, E4, G4)
+    /// T048: Unit test for pitch_to_y mapping with correct treble clef positions (with -0.5 offset)
     #[test]
     fn test_pitch_to_y_mapping() {
         let units_per_space = 10.0;
 
-        // Test C5 (MIDI 72) = top line of treble staff (y = 0)
-        let c5_y = pitch_to_y(72, units_per_space);
-        assert!((c5_y - 0.0).abs() < 0.1, "C5 should be at y=0: {}", c5_y);
+        // Test F5 (MIDI 77) = top line of treble staff (y = -5 with offset)
+        let f5_y = pitch_to_y(77, units_per_space);
+        assert!((f5_y - (-5.0)).abs() < 0.1, "F5 should be on top line (y=-5): {}", f5_y);
 
-        // Test E5 (MIDI 76) = 2 whole steps above C5 = 2 spaces above (negative y)
+        // Test E5 (MIDI 76) = space between lines 1-2 (y = 5)
         let e5_y = pitch_to_y(76, units_per_space);
-        assert!(e5_y < 0.0, "E5 should be above C5 (negative y): {}", e5_y);
         assert!(
-            (e5_y - (-20.0)).abs() < 0.1,
-            "E5 should be 2 spaces above C5: {}",
+            (e5_y - 5.0).abs() < 0.1,
+            "E5 should be in first space (y=5): {}",
             e5_y
         );
 
-        // Test G4 (MIDI 67) = 2.5 whole steps below C5 = 2.5 spaces below (positive y)
-        let g4_y = pitch_to_y(67, units_per_space);
-        assert!(g4_y > 0.0, "G4 should be below C5 (positive y): {}", g4_y);
+        // Test D5 (MIDI 74) = 2nd line (y = 15)
+        let d5_y = pitch_to_y(74, units_per_space);
         assert!(
-            (g4_y - 25.0).abs() < 0.1,
-            "G4 should be 2.5 spaces below C5: {}",
+            (d5_y - 15.0).abs() < 0.1,
+            "D5 should be on 2nd line (y=15): {}",
+            d5_y
+        );
+
+        // Test C5 (MIDI 72) = space between lines 2-3 (y = 25)
+        let c5_y = pitch_to_y(72, units_per_space);
+        assert!((c5_y - 25.0).abs() < 0.1, "C5 should be in space (y=25): {}", c5_y);
+
+        // Test G4 (MIDI 67) = 4th line (y = 55)
+        let g4_y = pitch_to_y(67, units_per_space);
+        assert!(
+            (g4_y - 55.0).abs() < 0.1,
+            "G4 should be on 4th line (y=55): {}",
             g4_y
         );
 
-        // Test C4 (Middle C, MIDI 60) = 6 whole steps below C5 = 6 spaces below
+        // Test C4 (Middle C, MIDI 60) = ledger line below staff (y = 95 with offset)
         let c4_y = pitch_to_y(60, units_per_space);
         assert!(
-            (c4_y - 60.0).abs() < 0.1,
-            "C4 should be 6 spaces below C5: {}",
+            (c4_y - 95.0).abs() < 0.1,
+            "C4 should be below staff (y=95): {}",
             c4_y
         );
 
-        // Verify ordering: higher pitches have lower (more negative) y coordinates
-        assert!(e5_y < c5_y, "E5 should be above C5");
+        // Verify ordering: higher pitches have lower y coordinates
+        assert!(f5_y < e5_y, "F5 should be above E5");
+        assert!(e5_y < d5_y, "E5 should be above D5");
+        assert!(d5_y < c5_y, "D5 should be above C5");
         assert!(c5_y < g4_y, "C5 should be above G4");
         assert!(g4_y < c4_y, "G4 should be above C4");
     }
@@ -897,7 +909,7 @@ mod batching_tests {
                     width: 40.0,
                     height: 40.0,
                 },
-                codepoint: '\u{E0A4}', // Quarter notehead
+                codepoint: String::from('\u{E0A4}'), // Quarter notehead
                 source_reference: SourceReference {
                     instrument_id: "test".to_string(),
                     staff_index: 0,
@@ -965,7 +977,7 @@ mod batching_tests {
                     width: 15.0,
                     height: 15.0,
                 },
-                codepoint: '\u{E0A4}', // Quarter notehead
+                codepoint: String::from('\u{E0A4}'), // Quarter notehead
                 source_reference: SourceReference {
                     instrument_id: "test".to_string(),
                     staff_index: 0,
@@ -988,7 +1000,7 @@ mod batching_tests {
                     width: 15.0,
                     height: 25.0,
                 },
-                codepoint: '\u{E262}', // Sharp accidental
+                codepoint: String::from('\u{E262}'), // Sharp accidental
                 source_reference: SourceReference {
                     instrument_id: "test".to_string(),
                     staff_index: 0,
@@ -1011,7 +1023,7 @@ mod batching_tests {
                     width: 15.0,
                     height: 15.0,
                 },
-                codepoint: '\u{E0A4}', // Quarter notehead
+                codepoint: String::from('\u{E0A4}'), // Quarter notehead
                 source_reference: SourceReference {
                     instrument_id: "test".to_string(),
                     staff_index: 0,
@@ -1027,12 +1039,7 @@ mod batching_tests {
         println!("  Input: 50 noteheads + 30 sharps + 20 noteheads");
         println!("  Output: {} runs", runs.len());
         for (i, run) in runs.iter().enumerate() {
-            println!(
-                "    Run {}: {} glyphs, codepoint U+{:04X}",
-                i,
-                run.glyphs.len(),
-                run.glyphs[0].codepoint as u32
-            );
+      
         }
 
         // Should create 3 runs: noteheads, sharps, noteheads
@@ -1044,15 +1051,15 @@ mod batching_tests {
 
         // Verify run 0: 50 quarter noteheads
         assert_eq!(runs[0].glyphs.len(), 50);
-        assert_eq!(runs[0].glyphs[0].codepoint, '\u{E0A4}');
+        assert_eq!(runs[0].glyphs[0].codepoint, String::from('\u{E0A4}'));
 
         // Verify run 1: 30 sharps
         assert_eq!(runs[1].glyphs.len(), 30);
-        assert_eq!(runs[1].glyphs[0].codepoint, '\u{E262}');
+        assert_eq!(runs[1].glyphs[0].codepoint, String::from('\u{E262}'));
 
         // Verify run 2: 20 quarter noteheads
         assert_eq!(runs[2].glyphs.len(), 20);
-        assert_eq!(runs[2].glyphs[0].codepoint, '\u{E0A4}');
+        assert_eq!(runs[2].glyphs[0].codepoint, String::from('\u{E0A4}'));
     }
 }
 

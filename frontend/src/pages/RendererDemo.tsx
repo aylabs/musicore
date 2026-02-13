@@ -253,6 +253,7 @@ const styles = {
     border: '1px solid #CCCCCC',
     borderRadius: '4px',
     backgroundColor: '#FFFFFF',
+    color: '#000000',
   },
   checkbox: {
     marginRight: '4px',

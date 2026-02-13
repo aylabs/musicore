@@ -232,6 +232,9 @@ export function getViewportArea(viewport: Viewport): number {
  * const viewport: Viewport = { x: 0, y: 0, width: 800, height: 600 };
  * validateViewport(viewport); // OK
  * 
+ * const viewport2: Viewport = { x: 0, y: -75, width: 800, height: 600 };
+ * validateViewport(viewport2); // OK - negative Y allows showing glyphs above first system
+ * 
  * const invalid: Viewport = { x: -10, y: 0, width: 0, height: 600 };
  * validateViewport(invalid); // Throws Error
  * ```
@@ -241,10 +244,9 @@ export function validateViewport(viewport: Viewport): void {
     throw new Error(`Viewport.x must be >= 0, got ${viewport.x}`);
   }
 
-  if (viewport.y < 0) {
-    throw new Error(`Viewport.y must be >= 0, got ${viewport.y}`);
-  }
-
+  // Note: viewport.y CAN be negative to show glyphs above the first system
+  // (e.g., clefs, structural elements positioned above staff)
+  
   if (viewport.width <= 0) {
     throw new Error(`Viewport.width must be > 0, got ${viewport.width}`);
   }
@@ -290,7 +292,7 @@ export function getVisibleSystems(
   while (left <= right) {
     const mid = Math.floor((left + right) / 2);
     const system = systems[mid];
-    const systemY = system.bounding_box.y_position;
+    const systemY = system.bounding_box.y;
     const systemHeight = system.bounding_box.height;
 
     if (intersectsViewport(systemY, systemHeight, viewport)) {
@@ -315,7 +317,7 @@ export function getVisibleSystems(
   const visibleSystems: System[] = [];
   for (let i = firstVisibleIndex; i < systems.length; i++) {
     const system = systems[i];
-    const systemY = system.bounding_box.y_position;
+    const systemY = system.bounding_box.y;
     const systemHeight = system.bounding_box.height;
 
     if (!intersectsViewport(systemY, systemHeight, viewport)) {

@@ -1,0 +1,265 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://musicore.app/schemas/layout-output.schema.json",
+  "title": "Layout Output Schema",
+  "description": "JSON schema for layout engine output (GlobalLayout structure returned by compute_layout_wasm). Must match frontend test fixtures (violin_10_measures.json, piano_8_measures.json) exactly.",
+  "type": "object",
+  "required": ["systems", "total_width", "total_height", "units_per_space"],
+  "properties": {
+    "systems": {
+      "type": "array",
+      "description": "Array of systems (horizontal lines of music)",
+      "items": {
+        "$ref": "#/definitions/System"
+      }
+    },
+    "total_width": {
+      "type": "number",
+      "description": "Width of the widest system in logical units"
+    },
+    "total_height": {
+      "type": "number",
+      "description": "Total height of all systems plus inter-system spacing in logical units"
+    },
+    "units_per_space": {
+      "type": "number",
+      "description": "Scaling factor: how many logical units equal one staff space (typically 20.0)"
+    }
+  },
+  "definitions": {
+    "System": {
+      "type": "object",
+      "required": ["index", "bounding_box", "staff_groups", "tick_range"],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based system number"
+        },
+        "bounding_box": {
+          "$ref": "#/definitions/BoundingBox"
+        },
+        "staff_groups": {
+          "type": "array",
+          "description": "Instrument staff groups in this system",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/StaffGroup"
+          }
+        },
+        "tick_range": {
+          "$ref": "#/definitions/TickRange"
+        }
+      }
+    },
+    "StaffGroup": {
+      "type": "object",
+      "required": ["instrument_id", "staves", "bracket_type"],
+      "properties": {
+        "instrument_id": {
+          "type": "string",
+          "description": "References instrument.id from input"
+        },
+        "staves": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/definitions/Staff"
+          }
+        },
+        "bracket_type": {
+          "type": "string",
+          "enum": ["None", "Brace", "Bracket"],
+          "description": "Visual grouping indicator (Brace for piano, None for solo)"
+        }
+      }
+    },
+    "Staff": {
+      "type": "object",
+      "required": ["staff_lines", "glyph_runs", "structural_glyphs"],
+      "properties": {
+        "staff_lines": {
+          "type": "array",
+          "description": "Exactly 5 horizontal lines",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/StaffLine"
+          }
+        },
+        "glyph_runs": {
+          "type": "array",
+          "description": "Batched glyphs for rendering efficiency",
+          "items": {
+            "$ref": "#/definitions/GlyphRun"
+          }
+        },
+        "structural_glyphs": {
+          "type": "array",
+          "description": "Clefs, time signatures, key signatures",
+          "items": {
+            "$ref": "#/definitions/Glyph"
+          }
+        }
+      }
+    },
+    "StaffLine": {
+      "type": "object",
+      "required": ["y_position", "start_x", "end_x"],
+      "properties": {
+        "y_position": {
+          "type": "number",
+          "description": "Vertical position in logical units (system-relative)"
+        },
+        "start_x": {
+          "type": "number",
+          "description": "Left edge in logical units"
+        },
+        "end_x": {
+          "type": "number",
+          "description": "Right edge in logical units"
+        }
+      }
+    },
+    "GlyphRun": {
+      "type": "object",
+      "required": ["glyphs", "font_family", "font_size", "color"],
+      "properties": {
+        "glyphs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/Glyph"
+          }
+        },
+        "font_family": {
+          "type": "string",
+          "description": "Font name (typically 'Bravura' for SMuFL)"
+        },
+        "font_size": {
+          "type": "number",
+          "description": "Font size in logical units (typically 40.0 = 4 staff spaces)"
+        },
+        "color": {
+          "$ref": "#/definitions/Color"
+        }
+      }
+    },
+    "Glyph": {
+      "type": "object",
+      "required": ["position", "bounding_box", "codepoint", "source_reference"],
+      "properties": {
+        "position": {
+          "$ref": "#/definitions/Point"
+        },
+        "bounding_box": {
+          "$ref": "#/definitions/BoundingBox"
+        },
+        "codepoint": {
+          "type": "string",
+          "description": "SMuFL Unicode codepoint (e.g., \\uE0A4 for noteheadBlack). Special values: \\u0000 for stems (lines), \\u0001 for beams (rectangles)."
+        },
+        "source_reference": {
+          "$ref": "#/definitions/SourceReference"
+        }
+      }
+    },
+    "Point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in logical units"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in logical units"
+        }
+      }
+    },
+    "BoundingBox": {
+      "type": "object",
+      "required": ["x_position", "y_position", "width", "height"],
+      "properties": {
+        "x_position": {
+          "type": "number"
+        },
+        "y_position": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        }
+      }
+    },
+    "TickRange": {
+      "type": "object",
+      "required": ["start_tick", "end_tick"],
+      "properties": {
+        "start_tick": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "First tick in system (960 PPQ resolution)"
+        },
+        "end_tick": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last tick in system (exclusive)"
+        }
+      }
+    },
+    "Color": {
+      "type": "object",
+      "required": ["r", "g", "b", "a"],
+      "properties": {
+        "r": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "g": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "a": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Alpha channel (255 = opaque)"
+        }
+      }
+    },
+    "SourceReference": {
+      "type": "object",
+      "required": ["instrument_id", "staff_index", "voice_index", "event_index"],
+      "properties": {
+        "instrument_id": {
+          "type": "string"
+        },
+        "staff_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "voice_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

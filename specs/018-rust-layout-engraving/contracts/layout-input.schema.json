@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://musicore.app/schemas/layout-input.schema.json",
+  "title": "Layout Input Schema",
+  "description": "JSON schema for layout engine input (WASM compute_layout_wasm function). Supports both simplified 'notes' format (from LayoutView) and full 'interval_events' format (from CompiledScore).",
+  "type": "object",
+  "required": ["instruments"],
+  "properties": {
+    "instruments": {
+      "type": "array",
+      "description": "Array of instruments in the score",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "staves"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique instrument identifier (e.g., 'violin-1', 'piano-1')"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for instrument (optional)"
+          },
+          "staves": {
+            "type": "array",
+            "description": "Array of staves for this instrument (1 for solo, 2 for piano)",
+            "minItems": 1,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["voices"],
+              "properties": {
+                "clef": {
+                  "type": "string",
+                  "enum": ["Treble", "Bass", "Alto", "Tenor"],
+                  "description": "Initial clef for this staff"
+                },
+                "voices": {
+                  "type": "array",
+                  "description": "Voices on this staff (typically 1, max 2)",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "oneOf": [
+                      {
+                        "description": "Simplified format (from LayoutView)",
+                        "required": ["notes"],
+                        "properties": {
+                          "notes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["tick", "duration", "pitch"],
+                              "properties": {
+                                "tick": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "description": "Start time in 960 PPQ ticks"
+                                },
+                                "duration": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "description": "Duration in ticks (960=quarter, 480=eighth)"
+                                },
+                                "pitch": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 127,
+                                  "description": "MIDI pitch number (60=middle C)"
+                                },
+                                "articulation": {
+                                  "type": ["string", "null"],
+                                  "description": "Articulation type (optional)"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "description": "Full format (from CompiledScore)",
+                        "required": ["interval_events"],
+                        "properties": {
+                          "interval_events": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["start_tick", "duration_ticks", "pitch"],
+                              "properties": {
+                                "start_tick": {
+                                  "type": "object",
+                                  "required": ["value"],
+                                  "properties": {
+                                    "value": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    }
+                                  }
+                                },
+                                "duration_ticks": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "pitch": {
+                                  "type": "object",
+                                  "required": ["value"],
+                                  "properties": {
+                                    "value": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 127
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tempo_changes": {
+      "type": "array",
+      "description": "Global tempo changes (optional)",
+      "items": {
+        "type": "object",
+        "required": ["tick", "bpm"],
+        "properties": {
+          "tick": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bpm": {
+            "type": "number",
+            "minimum": 20,
+            "maximum": 400
+          }
+        }
+      }
+    },
+    "time_signature_changes": {
+      "type": "array",
+      "description": "Global time signature changes (optional)",
+      "items": {
+        "type": "object",
+        "required": ["tick", "numerator", "denominator"],
+        "properties": {
+          "tick": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "numerator": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "denominator": {
+            "type": "integer",
+            "enum": [1, 2, 4, 8, 16, 32]
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Simplified format (LayoutView)",
+      "value": {
+        "instruments": [
+          {
+            "id": "violin-1",
+            "name": "Violin",
+            "staves": [
+              {
+                "clef": "Treble",
+                "voices": [
+                  {
+                    "notes": [
+                      {"tick": 0, "duration": 960, "pitch": 60},
+                      {"tick": 960, "duration": 960, "pitch": 62},
+                      {"tick": 1920, "duration": 960, "pitch": 64}
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tempo_changes": [{"tick": 0, "bpm": 120}],
+        "time_signature_changes": [{"tick": 0, "numerator": 4, "denominator": 4}]
+      }
+    }
+  ]
+}

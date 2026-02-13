@@ -75,19 +75,20 @@ struct GlyphProperties {
     font_size: f32,
     color: Color,
     opacity: f32,
-    codepoint: char, // Include codepoint to separate different glyphs
+    codepoint: String, // Include codepoint to separate different glyphs
 }
 
 /// Extract drawing properties from a glyph
 ///
-/// These are the default properties used for all glyphs (Bravura font, 40pt, black)
+/// These are the default properties used for all glyphs (Bravura font, 80pt, black).
+/// Font size is 80 logical units = 4 staff spaces = 1em per SMuFL standard.
 /// plus the glyph's codepoint to distinguish different glyph types
 fn extract_glyph_properties(glyph: &Glyph) -> GlyphProperties {
     // For MVP, all glyphs use same font/color properties
     // but different codepoints represent different visual glyphs
     GlyphProperties {
         font_family: "Bravura".to_string(),
-        font_size: 40.0,
+        font_size: 80.0, // SMuFL standard: 1em = 4 staff spaces = 4 × 20 = 80 logical units
         color: Color {
             r: 0,
             g: 0,
@@ -95,7 +96,7 @@ fn extract_glyph_properties(glyph: &Glyph) -> GlyphProperties {
             a: 255,
         },
         opacity: 1.0,
-        codepoint: glyph.codepoint,
+        codepoint: glyph.codepoint.clone(),
     }
 }
 
@@ -143,7 +144,7 @@ mod tests {
                 a: 255,
             },
             opacity: 1.0,
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
         };
         let props2 = props1.clone();
 
@@ -155,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_can_batch_different_font() {
-        letprops1 = GlyphProperties {
+        let props1 = GlyphProperties {
             font_family: "Bravura".to_string(),
             font_size: 40.0,
             color: Color {
@@ -165,7 +166,7 @@ mod tests {
                 a: 255,
             },
             opacity: 1.0,
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
         };
         let props2 = GlyphProperties {
             font_family: "Arial".to_string(),
@@ -190,7 +191,7 @@ mod tests {
                 a: 255,
             },
             opacity: 1.0,
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
         };
         let props2 = GlyphProperties {
             font_size: 32.0,
@@ -219,7 +220,7 @@ mod tests {
                 width: 40.0,
                 height: 40.0,
             },
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
             source_reference: SourceReference {
                 instrument_id: "test".to_string(),
                 staff_index: 0,
@@ -243,7 +244,7 @@ mod tests {
                 width: 40.0,
                 height: 40.0,
             },
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
             source_reference: SourceReference {
                 instrument_id: "test".to_string(),
                 staff_index: 0,
@@ -260,7 +261,7 @@ mod tests {
                 width: 40.0,
                 height: 40.0,
             },
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
             source_reference: SourceReference {
                 instrument_id: "test".to_string(),
                 staff_index: 0,
@@ -277,7 +278,7 @@ mod tests {
                 width: 40.0,
                 height: 40.0,
             },
-            codepoint: '\u{E0A4}',
+            codepoint: String::from('\u{E0A4}'),
             source_reference: SourceReference {
                 instrument_id: "test".to_string(),
                 staff_index: 0,

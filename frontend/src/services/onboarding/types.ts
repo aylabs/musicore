@@ -36,7 +36,7 @@ export interface FirstRunState {
 /**
  * Valid view mode values
  */
-export type ViewMode = 'stacked' | 'individual';
+export type ViewMode = 'stacked' | 'individual' | 'layout';
 
 /**
  * Source of view mode preference (for analytics)
