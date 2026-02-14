@@ -52,20 +52,31 @@ pub fn compute_layout_wasm(score_json: &str, config_json: &str) -> Result<JsValu
             if let Some(staff) = staff_group.staves.first() {
                 console::log_1(&format!("[WASM] First staff has {} glyph runs", staff.glyph_runs.len()).into());
                 
-                if let Some(glyph_run) = staff.glyph_runs.first() {
+                // Log ALL glyph runs to find noteheads
+                for (run_idx, glyph_run) in staff.glyph_runs.iter().enumerate() {
                     console::log_1(&format!(
-                        "[WASM] First glyph run: font_family='{}', font_size={}, {} glyphs", 
-                        glyph_run.font_family, glyph_run.font_size, glyph_run.glyphs.len()
+                        "[WASM] GlyphRun[{}]: font_family='{}', font_size={}, {} glyphs, first_codepoint=U+{:04X}", 
+                        run_idx,
+                        glyph_run.font_family, 
+                        glyph_run.font_size, 
+                        glyph_run.glyphs.len(),
+                        glyph_run.glyphs.first().map(|g| g.codepoint.chars().next().unwrap_or('\0') as u32).unwrap_or(0)
                     ).into());
                     
-                    // Log first few glyphs to see different codepoints
-                    for (i, glyph) in glyph_run.glyphs.iter().take(10).enumerate() {
-                        let first_char = glyph.codepoint.chars().next().unwrap_or('\0');
-                        console::log_1(&format!(
-                            "[WASM]   Glyph[{}]: codepoint='{}' (U+{:04X}) at ({:.1}, {:.1})", 
-                            i, glyph.codepoint, first_char as u32,
-                            glyph.position.x, glyph.position.y
-                        ).into());
+                    // For notehead runs (E0A2-E0A4 range), log first 10 glyphs
+                    if let Some(first_glyph) = glyph_run.glyphs.first() {
+                        let first_char = first_glyph.codepoint.chars().next().unwrap_or('\0') as u32;
+                        if (0xE0A0..=0xE0AF).contains(&first_char) {
+                            console::log_1(&format!("[WASM]   *** NOTEHEAD RUN - logging all glyphs:").into());
+                            for (i, glyph) in glyph_run.glyphs.iter().take(20).enumerate() {
+                                let cp = glyph.codepoint.chars().next().unwrap_or('\0');
+                                console::log_1(&format!(
+                                    "[WASM]     Glyph[{}]: codepoint='{}' (U+{:04X}) at ({:.1}, {:.1})", 
+                                    i, glyph.codepoint, cp as u32,
+                                    glyph.position.x, glyph.position.y
+                                ).into());
+                            }
+                        }
                     }
                 }
             }
