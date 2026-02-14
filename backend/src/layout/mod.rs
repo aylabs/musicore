@@ -627,6 +627,15 @@ fn position_glyphs_for_staff(
                 continue;
             }
             
+            #[cfg(target_arch = "wasm32")]
+            {
+                use web_sys::console;
+                console::log_1(&format!(
+                    "[Stem Gen] pitch={}, duration={} ticks (generating stem)",
+                    pitch, duration_ticks
+                ).into());
+            }
+            
             let notehead_x = horizontal_offsets[i];
             // IMPORTANT: Add staff_vertical_offset to match notehead positioning
             let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space) + staff_vertical_offset;
