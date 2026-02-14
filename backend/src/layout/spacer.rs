@@ -25,7 +25,11 @@ impl Default for SpacingConfig {
 
 /// Compute horizontal spacing for a note based on duration
 ///
-/// Uses formula: `spacing_width = max(base + duration/960 * factor, minimum)`
+/// Uses formula: `spacing_width = max(base + duration/960 * factor, minimum) + flag_spacing`
+///
+/// Flag spacing is added for eighth and sixteenth notes to prevent flag overlap:
+/// - Eighth notes (480-959 ticks): +15 units for single flag clearance
+/// - Sixteenth notes (<480 ticks): +20 units for double flag clearance
 ///
 /// # Arguments
 /// * `duration_ticks` - Note duration in ticks (960 = quarter note at 960 PPQ)
@@ -36,7 +40,21 @@ impl Default for SpacingConfig {
 pub fn compute_note_spacing(duration_ticks: u32, config: &SpacingConfig) -> f32 {
     let duration_based =
         config.base_spacing + (duration_ticks as f32 / 960.0) * config.duration_factor;
-    duration_based.max(config.minimum_spacing)
+    let base_spacing = duration_based.max(config.minimum_spacing);
+    
+    // Add extra spacing for notes with flags to prevent flag overlap
+    let flag_spacing = if duration_ticks < 480 {
+        // Sixteenth notes and shorter: double flag needs more clearance
+        20.0
+    } else if duration_ticks < 960 {
+        // Eighth notes: single flag needs clearance
+        15.0
+    } else {
+        // Quarter notes and longer: no flags
+        0.0
+    };
+    
+    base_spacing + flag_spacing
 }
 
 /// Compute total width of a measure
