@@ -179,39 +179,23 @@ pub fn position_noteheads(
             // - Whole note (4 beats): 3840+ ticks → U+E0A2 noteheadWhole
             // - Half note (2 beats): 1920-3839 ticks → U+E0A3 noteheadHalf
             // - Quarter note and shorter: <1920 ticks → U+E0A4 noteheadBlack
+            let (codepoint, glyph_name) = if *duration >= 3840 {
+                ('\u{E0A2}', "noteheadWhole")
+            } else if *duration >= 1920 {
+                ('\u{E0A3}', "noteheadHalf")
+            } else {
+                ('\u{E0A4}', "noteheadBlack")
+            };
             
-            // DEBUG: Log codepoint selection
+            // DEBUG: Log selected codepoint
             #[cfg(target_arch = "wasm32")]
             {
                 use web_sys::console;
                 console::log_1(&format!(
-                    "[Positioner] pitch={}, duration={} ticks → checking thresholds (>=3840?, >=1920?)",
-                    pitch, duration
+                    "[Positioner] pitch={}, duration={} ticks → {} (U+{:04X})",
+                    pitch, duration, glyph_name, codepoint as u32
                 ).into());
             }
-            
-            let (codepoint, glyph_name) = if *duration >= 3840 {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    use web_sys::console;
-                    console::log_1(&format!("[Positioner]   → U+E0A2 noteheadWhole").into());
-                }
-                ('\u{E0A2}', "noteheadWhole")
-            } else if *duration >= 1920 {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    use web_sys::console;
-                    console::log_1(&format!("[Positioner]   → U+E0A3 noteheadHalf").into());
-                }
-                ('\u{E0A3}', "noteheadHalf")
-            } else {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    use web_sys::console;
-                    console::log_1(&format!("[Positioner]   → U+E0A4 noteheadBlack").into());
-                }
-                ('\u{E0A4}', "noteheadBlack")
-            };
 
             let bounding_box = compute_glyph_bounding_box(
                 glyph_name,
