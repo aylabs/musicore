@@ -71,7 +71,7 @@ pub fn compute_measure_width(note_durations: &[u32], config: &SpacingConfig) -> 
         .iter()
         .filter(|&&duration| duration < 960) // Eighth notes and shorter have flags
         .count();
-    
+
     // Add extra measure width for flag clearance (10 units per flagged note)
     // This expands the entire measure while preserving note spacing proportions
     let flag_padding = (flagged_note_count as f32) * 10.0;

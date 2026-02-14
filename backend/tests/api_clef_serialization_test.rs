@@ -168,8 +168,8 @@ fn test_staff_first_clef_takes_precedence() {
 #[test]
 fn test_clef_serialization_format() {
     // Verify Clef enum serializes to PascalCase strings (Treble, Bass, Alto, Tenor)
-    let clefs = vec![Clef::Treble, Clef::Bass, Clef::Alto, Clef::Tenor];
-    let expected = vec!["Treble", "Bass", "Alto", "Tenor"];
+    let clefs = [Clef::Treble, Clef::Bass, Clef::Alto, Clef::Tenor];
+    let expected = ["Treble", "Bass", "Alto", "Tenor"];
 
     for (clef, expected_str) in clefs.iter().zip(expected.iter()) {
         let json = serde_json::to_string(clef).unwrap();

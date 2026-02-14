@@ -4,8 +4,8 @@
 
 use crate::layout::{LayoutConfig, compute_layout};
 use serde_json::Value;
-use wasm_bindgen::prelude::*;
 use serde_wasm_bindgen;
+use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 use web_sys::console;

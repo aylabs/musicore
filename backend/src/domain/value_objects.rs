@@ -27,7 +27,7 @@ impl BPM {
         if value == 0 {
             return Err("BPM must be greater than 0");
         }
-        if value < 20 || value > 400 {
+        if !(20..=400).contains(&value) {
             return Err("BPM must be in range 20-400");
         }
         Ok(Self(value))
@@ -70,7 +70,7 @@ pub struct KeySignature(i8);
 
 impl KeySignature {
     pub fn new(sharps: i8) -> Result<Self, &'static str> {
-        if sharps < -7 || sharps > 7 {
+        if !(-7..=7).contains(&sharps) {
             return Err("KeySignature must be in range -7 (flats) to 7 (sharps)");
         }
         Ok(Self(sharps))

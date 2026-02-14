@@ -96,7 +96,7 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
 
     // Build WasmImportResult using ScoreDto (has active_clef)
     let result = WasmImportResult {
-        score: score_dto,  // Use DTO instead of raw Score
+        score: score_dto, // Use DTO instead of raw Score
         metadata: ImportMetadata {
             format,
             file_name: None,

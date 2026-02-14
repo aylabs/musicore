@@ -6,7 +6,7 @@ use musicore_backend::{
 
 #[test]
 fn test_repository_save_and_find() {
-    let mut repo = InMemoryScoreRepository::new();
+    let repo = InMemoryScoreRepository::new();
     let score = Score::new();
     let score_id = score.id;
 
@@ -30,7 +30,7 @@ fn test_repository_find_nonexistent() {
 
 #[test]
 fn test_repository_save_overwrites() {
-    let mut repo = InMemoryScoreRepository::new();
+    let repo = InMemoryScoreRepository::new();
     let mut score = Score::new();
     let score_id = score.id;
 
@@ -46,7 +46,7 @@ fn test_repository_save_overwrites() {
 
 #[test]
 fn test_repository_delete() {
-    let mut repo = InMemoryScoreRepository::new();
+    let repo = InMemoryScoreRepository::new();
     let score = Score::new();
     let score_id = score.id;
 
@@ -60,7 +60,7 @@ fn test_repository_delete() {
 
 #[test]
 fn test_repository_list_all() {
-    let mut repo = InMemoryScoreRepository::new();
+    let repo = InMemoryScoreRepository::new();
 
     repo.save(Score::new()).unwrap();
     repo.save(Score::new()).unwrap();

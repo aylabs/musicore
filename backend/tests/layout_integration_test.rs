@@ -2,7 +2,7 @@
 //!
 //! Tests for single-staff and multi-staff layout structure, verifying systems, staff_groups, staves
 
-use musicore_backend::layout::{compute_layout, LayoutConfig};
+use musicore_backend::layout::{LayoutConfig, compute_layout};
 
 #[test]
 fn test_single_staff_layout_structure() {
@@ -35,50 +35,73 @@ fn test_single_staff_layout_structure() {
     let json_output = serde_json::to_value(&output).unwrap();
 
     // Verify systems exist
-    let systems = json_output["systems"].as_array()
+    let systems = json_output["systems"]
+        .as_array()
         .expect("Output should have systems array");
     assert!(!systems.is_empty(), "Should have at least one system");
 
     // Verify each system has correct structure
     for (idx, system) in systems.iter().enumerate() {
         // Verify staff_groups exist
-        let staff_groups = system["staff_groups"].as_array()
-            .expect(&format!("System {} should have staff_groups", idx));
-        assert!(!staff_groups.is_empty(), 
-                "System {} staff_groups should not be empty", idx);
+        let staff_groups = system["staff_groups"]
+            .as_array()
+            .unwrap_or_else(|| panic!("System {} should have staff_groups", idx));
+        assert!(
+            !staff_groups.is_empty(),
+            "System {} staff_groups should not be empty",
+            idx
+        );
 
         // For single instrument, should have exactly 1 staff_group
-        assert_eq!(staff_groups.len(), 1, 
-                   "Single instrument should have 1 staff_group");
+        assert_eq!(
+            staff_groups.len(),
+            1,
+            "Single instrument should have 1 staff_group"
+        );
 
         let staff_group = &staff_groups[0];
-        
+
         // Verify instrument_id
-        assert_eq!(staff_group["instrument_id"].as_str().unwrap(), "violin-1",
-                   "Staff group should reference correct instrument");
+        assert_eq!(
+            staff_group["instrument_id"].as_str().unwrap(),
+            "violin-1",
+            "Staff group should reference correct instrument"
+        );
 
         // Verify staves exist
-        let staves = staff_group["staves"].as_array()
+        let staves = staff_group["staves"]
+            .as_array()
             .expect("Staff group should have staves");
-        assert_eq!(staves.len(), 1, "Single-staff instrument should have 1 staff");
+        assert_eq!(
+            staves.len(),
+            1,
+            "Single-staff instrument should have 1 staff"
+        );
 
         let staff = &staves[0];
 
         // Verify staff_lines exist (5 lines)
-        let staff_lines = staff["staff_lines"].as_array()
+        let staff_lines = staff["staff_lines"]
+            .as_array()
             .expect("Staff should have staff_lines");
         assert_eq!(staff_lines.len(), 5, "Staff should have exactly 5 lines");
 
         // Verify staff_lines have correct spacing
-        let y_positions: Vec<f32> = staff_lines.iter()
+        let y_positions: Vec<f32> = staff_lines
+            .iter()
             .map(|line| line["y_position"].as_f64().unwrap() as f32)
             .collect();
-        
+
         // Staff lines should be 40 units apart (2 * units_per_space)
         for i in 0..4 {
             let spacing = y_positions[i + 1] - y_positions[i];
-            assert_eq!(spacing, 40.0, 
-                       "Staff lines {} and {} should be 40 units apart", i, i+1);
+            assert_eq!(
+                spacing,
+                40.0,
+                "Staff lines {} and {} should be 40 units apart",
+                i,
+                i + 1
+            );
         }
     }
 
@@ -124,43 +147,53 @@ fn test_multi_staff_layout_structure() {
     let json_output = serde_json::to_value(&output).unwrap();
 
     // Verify systems exist
-    let systems = json_output["systems"].as_array()
+    let systems = json_output["systems"]
+        .as_array()
         .expect("Output should have systems array");
     assert!(!systems.is_empty(), "Should have at least one system");
 
     let first_system = &systems[0];
-    let staff_groups = first_system["staff_groups"].as_array()
+    let staff_groups = first_system["staff_groups"]
+        .as_array()
         .expect("First system should have staff_groups");
-    
+
     assert_eq!(staff_groups.len(), 1, "Piano should have 1 staff_group");
 
     let staff_group = &staff_groups[0];
-    let staves = staff_group["staves"].as_array()
+    let staves = staff_group["staves"]
+        .as_array()
         .expect("Staff group should have staves");
-    
+
     // Piano grand staff should have 2 staves (treble + bass)
     assert_eq!(staves.len(), 2, "Piano grand staff should have 2 staves");
 
     // Verify both staves have correct structure
     for (staff_idx, staff) in staves.iter().enumerate() {
-        let staff_lines = staff["staff_lines"].as_array()
-            .expect(&format!("Staff {} should have staff_lines", staff_idx));
-        assert_eq!(staff_lines.len(), 5, 
-                   "Staff {} should have exactly 5 lines", staff_idx);
+        let staff_lines = staff["staff_lines"]
+            .as_array()
+            .unwrap_or_else(|| panic!("Staff {} should have staff_lines", staff_idx));
+        assert_eq!(
+            staff_lines.len(),
+            5,
+            "Staff {} should have exactly 5 lines",
+            staff_idx
+        );
     }
 
     // Verify vertical separation between staves
     let staff_0_lines = staves[0]["staff_lines"].as_array().unwrap();
     let staff_1_lines = staves[1]["staff_lines"].as_array().unwrap();
-    
+
     let staff_0_top = staff_0_lines[0]["y_position"].as_f64().unwrap() as f32;
     let staff_1_top = staff_1_lines[0]["y_position"].as_f64().unwrap() as f32;
-    
+
     // Staves should be separated by 20 staff spaces (400 units with units_per_space=20)
     // This provides clear vertical separation for piano grand staff
     let staff_separation = staff_1_top - staff_0_top;
-    assert_eq!(staff_separation, 400.0, 
-               "Piano staves should be separated by 400 units (20 staff spaces)");
+    assert_eq!(
+        staff_separation, 400.0,
+        "Piano staves should be separated by 400 units (20 staff spaces)"
+    );
 
     println!("✅ Multi-staff layout structure test passed");
 }

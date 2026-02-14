@@ -62,7 +62,7 @@ impl ElementMapper {
         let midi = 12 * (octave + 1) + step_offset + alter;
 
         // Validate range (0-127)
-        if midi < 0 || midi > 127 {
+        if !(0..=127).contains(&midi) {
             return Err(MappingError::PitchOutOfRange {
                 midi,
                 step: step_upper,
@@ -90,7 +90,7 @@ impl ElementMapper {
     /// The KeySignature stores only the fifths value (sharps/flats count).
     pub fn map_key(fifths: i32, _mode: Option<&str>) -> Result<KeySignature, MappingError> {
         // Validate fifths range (-7 to +7 for standard keys)
-        if fifths < -7 || fifths > 7 {
+        if !(-7..=7).contains(&fifths) {
             return Err(MappingError::UnsupportedKey {
                 fifths,
                 mode: _mode.unwrap_or("major").to_string(),

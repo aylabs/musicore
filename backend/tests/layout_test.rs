@@ -264,7 +264,7 @@ mod us1_us2_tests {
         // measures are narrower and more fit per system
         let system_count = layout.systems.len();
         assert!(
-            system_count >= 10 && system_count <= 15,
+            (10..=15).contains(&system_count),
             "Expected 10-15 systems for 50 measures, got {}",
             system_count
         );
@@ -300,7 +300,7 @@ mod us1_us2_tests {
         for system in &layout.systems {
             let tick_span = system.tick_range.end_tick - system.tick_range.start_tick;
             assert!(
-                tick_span >= 3840 && tick_span <= 23040,
+                (3840..=23040).contains(&tick_span),
                 "System {} tick range ({} ticks) should cover 1-6 measures (3840-23040 ticks)",
                 system.index,
                 tick_span
@@ -634,7 +634,11 @@ mod positioner_tests {
 
         // Test F5 (MIDI 77) = top line of treble staff (y = -5 with offset)
         let f5_y = pitch_to_y(77, "Treble", units_per_space);
-        assert!((f5_y - (-5.0)).abs() < 0.1, "F5 should be on top line (y=-5): {}", f5_y);
+        assert!(
+            (f5_y - (-5.0)).abs() < 0.1,
+            "F5 should be on top line (y=-5): {}",
+            f5_y
+        );
 
         // Test E5 (MIDI 76) = space between lines 1-2 (y = 5)
         let e5_y = pitch_to_y(76, "Treble", units_per_space);
@@ -654,7 +658,11 @@ mod positioner_tests {
 
         // Test C5 (MIDI 72) = space between lines 2-3 (y = 25)
         let c5_y = pitch_to_y(72, "Treble", units_per_space);
-        assert!((c5_y - 25.0).abs() < 0.1, "C5 should be in space (y=25): {}", c5_y);
+        assert!(
+            (c5_y - 25.0).abs() < 0.1,
+            "C5 should be in space (y=25): {}",
+            c5_y
+        );
 
         // Test G4 (MIDI 67) = 4th line (y = 55)
         let g4_y = pitch_to_y(67, "Treble", units_per_space);
@@ -960,7 +968,7 @@ mod batching_tests {
     #[test]
     fn test_batch_mixed_glyphs() {
         use musicore_backend::layout::batcher::batch_glyphs;
-        use musicore_backend::layout::types::{Color, Glyph, SourceReference};
+        use musicore_backend::layout::types::{Glyph, SourceReference};
 
         let mut glyphs = Vec::new();
 
@@ -1038,9 +1046,7 @@ mod batching_tests {
         println!("Mixed glyphs test:");
         println!("  Input: 50 noteheads + 30 sharps + 20 noteheads");
         println!("  Output: {} runs", runs.len());
-        for (i, run) in runs.iter().enumerate() {
-      
-        }
+        for (_i, _run) in runs.iter().enumerate() {}
 
         // Should create 3 runs: noteheads, sharps, noteheads
         assert_eq!(

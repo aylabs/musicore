@@ -44,9 +44,9 @@ impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
             max_system_width: 1600.0, // Wide enough to require horizontal scrolling on most displays
-            units_per_space: 20.0, // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
-            system_spacing: 200.0, // Spacing between systems (gap after system_height)
-            system_height: 600.0, // Height for grand staff with 20 staff spaces separation
+            units_per_space: 20.0,    // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
+            system_spacing: 200.0,    // Spacing between systems (gap after system_height)
+            system_height: 600.0,     // Height for grand staff with 20 staff spaces separation
         }
     }
 }
@@ -100,7 +100,9 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             let mut staves = Vec::new();
 
             // Calculate left margin (same for all staves in this instrument)
-            let key_sig_width = instrument.staves.first()
+            let key_sig_width = instrument
+                .staves
+                .first()
                 .map(|s| s.key_sharps.abs() as f32 * 15.0)
                 .unwrap_or(0.0);
             let left_margin = 210.0 + key_sig_width;
@@ -118,8 +120,9 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             for (staff_index, staff_data) in instrument.staves.iter().enumerate() {
                 // Calculate vertical offset for this staff relative to system position
                 // Staff spacing: 20 staff spaces between staves (provides clear separation for piano grand staff)
-                let staff_vertical_offset = system.bounding_box.y + (staff_index as f32 * 20.0 * config.units_per_space);
-                
+                let staff_vertical_offset =
+                    system.bounding_box.y + (staff_index as f32 * 20.0 * config.units_per_space);
+
                 // Position glyphs for this staff using unified note positions
                 let glyphs = position_glyphs_for_staff(
                     staff_data,
@@ -206,7 +209,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             } else {
                 BracketType::None
             };
-            
+
             let bracket_glyph = if instrument.staves.len() > 1 {
                 Some(create_bracket_glyph(&staves, &bracket_type, config))
             } else {
@@ -257,7 +260,6 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
 
     // Extract notes from all instruments
     if let Some(instruments) = score["instruments"].as_array() {
-        
         for instrument in instruments {
             if let Some(staves) = instrument["staves"].as_array() {
                 // Collect all unique timing positions across all staves
@@ -271,24 +273,28 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
                     if let Some(voices) = staff["voices"].as_array() {
                         for voice in voices {
                             // Try both "interval_events" (Score format) and "notes" (converted format)
-                            let notes_array = voice["interval_events"].as_array()
+                            let notes_array = voice["interval_events"]
+                                .as_array()
                                 .or_else(|| voice["notes"].as_array());
-                            
+
                             if let Some(notes) = notes_array {
-                                
                                 for note in notes {
                                     // Support multiple field name formats:
                                     // Format 1 (Score): start_tick, duration_ticks
                                     // Format 2 (LayoutView): tick, duration
                                     // Format 3 (nested): start_tick.value
-                                    let start_tick = note["start_tick"].as_u64()
+                                    let start_tick = note["start_tick"]
+                                        .as_u64()
                                         .or_else(|| note["tick"].as_u64())
                                         .or_else(|| note["start_tick"]["value"].as_u64())
-                                        .unwrap_or(0) as u32;
-                                    
-                                    let _duration = note["duration_ticks"].as_u64()
+                                        .unwrap_or(0)
+                                        as u32;
+
+                                    let _duration = note["duration_ticks"]
+                                        .as_u64()
                                         .or_else(|| note["duration"].as_u64())
-                                        .unwrap_or(960) as u32;
+                                        .unwrap_or(960)
+                                        as u32;
 
                                     // Determine which measure this note belongs to (4/4 = 3840 ticks per measure)
                                     let measure_index = (start_tick / 3840) as usize;
@@ -296,7 +302,7 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
                                     // Track unique timing positions (deduplicate simultaneous notes)
                                     all_notes_by_measure
                                         .entry(measure_index)
-                                        .or_insert_with(std::collections::HashSet::new)
+                                        .or_default()
                                         .insert(start_tick);
                                 }
                             }
@@ -340,10 +346,10 @@ struct InstrumentData {
 #[derive(Debug, Clone)]
 struct StaffData {
     voices: Vec<VoiceData>,
-    clef: String,           // e.g., "Treble", "Bass", "Alto", "Tenor"
-    time_numerator: u8,     // e.g., 4 for 4/4 time
-    time_denominator: u8,   // e.g., 4 for 4/4 time
-    key_sharps: i8,         // Positive for sharps, negative for flats, 0 for C major
+    clef: String,         // e.g., "Treble", "Bass", "Alto", "Tenor"
+    time_numerator: u8,   // e.g., 4 for 4/4 time
+    time_denominator: u8, // e.g., 4 for 4/4 time
+    key_sharps: i8,       // Positive for sharps, negative for flats, 0 for C major
 }
 
 /// Represents a voice with interval events (notes)
@@ -365,10 +371,16 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
     let mut instruments = Vec::new();
 
     // DEBUG: Log the entire input to see what we're receiving
-    eprintln!("[extract_instruments] Input score: {}", serde_json::to_string_pretty(score).unwrap_or_else(|_| "cannot serialize".to_string()));
+    eprintln!(
+        "[extract_instruments] Input score: {}",
+        serde_json::to_string_pretty(score).unwrap_or_else(|_| "cannot serialize".to_string())
+    );
 
     if let Some(instruments_array) = score["instruments"].as_array() {
-        eprintln!("[extract_instruments] Found {} instruments", instruments_array.len());
+        eprintln!(
+            "[extract_instruments] Found {} instruments",
+            instruments_array.len()
+        );
         for instrument in instruments_array {
             let id = instrument["id"].as_str().unwrap_or("unknown").to_string();
             let mut staves = Vec::new();
@@ -379,45 +391,60 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
 
                     // Extract structural metadata (with defaults)
                     let clef = staff["clef"].as_str().unwrap_or("Treble").to_string();
-                    let time_numerator = staff["time_signature"]["numerator"].as_u64().unwrap_or(4) as u8;
-                    let time_denominator = staff["time_signature"]["denominator"].as_u64().unwrap_or(4) as u8;
+                    let time_numerator =
+                        staff["time_signature"]["numerator"].as_u64().unwrap_or(4) as u8;
+                    let time_denominator =
+                        staff["time_signature"]["denominator"].as_u64().unwrap_or(4) as u8;
                     let key_sharps = staff["key_signature"]["sharps"].as_i64().unwrap_or(0) as i8;
 
                     if let Some(voices_array) = staff["voices"].as_array() {
-                        eprintln!("[extract_instruments] Found {} voices in staff", voices_array.len());
+                        eprintln!(
+                            "[extract_instruments] Found {} voices in staff",
+                            voices_array.len()
+                        );
                         for voice in voices_array {
                             let mut notes = Vec::new();
 
                             // T008-T009: Support both "notes" (LayoutView format) and "interval_events" (CompiledScore format)
                             // Check "notes" first for frontend fixtures, fall back to "interval_events" for backward compatibility
-                            eprintln!("[extract_instruments] Voice keys: {:?}", voice.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-                            
-                            let note_array = voice["notes"].as_array()
+                            eprintln!(
+                                "[extract_instruments] Voice keys: {:?}",
+                                voice.as_object().map(|o| o.keys().collect::<Vec<_>>())
+                            );
+
+                            let note_array = voice["notes"]
+                                .as_array()
                                 .or_else(|| voice["interval_events"].as_array());
 
                             if let Some(notes_data) = note_array {
-                                eprintln!("[extract_instruments] Found {} notes in voice", notes_data.len());
+                                eprintln!(
+                                    "[extract_instruments] Found {} notes in voice",
+                                    notes_data.len()
+                                );
                                 for note_item in notes_data {
                                     // Handle both formats:
                                     // Format 1 (notes): {tick: 0, duration: 960, pitch: 60}
                                     // Format 2 (interval_events): {start_tick: {value: 0}, duration_ticks: 960, pitch: {value: 60}}
-                                    
+
                                     let pitch = if let Some(p) = note_item["pitch"].as_u64() {
-                                        p as u8  // Format 1: direct value
+                                        p as u8 // Format 1: direct value
                                     } else {
-                                        note_item["pitch"]["value"].as_u64().unwrap_or(60) as u8  // Format 2: nested
+                                        note_item["pitch"]["value"].as_u64().unwrap_or(60) as u8 // Format 2: nested
                                     };
-                                    
+
                                     let start_tick = if let Some(t) = note_item["tick"].as_u64() {
-                                        t as u32  // Format 1: "tick"
+                                        t as u32 // Format 1: "tick"
                                     } else {
-                                        note_item["start_tick"]["value"].as_u64().unwrap_or(0) as u32  // Format 2: nested
+                                        note_item["start_tick"]["value"].as_u64().unwrap_or(0)
+                                            as u32 // Format 2: nested
                                     };
-                                    
-                                    let duration_ticks = if let Some(d) = note_item["duration"].as_u64() {
-                                        d as u32  // Format 1: "duration"
+
+                                    let duration_ticks = if let Some(d) =
+                                        note_item["duration"].as_u64()
+                                    {
+                                        d as u32 // Format 1: "duration"
                                     } else {
-                                        note_item["duration_ticks"].as_u64().unwrap_or(960) as u32  // Format 2
+                                        note_item["duration_ticks"].as_u64().unwrap_or(960) as u32 // Format 2
                                     };
 
                                     notes.push(NoteEvent {
@@ -426,9 +453,14 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                                         duration_ticks,
                                     });
                                 }
-                                eprintln!("[extract_instruments] Extracted {} notes from voice", notes.len());
+                                eprintln!(
+                                    "[extract_instruments] Extracted {} notes from voice",
+                                    notes.len()
+                                );
                             } else {
-                                eprintln!("[extract_instruments] WARNING: No 'notes' or 'interval_events' array found in voice");
+                                eprintln!(
+                                    "[extract_instruments] WARNING: No 'notes' or 'interval_events' array found in voice"
+                                );
                             }
 
                             voices.push(VoiceData { notes });
@@ -453,7 +485,7 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
 }
 
 /// Compute unified note positions across all staves in a staff group
-/// 
+///
 /// For multi-staff instruments (e.g., piano), notes at the same tick must align
 /// horizontally across all staves. This function collects all unique tick positions
 /// from all staves and computes a unified spacing map.
@@ -476,30 +508,31 @@ fn compute_unified_note_positions(
 ) -> HashMap<u32, f32> {
     // Collect all unique (tick, duration) pairs from all staves
     let mut tick_durations: Vec<(u32, u32)> = Vec::new();
-    
+
     for staff_data in staves {
         for voice in &staff_data.voices {
             for note in &voice.notes {
-                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick {
+                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
+                {
                     tick_durations.push((note.start_tick, note.duration_ticks));
                 }
             }
         }
     }
-    
+
     if tick_durations.is_empty() {
         return HashMap::new();
     }
-    
+
     // Sort by tick position and remove duplicates
     tick_durations.sort_by_key(|(tick, _)| *tick);
     tick_durations.dedup_by_key(|(tick, _)| *tick);
-    
+
     // Calculate cumulative spacing based on durations
     let mut cumulative_spacing = Vec::new();
     let mut current_position = 0.0;
     let mut last_tick = tick_range.start_tick;
-    
+
     for (start_tick, duration_ticks) in &tick_durations {
         if *start_tick > last_tick {
             let gap_duration = (*start_tick - last_tick).min(*duration_ticks);
@@ -508,7 +541,7 @@ fn compute_unified_note_positions(
         cumulative_spacing.push(current_position);
         last_tick = *start_tick;
     }
-    
+
     // Calculate total natural width
     // Add clearance space after last note for notehead width (≈20 units = half the notehead)
     // plus barline spacing (≈10 units) = 30 units total
@@ -519,7 +552,7 @@ fn compute_unified_note_positions(
     } else {
         spacing_config.minimum_spacing + end_clearance
     };
-    
+
     // Scale positions to fit available width
     let available_width = system_width - left_margin;
     let scale_factor = if total_natural_width > 0.0 {
@@ -527,14 +560,14 @@ fn compute_unified_note_positions(
     } else {
         1.0
     };
-    
+
     // Build position map: tick -> x_position
     let mut position_map = HashMap::new();
     for (i, (tick, _)) in tick_durations.iter().enumerate() {
         let x_position = left_margin + (cumulative_spacing[i] * scale_factor);
         position_map.insert(*tick, x_position);
     }
-    
+
     position_map
 }
 
@@ -580,16 +613,14 @@ fn position_glyphs_for_staff(
         // Use pre-computed positions from unified spacing (Principle VI)
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _)| {
-                *note_positions.get(start_tick).unwrap_or(&0.0)
-            })
+            .map(|(_, start_tick, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
             .collect();
 
         // Position noteheads using positioner module
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &horizontal_offsets,
-            &staff_data.clef,  // Pass clef type for correct pitch positioning
+            &staff_data.clef, // Pass clef type for correct pitch positioning
             units_per_space,
             instrument_id,
             staff_index,
@@ -598,22 +629,22 @@ fn position_glyphs_for_staff(
         );
 
         all_glyphs.extend(glyphs);
-        
+
         // T056-T058: Stem/beam generation disabled - using combined notehead+stem glyphs
         // SMuFL provides U+E1D3/U+E1D5 which include stems in the glyph
         // TODO: Restore beam generation for eighth notes in future phase
-        
+
         /*
         // DISABLED: Generate stems for notes (except whole notes which have duration >= 3840 ticks)
         let mut stem_glyphs = Vec::new();
         let mut beamable_notes = Vec::new();
-        
+
         for (i, (pitch, start_tick, duration_ticks)) in notes_in_range.iter().enumerate() {
             // Skip whole notes (no stems)
             if *duration_ticks >= 3840 {
                 continue;
             }
-            
+
             #[cfg(target_arch = "wasm32")]
             {
                 use web_sys::console;
@@ -622,18 +653,18 @@ fn position_glyphs_for_staff(
                     pitch, duration_ticks
                 ).into());
             }
-            
+
             let notehead_x = horizontal_offsets[i];
             // IMPORTANT: Add staff_vertical_offset to match notehead positioning
             let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space) + staff_vertical_offset;
-            
+
             // Compute stem direction
             let direction = stems::compute_stem_direction(notehead_y, staff_middle_y);
-            
+
             // Create stem (assuming notehead width of 10 logical units)
             let notehead_width = 10.0;
             let stem = stems::create_stem(notehead_x, notehead_y, direction, notehead_width);
-            
+
             // Encode stem as special glyph (U+0000)
             let stem_glyph = Glyph {
                 codepoint: '\u{0000}'.to_string(),
@@ -655,7 +686,7 @@ fn position_glyphs_for_staff(
                 },
             };
             stem_glyphs.push(stem_glyph);
-            
+
             // Track beamable notes (eighth notes and shorter: <= 480 ticks)
             if *duration_ticks <= 480 {
                 beamable_notes.push(beams::BeamableNote {
@@ -667,12 +698,12 @@ fn position_glyphs_for_staff(
                 });
             }
         }
-        
+
         all_glyphs.extend(stem_glyphs);
-        
+
         // Generate beams for grouped eighth notes
         let beam_groups = beams::group_beamable_notes(&beamable_notes, 960); // 960 ticks per beat (quarter note)
-        
+
         for (group_index, group) in beam_groups.iter().enumerate() {
             let slope = beams::compute_beam_slope(group, units_per_space);
             if let Some(beam) = beams::create_beam(group, slope) {
@@ -749,30 +780,30 @@ fn create_bar_lines(
     tick_range: &TickRange,
     staff_index: usize,
     left_margin: f32,
-    system_width: f32,
+    _system_width: f32,
     units_per_space: f32,
     system_y_position: f32,
     note_positions: &HashMap<u32, f32>,
 ) -> Vec<BarLine> {
     let mut bar_lines = Vec::new();
-    
+
     // Calculate staff vertical offset relative to system
     let staff_vertical_offset = system_y_position + (staff_index as f32 * 20.0 * units_per_space);
-    
+
     // Y positions for top and bottom staff lines
     let y_start = staff_vertical_offset; // Top line (line 0)
     let y_end = staff_vertical_offset + (4.0 * 2.0 * units_per_space); // Bottom line (line 4)
-    
+
     // Find measures that overlap with this system's tick range
     let measures_in_system: Vec<&breaker::MeasureInfo> = measure_infos
         .iter()
         .filter(|m| m.start_tick < tick_range.end_tick && m.end_tick > tick_range.start_tick)
         .collect();
-    
+
     if measures_in_system.is_empty() {
         return bar_lines;
     }
-    
+
     // Add bar lines at the end of each measure using note positions
     // This ensures barlines use the same scaling as notes
     for measure in measures_in_system.iter() {
@@ -780,7 +811,7 @@ fn create_bar_lines(
         if measure.end_tick > tick_range.end_tick {
             continue;
         }
-        
+
         // Find the x-position for the barline by looking for the last note IN this measure
         // Notes at end_tick belong to NEXT measure (tick range is exclusive end)
         let barline_x = note_positions
@@ -792,11 +823,12 @@ fn create_bar_lines(
                 // No notes in this measure, use left_margin as fallback
                 left_margin + 30.0
             });
-        
-        // Determine bar line type  
+
+        // Determine bar line type
         let bar_type = if measure.end_tick == tick_range.end_tick {
             // Check if this is the very last measure in the entire score
-            let is_last_measure = measure_infos.last().map(|m| m.end_tick) == Some(measure.end_tick);
+            let is_last_measure =
+                measure_infos.last().map(|m| m.end_tick) == Some(measure.end_tick);
             if is_last_measure {
                 BarLineType::Final
             } else {
@@ -805,16 +837,13 @@ fn create_bar_lines(
         } else {
             BarLineType::Single
         };
-        
+
         // Create bar line segments with explicit geometry (Principle VI: Layout Engine Authority)
         let segments = create_bar_line_segments(barline_x, y_start, y_end, &bar_type);
-        
-        bar_lines.push(BarLine {
-            segments,
-            bar_type,
-        });
+
+        bar_lines.push(BarLine { segments, bar_type });
     }
-    
+
     bar_lines
 }
 
@@ -828,9 +857,9 @@ fn create_bar_line_segments(
 ) -> Vec<BarLineSegment> {
     const THIN_WIDTH: f32 = 1.5;
     const THICK_WIDTH: f32 = 4.0;
-    const DOUBLE_SPACING: f32 = 4.0;  // Space between double bar lines
-    const FINAL_SPACING: f32 = 4.0;   // Space between thin and thick in final bar
-    
+    const DOUBLE_SPACING: f32 = 4.0; // Space between double bar lines
+    const FINAL_SPACING: f32 = 4.0; // Space between thin and thick in final bar
+
     match bar_type {
         BarLineType::Single => {
             vec![BarLineSegment {
@@ -879,33 +908,33 @@ fn create_bar_line_segments(
 fn create_bracket_glyph(
     staves: &[Staff],
     bracket_type: &BracketType,
-    config: &LayoutConfig,
+    _config: &LayoutConfig,
 ) -> BracketGlyph {
     let first_staff = &staves[0];
     let last_staff = &staves[staves.len() - 1];
-    
+
     // Calculate gap center between first staff bottom and last staff top
     let first_staff_bottom = first_staff.staff_lines[4].y_position;
     let last_staff_top = last_staff.staff_lines[0].y_position;
     let gap_center = (first_staff_bottom + last_staff_top) / 2.0;
-    
+
     // Brace parameters (fine-tuned for visual centering)
     let extension = 280.0; // Distance from gap center to top/bottom of brace
     let centerY = gap_center + 54.0; // Offset to account for SMuFL glyph baseline
     let height = extension * 2.0;
     const BRACE_NATURAL_HEIGHT: f32 = 320.0; // SMuFL brace U+E000 at fontSize 80
     let scale_y = height / BRACE_NATURAL_HEIGHT;
-    
+
     let codepoint = match bracket_type {
         BracketType::Brace => "\u{E000}".to_string(),
         BracketType::Bracket => "\u{E002}".to_string(),
         BracketType::None => String::new(),
     };
-    
+
     let x_position = 15.0; // Left margin
     let top_y = gap_center - extension;
-    let bottom_y = gap_center + extension;
-    
+    let _bottom_y = gap_center + extension;
+
     BracketGlyph {
         codepoint,
         x: x_position,
@@ -946,7 +975,11 @@ mod tests {
         // Verify all lines span full system width
         for (i, line) in lines.iter().enumerate() {
             assert_eq!(line.start_x, 0.0, "Line {} should start at x=0", i);
-            assert_eq!(line.end_x, system_width, "Line {} should end at system_width", i);
+            assert_eq!(
+                line.end_x, system_width,
+                "Line {} should end at system_width",
+                i
+            );
         }
     }
 
@@ -977,13 +1010,13 @@ mod tests {
         // Test with different scale (units_per_space = 10)
         let lines_scale_10 = create_staff_lines(staff_index, system_width, 10.0, 0.0);
         assert_eq!(lines_scale_10[0].y_position, 0.0);
-        assert_eq!(lines_scale_10[1].y_position, 20.0);  // 2 * 10
-        assert_eq!(lines_scale_10[4].y_position, 80.0);  // 4 * 2 * 10
+        assert_eq!(lines_scale_10[1].y_position, 20.0); // 2 * 10
+        assert_eq!(lines_scale_10[4].y_position, 80.0); // 4 * 2 * 10
 
         // Test with different scale (units_per_space = 25)
         let lines_scale_25 = create_staff_lines(staff_index, system_width, 25.0, 0.0);
         assert_eq!(lines_scale_25[0].y_position, 0.0);
-        assert_eq!(lines_scale_25[1].y_position, 50.0);  // 2 * 25
+        assert_eq!(lines_scale_25[1].y_position, 50.0); // 2 * 25
         assert_eq!(lines_scale_25[4].y_position, 200.0); // 4 * 2 * 25
     }
 
@@ -1011,15 +1044,24 @@ mod tests {
         let layout = compute_layout(&score, &config);
 
         // Verify at least one system was created
-        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
         let system = &layout.systems[0];
 
         // Verify at least one staff group exists
-        assert!(!system.staff_groups.is_empty(), "Should have at least one staff group");
+        assert!(
+            !system.staff_groups.is_empty(),
+            "Should have at least one staff group"
+        );
         let staff_group = &system.staff_groups[0];
 
         // Verify at least one staff exists
-        assert!(!staff_group.staves.is_empty(), "Should have at least one staff");
+        assert!(
+            !staff_group.staves.is_empty(),
+            "Should have at least one staff"
+        );
         let staff = &staff_group.staves[0];
 
         // Verify structural glyphs are populated
@@ -1089,11 +1131,17 @@ mod tests {
         let layout = compute_layout(&score, &config);
 
         // Verify system exists
-        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
         let system = &layout.systems[0];
 
         // Verify staff group exists
-        assert!(!system.staff_groups.is_empty(), "Should have at least one staff group");
+        assert!(
+            !system.staff_groups.is_empty(),
+            "Should have at least one staff group"
+        );
         let staff_group = &system.staff_groups[0];
 
         // Verify 2 staves exist (treble + bass)
@@ -1102,103 +1150,122 @@ mod tests {
         // Verify vertical spacing between staves
         let treble_staff = &staff_group.staves[0];
         let bass_staff = &staff_group.staves[1];
-        
+
         let treble_top = treble_staff.staff_lines[0].y_position;
         let bass_top = bass_staff.staff_lines[0].y_position;
-        
+
         // Vertical spacing should be 20 staff spaces (400 units at default units_per_space=20)
         let expected_spacing = 20.0 * config.units_per_space; // 400 units
-        assert_eq!(bass_top - treble_top, expected_spacing, 
-            "Staff vertical spacing should be 20 staff spaces (400 units)");
+        assert_eq!(
+            bass_top - treble_top,
+            expected_spacing,
+            "Staff vertical spacing should be 20 staff spaces (400 units)"
+        );
 
         // Verify bracket type is Brace for piano
-        assert_eq!(staff_group.bracket_type, BracketType::Brace,
-            "Piano should have Brace bracket type");
+        assert_eq!(
+            staff_group.bracket_type,
+            BracketType::Brace,
+            "Piano should have Brace bracket type"
+        );
 
         // Verify bracket glyph exists
-        assert!(staff_group.bracket_glyph.is_some(),
-            "Piano staff group should have bracket glyph");
+        assert!(
+            staff_group.bracket_glyph.is_some(),
+            "Piano staff group should have bracket glyph"
+        );
     }
 
     /// T064: Unit test for brace/bracket positioning and vertical scaling
     #[test]
     fn test_create_bracket_glyph_brace() {
         let config = LayoutConfig::default();
-        
+
         // Create two dummy staves at different vertical positions
         let staff_0_lines = create_staff_lines(0, 1200.0, config.units_per_space, 0.0);
         let staff_1_lines = create_staff_lines(1, 1200.0, config.units_per_space, 0.0);
-        
+
         let staff_0 = Staff {
             staff_lines: staff_0_lines,
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
         };
-        
+
         let staff_1 = Staff {
             staff_lines: staff_1_lines,
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
         };
-        
+
         let staves = vec![staff_0, staff_1];
         let bracket_type = BracketType::Brace;
-        
+
         let bracket_glyph = create_bracket_glyph(&staves, &bracket_type, &config);
-        
+
         // Verify brace codepoint
-        assert_eq!(bracket_glyph.codepoint, "\u{E000}", 
-            "Brace should use SMuFL codepoint U+E000");
-        
+        assert_eq!(
+            bracket_glyph.codepoint, "\u{E000}",
+            "Brace should use SMuFL codepoint U+E000"
+        );
+
         // Verify x position (left margin)
         assert_eq!(bracket_glyph.x, 15.0, "Brace should be at x=15");
-        
+
         // Verify vertical scaling is applied
-        assert!(bracket_glyph.scale_y > 0.0, "Brace should have positive vertical scale");
-        
+        assert!(
+            bracket_glyph.scale_y > 0.0,
+            "Brace should have positive vertical scale"
+        );
+
         // Verify bounding box spans both staves
         let first_staff_top = staves[0].staff_lines[0].y_position;
         let last_staff_bottom = staves[1].staff_lines[4].y_position;
-        
+
         // Brace should extend to cover both staves
-        assert!(bracket_glyph.bounding_box.y <= first_staff_top,
-            "Brace bounding box should start at or above first staff");
-        assert!(bracket_glyph.bounding_box.y + bracket_glyph.bounding_box.height >= last_staff_bottom,
-            "Brace bounding box should extend to or below last staff");
+        assert!(
+            bracket_glyph.bounding_box.y <= first_staff_top,
+            "Brace bounding box should start at or above first staff"
+        );
+        assert!(
+            bracket_glyph.bounding_box.y + bracket_glyph.bounding_box.height >= last_staff_bottom,
+            "Brace bounding box should extend to or below last staff"
+        );
     }
 
     /// T064: Unit test for square bracket positioning (ensemble scores)
     #[test]
     fn test_create_bracket_glyph_bracket() {
         let config = LayoutConfig::default();
-        
+
         let staff_0_lines = create_staff_lines(0, 1200.0, config.units_per_space, 0.0);
         let staff_1_lines = create_staff_lines(1, 1200.0, config.units_per_space, 0.0);
-        
+
         let staff_0 = Staff {
             staff_lines: staff_0_lines,
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
         };
-        
+
         let staff_1 = Staff {
             staff_lines: staff_1_lines,
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
         };
-        
+
         let staves = vec![staff_0, staff_1];
         let bracket_type = BracketType::Bracket;
-        
+
         let bracket_glyph = create_bracket_glyph(&staves, &bracket_type, &config);
-        
+
         // Verify bracket codepoint
-        assert_eq!(bracket_glyph.codepoint, "\u{E002}", 
-            "Bracket should use SMuFL codepoint U+E002");
+        assert_eq!(
+            bracket_glyph.codepoint, "\u{E002}",
+            "Bracket should use SMuFL codepoint U+E002"
+        );
     }
 
     /// T074: Test notes on both staves render correctly relative to their respective staff lines
@@ -1237,27 +1304,37 @@ mod tests {
 
         let system = &layout.systems[0];
         let staff_group = &system.staff_groups[0];
-        
+
         // Both staves should have glyph runs (noteheads)
-        assert!(!staff_group.staves[0].glyph_runs.is_empty(), 
-            "Treble staff should have glyphs");
-        assert!(!staff_group.staves[1].glyph_runs.is_empty(), 
-            "Bass staff should have glyphs");
+        assert!(
+            !staff_group.staves[0].glyph_runs.is_empty(),
+            "Treble staff should have glyphs"
+        );
+        assert!(
+            !staff_group.staves[1].glyph_runs.is_empty(),
+            "Bass staff should have glyphs"
+        );
 
         // Verify treble staff note is positioned relative to treble staff lines
         let treble_line_0 = staff_group.staves[0].staff_lines[0].y_position;
         let treble_glyph = &staff_group.staves[0].glyph_runs[0].glyphs[0];
-        assert!(treble_glyph.position.y >= treble_line_0 - 100.0, 
-            "Treble note should be near treble staff");
+        assert!(
+            treble_glyph.position.y >= treble_line_0 - 100.0,
+            "Treble note should be near treble staff"
+        );
 
         // Verify bass staff note is positioned relative to bass staff lines
         let bass_line_0 = staff_group.staves[1].staff_lines[0].y_position;
         let bass_glyph = &staff_group.staves[1].glyph_runs[0].glyphs[0];
-        assert!(bass_glyph.position.y >= bass_line_0 - 100.0, 
-            "Bass note should be near bass staff");
-        
+        assert!(
+            bass_glyph.position.y >= bass_line_0 - 100.0,
+            "Bass note should be near bass staff"
+        );
+
         // Verify bass staff is below treble staff
-        assert!(bass_line_0 > treble_line_0, 
-            "Bass staff should be below treble staff");
+        assert!(
+            bass_line_0 > treble_line_0,
+            "Bass staff should be below treble staff"
+        );
     }
 }

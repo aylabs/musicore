@@ -1,6 +1,6 @@
 // Port for MusicXML import - feature 006-musicxml-import
 
-use crate::domain::importers::musicxml::errors::{ImportWarning, WarningCategory, WarningSeverity};
+use crate::domain::importers::musicxml::errors::ImportWarning;
 use crate::domain::score::Score;
 use serde::{Deserialize, Serialize};
 use std::path::Path;

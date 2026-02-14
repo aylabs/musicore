@@ -9,7 +9,6 @@
 //! - Beam slope clamped to ±0.5 staff spaces per note
 
 use serde::{Deserialize, Serialize};
-use super::stems::StemDirection;
 
 /// Beam geometry representation
 ///
@@ -32,7 +31,7 @@ pub struct Beam {
 impl Beam {
     /// Standard beam thickness (0.5 staff spaces = 10 logical units)
     pub const BEAM_THICKNESS: f32 = 10.0;
-    
+
     /// Maximum beam slope in staff spaces per note
     pub const MAX_SLOPE: f32 = 0.5;
 }
@@ -60,14 +59,11 @@ pub struct BeamableNote {
 /// - Only eighth notes (480 ticks) or shorter are beamed
 /// - Notes must be in the same beat (within 960 tick interval)
 /// - Groups require at least 2 notes
-pub fn group_beamable_notes(
-    notes: &[BeamableNote],
-    ticks_per_beat: u32,
-) -> Vec<Vec<BeamableNote>> {
+pub fn group_beamable_notes(notes: &[BeamableNote], ticks_per_beat: u32) -> Vec<Vec<BeamableNote>> {
     let mut groups: Vec<Vec<BeamableNote>> = Vec::new();
     let mut current_group: Vec<BeamableNote> = Vec::new();
     let mut current_beat: Option<u32> = None;
-    
+
     for note in notes {
         // Only beam eighth notes (480 ticks) or shorter
         if note.duration_ticks > 480 {
@@ -79,10 +75,10 @@ pub fn group_beamable_notes(
             current_beat = None;
             continue;
         }
-        
+
         // Calculate which beat this note belongs to
         let beat = note.tick / ticks_per_beat;
-        
+
         // Check if same beat as current group
         match current_beat {
             None => {
@@ -105,12 +101,12 @@ pub fn group_beamable_notes(
             }
         }
     }
-    
+
     // Add final group if valid
     if current_group.len() >= 2 {
         groups.push(current_group);
     }
-    
+
     groups
 }
 
@@ -131,24 +127,24 @@ pub fn compute_beam_slope(notes: &[BeamableNote], units_per_space: f32) -> f32 {
     if notes.len() < 2 {
         return 0.0;
     }
-    
+
     let first = &notes[0];
     let last = &notes[notes.len() - 1];
-    
+
     // Calculate natural slope from stem endpoints
     let dy = last.stem_end_y - first.stem_end_y;
     let dx = last.x - first.x;
-    
+
     if dx == 0.0 {
         return 0.0;
     }
-    
+
     let natural_slope = dy / dx;
-    
+
     // Clamp slope to ±0.5 staff spaces per note
     let max_slope_units = Beam::MAX_SLOPE * units_per_space; // 0.5 * 20 = 10 units
     let max_slope_per_unit = max_slope_units / dx;
-    
+
     natural_slope.clamp(-max_slope_per_unit, max_slope_per_unit)
 }
 
@@ -164,15 +160,15 @@ pub fn create_beam(notes: &[BeamableNote], slope: f32) -> Option<Beam> {
     if notes.len() < 2 {
         return None;
     }
-    
+
     let first = &notes[0];
     let last = &notes[notes.len() - 1];
-    
+
     let x_start = first.x;
     let y_start = first.stem_end_y;
     let x_end = last.x;
     let y_end = first.stem_end_y + (slope * (x_end - x_start));
-    
+
     Some(Beam {
         x_start,
         y_start,
@@ -219,9 +215,9 @@ mod tests {
                 duration_ticks: 480,
             },
         ];
-        
+
         let groups = group_beamable_notes(&notes, 960);
-        
+
         // Should create 2 groups: [0,480] in beat 0, [960,1440] split across beats
         assert_eq!(groups.len(), 2, "Should create 2 beamed groups");
         assert_eq!(groups[0].len(), 2, "First group should have 2 notes");
@@ -246,26 +242,24 @@ mod tests {
                 duration_ticks: 960,
             },
         ];
-        
+
         let groups = group_beamable_notes(&notes, 960);
-        
+
         assert_eq!(groups.len(), 0, "Quarter notes should not be beamed");
     }
 
     #[test]
     fn test_group_beamable_notes_single_eighth() {
-        let notes = vec![
-            BeamableNote {
-                x: 100.0,
-                y: 60.0,
-                stem_end_y: 25.0,
-                tick: 0,
-                duration_ticks: 480,
-            },
-        ];
-        
+        let notes = vec![BeamableNote {
+            x: 100.0,
+            y: 60.0,
+            stem_end_y: 25.0,
+            tick: 0,
+            duration_ticks: 480,
+        }];
+
         let groups = group_beamable_notes(&notes, 960);
-        
+
         assert_eq!(groups.len(), 0, "Single eighth note should not be beamed");
     }
 
@@ -288,9 +282,9 @@ mod tests {
                 duration_ticks: 480,
             },
         ];
-        
+
         let slope = compute_beam_slope(&notes, 20.0);
-        
+
         assert_eq!(slope, 0.0, "Flat beam should have zero slope");
     }
 
@@ -312,9 +306,9 @@ mod tests {
                 duration_ticks: 480,
             },
         ];
-        
+
         let slope = compute_beam_slope(&notes, 20.0);
-        
+
         // Natural slope: (35 - 25) / (140 - 100) = 10 / 40 = 0.25
         // Max slope: 10 / 40 = 0.25 (within limit)
         assert_eq!(slope, 0.25, "Ascending beam within limit");
@@ -338,9 +332,9 @@ mod tests {
                 duration_ticks: 480,
             },
         ];
-        
+
         let slope = compute_beam_slope(&notes, 20.0);
-        
+
         // Natural slope: (85 - 25) / (120 - 100) = 60 / 20 = 3.0
         // Max slope: 10 / 20 = 0.5
         // Should be clamped to 0.5
@@ -365,31 +359,32 @@ mod tests {
                 duration_ticks: 480,
             },
         ];
-        
+
         let slope = 0.25; // From compute_beam_slope
         let beam = create_beam(&notes, slope).expect("Should create beam");
-        
+
         assert_eq!(beam.x_start, 100.0, "Beam should start at first note x");
         assert_eq!(beam.y_start, 25.0, "Beam should start at first stem end");
         assert_eq!(beam.x_end, 140.0, "Beam should end at last note x");
-        assert_eq!(beam.y_end, 35.0, "Beam end should follow slope: 25 + 0.25 * 40 = 35");
+        assert_eq!(
+            beam.y_end, 35.0,
+            "Beam end should follow slope: 25 + 0.25 * 40 = 35"
+        );
         assert_eq!(beam.thickness, Beam::BEAM_THICKNESS);
     }
 
     #[test]
     fn test_create_beam_single_note() {
-        let notes = vec![
-            BeamableNote {
-                x: 100.0,
-                y: 60.0,
-                stem_end_y: 25.0,
-                tick: 0,
-                duration_ticks: 480,
-            },
-        ];
-        
+        let notes = vec![BeamableNote {
+            x: 100.0,
+            y: 60.0,
+            stem_end_y: 25.0,
+            tick: 0,
+            duration_ticks: 480,
+        }];
+
         let beam = create_beam(&notes, 0.0);
-        
+
         assert!(beam.is_none(), "Cannot create beam with single note");
     }
 }

@@ -94,7 +94,7 @@ impl VoiceDistributor {
 
         // Try voices 1-4 in order
         for voice_num in 1..=self.max_voices {
-            let voice = self.voices.entry(voice_num).or_insert_with(Voice::new);
+            let voice = self.voices.entry(voice_num).or_default();
 
             // Check if note can be added without overlap
             if voice.can_add_note(&note) {
@@ -637,8 +637,11 @@ impl MusicXMLConverter {
         {
             eprintln!(
                 "[MusicXML Converter] Note: duration={}, divisions={}, result={} ticks (fraction={}/{})",
-                note_data.duration, timing_context.divisions, duration_ticks,
-                fraction.numerator, fraction.denominator
+                note_data.duration,
+                timing_context.divisions,
+                duration_ticks,
+                fraction.numerator,
+                fraction.denominator
             );
         }
 
@@ -736,7 +739,7 @@ mod tests {
         assert_eq!(staff.voices.len(), 1, "Expected 1 voice");
 
         let voice = &staff.voices[0];
-        assert!(voice.interval_events.len() > 0, "Expected notes in voice");
+        assert!(!voice.interval_events.is_empty(), "Expected notes in voice");
     }
 
     #[test]

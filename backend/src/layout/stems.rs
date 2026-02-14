@@ -19,7 +19,7 @@ pub enum StemDirection {
 }
 
 /// Stem geometry representation
-/// 
+///
 /// Encoded as special glyph with codepoint U+0000 for rendering pipeline.
 /// The stem is a vertical line from notehead to stem end.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ pub struct Stem {
 impl Stem {
     /// Standard stem length in logical units (3.5 staff spaces)
     pub const STEM_LENGTH: f32 = 35.0;
-    
+
     /// Standard stem thickness in logical units
     pub const STEM_THICKNESS: f32 = 1.5;
 }
@@ -90,13 +90,13 @@ pub fn create_stem(
         StemDirection::Up => notehead_x + (notehead_width / 2.0),
         StemDirection::Down => notehead_x - (notehead_width / 2.0),
     };
-    
+
     // Calculate stem y positions (stems go up = negative y, down = positive y)
     let (y_start, y_end) = match direction {
         StemDirection::Up => (notehead_y, notehead_y - Stem::STEM_LENGTH),
         StemDirection::Down => (notehead_y, notehead_y + Stem::STEM_LENGTH),
     };
-    
+
     Stem {
         x: stem_x,
         y_start,
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_compute_stem_direction_below_middle() {
         let staff_middle_y = 80.0; // Middle line of staff (assuming 0=top, 160=bottom)
-        
+
         // Note below middle line (e.g., A4) should have stem up
         let notehead_y = 60.0;
         assert_eq!(
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_compute_stem_direction_on_middle() {
         let staff_middle_y = 80.0;
-        
+
         // Note on middle line (e.g., B4 for treble) should have stem down
         let notehead_y = 80.0;
         assert_eq!(
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_compute_stem_direction_above_middle() {
         let staff_middle_y = 80.0;
-        
+
         // Note above middle line (e.g., C5) should have stem down
         let notehead_y = 90.0;
         assert_eq!(
@@ -157,16 +157,19 @@ mod tests {
         let notehead_y = 60.0;
         let notehead_width = 10.0;
         let direction = StemDirection::Up;
-        
+
         let stem = create_stem(notehead_x, notehead_y, direction, notehead_width);
-        
+
         // Verify stem attaches to right side of notehead
-        assert_eq!(stem.x, 105.0, "Stem up should attach to right edge (x + width/2)");
-        
+        assert_eq!(
+            stem.x, 105.0,
+            "Stem up should attach to right edge (x + width/2)"
+        );
+
         // Verify stem extends 35 units upward (negative y direction)
         assert_eq!(stem.y_start, 60.0, "Stem should start at notehead y");
         assert_eq!(stem.y_end, 25.0, "Stem should extend 35 units up (60 - 35)");
-        
+
         assert_eq!(stem.direction, StemDirection::Up);
         assert_eq!(stem.thickness, Stem::STEM_THICKNESS);
     }
@@ -177,22 +180,32 @@ mod tests {
         let notehead_y = 100.0;
         let notehead_width = 10.0;
         let direction = StemDirection::Down;
-        
+
         let stem = create_stem(notehead_x, notehead_y, direction, notehead_width);
-        
+
         // Verify stem attaches to left side of notehead
-        assert_eq!(stem.x, 95.0, "Stem down should attach to left edge (x - width/2)");
-        
+        assert_eq!(
+            stem.x, 95.0,
+            "Stem down should attach to left edge (x - width/2)"
+        );
+
         // Verify stem extends 35 units downward (positive y direction)
         assert_eq!(stem.y_start, 100.0, "Stem should start at notehead y");
-        assert_eq!(stem.y_end, 135.0, "Stem should extend 35 units down (100 + 35)");
-        
+        assert_eq!(
+            stem.y_end, 135.0,
+            "Stem should extend 35 units down (100 + 35)"
+        );
+
         assert_eq!(stem.direction, StemDirection::Down);
         assert_eq!(stem.thickness, Stem::STEM_THICKNESS);
     }
 
     #[test]
     fn test_stem_length_constant() {
-        assert_eq!(Stem::STEM_LENGTH, 35.0, "Stem length should be 35 logical units (3.5 staff spaces)");
+        assert_eq!(
+            Stem::STEM_LENGTH,
+            35.0,
+            "Stem length should be 35 logical units (3.5 staff spaces)"
+        );
     }
 }

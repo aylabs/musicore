@@ -42,7 +42,7 @@ use crate::layout::types::{BoundingBox, Glyph, Point, SourceReference};
 pub fn pitch_to_y(pitch: u8, clef_type: &str, units_per_space: f32) -> f32 {
     // Convert MIDI pitch to diatonic staff position
     // Each octave has 7 diatonic notes (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
-    
+
     // Map chromatic pitch classes to diatonic letter positions
     // Accidentals (sharps/flats) sit on the same line as their natural note
     // C and C# both at position 0, D and D# at position 1, etc.
@@ -60,18 +60,18 @@ pub fn pitch_to_y(pitch: u8, clef_type: &str, units_per_space: f32) -> f32 {
         5.0, // A# (same Y position as A, sharp drawn separately)
         6.0, // B
     ];
-    
+
     let pitch_class = (pitch % 12) as usize;
     // MIDI octave: C(-1) = 0, C0 = 12, C1 = 24, C5 = 60, etc.
     // So octave number = (pitch / 12) - 1, but we count from C(-1) as octave 0 for calculation
     let octave = (pitch / 12) as i32;
-    
+
     // Calculate diatonic position within octave
     let diatonic_pos_in_octave = DIATONIC_POSITIONS[pitch_class];
-    
+
     // Total diatonic steps from C(-1) (MIDI 0)
     let diatonic_steps_from_c_minus1 = (octave * 7) as f32 + diatonic_pos_in_octave;
-    
+
     // Determine reference pitch for top line based on clef type
     let reference_diatonic = match clef_type {
         "Bass" => {
@@ -99,12 +99,12 @@ pub fn pitch_to_y(pitch: u8, clef_type: &str, units_per_space: f32) -> f32 {
             6.0 * 7.0 + 3.0 // = 45
         }
     };
-    
+
     // Staff spaces from reference pitch (down = positive)
     // Each diatonic step = 1 staff space
     let staff_spaces_from_reference = reference_diatonic - diatonic_steps_from_c_minus1;
-    
-    // Convert to logical units, offset by -0.5 spaces to center noteheads on staff lines  
+
+    // Convert to logical units, offset by -0.5 spaces to center noteheads on staff lines
     // This compensates for SMuFL glyph baseline positioning
     (staff_spaces_from_reference - 0.5) * units_per_space
 }
@@ -227,7 +227,12 @@ pub fn position_noteheads(
 ///
 /// # Returns
 /// Glyph positioned at correct location with appropriate SMuFL codepoint
-pub fn position_clef(clef_type: &str, x_position: f32, units_per_space: f32, staff_vertical_offset: f32) -> Glyph {
+pub fn position_clef(
+    clef_type: &str,
+    x_position: f32,
+    units_per_space: f32,
+    staff_vertical_offset: f32,
+) -> Glyph {
     // SMuFL codepoints for clefs
     let (codepoint, y_position) = match clef_type {
         "Treble" => {
@@ -313,12 +318,8 @@ pub fn position_time_signature(
         y: 30.0 + staff_vertical_offset,
     };
 
-    let numerator_bbox = compute_glyph_bounding_box(
-        "timeSig0",
-        &numerator_pos,
-        40.0,
-        units_per_space,
-    );
+    let numerator_bbox =
+        compute_glyph_bounding_box("timeSig0", &numerator_pos, 40.0, units_per_space);
 
     glyphs.push(Glyph {
         position: numerator_pos,
@@ -338,12 +339,8 @@ pub fn position_time_signature(
         y: 110.0 + staff_vertical_offset,
     };
 
-    let denominator_bbox = compute_glyph_bounding_box(
-        "timeSig0",
-        &denominator_pos,
-        40.0,
-        units_per_space,
-    );
+    let denominator_bbox =
+        compute_glyph_bounding_box("timeSig0", &denominator_pos, 40.0, units_per_space);
 
     glyphs.push(Glyph {
         position: denominator_pos,
@@ -375,7 +372,7 @@ pub fn position_time_signature(
 /// Vector of glyphs positioned at correct line/space positions
 pub fn position_key_signature(
     sharps: i8,
-    clef_type: &str,
+    _clef_type: &str,
     x_start: f32,
     units_per_space: f32,
     staff_vertical_offset: f32,
@@ -408,7 +405,7 @@ pub fn position_key_signature(
         &treble_flat_positions // Use flats
     };
 
-    let count = sharps.abs() as usize;
+    let count = sharps.unsigned_abs() as usize;
     let horizontal_spacing = 15.0; // Space between accidentals
 
     for i in 0..count.min(positions.len()) {
@@ -417,12 +414,7 @@ pub fn position_key_signature(
             y: positions[i] + staff_vertical_offset,
         };
 
-        let bbox = compute_glyph_bounding_box(
-            "accidentalSharp",
-            &position,
-            40.0,
-            units_per_space,
-        );
+        let bbox = compute_glyph_bounding_box("accidentalSharp", &position, 40.0, units_per_space);
 
         glyphs.push(Glyph {
             position,
@@ -459,7 +451,6 @@ pub fn position_structural_glyphs() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::types::Point;
 
     /// T017: Unit test for pitch_to_y() with correct treble clef positions
     #[test]
@@ -468,28 +459,60 @@ mod tests {
 
         // Treble staff lines (from top to bottom), with -0.5 offset for glyph centering:
         // F5 (MIDI 77) = top line at y=-10
-        assert_eq!(pitch_to_y(77, "Treble", units_per_space), -10.0, "F5 should be on top line (y=-10)");
+        assert_eq!(
+            pitch_to_y(77, "Treble", units_per_space),
+            -10.0,
+            "F5 should be on top line (y=-10)"
+        );
 
         // D5 (MIDI 74) = 2nd line at y=30
-        assert_eq!(pitch_to_y(74, "Treble", units_per_space), 30.0, "D5 should be on 2nd line (y=30)");
+        assert_eq!(
+            pitch_to_y(74, "Treble", units_per_space),
+            30.0,
+            "D5 should be on 2nd line (y=30)"
+        );
 
         // B4 (MIDI 71) = 3rd line at y=70
-        assert_eq!(pitch_to_y(71, "Treble", units_per_space), 70.0, "B4 should be on 3rd line (y=70)");
+        assert_eq!(
+            pitch_to_y(71, "Treble", units_per_space),
+            70.0,
+            "B4 should be on 3rd line (y=70)"
+        );
 
         // G4 (MIDI 67) = 4th line at y=110
-        assert_eq!(pitch_to_y(67, "Treble", units_per_space), 110.0, "G4 should be on 4th line (y=110)");
+        assert_eq!(
+            pitch_to_y(67, "Treble", units_per_space),
+            110.0,
+            "G4 should be on 4th line (y=110)"
+        );
 
         // E4 (MIDI 64) = bottom line at y=150
-        assert_eq!(pitch_to_y(64, "Treble", units_per_space), 150.0, "E4 should be on bottom line (y=150)");
+        assert_eq!(
+            pitch_to_y(64, "Treble", units_per_space),
+            150.0,
+            "E4 should be on bottom line (y=150)"
+        );
 
         // C5 (MIDI 72) = space between 2nd and 3rd lines at y=50
-        assert_eq!(pitch_to_y(72, "Treble", units_per_space), 50.0, "C5 should be in space (y=50)");
+        assert_eq!(
+            pitch_to_y(72, "Treble", units_per_space),
+            50.0,
+            "C5 should be in space (y=50)"
+        );
 
         // Middle C4 (MIDI 60) = ledger line below staff at y=190
-        assert_eq!(pitch_to_y(60, "Treble", units_per_space), 190.0, "Middle C should be below staff (y=190)");
+        assert_eq!(
+            pitch_to_y(60, "Treble", units_per_space),
+            190.0,
+            "Middle C should be below staff (y=190)"
+        );
 
         // G5 (MIDI 79) = space above top line at y=-30
-        assert_eq!(pitch_to_y(79, "Treble", units_per_space), -30.0, "G5 should be above staff (y=-30)");
+        assert_eq!(
+            pitch_to_y(79, "Treble", units_per_space),
+            -30.0,
+            "G5 should be above staff (y=-30)"
+        );
     }
 
     /// T017: Test pitch_to_y() with different units_per_space values
@@ -512,18 +535,20 @@ mod tests {
     fn test_notehead_codepoint_by_duration() {
         // Define test cases: (duration_ticks, expected_codepoint, note_name)
         let test_cases = vec![
-            (3840, '\u{E0A2}', "whole note"),     // 4 beats at 960 PPQ
-            (1920, '\u{E0A3}', "half note"),      // 2 beats at 960 PPQ
-            (960, '\u{E0A4}', "quarter note"),    // 1 beat at 960 PPQ
-            (480, '\u{E0A4}', "eighth note"),     // 0.5 beat (should use filled notehead)
-            (240, '\u{E0A4}', "sixteenth note"),  // 0.25 beat (should use filled notehead)
+            (3840, '\u{E0A2}', "whole note"),    // 4 beats at 960 PPQ
+            (1920, '\u{E0A3}', "half note"),     // 2 beats at 960 PPQ
+            (960, '\u{E0A4}', "quarter note"),   // 1 beat at 960 PPQ
+            (480, '\u{E0A4}', "eighth note"),    // 0.5 beat (should use filled notehead)
+            (240, '\u{E0A4}', "sixteenth note"), // 0.25 beat (should use filled notehead)
         ];
 
         for (duration_ticks, expected_codepoint, note_name) in test_cases {
             let codepoint = get_notehead_codepoint(duration_ticks);
-            assert_eq!(codepoint, expected_codepoint, 
-                       "{} (duration={}) should use codepoint {:?}", 
-                       note_name, duration_ticks, expected_codepoint);
+            assert_eq!(
+                codepoint, expected_codepoint,
+                "{} (duration={}) should use codepoint {:?}",
+                note_name, duration_ticks, expected_codepoint
+            );
         }
     }
 
@@ -558,7 +583,7 @@ mod tests {
             "test-instrument",
             0,
             0,
-            0.0,  // staff_vertical_offset
+            0.0, // staff_vertical_offset
         );
 
         // Verify correct number of glyphs
@@ -568,7 +593,11 @@ mod tests {
         // C4 = ledger line below staff, 9.5 staff spaces below F5
         assert_eq!(glyphs[0].position.x, 0.0, "First note x-position");
         assert_eq!(glyphs[0].position.y, 190.0, "Middle C4 should be at y=190");
-        assert_eq!(glyphs[0].codepoint, String::from('\u{E1D5}'), "Quarter note uses black notehead with stem");
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E1D5}'),
+            "Quarter note uses black notehead with stem"
+        );
 
         // Verify second notehead (D4 at x=100)
         // D4 = 8.5 staff spaces below F5
@@ -578,7 +607,10 @@ mod tests {
         // Verify third notehead (E4 at x=200)
         // E4 = bottom line, 7.5 staff spaces below F5
         assert_eq!(glyphs[2].position.x, 200.0, "Third note x-position");
-        assert_eq!(glyphs[2].position.y, 150.0, "E4 should be on bottom line (y=150)");
+        assert_eq!(
+            glyphs[2].position.y, 150.0,
+            "E4 should be on bottom line (y=150)"
+        );
     }
 
     /// T026: Unit test for position_clef() with various clef types
@@ -586,56 +618,84 @@ mod tests {
     fn test_position_clef_treble() {
         let units_per_space = 20.0;
         let x_position = 20.0;
-        
+
         let glyph = position_clef("Treble", x_position, units_per_space, 0.0);
-        
+
         // Treble clef should be on 2nd line (G4 line)
         // 2nd line is at y=40 (with -0.5 offset: 30)
         assert_eq!(glyph.position.x, 20.0, "Treble clef x-position");
-        assert_eq!(glyph.position.y, 110.0, "Treble clef centered on 2nd line (G4)");
-        assert_eq!(glyph.codepoint, String::from('\u{E050}'), "Treble clef codepoint");
+        assert_eq!(
+            glyph.position.y, 110.0,
+            "Treble clef centered on 2nd line (G4)"
+        );
+        assert_eq!(
+            glyph.codepoint,
+            String::from('\u{E050}'),
+            "Treble clef codepoint"
+        );
     }
 
     #[test]
     fn test_position_clef_bass() {
         let units_per_space = 20.0;
         let x_position = 20.0;
-        
+
         let glyph = position_clef("Bass", x_position, units_per_space, 0.0);
-        
+
         // Bass clef should be on 4th line (F3 line)
         // 4th line is at y=120 (with -0.5 offset: 110)
         assert_eq!(glyph.position.x, 20.0, "Bass clef x-position");
-        assert_eq!(glyph.position.y, 110.0, "Bass clef centered on 4th line (F3)");
-        assert_eq!(glyph.codepoint, String::from('\u{E062}'), "Bass clef codepoint");
+        assert_eq!(
+            glyph.position.y, 110.0,
+            "Bass clef centered on 4th line (F3)"
+        );
+        assert_eq!(
+            glyph.codepoint,
+            String::from('\u{E062}'),
+            "Bass clef codepoint"
+        );
     }
 
     #[test]
     fn test_position_clef_alto() {
         let units_per_space = 20.0;
         let x_position = 20.0;
-        
+
         let glyph = position_clef("Alto", x_position, units_per_space, 0.0);
-        
+
         // Alto clef should be centered on middle line (C4)
         // Middle line is at y=80 (with -0.5 offset: 70)
         assert_eq!(glyph.position.x, 20.0, "Alto clef x-position");
-        assert_eq!(glyph.position.y, 70.0, "Alto clef centered on middle line (C4)");
-        assert_eq!(glyph.codepoint, String::from('\u{E05C}'), "Alto clef codepoint");
+        assert_eq!(
+            glyph.position.y, 70.0,
+            "Alto clef centered on middle line (C4)"
+        );
+        assert_eq!(
+            glyph.codepoint,
+            String::from('\u{E05C}'),
+            "Alto clef codepoint"
+        );
     }
 
     #[test]
     fn test_position_clef_tenor() {
         let units_per_space = 20.0;
         let x_position = 20.0;
-        
+
         let glyph = position_clef("Tenor", x_position, units_per_space, 0.0);
-        
+
         // Tenor clef should be centered on 4th line (A3)
         // 4th line is at y=120 (with -0.5 offset: 110)
         assert_eq!(glyph.position.x, 20.0, "Tenor clef x-position");
-        assert_eq!(glyph.position.y, 110.0, "Tenor clef centered on 4th line (A3)");
-        assert_eq!(glyph.codepoint, String::from('\u{E05D}'), "Tenor clef codepoint");
+        assert_eq!(
+            glyph.position.y, 110.0,
+            "Tenor clef centered on 4th line (A3)"
+        );
+        assert_eq!(
+            glyph.codepoint,
+            String::from('\u{E05D}'),
+            "Tenor clef codepoint"
+        );
     }
 
     /// T027: Unit test for position_time_signature() with stacked digits
@@ -643,45 +703,73 @@ mod tests {
     fn test_position_time_signature_4_4() {
         let units_per_space = 20.0;
         let x_position = 100.0;
-        
+
         let glyphs = position_time_signature(4, 4, x_position, units_per_space, 0.0);
-        
+
         // Should return 2 glyphs (numerator and denominator)
-        assert_eq!(glyphs.len(), 2, "Time signature has 2 glyphs (numerator + denominator)");
-        
+        assert_eq!(
+            glyphs.len(),
+            2,
+            "Time signature has 2 glyphs (numerator + denominator)"
+        );
+
         // Numerator (4) above middle line
         assert_eq!(glyphs[0].position.x, 100.0, "Numerator x-position");
         assert_eq!(glyphs[0].position.y, 30.0, "Numerator above middle line");
-        assert_eq!(glyphs[0].codepoint, String::from('\u{E084}'), "Numerator digit 4");
-        
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E084}'),
+            "Numerator digit 4"
+        );
+
         // Denominator (4) below middle line
         assert_eq!(glyphs[1].position.x, 100.0, "Denominator x-position");
         assert_eq!(glyphs[1].position.y, 110.0, "Denominator below middle line");
-        assert_eq!(glyphs[1].codepoint, String::from('\u{E084}'), "Denominator digit 4");
+        assert_eq!(
+            glyphs[1].codepoint,
+            String::from('\u{E084}'),
+            "Denominator digit 4"
+        );
     }
 
     #[test]
     fn test_position_time_signature_3_4() {
         let units_per_space = 20.0;
         let x_position = 100.0;
-        
+
         let glyphs = position_time_signature(3, 4, x_position, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 2, "Time signature has 2 glyphs");
-        assert_eq!(glyphs[0].codepoint, String::from('\u{E083}'), "Numerator digit 3");
-        assert_eq!(glyphs[1].codepoint, String::from('\u{E084}'), "Denominator digit 4");
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E083}'),
+            "Numerator digit 3"
+        );
+        assert_eq!(
+            glyphs[1].codepoint,
+            String::from('\u{E084}'),
+            "Denominator digit 4"
+        );
     }
 
     #[test]
     fn test_position_time_signature_6_8() {
         let units_per_space = 20.0;
         let x_position = 100.0;
-        
+
         let glyphs = position_time_signature(6, 8, x_position, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 2, "Time signature has 2 glyphs");
-        assert_eq!(glyphs[0].codepoint, String::from('\u{E086}'), "Numerator digit 6");
-        assert_eq!(glyphs[1].codepoint, String::from('\u{E088}'), "Denominator digit 8");
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E086}'),
+            "Numerator digit 6"
+        );
+        assert_eq!(
+            glyphs[1].codepoint,
+            String::from('\u{E088}'),
+            "Denominator digit 8"
+        );
     }
 
     /// T028: Unit test for position_key_signature() with sharps/flats
@@ -689,10 +777,10 @@ mod tests {
     fn test_position_key_signature_g_major() {
         let units_per_space = 20.0;
         let x_start = 150.0;
-        
+
         // G major has 1 sharp (F#)
         let glyphs = position_key_signature(1, "Treble", x_start, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 1, "G major has 1 sharp");
         assert_eq!(glyphs[0].codepoint, String::from('\u{E262}'), "Sharp glyph");
         assert_eq!(glyphs[0].position.x, 150.0, "Sharp x-position");
@@ -704,40 +792,50 @@ mod tests {
     fn test_position_key_signature_d_major() {
         let units_per_space = 20.0;
         let x_start = 150.0;
-        
+
         // D major has 2 sharps (F#, C#)
         let glyphs = position_key_signature(2, "Treble", x_start, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 2, "D major has 2 sharps");
         assert_eq!(glyphs[0].codepoint, String::from('\u{E262}'), "First sharp");
-        assert_eq!(glyphs[1].codepoint, String::from('\u{E262}'), "Second sharp");
+        assert_eq!(
+            glyphs[1].codepoint,
+            String::from('\u{E262}'),
+            "Second sharp"
+        );
         // Sharps should be horizontally spaced
-        assert!(glyphs[1].position.x > glyphs[0].position.x, "Sharps spaced horizontally");
+        assert!(
+            glyphs[1].position.x > glyphs[0].position.x,
+            "Sharps spaced horizontally"
+        );
     }
 
     #[test]
     fn test_position_key_signature_f_major() {
         let units_per_space = 20.0;
         let x_start = 150.0;
-        
+
         // F major has 1 flat (Bb)
         let glyphs = position_key_signature(-1, "Treble", x_start, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 1, "F major has 1 flat");
         assert_eq!(glyphs[0].codepoint, String::from('\u{E260}'), "Flat glyph");
         assert_eq!(glyphs[0].position.x, 150.0, "Flat x-position");
         // Bb in treble clef is on middle line
-        assert_eq!(glyphs[0].position.y, 70.0, "Bb on middle line in treble clef");
+        assert_eq!(
+            glyphs[0].position.y, 70.0,
+            "Bb on middle line in treble clef"
+        );
     }
 
     #[test]
     fn test_position_key_signature_c_major() {
         let units_per_space = 20.0;
         let x_start = 150.0;
-        
+
         // C major has no sharps or flats
         let glyphs = position_key_signature(0, "Treble", x_start, units_per_space, 0.0);
-        
+
         assert_eq!(glyphs.len(), 0, "C major has no accidentals");
     }
 }

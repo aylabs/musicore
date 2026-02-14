@@ -728,7 +728,7 @@ async fn test_polyphonic_chord_10_notes() {
             "Failed to add note with pitch {}",
             pitch
         );
-        assert_eq!(body["pitch"], *pitch as i64);
+        assert_eq!(body["pitch"], *pitch);
         assert_eq!(body["start_tick"], start_tick);
     }
 

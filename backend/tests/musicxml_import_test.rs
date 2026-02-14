@@ -608,7 +608,7 @@ fn test_import_quartet_four_instruments() {
     );
 
     // Verify instrument names are extracted from <part-name> elements (T092)
-    let expected_names = vec!["Violin", "Viola", "Cello", "Contrabass"];
+    let expected_names = ["Violin", "Viola", "Cello", "Contrabass"];
     for (i, expected_name) in expected_names.iter().enumerate() {
         assert_eq!(
             score.instruments[i].name,
@@ -652,7 +652,7 @@ fn test_quartet_instrument_clefs() {
     use musicore_backend::domain::value_objects::Clef;
 
     // Verify instrument-specific clefs
-    let expected_clefs = vec![
+    let expected_clefs = [
         ("Violin", Clef::Treble),
         ("Viola", Clef::Alto),
         ("Cello", Clef::Bass),

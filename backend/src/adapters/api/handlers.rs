@@ -7,12 +7,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::adapters::dtos::{InstrumentDto, ScoreDto, StaffDto};
+use crate::adapters::dtos::ScoreDto;
 use crate::domain::{
     errors::{DomainError, PersistenceError},
     events::{
-        clef::ClefEvent, global::GlobalStructuralEvent, key_signature::KeySignatureEvent,
-        note::Note, staff::StaffStructuralEvent, tempo::TempoEvent,
+        clef::ClefEvent, key_signature::KeySignatureEvent, note::Note, tempo::TempoEvent,
         time_signature::TimeSignatureEvent,
     },
     ids::{InstrumentId, ScoreId, StaffId, VoiceId},
