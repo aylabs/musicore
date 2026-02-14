@@ -333,7 +333,7 @@ const styles = {
   },
   container: {
     flex: 1,
-    overflow: 'auto',
+    overflow: 'visible', // Let page-level scrolling handle vertical scroll
     position: 'relative' as const,
   },
   message: {
