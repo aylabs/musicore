@@ -113,3 +113,60 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+## Known Issues & Regression Tests *(if applicable)*
+
+<!--
+  CONSTITUTION REQUIREMENT: Principle VII (Regression Prevention)
+  
+  When bugs/errors are discovered during implementation, deployment, or production:
+  1. Document the issue here
+  2. Create a failing test that reproduces it (reference the test file/line)
+  3. Fix the issue
+  4. Verify the test passes
+  5. Keep this documentation as a record of what was learned
+  
+  This section should be ADDED or UPDATED as issues are discovered.
+  It's normal for this section to be empty initially and grow during development.
+-->
+
+### Issue #1: [Brief Description of Bug]
+
+**Discovered**: [Date] during [context: deployment/testing/production/code review]
+
+**Symptom**: [What went wrong - be specific]
+- Example: "GitHub Actions build failed with error: Cannot find module '../wasm/layout'"
+- Example: "Test suite reported 13 failures due to incorrect field names in mock data"
+
+**Root Cause**: [Why it happened]
+- Example: ".gitignore contained wildcard '*' that excluded required TypeScript interface files"
+- Example: "Tests used `x_position`/`y_position` but actual interface uses `x`/`y`"
+
+**Affected Components**: [Which parts of the system]
+- Example: "CI/CD pipeline, WASM integration"
+- Example: "Unit tests: LayoutRenderer.test.tsx, renderUtils.test.ts"
+
+**Regression Test**: [Reference to test file that prevents recurrence]
+- Example: `tests/integration/test_wasm_files_tracked.py` - verifies critical WASM files are git-tracked
+- Example: `tests/unit/LayoutRenderer.test.tsx` lines 186-201 - validates correct BoundingBox field names
+
+**Resolution**: [What was fixed]
+- Example: "Updated .gitignore to allow `*.ts` and `*.md` files in `frontend/src/wasm/`"
+- Example: "Corrected mock data to use `{x, y}` instead of `{x_position, y_position}`"
+
+**Lessons Learned**: [What this teaches about the system]
+- Example: "Wildcard gitignore patterns can hide essential source files during local development"
+- Example: "Interface contracts between Rust and TypeScript must be validated with actual fixture data"
+
+---
+
+### Issue #2: [Next Issue if any]
+
+[Repeat structure above]
+
+<!--
+  NOTE: This section grows organically during development and maintenance.
+  Each issue becomes documentation + a regression test.
+  Over time, this builds a comprehensive record of edge cases and failure modes.
+-->
+

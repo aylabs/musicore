@@ -209,6 +209,60 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 
 ---
 
+## Bug Fixes and Regression Prevention
+
+**Purpose**: Document bugs discovered and ensure they never recur
+
+**Constitution Requirement**: Principle VII (Regression Prevention) REQUIRES creating a test that reproduces the error BEFORE implementing the fix.
+
+### Bug Fix Template
+
+When a bug is discovered (production, deployment, testing, code review):
+
+- [ ] TYYY [BUG] Document error: [Brief description of the bug]
+  - **Symptom**: What went wrong (e.g., "GitHub Actions build failed", "Test suite reports 13 failures")
+  - **Root Cause**: Why it happened (e.g., ".gitignore excluded required files", "Mock data used wrong field names")
+  - **Affected Area**: Where it occurred (e.g., "Deployment pipeline", "Unit tests", "Production feature X")
+  
+- [ ] TYYY+1 [BUG] Create regression test that reproduces the error in tests/[category]/test_[bug_area].py
+  - **CRITICAL**: Test MUST fail before fix is applied
+  - Test should document the exact error condition
+  - Use descriptive test name: `test_should_[expected_behavior]_when_[condition]`
+  
+- [ ] TYYY+2 [BUG] Implement fix in src/[location]/[file].py
+  - Fix the root cause identified in TYYY
+  - Ensure regression test from TYYY+1 now passes
+  
+- [ ] TYYY+3 [BUG] Verify all existing tests still pass
+  - Run full test suite
+  - Verify no regressions introduced
+
+### Example: Feature 018 TypeScript Files Missing
+
+- [ ] T200 [BUG] Document error: GitHub Actions build failed with "Cannot find module '../wasm/layout'"
+  - **Symptom**: Deployment pipeline failed during TypeScript compilation
+  - **Root Cause**: .gitignore contained wildcard `*` that excluded layout.ts and other required TypeScript files
+  - **Affected Area**: CI/CD pipeline, WASM integration
+
+- [ ] T201 [BUG] Create integration test in tests/integration/test_wasm_files_tracked.py
+  - Test checks that critical WASM TypeScript files exist in git
+  - Test MUST fail before .gitignore fix
+  - Tests should verify: layout.ts, wasm bindings exist and are tracked
+
+- [ ] T202 [BUG] Fix .gitignore to allow TypeScript files in frontend/src/wasm/
+  - Update .gitignore with explicit allow patterns for *.ts and *.md
+  - Verify regression test from T201 now passes
+
+- [ ] T203 [BUG] Verify CI pipeline succeeds with corrected .gitignore
+
+**Notes**:
+- Bug fixes follow same test-first principle as new features
+- Regression tests remain permanently in the suite
+- Label bug-related tasks with [BUG] for tracking
+- Group related bug fix tasks together (document → test → fix → verify)
+
+---
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)

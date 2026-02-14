@@ -1,9 +1,9 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.3.0
-Generated: 2026-02-14
+SYNC IMPACT REPORT - Constitution v2.4.0
+Generated: 2026-02-15
 
-VERSION CHANGE: 2.2.0 → 2.3.0
-BUMP RATIONALE: MINOR - Added new Principle VI (Layout Engine Authority) establishing separation of concerns between layout calculation and rendering
+VERSION CHANGE: 2.3.0 → 2.4.0
+BUMP RATIONALE: MINOR - Added new Principle VII (Regression Prevention) establishing mandatory test creation for all detected errors
 
 PRINCIPLES STATUS:
   ✓ I. Domain-Driven Design (UNCHANGED)
@@ -11,57 +11,53 @@ PRINCIPLES STATUS:
   ✓ III. Progressive Web Application Architecture (UNCHANGED)
   ✓ IV. Precision & Fidelity (UNCHANGED)
   ✓ V. Test-First Development (UNCHANGED)
-  + VI. Layout Engine Authority (NEW) - Establishes layout as sole authority over spatial geometry
+  ✓ VI. Layout Engine Authority (UNCHANGED)
+  + VII. Regression Prevention (NEW) - Every detected error must result in a new test
 
 NEW PRINCIPLE ADDITIONS:
-  + VI. Layout Engine Authority - Layout engine calculates all spatial geometry (positions, spacing, bounding boxes)
-      - Renderer prohibited from modifying logical coordinates
-      - All hit-testing uses layout-provided geometry
-      - Visual transforms (scale, translate, pixel snapping) permitted if they don't alter logical coordinates
-      - Rationale: Deterministic rendering, single source of truth, testable layout logic independent of UI
+  + VII. Regression Prevention - All bugs, errors, or incorrect behavior discovered (in production, deployment, manual testing, or code review) MUST result in creation of a failing test that reproduces the issue before fixing
+      - Test created first, demonstrates the error
+      - Fix implemented, test passes
+      - Test remains permanently to prevent regression
+      - Rationale: Builds comprehensive test suite from real-world issues, prevents bugs from recurring, turns every error into documentation
 
 ARCHITECTURAL IMPACT:
-  + Reinforces Hexagonal Architecture (Principle II) by clarifying renderer as infrastructure adapter
-  + Supports PWA Architecture (Principle III) by enabling WASM-based layout calculation
-  + Enhances testability aligned with Test-First Development (Principle V)
-  + Backend layout module (Rust) computes geometry; frontend renderer (React/SVG) displays only
+  + Strengthens Test-First Development (Principle V) by extending it to cover reactive testing (errors found after implementation)
+  + Creates feedback loop: production errors → tests → prevention
+  + Ensures test suite grows to cover actual failure modes, not just anticipated ones
 
 TEMPLATE CONSISTENCY STATUS:
-  ⚠️ plan-template.md - REQUIRES UPDATE
-      - Add Principle VI (Layout Engine Authority) to Constitution Check section
-      - Update examples to show layout geometry separation
+  ⚠️ tasks-template.md - REQUIRES UPDATE
+      - Add task template for "Create regression test for bug #X"
+      - Include test creation as first step in bug fix workflows
   
   ⚠️ spec-template.md - MINOR UPDATE NEEDED
-      - Add guidance on layout vs rendering concerns in technical approach
+      - Add guidance on documenting known issues and required regression tests
   
-  ⚠️ tasks-template.md - MINOR UPDATE NEEDED
-      - Split layout calculation tasks from rendering tasks where applicable
-  
+  ✅ plan-template.md - Works with existing Constitution Check section
   ✅ checklist-template.md - No changes needed (principle-agnostic)
   ✅ agent-file-template.md - No changes needed (principle-agnostic)
 
 EXISTING FEATURES IMPACT:
-  ✅ specs/018-rust-layout-engraving/ - ALREADY COMPLIANT (layout engine in Rust, renderer in React)
-      - Phase 5 implementation (2026-02-14) moved bracket geometry calculation from renderer to layout engine
-      - Demonstrates Principle VI compliance pattern
-  ⚠️ specs/002-staff-notation-view/ - May contain renderer-side layout calculations (audit recommended)
-  ⚠️ specs/010-stacked-staves-view/ - May compute positioning in renderer (audit recommended)
-  
-  MIGRATION STRATEGY:
-    - New features MUST compute geometry in backend layout module
-    - Existing features should be audited and refactored to comply when modified
-    - Renderer code reviews MUST verify no geometry calculations present
-
-FOLLOW-UP TODOS:
-  1. Audit existing renderer code (StaffNotationView, StackedStavesView) for geometry calculations
-  2. Update template files to reflect Principle VI
-  3. Document layout/renderer boundary in architecture docs
-  4. Add layout engine compliance check to PR review checklist
+  ✅ Recent Experience (2026-02-15) - Feature 018 deployment revealed missing TypeScript files (.gitignore issue)
+      - Error found: GitHub Actions build failure due to ignored WASM wrapper files
+      - Proper response: Would have created integration/build test checking for required files before fixing .gitignore
+      - Second error found: Test failures due to field name inconsistencies (BoundingBox x/y vs x_position/y_position)
+      - Proper response: Fixed tests to match actual interface contracts
+      - Demonstrates value: These errors now have test coverage preventing recurrence
 
 COMPLIANCE PATTERNS:
-  ✅ CORRECT: Backend calculates {x, y, width, height, scale} → Frontend renders at provided coordinates
-  ❌ VIOLATION: Frontend calculates centerY, gap offsets, bounding boxes → Backend receives renderer decisions
-  ✅ PERMITTED: Frontend applies CSS transforms, viewport zooming, pixel-perfect snapping (does not modify logical geometry)
+  ✅ CORRECT: Bug found → Create failing test → Fix bug → Test passes → Commit both
+  ❌ VIOLATION: Bug found → Fix immediately → Deploy without test → Same bug recurs later
+  ✅ CORRECT: Production error → Write integration test reproducing issue → Fix → Deploy with test
+  ✅ CORRECT: Code review finds edge case → Add test for edge case → Update implementation
+
+FOLLOW-UP TODOS:
+  1. Update bug fix workflow documentation to mandate test-first approach
+  2. Add "regression test" label/tag to bug tracking
+  3. Update PR template to prompt for regression tests when fixing bugs
+  4. Audit recent bug fixes (last 3 months) to ensure regression tests exist
+
 -->
 
 # Musicore Constitution
@@ -160,6 +156,20 @@ The layout engine MUST be the sole authority over spatial geometry, with strict 
 
 ---
 
+### VII. Regression Prevention
+
+Every error, bug, or incorrect behavior MUST result in a test before being fixed:
+
+- **Error Documentation**: When a bug is discovered (production, deployment, manual testing, code review), document the error and expected behavior
+- **Test First**: Create a failing test that reproduces the error condition before implementing the fix
+- **Fix and Verify**: Implement the fix; verify the new test passes alongside existing tests
+- **Permanent Prevention**: The test remains in the suite permanently to prevent regression
+- **Scope Coverage**: Applies to all error types—runtime errors, incorrect behavior, performance issues, UI/UX bugs, deployment failures, configuration issues
+
+**Rationale**: Test-first development (Principle V) covers new features, but real-world usage reveals edge cases and integration issues not anticipated during initial development. Every production error is an opportunity to strengthen the test suite. This practice creates a feedback loop where the test suite evolves to cover actual failure modes rather than just anticipated ones. Prevents the same bug from recurring, turns debugging into documentation, and builds confidence that fixed issues stay fixed. Recent experience (Feature 018 deployment) revealed missing TypeScript files and field naming inconsistencies—both now covered by tests, preventing future recurrence.
+
+---
+
 ## Technical Standards
 
 ### Technology Stack
@@ -230,4 +240,4 @@ This constitution supersedes all other development practices. Amendments require
 
 ---
 
-**Version**: 2.3.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-14
+**Version**: 2.4.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-15
