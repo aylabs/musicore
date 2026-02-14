@@ -25,11 +25,10 @@ impl Default for SpacingConfig {
 
 /// Compute horizontal spacing for a note based on duration
 ///
-/// Uses formula: `spacing_width = max(base + duration/960 * factor, minimum) + flag_spacing`
+/// Uses formula: `spacing_width = max(base + duration/960 * factor, minimum)`
 ///
-/// Flag spacing is added for eighth and sixteenth notes to prevent flag overlap:
-/// - Eighth notes (480-959 ticks): +15 units for single flag clearance
-/// - Sixteenth notes (<480 ticks): +20 units for double flag clearance
+/// Maintains strict time-proportional spacing (longer duration = more space).
+/// Visual spacing adjustments for flags are applied at measure level to preserve proportionality.
 ///
 /// # Arguments
 /// * `duration_ticks` - Note duration in ticks (960 = quarter note at 960 PPQ)
@@ -40,26 +39,14 @@ impl Default for SpacingConfig {
 pub fn compute_note_spacing(duration_ticks: u32, config: &SpacingConfig) -> f32 {
     let duration_based =
         config.base_spacing + (duration_ticks as f32 / 960.0) * config.duration_factor;
-    let base_spacing = duration_based.max(config.minimum_spacing);
-    
-    // Add extra spacing for notes with flags to prevent flag overlap
-    let flag_spacing = if duration_ticks < 480 {
-        // Sixteenth notes and shorter: double flag needs more clearance
-        20.0
-    } else if duration_ticks < 960 {
-        // Eighth notes: single flag needs clearance
-        15.0
-    } else {
-        // Quarter notes and longer: no flags
-        0.0
-    };
-    
-    base_spacing + flag_spacing
+    duration_based.max(config.minimum_spacing)
 }
 
 /// Compute total width of a measure
 ///
-/// Sums spacing for all note events in the measure plus padding for clefs/accidentals
+/// Sums spacing for all note events in the measure plus padding for clefs/accidentals.
+/// Adds additional width for flagged notes to prevent flag overlap while maintaining
+/// time-proportional spacing between notes.
 ///
 /// # Arguments
 /// * `note_durations` - Array of note durations in ticks for all events in measure
@@ -73,15 +60,25 @@ pub fn compute_measure_width(note_durations: &[u32], config: &SpacingConfig) -> 
         return 200.0;
     }
 
-    // Sum spacing for all notes
+    // Sum spacing for all notes (maintains time-proportional spacing)
     let total_note_spacing: f32 = note_durations
         .iter()
         .map(|&duration| compute_note_spacing(duration, config))
         .sum();
 
+    // Count flagged notes for visual density adjustment
+    let flagged_note_count = note_durations
+        .iter()
+        .filter(|&&duration| duration < 960) // Eighth notes and shorter have flags
+        .count();
+    
+    // Add extra measure width for flag clearance (10 units per flagged note)
+    // This expands the entire measure while preserving note spacing proportions
+    let flag_padding = (flagged_note_count as f32) * 10.0;
+
     // Add padding for clef/key/time signatures at measure start (40 logical units)
     // and end barline (10 logical units)
-    let padding = 50.0;
+    let structural_padding = 50.0;
 
-    total_note_spacing + padding
+    total_note_spacing + flag_padding + structural_padding
 }
