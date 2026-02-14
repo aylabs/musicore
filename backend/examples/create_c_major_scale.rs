@@ -33,9 +33,14 @@ fn main() {
         let tick = Tick::new(i as u32 * quarter_note);
         let note = Note::new(tick, quarter_note, Pitch::new(pitch).unwrap()).unwrap();
         voice.add_note(note).unwrap();
-        
+
         let note_name = pitch_to_note_name(pitch);
-        println!("  ✓ Added note: {} (MIDI {}) at tick {}", note_name, pitch, tick.value());
+        println!(
+            "  ✓ Added note: {} (MIDI {}) at tick {}",
+            note_name,
+            pitch,
+            tick.value()
+        );
     }
 
     // Add the piano to the score
@@ -43,13 +48,20 @@ fn main() {
 
     println!("\n=== Score Summary ===");
     println!("Instruments: {}", score.instruments.len());
-    println!("Total notes: {}", score.instruments[0].staves[0].voices[0].interval_events.len());
+    println!(
+        "Total notes: {}",
+        score.instruments[0].staves[0].voices[0]
+            .interval_events
+            .len()
+    );
     println!("\n✓ C major scale created successfully!");
 }
 
 /// Helper function to convert MIDI pitch to note name
 fn pitch_to_note_name(pitch: u8) -> String {
-    let note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let note_names = [
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+    ];
     let octave = (pitch / 12) as i32 - 1;
     let note = note_names[(pitch % 12) as usize];
     format!("{}{}", note, octave)

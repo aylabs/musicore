@@ -1,11 +1,11 @@
 // Compression Handling for MusicXML Import - Feature 006-musicxml-import
 // Handles both compressed (.mxl) and uncompressed (.musicxml, .xml) files
 
+use super::errors::ImportError;
 use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
 use zip::ZipArchive;
-use super::errors::ImportError;
 
 /// Handles loading MusicXML content from compressed (.mxl) or uncompressed files
 pub struct CompressionHandler;
@@ -19,10 +19,7 @@ impl CompressionHandler {
     /// # Returns
     /// String containing XML content
     pub fn load_content(path: &Path) -> Result<String, ImportError> {
-        let extension = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("");
+        let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
         match extension.to_lowercase().as_str() {
             "mxl" => Self::load_compressed(path),
@@ -63,11 +60,12 @@ impl CompressionHandler {
         let rootfile_path = Self::read_container_manifest(&mut archive)?;
 
         // Extract rootfile content
-        let mut rootfile = archive
-            .by_name(&rootfile_path)
-            .map_err(|e| ImportError::InvalidStructure {
-                reason: format!("Rootfile '{}' not found in archive: {}", rootfile_path, e),
-            })?;
+        let mut rootfile =
+            archive
+                .by_name(&rootfile_path)
+                .map_err(|e| ImportError::InvalidStructure {
+                    reason: format!("Rootfile '{}' not found in archive: {}", rootfile_path, e),
+                })?;
 
         let mut content = String::new();
         rootfile
@@ -105,11 +103,11 @@ impl CompressionHandler {
         archive: &mut ZipArchive<R>,
     ) -> Result<String, ImportError> {
         // Open META-INF/container.xml
-        let mut container_file = archive
-            .by_name("META-INF/container.xml")
-            .map_err(|e| ImportError::InvalidStructure {
+        let mut container_file = archive.by_name("META-INF/container.xml").map_err(|e| {
+            ImportError::InvalidStructure {
                 reason: format!("META-INF/container.xml not found in .mxl archive: {}", e),
-            })?;
+            }
+        })?;
 
         let mut container_xml = String::new();
         container_file
@@ -131,18 +129,21 @@ impl CompressionHandler {
     fn extract_rootfile_path(container_xml: &str) -> Result<String, ImportError> {
         // Find <rootfile full-path="..."/>
         let start_marker = "full-path=\"";
-        let start_pos = container_xml.find(start_marker).ok_or_else(|| {
-            ImportError::InvalidStructure {
-                reason: "No 'full-path' attribute found in META-INF/container.xml".to_string(),
-            }
-        })?;
+        let start_pos =
+            container_xml
+                .find(start_marker)
+                .ok_or_else(|| ImportError::InvalidStructure {
+                    reason: "No 'full-path' attribute found in META-INF/container.xml".to_string(),
+                })?;
 
         let path_start = start_pos + start_marker.len();
         let remaining = &container_xml[path_start..];
 
-        let path_end = remaining.find('"').ok_or_else(|| ImportError::InvalidStructure {
-            reason: "Malformed 'full-path' attribute in META-INF/container.xml".to_string(),
-        })?;
+        let path_end = remaining
+            .find('"')
+            .ok_or_else(|| ImportError::InvalidStructure {
+                reason: "Malformed 'full-path' attribute in META-INF/container.xml".to_string(),
+            })?;
 
         let rootfile_path = &remaining[..path_end];
 
@@ -180,7 +181,7 @@ mod tests {
 </score-partwise>"#;
 
         temp_file.write_all(xml_content.as_bytes()).unwrap();
-        
+
         // Rename to .musicxml extension
         let temp_path = temp_file.path();
         let musicxml_path = temp_path.with_extension("musicxml");
@@ -216,7 +217,7 @@ mod tests {
         let temp_path = Path::new("/tmp/score.pdf");
         let result = CompressionHandler::load_content(temp_path);
         assert!(result.is_err());
-        
+
         if let Err(ImportError::UnsupportedFileType { extension }) = result {
             assert_eq!(extension, "pdf");
         } else {
@@ -259,7 +260,7 @@ mod tests {
 
         let result = CompressionHandler::extract_rootfile_path(container_xml);
         assert!(result.is_err());
-        
+
         if let Err(ImportError::InvalidStructure { reason }) = result {
             assert!(reason.contains("full-path"));
         } else {
@@ -271,7 +272,7 @@ mod tests {
     fn test_load_file_not_found() {
         let result = CompressionHandler::load_uncompressed(Path::new("/nonexistent/file.musicxml"));
         assert!(result.is_err());
-        
+
         if let Err(ImportError::FileReadError { path, .. }) = result {
             assert!(path.contains("nonexistent"));
         } else {

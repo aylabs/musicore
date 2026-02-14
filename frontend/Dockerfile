@@ -14,6 +14,7 @@ WORKDIR /backend
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/src ./src
 COPY backend/tests ./tests
+COPY backend/assets ./assets
 
 # Build WASM module
 RUN wasm-pack build --target web --out-dir pkg --release

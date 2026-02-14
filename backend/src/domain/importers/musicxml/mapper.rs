@@ -1,27 +1,27 @@
 // Element Mapping for MusicXML Import - Feature 006-musicxml-import
 // Maps MusicXML elements to domain types (clefs, pitches, key signatures)
 
-use crate::domain::value_objects::{Clef, KeySignature, Pitch};
 use super::errors::MappingError;
+use crate::domain::value_objects::{Clef, KeySignature, Pitch};
 
 /// Maps MusicXML elements to domain value objects
 pub struct ElementMapper;
 
 impl ElementMapper {
     /// Maps MusicXML clef sign and line to Clef enum
-    /// 
+    ///
     /// # Arguments
     /// * `sign` - Clef sign: "G", "F", "C", "TAB", "percussion", "jianpu"
     /// * `line` - Staff line number (1-5)
-    /// 
+    ///
     /// # Returns
     /// Clef or MappingError if unsupported
     pub fn map_clef(sign: &str, line: i32) -> Result<Clef, MappingError> {
         match (sign, line) {
-            ("G", 2) => Ok(Clef::Treble),    // G-clef on line 2
-            ("F", 4) => Ok(Clef::Bass),       // F-clef on line 4
-            ("C", 3) => Ok(Clef::Alto),       // C-clef on line 3 (viola)
-            ("C", 4) => Ok(Clef::Tenor),      // C-clef on line 4 (cello, trombone)
+            ("G", 2) => Ok(Clef::Treble), // G-clef on line 2
+            ("F", 4) => Ok(Clef::Bass),   // F-clef on line 4
+            ("C", 3) => Ok(Clef::Alto),   // C-clef on line 3 (viola)
+            ("C", 4) => Ok(Clef::Tenor),  // C-clef on line 4 (cello, trombone)
             _ => Err(MappingError::UnsupportedClef {
                 sign: sign.to_string(),
                 line,
@@ -30,12 +30,12 @@ impl ElementMapper {
     }
 
     /// Maps MusicXML pitch to Pitch value object (MIDI note number 0-127)
-    /// 
+    ///
     /// # Arguments
     /// * `step` - Note letter A-G
     /// * `octave` - Octave number (C4 = middle C)
     /// * `alter` - Chromatic alteration: -2=double flat, -1=flat, 0=natural, +1=sharp, +2=double sharp
-    /// 
+    ///
     /// # Formula
     /// MIDI = 12 * (octave + 1) + step_offset + alter
     /// C4 = 60, A4 = 69
@@ -62,7 +62,7 @@ impl ElementMapper {
         let midi = 12 * (octave + 1) + step_offset + alter;
 
         // Validate range (0-127)
-        if midi < 0 || midi > 127 {
+        if !(0..=127).contains(&midi) {
             return Err(MappingError::PitchOutOfRange {
                 midi,
                 step: step_upper,
@@ -80,7 +80,7 @@ impl ElementMapper {
     }
 
     /// Maps MusicXML key signature to KeySignature value object
-    /// 
+    ///
     /// # Arguments
     /// * `fifths` - Number of sharps (positive) or flats (negative) in circle of fifths
     ///   Example: C major = 0, G major = 1, F major = -1, D major = 2, Bb major = -2
@@ -90,7 +90,7 @@ impl ElementMapper {
     /// The KeySignature stores only the fifths value (sharps/flats count).
     pub fn map_key(fifths: i32, _mode: Option<&str>) -> Result<KeySignature, MappingError> {
         // Validate fifths range (-7 to +7 for standard keys)
-        if fifths < -7 || fifths > 7 {
+        if !(-7..=7).contains(&fifths) {
             return Err(MappingError::UnsupportedKey {
                 fifths,
                 mode: _mode.unwrap_or("major").to_string(),
@@ -105,20 +105,26 @@ impl ElementMapper {
 
     /// Infers default clef from instrument name
     /// Used when MusicXML doesn't specify a clef explicitly
-    /// 
+    ///
     /// # Arguments
     /// * `name` - Instrument name (e.g., "Violin", "Cello", "Piano")
-    /// 
+    ///
     /// # Returns
     /// Clef (defaults to Treble if unrecognized)
     pub fn infer_clef_from_instrument(name: &str) -> Clef {
         let name_lower = name.to_lowercase();
-        
-        if name_lower.contains("bass") || name_lower.contains("cello") || name_lower.contains("trombone") || name_lower.contains("contrabass") {
+
+        if name_lower.contains("bass")
+            || name_lower.contains("cello")
+            || name_lower.contains("trombone")
+            || name_lower.contains("contrabass")
+        {
             Clef::Bass
         } else if name_lower.contains("viola") {
             Clef::Alto
-        } else if name_lower.contains("tenor") && (name_lower.contains("trombone") || name_lower.contains("voice")) {
+        } else if name_lower.contains("tenor")
+            && (name_lower.contains("trombone") || name_lower.contains("voice"))
+        {
             Clef::Tenor
         } else {
             // Default to treble for violin, flute, trumpet, piano (RH), voice (soprano/alto)
@@ -249,26 +255,41 @@ mod tests {
 
     #[test]
     fn test_infer_clef_violin() {
-        assert_eq!(ElementMapper::infer_clef_from_instrument("Violin"), Clef::Treble);
+        assert_eq!(
+            ElementMapper::infer_clef_from_instrument("Violin"),
+            Clef::Treble
+        );
     }
 
     #[test]
     fn test_infer_clef_cello() {
-        assert_eq!(ElementMapper::infer_clef_from_instrument("Cello"), Clef::Bass);
+        assert_eq!(
+            ElementMapper::infer_clef_from_instrument("Cello"),
+            Clef::Bass
+        );
     }
 
     #[test]
     fn test_infer_clef_viola() {
-        assert_eq!(ElementMapper::infer_clef_from_instrument("Viola"), Clef::Alto);
+        assert_eq!(
+            ElementMapper::infer_clef_from_instrument("Viola"),
+            Clef::Alto
+        );
     }
 
     #[test]
     fn test_infer_clef_trombone() {
-        assert_eq!(ElementMapper::infer_clef_from_instrument("Trombone"), Clef::Bass);
+        assert_eq!(
+            ElementMapper::infer_clef_from_instrument("Trombone"),
+            Clef::Bass
+        );
     }
 
     #[test]
     fn test_infer_clef_unknown() {
-        assert_eq!(ElementMapper::infer_clef_from_instrument("Theremin"), Clef::Treble);
+        assert_eq!(
+            ElementMapper::infer_clef_from_instrument("Theremin"),
+            Clef::Treble
+        );
     }
 }

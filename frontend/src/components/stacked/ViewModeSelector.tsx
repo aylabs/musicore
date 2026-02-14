@@ -5,7 +5,7 @@
 
 import './ViewModeSelector.css';
 
-export type ViewMode = 'individual' | 'stacked';
+export type ViewMode = 'individual' | 'stacked' | 'layout';
 
 interface ViewModeSelectorProps {
   currentMode: ViewMode;
@@ -28,6 +28,13 @@ export function ViewModeSelector({ currentMode, onChange }: ViewModeSelectorProp
         aria-label="Switch to play view"
       >
         Play View
+      </button>
+      <button 
+        className={`view-mode-button ${currentMode === 'layout' ? 'active' : ''}`}
+        onClick={() => onChange('layout')}
+        aria-label="Switch to layout view"
+      >
+        Layout View
       </button>
     </div>
   );

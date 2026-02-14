@@ -1,6 +1,114 @@
 /* @ts-self-types="./musicore_backend.d.ts" */
 
 /**
+ * WASM-compatible version of LayoutConfig for TypeScript bindings
+ *
+ * Exists as a separate type to provide cleaner TypeScript interface
+ */
+export class LayoutConfigWasm {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LayoutConfigWasmFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_layoutconfigwasm_free(ptr, 0);
+    }
+    /**
+     * Get max system width
+     * @returns {number}
+     */
+    get max_system_width() {
+        const ret = wasm.layoutconfigwasm_max_system_width(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Create new LayoutConfig with default values
+     */
+    constructor() {
+        const ret = wasm.layoutconfigwasm_new();
+        this.__wbg_ptr = ret >>> 0;
+        LayoutConfigWasmFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Set max system width
+     * @param {number} value
+     */
+    set max_system_width(value) {
+        wasm.layoutconfigwasm_set_max_system_width(this.__wbg_ptr, value);
+    }
+    /**
+     * Set system height
+     * @param {number} value
+     */
+    set system_height(value) {
+        wasm.layoutconfigwasm_set_system_height(this.__wbg_ptr, value);
+    }
+    /**
+     * Set system spacing
+     * @param {number} value
+     */
+    set system_spacing(value) {
+        wasm.layoutconfigwasm_set_system_spacing(this.__wbg_ptr, value);
+    }
+    /**
+     * Set units per space
+     * @param {number} value
+     */
+    set units_per_space(value) {
+        wasm.layoutconfigwasm_set_units_per_space(this.__wbg_ptr, value);
+    }
+    /**
+     * Get system height
+     * @returns {number}
+     */
+    get system_height() {
+        const ret = wasm.layoutconfigwasm_system_height(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Get system spacing
+     * @returns {number}
+     */
+    get system_spacing() {
+        const ret = wasm.layoutconfigwasm_system_spacing(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Convert to JSON string
+     * @returns {string}
+     */
+    to_json() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.layoutconfigwasm_to_json(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export4(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Get units per space
+     * @returns {number}
+     */
+    get units_per_space() {
+        const ret = wasm.layoutconfigwasm_units_per_space(this.__wbg_ptr);
+        return ret;
+    }
+}
+if (Symbol.dispose) LayoutConfigWasm.prototype[Symbol.dispose] = LayoutConfigWasm.prototype.free;
+
+/**
  * Add a clef change event to a staff
  *
  * # Arguments
@@ -252,6 +360,45 @@ export function add_voice(score_js, staff_id) {
         const ptr0 = passStringToWasm0(staff_id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
         const len0 = WASM_VECTOR_LEN;
         wasm.add_voice(retptr, addHeapObject(score_js), ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * WASM-compatible wrapper for compute_layout
+ *
+ * Takes JSON strings as input and returns JsValue output to avoid
+ * Unicode encoding issues with string serialization.
+ *
+ * # Arguments
+ * * `score_json` - CompiledScore as JSON string
+ * * `config_json` - LayoutConfig as JSON string (optional, uses defaults if empty)
+ *
+ * # Returns
+ * GlobalLayout as JsValue (JavaScript object)
+ *
+ * # Errors
+ * Returns JS error if JSON parsing or layout computation fails
+ * @param {string} score_json
+ * @param {string} config_json
+ * @returns {any}
+ */
+export function compute_layout_wasm(score_json, config_json) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(score_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(config_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.compute_layout_wasm(retptr, ptr0, len0, ptr1, len1);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -538,6 +685,10 @@ function __wbg_get_imports() {
         "./musicore_backend_bg.js": import0,
     };
 }
+
+const LayoutConfigWasmFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_layoutconfigwasm_free(ptr >>> 0, 1));
 
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);

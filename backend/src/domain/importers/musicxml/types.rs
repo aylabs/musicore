@@ -23,11 +23,11 @@ pub struct MusicXMLDocument {
 }
 
 /// Metadata from <encoding> element
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EncodingMetadata {
-    pub software: Option<String>,       // e.g., "MuseScore 4.2.1"
+    pub software: Option<String>, // e.g., "MuseScore 4.2.1"
     pub encoding_date: Option<String>,
-    pub supports: Vec<String>,          // MusicXML feature flags
+    pub supports: Vec<String>, // MusicXML feature flags
 }
 
 /// Represents a <part> element (single instrument)
@@ -60,7 +60,7 @@ pub struct MeasureData {
 }
 
 /// Timing and notation attributes from <attributes> element
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AttributesData {
     /// Divisions (ticks per quarter note in source file)
     pub divisions: Option<i32>,
@@ -176,28 +176,6 @@ impl Default for MusicXMLDocument {
             parts: Vec::new(),
             default_tempo: 120.0,
             part_names: HashMap::new(),
-        }
-    }
-}
-
-impl Default for EncodingMetadata {
-    fn default() -> Self {
-        Self {
-            software: None,
-            encoding_date: None,
-            supports: Vec::new(),
-        }
-    }
-}
-
-impl Default for AttributesData {
-    fn default() -> Self {
-        Self {
-            divisions: None,
-            key: None,
-            time: None,
-            clefs: Vec::new(),
-            tempo: None,
         }
     }
 }

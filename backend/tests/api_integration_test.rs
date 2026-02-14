@@ -4,10 +4,9 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use musicore_backend::adapters::{
-    api::routes::create_router,
-    persistence::in_memory::InMemoryScoreRepository,
+    api::routes::create_router, persistence::in_memory::InMemoryScoreRepository,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tower::ServiceExt; // for `app.oneshot()`
 
@@ -52,12 +51,21 @@ async fn make_request(
 async fn test_create_score() {
     let app = setup_app().await;
 
-    let (status, body) = make_request(app, "POST", "/api/v1/scores", Some(json!({"name": "Test Score"}))).await;
+    let (status, body) = make_request(
+        app,
+        "POST",
+        "/api/v1/scores",
+        Some(json!({"name": "Test Score"})),
+    )
+    .await;
 
     assert_eq!(status, StatusCode::CREATED);
     assert!(body["id"].is_string());
     assert!(body["global_structural_events"].is_array());
-    assert_eq!(body["global_structural_events"].as_array().unwrap().len(), 2); // Default tempo and time signature
+    assert_eq!(
+        body["global_structural_events"].as_array().unwrap().len(),
+        2
+    ); // Default tempo and time signature
 }
 
 #[tokio::test]
@@ -80,11 +88,13 @@ async fn test_get_score() {
     let app = setup_app().await;
 
     // Create a score
-    let (_, create_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, create_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = create_body["id"].as_str().unwrap();
 
     // Get the score
-    let (status, body) = make_request(app, "GET", &format!("/api/v1/scores/{}", score_id), None).await;
+    let (status, body) =
+        make_request(app, "GET", &format!("/api/v1/scores/{}", score_id), None).await;
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["id"].as_str().unwrap(), score_id);
@@ -110,11 +120,18 @@ async fn test_delete_score() {
     let app = setup_app().await;
 
     // Create a score
-    let (_, create_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, create_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = create_body["id"].as_str().unwrap();
 
     // Delete the score
-    let (status, _) = make_request(app.clone(), "DELETE", &format!("/api/v1/scores/{}", score_id), None).await;
+    let (status, _) = make_request(
+        app.clone(),
+        "DELETE",
+        &format!("/api/v1/scores/{}", score_id),
+        None,
+    )
+    .await;
 
     assert_eq!(status, StatusCode::NO_CONTENT);
 
@@ -130,7 +147,8 @@ async fn test_add_instrument() {
     let app = setup_app().await;
 
     // Create a score
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     // Add instrument
@@ -156,7 +174,8 @@ async fn test_add_staff() {
     let app = setup_app().await;
 
     // Create score and instrument
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -172,7 +191,10 @@ async fn test_add_staff() {
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves", score_id, instrument_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves",
+            score_id, instrument_id
+        ),
         None,
     )
     .await;
@@ -189,7 +211,8 @@ async fn test_add_voice() {
     let app = setup_app().await;
 
     // Create score, instrument
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -206,7 +229,10 @@ async fn test_add_voice() {
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices", score_id, instrument_id, staff_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices",
+            score_id, instrument_id, staff_id
+        ),
         None,
     )
     .await;
@@ -223,7 +249,8 @@ async fn test_add_note() {
     let app = setup_app().await;
 
     // Create full hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -241,8 +268,10 @@ async fn test_add_note() {
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                 score_id, instrument_id, staff_id, voice_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+            score_id, instrument_id, staff_id, voice_id
+        ),
         Some(json!({
             "start_tick": 960,
             "duration_ticks": 480,
@@ -263,7 +292,8 @@ async fn test_add_note_invalid_pitch() {
     let app = setup_app().await;
 
     // Create hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -281,8 +311,10 @@ async fn test_add_note_invalid_pitch() {
     let (status, _body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                 score_id, instrument_id, staff_id, voice_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+            score_id, instrument_id, staff_id, voice_id
+        ),
         Some(json!({
             "start_tick": 0,
             "duration_ticks": 480,
@@ -299,7 +331,8 @@ async fn test_add_overlapping_note_same_pitch() {
     let app = setup_app().await;
 
     // Create hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -317,8 +350,10 @@ async fn test_add_overlapping_note_same_pitch() {
     make_request(
         app.clone(),
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                 score_id, instrument_id, staff_id, voice_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+            score_id, instrument_id, staff_id, voice_id
+        ),
         Some(json!({
             "start_tick": 0,
             "duration_ticks": 960,
@@ -331,8 +366,10 @@ async fn test_add_overlapping_note_same_pitch() {
     let (status, _body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                 score_id, instrument_id, staff_id, voice_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+            score_id, instrument_id, staff_id, voice_id
+        ),
         Some(json!({
             "start_tick": 480,
             "duration_ticks": 960,
@@ -352,7 +389,8 @@ async fn test_add_overlapping_note_same_pitch() {
 async fn test_add_tempo_event() {
     let app = setup_app().await;
 
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (status, body) = make_request(
@@ -375,7 +413,8 @@ async fn test_add_tempo_event() {
 async fn test_add_tempo_event_invalid_bpm() {
     let app = setup_app().await;
 
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (status, _body) = make_request(
@@ -396,7 +435,8 @@ async fn test_add_tempo_event_invalid_bpm() {
 async fn test_add_duplicate_tempo_event() {
     let app = setup_app().await;
 
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     // Add first tempo event
@@ -430,13 +470,17 @@ async fn test_add_duplicate_tempo_event() {
 async fn test_add_time_signature_event() {
     let app = setup_app().await;
 
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/structural-events/time-signature", score_id),
+        &format!(
+            "/api/v1/scores/{}/structural-events/time-signature",
+            score_id
+        ),
         Some(json!({
             "tick": 1920,
             "numerator": 3,
@@ -458,7 +502,8 @@ async fn test_add_clef_event() {
     let app = setup_app().await;
 
     // Create hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -474,8 +519,10 @@ async fn test_add_clef_event() {
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/clef", 
-                 score_id, instrument_id, staff_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/clef",
+            score_id, instrument_id, staff_id
+        ),
         Some(json!({
             "tick": 960,
             "clef": "bass"
@@ -493,7 +540,8 @@ async fn test_add_key_signature_event() {
     let app = setup_app().await;
 
     // Create hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (_, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -509,8 +557,10 @@ async fn test_add_key_signature_event() {
     let (status, body) = make_request(
         app,
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/key-signature", 
-                 score_id, instrument_id, staff_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/key-signature",
+            score_id, instrument_id, staff_id
+        ),
         Some(json!({
             "tick": 960,
             "sharps": 2 // D major
@@ -530,7 +580,8 @@ async fn test_complete_score_workflow() {
     let app = setup_app().await;
 
     // 1. Create score
-    let (status, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
+    let (status, score_body) =
+        make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({}))).await;
     assert_eq!(status, StatusCode::CREATED);
     let score_id = score_body["id"].as_str().unwrap();
 
@@ -561,8 +612,10 @@ async fn test_complete_score_workflow() {
     let (status, _) = make_request(
         app.clone(),
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/clef", 
-                 score_id, instrument_id, staff_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/structural-events/clef",
+            score_id, instrument_id, staff_id
+        ),
         Some(json!({"tick": 3840, "clef": "bass"})),
     )
     .await;
@@ -572,36 +625,51 @@ async fn test_complete_score_workflow() {
     let (status, _) = make_request(
         app.clone(),
         "POST",
-        &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                 score_id, instrument_id, staff_id, voice_id),
+        &format!(
+            "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+            score_id, instrument_id, staff_id, voice_id
+        ),
         Some(json!({"start_tick": 0, "duration_ticks": 960, "pitch": 60})),
     )
     .await;
     assert_eq!(status, StatusCode::CREATED);
 
     // 6. Retrieve complete score
-    let (status, final_score) = make_request(
-        app,
-        "GET",
-        &format!("/api/v1/scores/{}", score_id),
-        None,
-    )
-    .await;
+    let (status, final_score) =
+        make_request(app, "GET", &format!("/api/v1/scores/{}", score_id), None).await;
     assert_eq!(status, StatusCode::OK);
 
     // Verify structure
     assert_eq!(final_score["instruments"].as_array().unwrap().len(), 1); // Added instrument only
-    assert_eq!(final_score["global_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 added
-    
+    assert_eq!(
+        final_score["global_structural_events"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    ); // 2 defaults + 1 added
+
     let instrument = &final_score["instruments"][0]; // Access added instrument
     assert_eq!(instrument["name"], "Piano");
-    assert_eq!(instrument["staves"][0]["staff_structural_events"].as_array().unwrap().len(), 3); // 2 defaults + 1 clef
-    assert_eq!(instrument["staves"][0]["voices"][0]["interval_events"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        instrument["staves"][0]["staff_structural_events"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    ); // 2 defaults + 1 clef
+    assert_eq!(
+        instrument["staves"][0]["voices"][0]["interval_events"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 /// T050: Test polyphonic playback with 10 simultaneous notes
 /// Feature 003 - Music Playback: User Story 3
-/// 
+///
 /// Tests that the system can handle 10 notes starting at the same time (a 10-note chord)
 /// to validate maxPolyphony settings and ensure no notes are dropped.
 /// Success criteria: All 10 notes should be stored and retrievable for playback.
@@ -610,9 +678,15 @@ async fn test_polyphonic_chord_10_notes() {
     let app = setup_app().await;
 
     // Create full hierarchy
-    let (_, score_body) = make_request(app.clone(), "POST", "/api/v1/scores", Some(json!({
-        "name": "Polyphony Test Score"
-    }))).await;
+    let (_, score_body) = make_request(
+        app.clone(),
+        "POST",
+        "/api/v1/scores",
+        Some(json!({
+            "name": "Polyphony Test Score"
+        })),
+    )
+    .await;
     let score_id = score_body["id"].as_str().unwrap();
 
     let (_, inst_body) = make_request(
@@ -636,8 +710,10 @@ async fn test_polyphonic_chord_10_notes() {
         let (status, body) = make_request(
             app.clone(),
             "POST",
-            &format!("/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes", 
-                     score_id, instrument_id, staff_id, voice_id),
+            &format!(
+                "/api/v1/scores/{}/instruments/{}/staves/{}/voices/{}/notes",
+                score_id, instrument_id, staff_id, voice_id
+            ),
             Some(json!({
                 "start_tick": start_tick,
                 "duration_ticks": duration_ticks,
@@ -646,32 +722,41 @@ async fn test_polyphonic_chord_10_notes() {
         )
         .await;
 
-        assert_eq!(status, StatusCode::CREATED, "Failed to add note with pitch {}", pitch);
-        assert_eq!(body["pitch"], *pitch as i64);
+        assert_eq!(
+            status,
+            StatusCode::CREATED,
+            "Failed to add note with pitch {}",
+            pitch
+        );
+        assert_eq!(body["pitch"], *pitch);
         assert_eq!(body["start_tick"], start_tick);
     }
 
     // Retrieve the score and verify all 10 notes are present
-    let (status, final_score) = make_request(
-        app,
-        "GET",
-        &format!("/api/v1/scores/{}", score_id),
-        None,
-    )
-    .await;
+    let (status, final_score) =
+        make_request(app, "GET", &format!("/api/v1/scores/{}", score_id), None).await;
 
     assert_eq!(status, StatusCode::OK);
-    
+
     let instrument = &final_score["instruments"][0];
-    let notes = instrument["staves"][0]["voices"][0]["interval_events"].as_array().unwrap();
-    
+    let notes = instrument["staves"][0]["voices"][0]["interval_events"]
+        .as_array()
+        .unwrap();
+
     assert_eq!(notes.len(), 10, "Should have exactly 10 simultaneous notes");
-    
+
     // Verify all notes start at the same tick
     for (i, note) in notes.iter().enumerate() {
-        assert_eq!(note["start_tick"], start_tick, "Note {} should start at tick {}", i, start_tick);
-        assert!(pitches.contains(&note["pitch"].as_i64().unwrap()), 
-                "Note pitch {} should be in expected pitches", note["pitch"]);
+        assert_eq!(
+            note["start_tick"], start_tick,
+            "Note {} should start at tick {}",
+            i, start_tick
+        );
+        assert!(
+            pitches.contains(&note["pitch"].as_i64().unwrap()),
+            "Note pitch {} should be in expected pitches",
+            note["pitch"]
+        );
     }
 }
 
@@ -687,8 +772,8 @@ async fn test_import_musicxml_success() {
 
     // Read test fixture
     let test_file_path = "../tests/fixtures/musicxml/simple_melody.musicxml";
-    let file_content = std::fs::read_to_string(test_file_path)
-        .expect("Failed to read test fixture");
+    let file_content =
+        std::fs::read_to_string(test_file_path).expect("Failed to read test fixture");
 
     // Create multipart form body
     let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -701,7 +786,10 @@ async fn test_import_musicxml_success() {
     let request = Request::builder()
         .method("POST")
         .uri("/api/v1/scores/import-musicxml")
-        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={}", boundary),
+        )
         .body(Body::from(multipart_body))
         .unwrap();
 
@@ -712,33 +800,75 @@ async fn test_import_musicxml_success() {
     let json: Value = serde_json::from_slice(&body).unwrap();
 
     // Verify 200 OK
-    assert_eq!(status, StatusCode::OK, "Expected 200 OK, got {}: {:?}", status, json);
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "Expected 200 OK, got {}: {:?}",
+        status,
+        json
+    );
 
     // Verify ImportResult structure
-    assert!(json.get("score").is_some(), "Response should contain 'score' field");
-    assert!(json.get("metadata").is_some(), "Response should contain 'metadata' field");
-    assert!(json.get("statistics").is_some(), "Response should contain 'statistics' field");
-    assert!(json.get("warnings").is_some(), "Response should contain 'warnings' field");
+    assert!(
+        json.get("score").is_some(),
+        "Response should contain 'score' field"
+    );
+    assert!(
+        json.get("metadata").is_some(),
+        "Response should contain 'metadata' field"
+    );
+    assert!(
+        json.get("statistics").is_some(),
+        "Response should contain 'statistics' field"
+    );
+    assert!(
+        json.get("warnings").is_some(),
+        "Response should contain 'warnings' field"
+    );
 
     // Verify score structure
     let score = &json["score"];
     assert!(score["id"].is_string(), "Score should have id");
-    assert!(score["instruments"].is_array(), "Score should have instruments array");
-    assert!(score["global_structural_events"].is_array(), "Score should have global_structural_events");
+    assert!(
+        score["instruments"].is_array(),
+        "Score should have instruments array"
+    );
+    assert!(
+        score["global_structural_events"].is_array(),
+        "Score should have global_structural_events"
+    );
 
     // Verify metadata
     let metadata = &json["metadata"];
-    assert!(metadata["format"].as_str().unwrap().starts_with("MusicXML"), "Format should start with MusicXML");
+    assert!(
+        metadata["format"].as_str().unwrap().starts_with("MusicXML"),
+        "Format should start with MusicXML"
+    );
     // Note: file_name may be null depending on multipart parsing
     if let Some(file_name) = metadata["file_name"].as_str() {
-        assert!(file_name.ends_with(".musicxml"), "File name should end with .musicxml");
+        assert!(
+            file_name.ends_with(".musicxml"),
+            "File name should end with .musicxml"
+        );
     }
 
     // Verify statistics (simple_melody has 8 notes)
     let statistics = &json["statistics"];
-    assert_eq!(statistics["instrument_count"].as_i64().unwrap(), 1, "Should have 1 instrument");
-    assert_eq!(statistics["staff_count"].as_i64().unwrap(), 1, "Should have 1 staff");
-    assert_eq!(statistics["note_count"].as_i64().unwrap(), 8, "Should have 8 notes");
+    assert_eq!(
+        statistics["instrument_count"].as_i64().unwrap(),
+        1,
+        "Should have 1 instrument"
+    );
+    assert_eq!(
+        statistics["staff_count"].as_i64().unwrap(),
+        1,
+        "Should have 1 staff"
+    );
+    assert_eq!(
+        statistics["note_count"].as_i64().unwrap(),
+        8,
+        "Should have 8 notes"
+    );
 
     // Verify warnings array
     let warnings = &json["warnings"];
@@ -760,7 +890,10 @@ async fn test_import_musicxml_missing_file() {
     let request = Request::builder()
         .method("POST")
         .uri("/api/v1/scores/import-musicxml")
-        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={}", boundary),
+        )
         .body(Body::from(multipart_body))
         .unwrap();
 
@@ -769,7 +902,11 @@ async fn test_import_musicxml_missing_file() {
     let status = response.status();
 
     // Should return 400 Bad Request for missing file
-    assert_eq!(status, StatusCode::BAD_REQUEST, "Expected 400 for missing file");
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "Expected 400 for missing file"
+    );
 }
 
 /// Test import with compressed .mxl file (if supported)
@@ -779,21 +916,22 @@ async fn test_import_musicxml_compressed_mxl() {
 
     // Read compressed test fixture
     let test_file_path = "../tests/fixtures/musicxml/simple_melody.mxl";
-    
+
     // Skip test if .mxl fixture doesn't exist
     if !std::path::Path::new(test_file_path).exists() {
         println!("Skipping .mxl test - fixture not found");
         return;
     }
 
-    let file_content = std::fs::read(test_file_path)
-        .expect("Failed to read .mxl test fixture");
+    let file_content = std::fs::read(test_file_path).expect("Failed to read .mxl test fixture");
 
     // Create multipart form body with binary content
     let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
     let mut multipart_body = Vec::new();
     multipart_body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
-    multipart_body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"; filename=\"simple_melody.mxl\"\r\n");
+    multipart_body.extend_from_slice(
+        b"Content-Disposition: form-data; name=\"file\"; filename=\"simple_melody.mxl\"\r\n",
+    );
     multipart_body.extend_from_slice(b"Content-Type: application/vnd.recordare.musicxml\r\n\r\n");
     multipart_body.extend_from_slice(&file_content);
     multipart_body.extend_from_slice(format!("\r\n--{}--\r\n", boundary).as_bytes());
@@ -802,7 +940,10 @@ async fn test_import_musicxml_compressed_mxl() {
     let request = Request::builder()
         .method("POST")
         .uri("/api/v1/scores/import-musicxml")
-        .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={}", boundary),
+        )
         .body(Body::from(multipart_body))
         .unwrap();
 
@@ -810,20 +951,29 @@ async fn test_import_musicxml_compressed_mxl() {
     let response = app.oneshot(request).await.unwrap();
     let status = response.status();
     let body = response.into_body().collect().await.unwrap().to_bytes();
-    
+
     if status != StatusCode::OK {
         let error_json: Value = serde_json::from_slice(&body).unwrap_or(json!({}));
-        panic!("Expected 200 OK for .mxl import, got {}: {:?}", status, error_json);
+        panic!(
+            "Expected 200 OK for .mxl import, got {}: {:?}",
+            status, error_json
+        );
     }
 
     let json: Value = serde_json::from_slice(&body).unwrap();
 
     // Verify ImportResult structure
     assert!(json.get("score").is_some(), "Response should contain score");
-    assert!(json.get("statistics").is_some(), "Response should contain statistics");
-    
+    assert!(
+        json.get("statistics").is_some(),
+        "Response should contain statistics"
+    );
+
     // Verify it's the same content as uncompressed version
     let statistics = &json["statistics"];
-    assert_eq!(statistics["note_count"].as_i64().unwrap(), 8, "Should have 8 notes from compressed file");
+    assert_eq!(
+        statistics["note_count"].as_i64().unwrap(),
+        8,
+        "Should have 8 notes from compressed file"
+    );
 }
-

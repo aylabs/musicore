@@ -9,6 +9,7 @@ import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { StackedStaffView } from "./stacked/StackedStaffView";
+import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { demoLoaderService } from "../services/onboarding/demoLoader";
 import "./ScoreViewer.css";
@@ -163,6 +164,7 @@ export function ScoreViewer({
       setScore(demoScore);
       setScoreId(demoScore.id);
       setIsFileSourced(false);
+      setSkipNextLoad(true); // Skip the loadScore() useEffect since we already have the score
       resetFileState();
       
       // Set view mode to stacked (better for demo)
@@ -400,7 +402,7 @@ export function ScoreViewer({
   // Render score
   return (
     <div className="score-viewer">
-      {/* Feature 010: Hide header and file operations in stacked view */}
+      {/* Feature 010: Hide header and file operations in stacked/layout view */}
       {viewMode === 'individual' && (
         <>
           <div className="score-header">
@@ -434,7 +436,7 @@ export function ScoreViewer({
       )}
 
       {/* Feature 003 - Music Playback: US1 T025 - Playback Controls */}
-      {/* Feature 010: Compact mode in stacked view, full mode in individual view */}
+      {/* Feature 010: Compact mode in stacked/layout view, full mode in individual view */}
       <PlaybackControls
         status={playbackState.status}
         hasNotes={allNotes.length > 0}
@@ -442,8 +444,8 @@ export function ScoreViewer({
         onPlay={playbackState.play}
         onPause={playbackState.pause}
         onStop={playbackState.stop}
-        compact={viewMode === 'stacked'}
-        rightActions={viewMode === 'stacked' && score && score.instruments.length > 0 ? (
+        compact={viewMode !== 'individual'}
+        rightActions={viewMode !== 'individual' && score && score.instruments.length > 0 ? (
           <button 
             className="view-mode-button" 
             onClick={() => setViewMode('individual')}
@@ -481,7 +483,7 @@ export function ScoreViewer({
           onSeekToTick={playbackState.seekToTick}
           onUnpinStartTick={playbackState.unpinStartTick}
         />
-      ) : (
+      ) : viewMode === 'stacked' ? (
         /* Feature 010: Stacked Staves View */
         <StackedStaffView
           score={score}
@@ -491,6 +493,9 @@ export function ScoreViewer({
           onUnpinStartTick={playbackState.unpinStartTick}
           onTogglePlayback={togglePlayback}
         />
+      ) : (
+        /* Feature 017: Layout View */
+        <LayoutView score={score} />
       )}
 
       {loading && <div className="loading-overlay">Updating...</div>}

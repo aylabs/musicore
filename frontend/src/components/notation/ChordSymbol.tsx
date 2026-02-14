@@ -77,6 +77,11 @@ export const ChordSymbol: React.FC<ChordSymbolProps> = ({
       const staffTopLine = staffCenter - 2 * staffConfig.staffSpace;
       const y = staffTopLine - verticalOffset;
       
+      // Validate y position - skip if invalid
+      if (!isFinite(y)) {
+        return null;
+      }
+      
       // US2: Use full chord symbol (ChordAnalyzer now provides formatted symbol)
       const text = chord.symbol;
       
@@ -88,7 +93,8 @@ export const ChordSymbol: React.FC<ChordSymbolProps> = ({
         fontSize,
         fontWeight: 'bold' as const,
       };
-    });
+    })
+    .filter((layout): layout is NonNullable<typeof layout> => layout !== null);
     
     return layouts;
   }, [notes, notePositions, detector, analyzer, staffConfig, verticalOffset, fontSize]);

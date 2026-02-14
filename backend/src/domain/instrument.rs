@@ -1,4 +1,8 @@
-use crate::domain::{errors::DomainError, ids::{InstrumentId, StaffId}, staff::Staff};
+use crate::domain::{
+    errors::DomainError,
+    ids::{InstrumentId, StaffId},
+    staff::Staff,
+};
 use serde::{Deserialize, Serialize};
 
 /// Instrument contains one or more staves

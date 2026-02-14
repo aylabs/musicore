@@ -6,13 +6,13 @@ use std::fmt;
 pub enum DomainError {
     /// Validation error with description
     ValidationError(String),
-    
+
     /// Entity not found
     NotFound(String),
-    
+
     /// Duplicate entity or event
     DuplicateError(String),
-    
+
     /// Constraint violation (e.g., overlapping notes with same pitch)
     ConstraintViolation(String),
 }
@@ -35,10 +35,10 @@ impl std::error::Error for DomainError {}
 pub enum PersistenceError {
     /// Entity not found in storage
     NotFound(String),
-    
+
     /// Storage operation failed
     StorageError(String),
-    
+
     /// Serialization/deserialization error
     SerializationError(String),
 }

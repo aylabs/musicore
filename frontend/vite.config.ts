@@ -99,9 +99,5 @@ export default defineConfig({
   // Enable top-level await for WASM initialization
   build: {
     target: 'esnext'
-  },
-  server: {
-    // Use HTTP for E2E tests (PLAYWRIGHT_TEST=1), HTTPS for PWA service workers otherwise
-    https: process.env.PLAYWRIGHT_TEST ? false : {}
   }
 })

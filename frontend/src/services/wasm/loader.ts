@@ -16,6 +16,8 @@ interface WasmModule {
   add_time_signature_event: (score: unknown, tick: number, numerator: number, denominator: number) => unknown;
   add_clef_event: (score: unknown, staffId: string, tick: number, clefType: string) => unknown;
   add_key_signature_event: (score: unknown, staffId: string, tick: number, key: string) => unknown;
+  // Layout Engine - returns JsValue (JavaScript object) via serde-wasm-bindgen
+  compute_layout_wasm: (scoreJson: string, configJson: string) => unknown;
 }
 
 let wasmModule: WasmModule | null = null;
@@ -47,12 +49,22 @@ export async function initWasm(): Promise<WasmModule> {
       const basePath = import.meta.env.BASE_URL.endsWith('/') 
         ? import.meta.env.BASE_URL 
         : `${import.meta.env.BASE_URL}/`;
-      const jsUrl = new URL(`${basePath}wasm/musicore_backend.js`, window.location.origin);
+      
+      // Add cache-busting timestamp to force reload of updated WASM module
+      // Manual version bump when WASM changes: increment this number
+      const wasmVersion = 2; // Increment when WASM binary changes
+      const cacheBuster = `${wasmVersion}.${Date.now()}`;
+      const jsUrl = new URL(`${basePath}wasm/musicore_backend.js?v=${cacheBuster}`, window.location.origin);
+      const wasmUrl = new URL(`${basePath}wasm/musicore_backend_bg.wasm?v=${cacheBuster}`, window.location.origin);
+      
+      console.log('[WASM] Loading module:', { jsUrl: jsUrl.href, wasmUrl: wasmUrl.href, cacheBuster, version: wasmVersion });
       
       // Dynamically import the JS bindings
       const wasm = await import(/* @vite-ignore */ jsUrl.href) as WasmModule;
       
-      // Initialize the WASM module (calls wasm_bindgen initialization)
+      // Initialize the WASM module
+      // Note: The wasm.default() function auto-loads the .wasm file from the same directory
+      // The ?v= cache-buster on the JS URL should propagate to the WASM fetch
       await wasm.default();
       
       wasmModule = wasm;

@@ -1,7 +1,7 @@
 // Error types for MusicXML import - feature 006-musicxml-import
 
-use thiserror::Error;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Severity level of an import warning
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,10 +1,10 @@
 // WASM Error Handling - Feature 011-wasm-music-engine
 // Converts Rust domain errors to JavaScript-compatible error objects
 
-use serde::Serialize;
-use wasm_bindgen::JsValue;
 use crate::domain::errors::DomainError;
 use crate::domain::importers::musicxml::errors::ImportError;
+use serde::Serialize;
+use wasm_bindgen::JsValue;
 
 /// Error type that can be serialized to JavaScript
 #[derive(Serialize)]
@@ -55,7 +55,11 @@ impl From<ImportError> for WasmError {
                 message: format!("Unsupported file type: {}", extension),
                 details: Some(serde_json::json!({ "extension": extension })),
             },
-            ImportError::ParseError { line, column, message } => WasmError {
+            ImportError::ParseError {
+                line,
+                column,
+                message,
+            } => WasmError {
                 error: "ParseError".to_string(),
                 message: message.clone(),
                 details: Some(serde_json::json!({
@@ -113,6 +117,5 @@ pub fn error_to_js<E: std::fmt::Display>(e: E) -> JsValue {
         message: e.to_string(),
         details: None,
     };
-    serde_wasm_bindgen::to_value(&wasm_error)
-        .unwrap_or_else(|_| JsValue::from_str(&e.to_string()))
+    serde_wasm_bindgen::to_value(&wasm_error).unwrap_or_else(|_| JsValue::from_str(&e.to_string()))
 }

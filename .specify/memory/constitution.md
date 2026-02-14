@@ -1,85 +1,67 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.2.0
-Generated: 2026-02-11
+SYNC IMPACT REPORT - Constitution v2.3.0
+Generated: 2026-02-14
 
-VERSION CHANGE: 2.1.0 → 2.2.0
-BUMP RATIONALE: MINOR - Strategic vision refinement to "app for interactive scores" with clear practice and performance focus
+VERSION CHANGE: 2.2.0 → 2.3.0
+BUMP RATIONALE: MINOR - Added new Principle VI (Layout Engine Authority) establishing separation of concerns between layout calculation and rendering
 
 PRINCIPLES STATUS:
-  ✓ I. Domain-Driven Design (rationale updated for interactive scores context)
+  ✓ I. Domain-Driven Design (UNCHANGED)
   ✓ II. Hexagonal Architecture (UNCHANGED)
-  ✓ III. Progressive Web Application Architecture (rationale updated for practice and performance scenarios)
+  ✓ III. Progressive Web Application Architecture (UNCHANGED)
   ✓ IV. Precision & Fidelity (UNCHANGED)
-  ✓ V. Test-First Development (rationale updated for practice and performance context)
+  ✓ V. Test-First Development (UNCHANGED)
+  + VI. Layout Engine Authority (NEW) - Establishes layout as sole authority over spatial geometry
 
-PROJECT CONTEXT UPDATES:
-  + VISION REFINEMENT: "platform for interactive scores" → "app for interactive scores, designed for practice and performance"
-  + App Concept: Clear, direct terminology emphasizing the practical application vs abstract platform/companion
-  + Interactive Scores: Dynamic, responsive score interaction vs static display
-  + Performance Scenarios: Live performance, ensemble viewing, performance mode display as core scenarios
-  + Target Users: Musicians (students, professionals, hobbyists, ensembles) for practice and performance
-  + Core Scenarios: Interactive score reading, real-time annotations, playback/tempo integration, hands-free page turns, performance mode
-  + Non-Goals: Clarified composition/engraving/publishing workflows are out of scope
+NEW PRINCIPLE ADDITIONS:
+  + VI. Layout Engine Authority - Layout engine calculates all spatial geometry (positions, spacing, bounding boxes)
+      - Renderer prohibited from modifying logical coordinates
+      - All hit-testing uses layout-provided geometry
+      - Visual transforms (scale, translate, pixel snapping) permitted if they don't alter logical coordinates
+      - Rationale: Deterministic rendering, single source of truth, testable layout logic independent of UI
 
-TECHNICAL STANDARDS UPDATES:
-  + Performance Constraints: Updated terminology from "practice features" to "interactive score features"
-  + Score Display: Changed "practice session start" to "session start (practice/performance)"
-  + Offline Capability: Expanded to include "performance aids" alongside practice aids
+ARCHITECTURAL IMPACT:
+  + Reinforces Hexagonal Architecture (Principle II) by clarifying renderer as infrastructure adapter
+  + Supports PWA Architecture (Principle III) by enabling WASM-based layout calculation
+  + Enhances testability aligned with Test-First Development (Principle V)
+  + Backend layout module (Rust) computes geometry; frontend renderer (React/SVG) displays only
 
 TEMPLATE CONSISTENCY STATUS:
   ⚠️ plan-template.md - REQUIRES UPDATE
-      - Constitution Check section must reflect new Principle III (PWA Architecture)
-      - Target Platform line should mention tablet focus
-      - Update example gates from "API-First" to "PWA Architecture"
+      - Add Principle VI (Layout Engine Authority) to Constitution Check section
+      - Update examples to show layout geometry separation
   
   ⚠️ spec-template.md - MINOR UPDATE NEEDED
-      - User story examples should emphasize offline scenarios where applicable
-      - No structural changes required
+      - Add guidance on layout vs rendering concerns in technical approach
   
   ⚠️ tasks-template.md - MINOR UPDATE NEEDED
-      - Remove references to "API routing" in example tasks
-      - Add WASM build tasks in examples where relevant
+      - Split layout calculation tasks from rendering tasks where applicable
   
   ✅ checklist-template.md - No changes needed (principle-agnostic)
   ✅ agent-file-template.md - No changes needed (principle-agnostic)
 
-EXISTING FEATURES REQUIRING MIGRATION GUIDANCE:
-  ⚠️ specs/001-score-model/ - References API-First in plan.md (60+ mentions)
-  ⚠️ specs/002-staff-notation-view/ - Constitution Check validates API-First
-  ⚠️ specs/004-save-load-scores/ - Plan assumes REST API integration
-  ⚠️ specs/005-chord-symbols/ - API-First exemption documented
-  ⚠️ specs/006-musicxml-import/ - Constitution Check passes API-First gate
-  ⚠️ specs/007-clef-notation/ - Minimal API enhancement noted
-  ⚠️ specs/008-tempo-change/ - API-First validated as "no backend changes"
-  ⚠️ specs/009-playback-scroll-highlight/ - Preserves API-First development
-  ⚠️ specs/010-stacked-staves-view/ - API-First Development passes
-  ✅ specs/011-wasm-music-engine/ - ALREADY ALIGNED (⚠️ ARCHITECTURAL SHIFT documented)
-  
-  MIGRATION STRATEGY: 
-    - Existing features remain valid as implemented (REST API is not removed)
-    - NEW features starting 2026-02-10 onwards default to WASM-first approach
-    - Constitution Check in new features validates PWA Architecture (Principle III) instead of API-First
-    - Legacy "API-First" references in old plans are historical and need not be updated
-
-PERFORMANCE CONSTRAINTS UPDATES:
-  + Updated from practice-specific to interactive score requirements
-  + Added performance scenario terminology (session start covers practice/performance)
-  + Expanded offline capability from "practice features" to "interactive score features"
-
 EXISTING FEATURES IMPACT:
-  ✅ All existing features (001-014) remain architecturally valid
-  📝 NEW features should emphasize interactive score scenarios: display quality, annotations, tempo/metronome aids, repeat navigation, performance mode
-  📝 Interactive features serve practice and performance workflows, not composition/engraving
+  ✅ specs/018-rust-layout-engraving/ - ALREADY COMPLIANT (layout engine in Rust, renderer in React)
+      - Phase 5 implementation (2026-02-14) moved bracket geometry calculation from renderer to layout engine
+      - Demonstrates Principle VI compliance pattern
+  ⚠️ specs/002-staff-notation-view/ - May contain renderer-side layout calculations (audit recommended)
+  ⚠️ specs/010-stacked-staves-view/ - May compute positioning in renderer (audit recommended)
+  
+  MIGRATION STRATEGY:
+    - New features MUST compute geometry in backend layout module
+    - Existing features should be audited and refactored to comply when modified
+    - Renderer code reviews MUST verify no geometry calculations present
 
 FOLLOW-UP TODOS:
-  1. ✅ Update project README to reflect "app for interactive scores" positioning (COMPLETED 2026-02-11)
-  2. Review existing feature specs to ensure practice+performance framing (optional)
-  3. Document performance-specific UI/UX patterns (hands-free controls, performance mode display)
+  1. Audit existing renderer code (StaffNotationView, StackedStavesView) for geometry calculations
+  2. Update template files to reflect Principle VI
+  3. Document layout/renderer boundary in architecture docs
+  4. Add layout engine compliance check to PR review checklist
 
-DEPRECATION NOTICE:
-  - REST API endpoints for music domain operations are NOT removed but are considered legacy
-  - Future features should use WASM bindings instead of REST API for music operations
-  - Non-music operations (authentication, file storage, collaboration) may still use REST API
+COMPLIANCE PATTERNS:
+  ✅ CORRECT: Backend calculates {x, y, width, height, scale} → Frontend renders at provided coordinates
+  ❌ VIOLATION: Frontend calculates centerY, gap offsets, bounding boxes → Backend receives renderer decisions
+  ✅ PERMITTED: Frontend applies CSS transforms, viewport zooming, pixel-perfect snapping (does not modify logical geometry)
 -->
 
 # Musicore Constitution
@@ -165,6 +147,19 @@ All features follow strict Test-Driven Development:
 
 ---
 
+### VI. Layout Engine Authority
+
+The layout engine MUST be the sole authority over spatial geometry, with strict separation from rendering:
+
+- **Single Source of Truth**: Layout engine (backend Rust module) calculates all spatial geometry: positions (x, y coordinates), spacing, bounding boxes, collision results, and element relationships
+- **Renderer Prohibition**: Renderer (frontend React/SVG components) MUST NOT modify, calculate, or derive logical coordinates, spacing, bounding boxes, or any spatial relationships
+- **Permitted Transforms**: Renderer MAY apply visual transforms (CSS scale, translate, pixel snapping for display sharpness) that do NOT alter logical coordinates exported by layout engine
+- **Hit-Testing Authority**: All hit-testing, collision detection, and spatial queries MUST use geometry provided by layout engine; renderer cannot perform its own spatial calculations
+
+**Rationale**: Deterministic rendering and single source of truth prevent renderer-specific bugs and enable testable layout logic independent of UI framework. Layout calculations in backend Rust are unit-testable with exact assertions, while renderer calculations would require integration tests with browser quirks. Separation supports hexagonal architecture (Principle II) by treating renderer as pure infrastructure adapter that displays geometry without making spatial decisions. Enables WASM-based layout (Principle III) to provide complete geometric data to any renderer implementation.
+
+---
+
 ## Technical Standards
 
 ### Technology Stack
@@ -235,4 +230,4 @@ This constitution supersedes all other development practices. Amendments require
 
 ---
 
-**Version**: 2.2.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-11
+**Version**: 2.3.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-14

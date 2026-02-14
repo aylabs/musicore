@@ -1,14 +1,14 @@
 use axum::{
+    Json,
     extract::{Multipart, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::Serialize;
 use std::sync::Arc;
 
 use crate::domain::importers::musicxml::MusicXMLImporter;
-use crate::ports::importers::{IMusicXMLImporter};
+use crate::ports::importers::IMusicXMLImporter;
 use crate::ports::persistence::ScoreRepository;
 
 /// Application state with repository
@@ -113,9 +113,7 @@ pub async fn import_musicxml(
                 StatusCode::BAD_REQUEST,
                 Json(ImportErrorResponse {
                     error: format!("Unsupported file type: {}", fname),
-                    details: Some(
-                        "Only .musicxml, .xml, and .mxl files are supported".to_string(),
-                    ),
+                    details: Some("Only .musicxml, .xml, and .mxl files are supported".to_string()),
                 }),
             )
                 .into_response();
@@ -184,11 +182,7 @@ pub async fn import_musicxml(
 
             if let Some(import_err) = e.downcast_ref::<ImportError>() {
                 let (status, error_msg, details) = match import_err {
-                    ImportError::ParseError {
-                        line,
-                        message,
-                        ..
-                    } => (
+                    ImportError::ParseError { line, message, .. } => (
                         StatusCode::UNPROCESSABLE_ENTITY,
                         format!("XML parse error at line {}", line),
                         Some(message.clone()),

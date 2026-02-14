@@ -1,23 +1,25 @@
 // MusicXML import module - feature 006-musicxml-import
 
 pub mod errors;
-pub mod types;
-pub mod timing;
 pub mod mapper;
+pub mod timing;
+pub mod types;
 // Compression handler only for native (uses std::fs and zip, not available in WASM)
 #[cfg(not(target_arch = "wasm32"))]
 pub mod compression;
-pub mod parser;
 pub mod converter;
+pub mod parser;
 
-pub use errors::{ImportError, MappingError, ConversionError, ImportWarning, WarningSeverity, WarningCategory};
-pub use types::*;
-pub use timing::Fraction;
-pub use mapper::ElementMapper;
 #[cfg(not(target_arch = "wasm32"))]
 pub use compression::CompressionHandler;
-pub use parser::MusicXMLParser;
 pub use converter::MusicXMLConverter;
+pub use errors::{
+    ConversionError, ImportError, ImportWarning, MappingError, WarningCategory, WarningSeverity,
+};
+pub use mapper::ElementMapper;
+pub use parser::MusicXMLParser;
+pub use timing::Fraction;
+pub use types::*;
 
 /// Context for accumulating warnings during MusicXML import
 ///
@@ -51,7 +53,7 @@ impl ImportContext {
     /// Add a warning with current context
     pub fn warn(&mut self, severity: WarningSeverity, category: WarningCategory, message: String) {
         let mut warning = ImportWarning::new(severity, category, message);
-        
+
         // Apply current context
         if let Some(measure) = self.current_measure {
             warning = warning.with_measure(measure);
@@ -62,7 +64,7 @@ impl ImportContext {
         if let Some(staff) = self.current_staff {
             warning = warning.with_staff(staff);
         }
-        
+
         self.warnings.push(warning);
     }
 
@@ -105,7 +107,8 @@ impl ImportContext {
 
     /// Check if any Error-severity warnings exist (indicates partial import)
     pub fn has_partial_import(&self) -> bool {
-        self.warnings.iter()
+        self.warnings
+            .iter()
             .any(|w| matches!(w.severity, WarningSeverity::Error))
     }
 
@@ -122,11 +125,11 @@ impl Default for ImportContext {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::path::Path;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::ports::importers::{IMusicXMLImporter, ImportResult, ImportMetadata, ImportStatistics};
-#[cfg(not(target_arch = "wasm32"))]
 use crate::domain::score::Score;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::ports::importers::{IMusicXMLImporter, ImportMetadata, ImportResult, ImportStatistics};
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::Path;
 
 /// Main service for MusicXML import operations (native only)
 #[cfg(not(target_arch = "wasm32"))]
@@ -141,29 +144,33 @@ impl MusicXMLImporter {
 
     /// Build ImportResult from a Score with warnings
     fn build_result(
-        score: Score, 
-        format: String, 
+        score: Score,
+        format: String,
         file_name: Option<String>,
         warnings: Vec<ImportWarning>,
         skipped_element_count: usize,
     ) -> ImportResult {
         // Calculate statistics
         let instrument_count = score.instruments.len();
-        let staff_count = score.instruments.iter()
-            .map(|inst| inst.staves.len())
-            .sum();
-        let voice_count = score.instruments.iter()
+        let staff_count = score.instruments.iter().map(|inst| inst.staves.len()).sum();
+        let voice_count = score
+            .instruments
+            .iter()
             .flat_map(|inst| &inst.staves)
             .map(|staff| staff.voices.len())
             .sum();
-        let note_count = score.instruments.iter()
+        let note_count = score
+            .instruments
+            .iter()
             .flat_map(|inst| &inst.staves)
             .flat_map(|staff| &staff.voices)
             .map(|voice| voice.interval_events.len())
             .sum();
-        
+
         // Calculate duration (max end_tick across all notes)
-        let duration_ticks = score.instruments.iter()
+        let duration_ticks = score
+            .instruments
+            .iter()
             .flat_map(|inst| &inst.staves)
             .flat_map(|staff| &staff.voices)
             .flat_map(|voice| &voice.interval_events)
@@ -172,9 +179,10 @@ impl MusicXMLImporter {
             .unwrap_or(0);
 
         // Check if any Error-severity warnings exist (indicates partial import)
-        let partial_import = warnings.iter()
+        let partial_import = warnings
+            .iter()
             .any(|w| matches!(w.severity, WarningSeverity::Error));
-        
+
         let warning_count = warnings.len();
 
         ImportResult {
@@ -182,8 +190,8 @@ impl MusicXMLImporter {
             metadata: ImportMetadata {
                 format,
                 file_name,
-                work_title: None,  // TODO: Extract from MusicXML metadata
-                composer: None,    // TODO: Extract from MusicXML metadata
+                work_title: None, // TODO: Extract from MusicXML metadata
+                composer: None,   // TODO: Extract from MusicXML metadata
             },
             statistics: ImportStatistics {
                 instrument_count,
@@ -205,56 +213,69 @@ impl IMusicXMLImporter for MusicXMLImporter {
     fn import_file(&self, path: &Path) -> Result<ImportResult, Box<dyn std::error::Error>> {
         // Create import context for warning collection
         let mut context = ImportContext::new();
-        
+
         // Load file content (handles both .xml and .mxl)
         let xml_content = CompressionHandler::load_content(path)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-        
+
         // Get file name for metadata
-        let file_name = path.file_name()
+        let file_name = path
+            .file_name()
             .and_then(|name| name.to_str())
             .map(|s| s.to_string());
-        
+
         // Parse XML to intermediate representation
         let doc = MusicXMLParser::parse(&xml_content, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-        
+
         // Store format for metadata
         let format = format!("MusicXML {}", doc.version);
-        
+
         // Convert to domain Score
         let score = MusicXMLConverter::convert(doc, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-        
+
         // Extract warnings and counts from context
         let skipped_element_count = context.skipped_element_count();
         let warnings = context.finish();
-        
+
         // Build result with metadata, statistics, and warnings
-        Ok(Self::build_result(score, format, file_name, warnings, skipped_element_count))
+        Ok(Self::build_result(
+            score,
+            format,
+            file_name,
+            warnings,
+            skipped_element_count,
+        ))
     }
 
     fn import_content(&self, content: &str) -> Result<ImportResult, Box<dyn std::error::Error>> {
         // Create import context for warning collection
         let mut context = ImportContext::new();
-        
+
         // Parse XML to intermediate representation
         let doc = MusicXMLParser::parse(content, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-        
+
         // Store format for metadata
         let format = format!("MusicXML {}", doc.version);
-        
+
         // Convert to domain Score
         let score = MusicXMLConverter::convert(doc, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-        
+
         // Extract warnings and counts from context
         let skipped_element_count = context.skipped_element_count();
         let warnings = context.finish();
-        
+
         // Build result with metadata, statistics, and warnings
-        Ok(Self::build_result(score, format, None, warnings, skipped_element_count))
+        Ok(Self::build_result(
+            score,
+            format,
+            None,
+            warnings,
+            skipped_element_count,
+        ))
     }
 }
 

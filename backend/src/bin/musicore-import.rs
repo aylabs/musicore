@@ -71,7 +71,9 @@ fn main() {
                 eprintln!("Caused by: {}", source);
             }
             // Try to downcast to ImportError for detailed validation errors
-            if let Some(import_err) = e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>() {
+            if let Some(import_err) =
+                e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>()
+            {
                 if let musicore_backend::domain::importers::musicxml::ImportError::ValidationError { errors } = import_err {
                     eprintln!("Validation errors:");
                     for err in errors {
@@ -106,15 +108,20 @@ fn main() {
             if let Some(voice) = warning.voice_number {
                 context_parts.push(format!("voice {}", voice));
             }
-            
+
             let severity_marker = match warning.severity {
                 musicore_backend::domain::importers::musicxml::WarningSeverity::Info => "ℹ",
                 musicore_backend::domain::importers::musicxml::WarningSeverity::Warning => "⚠",
                 musicore_backend::domain::importers::musicxml::WarningSeverity::Error => "✗",
             };
-            
+
             if !context_parts.is_empty() {
-                eprintln!("  {} [{}] {}", severity_marker, context_parts.join(", "), warning.message);
+                eprintln!(
+                    "  {} [{}] {}",
+                    severity_marker,
+                    context_parts.join(", "),
+                    warning.message
+                );
             } else {
                 eprintln!("  {} {}", severity_marker, warning.message);
             }

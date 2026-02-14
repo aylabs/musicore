@@ -1,22 +1,17 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::adapters::dtos::{ScoreDto, InstrumentDto, StaffDto};
+use crate::adapters::dtos::ScoreDto;
 use crate::domain::{
     errors::{DomainError, PersistenceError},
     events::{
-        clef::ClefEvent,
-        global::GlobalStructuralEvent,
-        key_signature::KeySignatureEvent,
-        note::Note,
-        staff::StaffStructuralEvent,
-        tempo::TempoEvent,
+        clef::ClefEvent, key_signature::KeySignatureEvent, note::Note, tempo::TempoEvent,
         time_signature::TimeSignatureEvent,
     },
     ids::{InstrumentId, ScoreId, StaffId, VoiceId},
@@ -92,7 +87,7 @@ pub async fn create_score(
     let score = Score::new();
     repo.save(score.clone())
         .map_err(|e| DomainError::ValidationError(format!("Failed to save score: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(score)))
 }
 
@@ -102,7 +97,7 @@ pub async fn list_scores(
 ) -> Result<impl IntoResponse, PersistenceError> {
     let scores = repo.list_all()?;
     let score_ids: Vec<String> = scores.iter().map(|s| s.id.to_string()).collect();
-    
+
     Ok(Json(ScoreListResponse { scores: score_ids }))
 }
 
@@ -113,13 +108,14 @@ pub async fn get_score(
 ) -> Result<impl IntoResponse, PersistenceError> {
     let id = ScoreId::parse(&score_id)
         .map_err(|e| PersistenceError::NotFound(format!("Invalid UUID: {}", e)))?;
-    
-    let score = repo.find_by_id(id)?
+
+    let score = repo
+        .find_by_id(id)?
         .ok_or_else(|| PersistenceError::NotFound(format!("Score {} not found", score_id)))?;
-    
+
     // Convert to DTO with active_clef field (Feature 007)
     let score_dto = ScoreDto::from(&score);
-    
+
     Ok(Json(score_dto))
 }
 
@@ -130,9 +126,9 @@ pub async fn delete_score(
 ) -> Result<impl IntoResponse, PersistenceError> {
     let id = ScoreId::parse(&score_id)
         .map_err(|e| PersistenceError::NotFound(format!("Invalid UUID: {}", e)))?;
-    
+
     repo.delete(id)?;
-    
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -144,17 +140,18 @@ pub async fn add_instrument(
 ) -> Result<impl IntoResponse, DomainError> {
     let id = ScoreId::parse(&score_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(id)
+
+    let mut score = repo
+        .find_by_id(id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound(format!("Score {} not found", score_id)))?;
-    
+
     let instrument = Instrument::new(payload.name);
     score.add_instrument(instrument.clone());
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(instrument)))
 }
 
@@ -167,22 +164,25 @@ pub async fn add_staff(
         .map_err(|e| DomainError::NotFound(format!("Invalid score UUID: {}", e)))?;
     let instrument_id = InstrumentId::parse(&instrument_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid instrument UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(score_id)
+
+    let mut score = repo
+        .find_by_id(score_id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
+
     // Find instrument
-    let instrument = score.instruments.iter_mut()
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| DomainError::NotFound("Instrument not found".to_string()))?;
-    
+
     let staff = Staff::new();
     instrument.add_staff(staff.clone());
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(staff)))
 }
 
@@ -197,23 +197,26 @@ pub async fn add_voice(
         .map_err(|e| DomainError::NotFound(format!("Invalid instrument UUID: {}", e)))?;
     let staff_id = StaffId::parse(&staff_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid staff UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(score_id)
+
+    let mut score = repo
+        .find_by_id(score_id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
-    let instrument = score.instruments.iter_mut()
+
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| DomainError::NotFound("Instrument not found".to_string()))?;
-    
+
     let staff = instrument.get_staff_mut(staff_id)?;
-    
+
     let voice = Voice::new();
     staff.add_voice(voice.clone());
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(voice)))
 }
 
@@ -231,29 +234,33 @@ pub async fn add_note(
         .map_err(|e| DomainError::NotFound(format!("Invalid staff UUID: {}", e)))?;
     let voice_id = VoiceId::parse(&voice_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid voice UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(score_id)
+
+    let mut score = repo
+        .find_by_id(score_id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
-    let instrument = score.instruments.iter_mut()
+
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| DomainError::NotFound("Instrument not found".to_string()))?;
-    
+
     let staff = instrument.get_staff_mut(staff_id)?;
     let voice = staff.get_voice_mut(voice_id)?;
-    
+
     let note = Note::new(
         Tick::new(payload.start_tick),
         payload.duration_ticks,
         Pitch::new(payload.pitch).map_err(|e| DomainError::ValidationError(e.to_string()))?,
-    ).map_err(|e| DomainError::ValidationError(e.to_string()))?;
-    
+    )
+    .map_err(|e| DomainError::ValidationError(e.to_string()))?;
+
     voice.add_note(note.clone())?;
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(note)))
 }
 
@@ -265,21 +272,22 @@ pub async fn add_tempo_event(
 ) -> Result<impl IntoResponse, DomainError> {
     let id = ScoreId::parse(&score_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(id)
+
+    let mut score = repo
+        .find_by_id(id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
+
     let tempo_event = TempoEvent::new(
         Tick::new(payload.tick),
         BPM::new(payload.bpm).map_err(|e| DomainError::ValidationError(e.to_string()))?,
     );
-    
+
     score.add_tempo_event(tempo_event.clone())?;
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(tempo_event)))
 }
 
@@ -291,22 +299,23 @@ pub async fn add_time_signature_event(
 ) -> Result<impl IntoResponse, DomainError> {
     let id = ScoreId::parse(&score_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(id)
+
+    let mut score = repo
+        .find_by_id(id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
+
     let time_sig_event = TimeSignatureEvent::new(
         Tick::new(payload.tick),
         payload.numerator,
         payload.denominator,
     );
-    
+
     score.add_time_signature_event(time_sig_event.clone())?;
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(time_sig_event)))
 }
 
@@ -322,31 +331,39 @@ pub async fn add_clef_event(
         .map_err(|e| DomainError::NotFound(format!("Invalid instrument UUID: {}", e)))?;
     let staff_id = StaffId::parse(&staff_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid staff UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(score_id)
+
+    let mut score = repo
+        .find_by_id(score_id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
-    let instrument = score.instruments.iter_mut()
+
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| DomainError::NotFound("Instrument not found".to_string()))?;
-    
+
     let staff = instrument.get_staff_mut(staff_id)?;
-    
+
     let clef = match payload.clef.to_lowercase().as_str() {
         "treble" => Clef::Treble,
         "bass" => Clef::Bass,
         "alto" => Clef::Alto,
         "tenor" => Clef::Tenor,
-        _ => return Err(DomainError::ValidationError(format!("Invalid clef: {}", payload.clef))),
+        _ => {
+            return Err(DomainError::ValidationError(format!(
+                "Invalid clef: {}",
+                payload.clef
+            )));
+        }
     };
-    
+
     let clef_event = ClefEvent::new(Tick::new(payload.tick), clef);
     staff.add_clef_event(clef_event.clone())?;
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(clef_event)))
 }
 
@@ -362,26 +379,30 @@ pub async fn add_key_signature_event(
         .map_err(|e| DomainError::NotFound(format!("Invalid instrument UUID: {}", e)))?;
     let staff_id = StaffId::parse(&staff_id)
         .map_err(|e| DomainError::NotFound(format!("Invalid staff UUID: {}", e)))?;
-    
-    let mut score = repo.find_by_id(score_id)
+
+    let mut score = repo
+        .find_by_id(score_id)
         .map_err(|e| DomainError::NotFound(format!("Score not found: {:?}", e)))?
         .ok_or_else(|| DomainError::NotFound("Score not found".to_string()))?;
-    
-    let instrument = score.instruments.iter_mut()
+
+    let instrument = score
+        .instruments
+        .iter_mut()
         .find(|i| i.id == instrument_id)
         .ok_or_else(|| DomainError::NotFound("Instrument not found".to_string()))?;
-    
+
     let staff = instrument.get_staff_mut(staff_id)?;
-    
+
     let key_sig_event = KeySignatureEvent::new(
         Tick::new(payload.tick),
-        KeySignature::new(payload.sharps).map_err(|e| DomainError::ValidationError(e.to_string()))?,
+        KeySignature::new(payload.sharps)
+            .map_err(|e| DomainError::ValidationError(e.to_string()))?,
     );
-    
+
     staff.add_key_signature_event(key_sig_event.clone())?;
-    
+
     repo.save(score)
         .map_err(|e| DomainError::ValidationError(format!("Failed to save: {:?}", e)))?;
-    
+
     Ok((StatusCode::CREATED, Json(key_sig_event)))
 }

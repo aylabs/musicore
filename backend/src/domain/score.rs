@@ -1,9 +1,7 @@
 use crate::domain::{
     errors::DomainError,
     events::{
-        global::GlobalStructuralEvent,
-        tempo::TempoEvent,
-        time_signature::TimeSignatureEvent,
+        global::GlobalStructuralEvent, tempo::TempoEvent, time_signature::TimeSignatureEvent,
     },
     ids::ScoreId,
     instrument::Instrument,
@@ -30,11 +28,15 @@ impl Score {
 
         // Add default tempo (120 BPM) at tick 0
         let tempo_event = TempoEvent::new(Tick::new(0), BPM::new(120).unwrap());
-        score.global_structural_events.push(GlobalStructuralEvent::Tempo(tempo_event));
+        score
+            .global_structural_events
+            .push(GlobalStructuralEvent::Tempo(tempo_event));
 
         // Add default time signature (4/4) at tick 0
         let time_sig_event = TimeSignatureEvent::new(Tick::new(0), 4, 4);
-        score.global_structural_events.push(GlobalStructuralEvent::TimeSignature(time_sig_event));
+        score
+            .global_structural_events
+            .push(GlobalStructuralEvent::TimeSignature(time_sig_event));
 
         score
     }
@@ -45,31 +47,38 @@ impl Score {
         for existing_event in &self.global_structural_events {
             if let GlobalStructuralEvent::Tempo(existing_tempo) = existing_event {
                 if existing_tempo.tick == event.tick {
-                    return Err(DomainError::DuplicateError(
-                        format!("Tempo event already exists at tick {}", event.tick.value())
-                    ));
+                    return Err(DomainError::DuplicateError(format!(
+                        "Tempo event already exists at tick {}",
+                        event.tick.value()
+                    )));
                 }
             }
         }
 
-        self.global_structural_events.push(GlobalStructuralEvent::Tempo(event));
+        self.global_structural_events
+            .push(GlobalStructuralEvent::Tempo(event));
         Ok(())
     }
 
     /// Add a time signature event with duplicate tick validation
-    pub fn add_time_signature_event(&mut self, event: TimeSignatureEvent) -> Result<(), DomainError> {
+    pub fn add_time_signature_event(
+        &mut self,
+        event: TimeSignatureEvent,
+    ) -> Result<(), DomainError> {
         // Check for duplicate time signature event at the same tick
         for existing_event in &self.global_structural_events {
             if let GlobalStructuralEvent::TimeSignature(existing_time_sig) = existing_event {
                 if existing_time_sig.tick == event.tick {
-                    return Err(DomainError::DuplicateError(
-                        format!("Time signature event already exists at tick {}", event.tick.value())
-                    ));
+                    return Err(DomainError::DuplicateError(format!(
+                        "Time signature event already exists at tick {}",
+                        event.tick.value()
+                    )));
                 }
             }
         }
 
-        self.global_structural_events.push(GlobalStructuralEvent::TimeSignature(event));
+        self.global_structural_events
+            .push(GlobalStructuralEvent::TimeSignature(event));
         Ok(())
     }
 
@@ -82,19 +91,19 @@ impl Score {
     pub fn remove_tempo_event(&mut self, tick: Tick) -> Result<(), DomainError> {
         if tick == Tick::new(0) {
             return Err(DomainError::ConstraintViolation(
-                "Cannot delete required tempo event at tick 0".to_string()
+                "Cannot delete required tempo event at tick 0".to_string(),
             ));
         }
 
         let len_before = self.global_structural_events.len();
-        self.global_structural_events.retain(|e| {
-            !matches!(e, GlobalStructuralEvent::Tempo(te) if te.tick == tick)
-        });
+        self.global_structural_events
+            .retain(|e| !matches!(e, GlobalStructuralEvent::Tempo(te) if te.tick == tick));
 
         if self.global_structural_events.len() == len_before {
-            return Err(DomainError::NotFound(
-                format!("Tempo event not found at tick {}", tick.value())
-            ));
+            return Err(DomainError::NotFound(format!(
+                "Tempo event not found at tick {}",
+                tick.value()
+            )));
         }
 
         Ok(())
@@ -104,26 +113,30 @@ impl Score {
     pub fn remove_time_signature_event(&mut self, tick: Tick) -> Result<(), DomainError> {
         if tick == Tick::new(0) {
             return Err(DomainError::ConstraintViolation(
-                "Cannot delete required time signature event at tick 0".to_string()
+                "Cannot delete required time signature event at tick 0".to_string(),
             ));
         }
 
         let len_before = self.global_structural_events.len();
-        self.global_structural_events.retain(|e| {
-            !matches!(e, GlobalStructuralEvent::TimeSignature(te) if te.tick == tick)
-        });
+        self.global_structural_events
+            .retain(|e| !matches!(e, GlobalStructuralEvent::TimeSignature(te) if te.tick == tick));
 
         if self.global_structural_events.len() == len_before {
-            return Err(DomainError::NotFound(
-                format!("Time signature event not found at tick {}", tick.value())
-            ));
+            return Err(DomainError::NotFound(format!(
+                "Time signature event not found at tick {}",
+                tick.value()
+            )));
         }
 
         Ok(())
     }
 
     /// Query structural events within a tick range
-    pub fn query_structural_events_in_range(&self, start_tick: Tick, end_tick: Tick) -> Vec<&GlobalStructuralEvent> {
+    pub fn query_structural_events_in_range(
+        &self,
+        start_tick: Tick,
+        end_tick: Tick,
+    ) -> Vec<&GlobalStructuralEvent> {
         self.global_structural_events
             .iter()
             .filter(|e| {

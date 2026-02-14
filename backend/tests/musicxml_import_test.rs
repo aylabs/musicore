@@ -1,69 +1,92 @@
 // Integration tests for MusicXML Import - Feature 006-musicxml-import
 
-use musicore_backend::domain::importers::musicxml::{MusicXMLParser, MusicXMLImporter, CompressionHandler, ImportContext};
+use musicore_backend::domain::importers::musicxml::{
+    CompressionHandler, ImportContext, MusicXMLImporter, MusicXMLParser,
+};
 use musicore_backend::ports::importers::IMusicXMLImporter;
-use std::path::Path;
 use std::env;
+use std::path::Path;
 
 #[test]
 fn test_parse_simple_melody() {
     // T034: Parse simple_melody.musicxml → MusicXMLDocument with 1 part
-    
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/simple_melody.musicxml");
-    
+
     // Load XML content
     let xml_content = CompressionHandler::load_content(fixture_path)
         .expect("Failed to load simple_melody.musicxml");
-    
+
     // Parse into MusicXMLDocument
     let mut context = ImportContext::new();
     let doc = MusicXMLParser::parse(&xml_content, &mut context)
         .expect("Failed to parse simple_melody.musicxml");
-    
+
     // Verify document structure
-    assert_eq!(doc.parts.len(), 1, "Expected 1 part in simple_melody.musicxml");
-    
+    assert_eq!(
+        doc.parts.len(),
+        1,
+        "Expected 1 part in simple_melody.musicxml"
+    );
+
     let part = &doc.parts[0];
     assert_eq!(part.id, "P1", "Expected part ID to be P1");
     assert_eq!(part.measures.len(), 2, "Expected 2 measures");
-    
+
     // Verify first measure has attributes
     let measure1 = &part.measures[0];
     assert_eq!(measure1.number, 1);
-    assert!(measure1.attributes.is_some(), "First measure should have attributes");
-    
+    assert!(
+        measure1.attributes.is_some(),
+        "First measure should have attributes"
+    );
+
     if let Some(attrs) = &measure1.attributes {
         assert_eq!(attrs.divisions, Some(480), "Expected divisions=480");
         assert_eq!(attrs.clefs.len(), 1, "Expected 1 clef");
         assert_eq!(attrs.clefs[0].sign, "G");
         assert_eq!(attrs.clefs[0].line, 2);
-        
+
         if let Some(time) = &attrs.time {
             assert_eq!(time.beats, 4);
             assert_eq!(time.beat_type, 4);
         } else {
             panic!("Expected time signature");
         }
-        
+
         if let Some(key) = &attrs.key {
             assert_eq!(key.fifths, 0, "Expected C major (0 sharps/flats)");
         } else {
             panic!("Expected key signature");
         }
     }
-    
+
     // Verify notes in first measure
-    let note_count_m1 = measure1.elements.iter()
-        .filter(|e| matches!(e, musicore_backend::domain::importers::musicxml::MeasureElement::Note(_)))
+    let note_count_m1 = measure1
+        .elements
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                musicore_backend::domain::importers::musicxml::MeasureElement::Note(_)
+            )
+        })
         .count();
     assert_eq!(note_count_m1, 4, "Expected 4 notes in first measure");
-    
+
     // Verify second measure
     let measure2 = &part.measures[1];
     assert_eq!(measure2.number, 2);
-    
-    let note_count_m2 = measure2.elements.iter()
-        .filter(|e| matches!(e, musicore_backend::domain::importers::musicxml::MeasureElement::Note(_)))
+
+    let note_count_m2 = measure2
+        .elements
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                musicore_backend::domain::importers::musicxml::MeasureElement::Note(_)
+            )
+        })
         .count();
     assert_eq!(note_count_m2, 4, "Expected 4 notes in second measure");
 }
@@ -71,23 +94,30 @@ fn test_parse_simple_melody() {
 #[test]
 fn test_parse_malformed_xml() {
     // T076: Import malformed.xml → verify ParseError with line number
-    
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/malformed.xml");
-    
-    let xml_content = CompressionHandler::load_content(fixture_path)
-        .expect("Failed to load malformed.xml");
-    
+
+    let xml_content =
+        CompressionHandler::load_content(fixture_path).expect("Failed to load malformed.xml");
+
     let mut context = ImportContext::new();
     let result = MusicXMLParser::parse(&xml_content, &mut context);
-    
+
     assert!(result.is_err(), "Expected parse error for malformed XML");
-    
+
     if let Err(e) = result {
         match e {
-            musicore_backend::domain::importers::musicxml::ImportError::ParseError { line, message, .. } => {
+            musicore_backend::domain::importers::musicxml::ImportError::ParseError {
+                line,
+                message,
+                ..
+            } => {
                 assert!(line > 0, "Expected line number > 0");
-                assert!(message.contains("XML parse error") || message.contains("parse"), 
-                    "Expected parse error message, got: {}", message);
+                assert!(
+                    message.contains("XML parse error") || message.contains("parse"),
+                    "Expected parse error message, got: {}",
+                    message
+                );
             }
             _ => panic!("Expected ParseError, got: {:?}", e),
         }
@@ -125,13 +155,13 @@ fn test_parse_note_with_pitch() {
     </measure>
   </part>
 </score-partwise>"#;
-    
+
     let mut context = ImportContext::new();
     let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
-    
+
     assert_eq!(doc.parts.len(), 1);
     let measure = &doc.parts[0].measures[0];
-    
+
     match &measure.elements[0] {
         musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) => {
             assert!(note.pitch.is_some());
@@ -166,10 +196,10 @@ fn test_parse_rest() {
     </measure>
   </part>
 </score-partwise>"#;
-    
+
     let mut context = ImportContext::new();
     let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
-    
+
     let measure = &doc.parts[0].measures[0];
     match &measure.elements[0] {
         musicore_backend::domain::importers::musicxml::MeasureElement::Rest(rest) => {
@@ -187,39 +217,52 @@ fn test_parse_rest() {
 #[test]
 fn test_import_piano_grand_staff_structure() {
     // T087: Import piano_grand_staff.musicxml → verify 1 instrument with 2 staves
-    
+
     use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
     use musicore_backend::ports::importers::IMusicXMLImporter;
-    
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/piano_grand_staff.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(fixture_path)
+    let result = importer
+        .import_file(fixture_path)
         .expect("Failed to import piano_grand_staff.musicxml");
-    
+
     let score = result.score;
-    
+
     // Verify 1 instrument
-    assert_eq!(score.instruments.len(), 1, 
-        "Expected 1 instrument in piano grand staff");
-    
+    assert_eq!(
+        score.instruments.len(),
+        1,
+        "Expected 1 instrument in piano grand staff"
+    );
+
     let instrument = &score.instruments[0];
-    assert_eq!(instrument.name, "Piano", 
-        "Expected instrument name 'Piano' (from part-name in MusicXML)");
-    
+    assert_eq!(
+        instrument.name, "Piano",
+        "Expected instrument name 'Piano' (from part-name in MusicXML)"
+    );
+
     // Verify 2 staves
-    assert_eq!(instrument.staves.len(), 2, 
-        "Expected 2 staves in grand staff (treble + bass)");
-    
+    assert_eq!(
+        instrument.staves.len(),
+        2,
+        "Expected 2 staves in grand staff (treble + bass)"
+    );
+
     // Verify both staves have structural events
     let staff1 = &instrument.staves[0];
     let staff2 = &instrument.staves[1];
-    
-    assert!(!staff1.staff_structural_events.is_empty(), 
-        "Staff 1 should have structural events");
-    assert!(!staff2.staff_structural_events.is_empty(), 
-        "Staff 2 should have structural events");
-    
+
+    assert!(
+        !staff1.staff_structural_events.is_empty(),
+        "Staff 1 should have structural events"
+    );
+    assert!(
+        !staff2.staff_structural_events.is_empty(),
+        "Staff 2 should have structural events"
+    );
+
     // Verify both staves have voices
     assert_eq!(staff1.voices.len(), 1, "Staff 1 should have 1 voice");
     assert_eq!(staff2.voices.len(), 1, "Staff 2 should have 1 voice");
@@ -228,99 +271,141 @@ fn test_import_piano_grand_staff_structure() {
 #[test]
 fn test_piano_grand_staff_clefs() {
     // T088: Verify treble clef on staff 1, bass clef on staff 2
-    
-    use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
-    use musicore_backend::ports::importers::IMusicXMLImporter;
-    use musicore_backend::domain::value_objects::Clef;
+
     use musicore_backend::domain::events::staff::StaffStructuralEvent;
-    
+    use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
+    use musicore_backend::domain::value_objects::Clef;
+    use musicore_backend::ports::importers::IMusicXMLImporter;
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/piano_grand_staff.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(fixture_path)
+    let result = importer
+        .import_file(fixture_path)
         .expect("Failed to import piano_grand_staff.musicxml");
-    
+
     let score = result.score;
     let instrument = &score.instruments[0];
     let staff1 = &instrument.staves[0];
     let staff2 = &instrument.staves[1];
-    
+
     // Find clef events in staff 1
-    let staff1_clef = staff1.staff_structural_events.iter()
+    let staff1_clef = staff1
+        .staff_structural_events
+        .iter()
         .find_map(|event| match event {
             StaffStructuralEvent::Clef(ce) => Some(&ce.clef),
             _ => None,
         })
         .expect("Staff 1 should have a clef");
-    
-    assert_eq!(*staff1_clef, Clef::Treble, 
-        "Staff 1 should have Treble clef");
-    
+
+    assert_eq!(
+        *staff1_clef,
+        Clef::Treble,
+        "Staff 1 should have Treble clef"
+    );
+
     // Find clef event in staff 2
-    let staff2_clef = staff2.staff_structural_events.iter()
+    let staff2_clef = staff2
+        .staff_structural_events
+        .iter()
         .find_map(|event| match event {
             StaffStructuralEvent::Clef(ce) => Some(&ce.clef),
             _ => None,
         })
         .expect("Staff 2 should have a clef");
-    
-    assert_eq!(*staff2_clef, Clef::Bass, 
-        "Staff 2 should have Bass clef");
+
+    assert_eq!(*staff2_clef, Clef::Bass, "Staff 2 should have Bass clef");
 }
 
 #[test]
 fn test_piano_grand_staff_note_separation() {
     // T089: Verify notes in different staves are separated correctly
-    
+
     use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
-    use musicore_backend::ports::importers::IMusicXMLImporter;
     use musicore_backend::domain::value_objects::{Pitch, Tick};
-    
+    use musicore_backend::ports::importers::IMusicXMLImporter;
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/piano_grand_staff.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(fixture_path)
+    let result = importer
+        .import_file(fixture_path)
         .expect("Failed to import piano_grand_staff.musicxml");
-    
+
     let score = result.score;
     let instrument = &score.instruments[0];
     let staff1 = &instrument.staves[0];
     let staff2 = &instrument.staves[1];
-    
+
     // Get notes from each staff
     let staff1_notes = &staff1.voices[0].interval_events;
     let staff2_notes = &staff2.voices[0].interval_events;
-    
+
     // Verify note count (piano_grand_staff.musicxml has 4 treble notes, 2 bass notes)
-    assert_eq!(staff1_notes.len(), 4, 
-        "Staff 1 (treble) should have 4 notes");
-    assert_eq!(staff2_notes.len(), 2, 
-        "Staff 2 (bass) should have 2 notes");
-    
+    assert_eq!(
+        staff1_notes.len(),
+        4,
+        "Staff 1 (treble) should have 4 notes"
+    );
+    assert_eq!(staff2_notes.len(), 2, "Staff 2 (bass) should have 2 notes");
+
     // Verify pitch ranges (treble notes should be higher than bass notes)
     // Staff 1: C5, E5, G5, C5 (MIDI 72, 76, 79, 72)
     // Staff 2: C3, G2 (MIDI 48, 43)
-    
-    assert_eq!(staff1_notes[0].pitch, Pitch::new(72).unwrap(), "First treble note should be C5 (MIDI 72)");
-    assert_eq!(staff1_notes[1].pitch, Pitch::new(76).unwrap(), "Second treble note should be E5 (MIDI 76)");
-    assert_eq!(staff1_notes[2].pitch, Pitch::new(79).unwrap(), "Third treble note should be G5 (MIDI 79)");
-    assert_eq!(staff1_notes[3].pitch, Pitch::new(72).unwrap(), "Fourth treble note should be C5 (MIDI 72)");
-    
-    assert_eq!(staff2_notes[0].pitch, Pitch::new(48).unwrap(), "First bass note should be C3 (MIDI 48)");
-    assert_eq!(staff2_notes[1].pitch, Pitch::new(43).unwrap(), "Second bass note should be G2 (MIDI 43)");
-    
+
+    assert_eq!(
+        staff1_notes[0].pitch,
+        Pitch::new(72).unwrap(),
+        "First treble note should be C5 (MIDI 72)"
+    );
+    assert_eq!(
+        staff1_notes[1].pitch,
+        Pitch::new(76).unwrap(),
+        "Second treble note should be E5 (MIDI 76)"
+    );
+    assert_eq!(
+        staff1_notes[2].pitch,
+        Pitch::new(79).unwrap(),
+        "Third treble note should be G5 (MIDI 79)"
+    );
+    assert_eq!(
+        staff1_notes[3].pitch,
+        Pitch::new(72).unwrap(),
+        "Fourth treble note should be C5 (MIDI 72)"
+    );
+
+    assert_eq!(
+        staff2_notes[0].pitch,
+        Pitch::new(48).unwrap(),
+        "First bass note should be C3 (MIDI 48)"
+    );
+    assert_eq!(
+        staff2_notes[1].pitch,
+        Pitch::new(43).unwrap(),
+        "Second bass note should be G2 (MIDI 43)"
+    );
+
     // Verify all treble notes are higher pitch than all bass notes
     let min_treble_pitch = staff1_notes.iter().map(|n| n.pitch.value()).min().unwrap();
     let max_bass_pitch = staff2_notes.iter().map(|n| n.pitch.value()).max().unwrap();
-    
-    assert!(min_treble_pitch > max_bass_pitch, 
-        "Treble notes should be in higher pitch range than bass notes");
-    
+
+    assert!(
+        min_treble_pitch > max_bass_pitch,
+        "Treble notes should be in higher pitch range than bass notes"
+    );
+
     // Verify timing (notes should start at measure boundaries)
-    assert_eq!(staff1_notes[0].start_tick, Tick::new(0), 
-        "First treble note should start at tick 0");
-    assert_eq!(staff2_notes[0].start_tick, Tick::new(0), 
-        "First bass note should start at tick 0");
+    assert_eq!(
+        staff1_notes[0].start_tick,
+        Tick::new(0),
+        "First treble note should start at tick 0"
+    );
+    assert_eq!(
+        staff2_notes[0].start_tick,
+        Tick::new(0),
+        "First bass note should start at tick 0"
+    );
 }
 
 // ============================================================================
@@ -330,65 +415,77 @@ fn test_piano_grand_staff_note_separation() {
 #[test]
 fn test_import_simple_melody_full() {
     // T075: Import simple_melody.musicxml → verify 8 notes, 1 instrument
-    
+
     use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
     use musicore_backend::ports::importers::IMusicXMLImporter;
-    
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/simple_melody.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(fixture_path)
+    let result = importer
+        .import_file(fixture_path)
         .expect("Failed to import simple_melody.musicxml");
-    
+
     let score = result.score;
-    
+
     // Verify 1 instrument
-    assert_eq!(score.instruments.len(), 1, 
-        "Expected 1 instrument in simple melody");
-    
+    assert_eq!(
+        score.instruments.len(),
+        1,
+        "Expected 1 instrument in simple melody"
+    );
+
     let instrument = &score.instruments[0];
-    assert_eq!(instrument.staves.len(), 1, 
-        "Expected 1 staff in simple melody");
-    
+    assert_eq!(
+        instrument.staves.len(),
+        1,
+        "Expected 1 staff in simple melody"
+    );
+
     // Verify notes
     let staff = &instrument.staves[0];
     assert_eq!(staff.voices.len(), 1, "Expected 1 voice");
-    
+
     let notes = &staff.voices[0].interval_events;
-    assert_eq!(notes.len(), 8, 
-        "Expected 8 notes in simple melody (4 per measure × 2 measures)");
-    
+    assert_eq!(
+        notes.len(),
+        8,
+        "Expected 8 notes in simple melody (4 per measure × 2 measures)"
+    );
+
     // Verify statistics
     assert_eq!(result.statistics.instrument_count, 1);
     assert_eq!(result.statistics.staff_count, 1);
     assert_eq!(result.statistics.voice_count, 1);
     assert_eq!(result.statistics.note_count, 8);
-    
+
     // Verify global structural events (tempo, time signature)
-    assert!(!score.global_structural_events.is_empty(), 
-        "Should have global structural events");
+    assert!(
+        !score.global_structural_events.is_empty(),
+        "Should have global structural events"
+    );
 }
 
 #[test]
 fn test_import_malformed_xml_error() {
     // T076: Import malformed.xml → verify ParseError with line number
-    
+
+    use musicore_backend::domain::importers::musicxml::ImportError;
     use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
     use musicore_backend::ports::importers::IMusicXMLImporter;
-    use musicore_backend::domain::importers::musicxml::ImportError;
-    
+
     let fixture_path = Path::new("../tests/fixtures/musicxml/malformed.xml");
-    
+
     let importer = MusicXMLImporter::new();
     let result = importer.import_file(fixture_path);
-    
+
     assert!(result.is_err(), "Expected error for malformed XML");
-    
+
     if let Err(e) = result {
         // Downcast Box<dyn Error> to ImportError
         let import_err = e.downcast_ref::<ImportError>();
         assert!(import_err.is_some(), "Expected ImportError type");
-        
+
         if let Some(ImportError::ParseError { line, message, .. }) = import_err {
             assert!(*line > 0, "Expected line number > 0, got {}", line);
             assert!(!message.is_empty(), "Expected non-empty error message");
@@ -402,33 +499,33 @@ fn test_import_malformed_xml_error() {
 #[test]
 fn test_import_compressed_mxl() {
     // T077: Import .mxl compressed file → verify decompression works
-    
+
     use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
     use musicore_backend::ports::importers::IMusicXMLImporter;
-    
+
     // Create a test .mxl file from simple_melody.musicxml
     let source_path = Path::new("../tests/fixtures/musicxml/simple_melody.musicxml");
     let mxl_path = Path::new("/tmp/test_simple_melody.mxl");
-    
+
     // Create .mxl by zipping the XML file with proper structure
     use std::fs::File;
-    use std::io::{Write, Read};
-    
+    use std::io::{Read, Write};
+
     // Read the source XML
     let mut xml_content = String::new();
     File::open(source_path)
         .expect("Failed to open source XML")
         .read_to_string(&mut xml_content)
         .expect("Failed to read source XML");
-    
+
     // Create a proper .mxl ZIP file with META-INF/container.xml
     {
         let file = File::create(mxl_path).expect("Failed to create .mxl file");
         let mut zip = zip::ZipWriter::new(file);
-        
-        let options = zip::write::FileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
-        
+
+        let options =
+            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
         // Add META-INF/container.xml
         let container_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <container>
@@ -436,42 +533,47 @@ fn test_import_compressed_mxl() {
     <rootfile full-path="simple_melody.xml"/>
   </rootfiles>
 </container>"#;
-        
+
         zip.start_file("META-INF/container.xml", options)
             .expect("Failed to add container.xml to ZIP");
         zip.write_all(container_xml.as_bytes())
             .expect("Failed to write container.xml");
-        
+
         // Add the main score XML
         zip.start_file("simple_melody.xml", options)
             .expect("Failed to add score file to ZIP");
         zip.write_all(xml_content.as_bytes())
             .expect("Failed to write score XML to ZIP");
-        
+
         zip.finish().expect("Failed to finalize ZIP");
     }
-    
+
     // Import the .mxl file
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(mxl_path)
+    let result = importer
+        .import_file(mxl_path)
         .expect("Failed to import .mxl file");
-    
+
     // Verify decompression worked
     let score = result.score;
-    assert_eq!(score.instruments.len(), 1, 
-        "Expected 1 instrument after decompression");
-    
+    assert_eq!(
+        score.instruments.len(),
+        1,
+        "Expected 1 instrument after decompression"
+    );
+
     let instrument = &score.instruments[0];
     let staff = &instrument.staves[0];
     let notes = &staff.voices[0].interval_events;
-    
-    assert_eq!(notes.len(), 8, 
-        "Expected 8 notes after decompression");
-    
+
+    assert_eq!(notes.len(), 8, "Expected 8 notes after decompression");
+
     // Verify metadata shows it was compressed
-    assert!(result.metadata.format.contains("MusicXML"), 
-        "Metadata should indicate MusicXML format");
-    
+    assert!(
+        result.metadata.format.contains("MusicXML"),
+        "Metadata should indicate MusicXML format"
+    );
+
     // Clean up
     std::fs::remove_file(mxl_path).ok();
 }
@@ -488,30 +590,43 @@ fn test_import_quartet_four_instruments() {
         .parent()
         .unwrap()
         .to_path_buf();
-    
+
     let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(&fixture_path)
+    let result = importer
+        .import_file(&fixture_path)
         .expect("Failed to import quartet.musicxml");
-    
+
     let score = result.score;
-    
+
     // Verify 4 instruments
-    assert_eq!(score.instruments.len(), 4, 
-        "Expected 4 instruments in quartet (Violin, Viola, Cello, Contrabass)");
-    
+    assert_eq!(
+        score.instruments.len(),
+        4,
+        "Expected 4 instruments in quartet (Violin, Viola, Cello, Contrabass)"
+    );
+
     // Verify instrument names are extracted from <part-name> elements (T092)
-    let expected_names = vec!["Violin", "Viola", "Cello", "Contrabass"];
+    let expected_names = ["Violin", "Viola", "Cello", "Contrabass"];
     for (i, expected_name) in expected_names.iter().enumerate() {
-        assert_eq!(score.instruments[i].name, *expected_name, 
-            "Instrument {} should be named '{}'", i + 1, expected_name);
+        assert_eq!(
+            score.instruments[i].name,
+            *expected_name,
+            "Instrument {} should be named '{}'",
+            i + 1,
+            expected_name
+        );
     }
-    
+
     // Verify each instrument has 1 staff
     for (i, instrument) in score.instruments.iter().enumerate() {
-        assert_eq!(instrument.staves.len(), 1, 
-            "Instrument {} should have 1 staff", i + 1);
+        assert_eq!(
+            instrument.staves.len(),
+            1,
+            "Instrument {} should have 1 staff",
+            i + 1
+        );
     }
 }
 
@@ -523,36 +638,42 @@ fn test_quartet_instrument_clefs() {
         .parent()
         .unwrap()
         .to_path_buf();
-    
+
     let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(&fixture_path)
+    let result = importer
+        .import_file(&fixture_path)
         .expect("Failed to import quartet.musicxml");
-    
+
     let score = result.score;
-    
+
     use musicore_backend::domain::events::staff::StaffStructuralEvent;
     use musicore_backend::domain::value_objects::Clef;
-    
+
     // Verify instrument-specific clefs
-    let expected_clefs = vec![
+    let expected_clefs = [
         ("Violin", Clef::Treble),
         ("Viola", Clef::Alto),
         ("Cello", Clef::Bass),
         ("Contrabass", Clef::Bass),
     ];
-    
+
     for (i, (name, expected_clef)) in expected_clefs.iter().enumerate() {
         let instrument = &score.instruments[i];
         assert_eq!(instrument.name, *name);
-        
+
         let staff = &instrument.staves[0];
-        assert!(!staff.staff_structural_events.is_empty(), 
-            "{} staff should have structural events", name);
-        
+        assert!(
+            !staff.staff_structural_events.is_empty(),
+            "{} staff should have structural events",
+            name
+        );
+
         // Check clef events
-        let clef_events: Vec<_> = staff.staff_structural_events.iter()
+        let clef_events: Vec<_> = staff
+            .staff_structural_events
+            .iter()
             .filter_map(|e| {
                 if let StaffStructuralEvent::Clef(clef_event) = e {
                     Some(clef_event.clef)
@@ -561,10 +682,13 @@ fn test_quartet_instrument_clefs() {
                 }
             })
             .collect();
-        
+
         assert!(!clef_events.is_empty(), "{} should have clef event", name);
-        assert_eq!(clef_events[0], *expected_clef, 
-            "{} should have {:?} clef", name, expected_clef);
+        assert_eq!(
+            clef_events[0], *expected_clef,
+            "{} should have {:?} clef",
+            name, expected_clef
+        );
     }
 }
 
@@ -576,28 +700,30 @@ fn test_quartet_instrument_key_signatures() {
         .parent()
         .unwrap()
         .to_path_buf();
-    
+
     let fixture_path = project_root.join("tests/fixtures/musicxml/quartet.musicxml");
-    
+
     let importer = MusicXMLImporter::new();
-    let result = importer.import_file(&fixture_path)
+    let result = importer
+        .import_file(&fixture_path)
         .expect("Failed to import quartet.musicxml");
-    
+
     let score = result.score;
-    
+
     use musicore_backend::domain::events::staff::StaffStructuralEvent;
     use musicore_backend::domain::value_objects::KeySignature;
-    
+
     // Verify all instruments have C Major key signature (fifths=0)
     // In quartet.musicxml, all parts have <fifths>0</fifths><mode>major</mode>
-    let expected_key = KeySignature::new(0)
-        .expect("Failed to create C Major key signature");
-    
+    let expected_key = KeySignature::new(0).expect("Failed to create C Major key signature");
+
     for instrument in &score.instruments {
         let staff = &instrument.staves[0];
-        
+
         // Check key signature events
-        let key_events: Vec<_> = staff.staff_structural_events.iter()
+        let key_events: Vec<_> = staff
+            .staff_structural_events
+            .iter()
             .filter_map(|e| {
                 if let StaffStructuralEvent::KeySignature(key_event) = e {
                     Some(key_event.key)
@@ -606,11 +732,17 @@ fn test_quartet_instrument_key_signatures() {
                 }
             })
             .collect();
-        
-        assert!(!key_events.is_empty(), 
-            "{} should have key signature event", instrument.name);
-        assert_eq!(key_events[0], expected_key, 
-            "{} should have C Major key signature", instrument.name);
+
+        assert!(
+            !key_events.is_empty(),
+            "{} should have key signature event",
+            instrument.name
+        );
+        assert_eq!(
+            key_events[0], expected_key,
+            "{} should have C Major key signature",
+            instrument.name
+        );
     }
 }
 
@@ -621,24 +753,36 @@ fn test_two_measures_piano_whole_notes() {
         .expect("Failed to get current directory")
         .parent()
         .unwrap()
-        .join("tests/fixtures/musicxml/two_bars_piano_whole_notes.musicxml");    
+        .join("tests/fixtures/musicxml/two_bars_piano_whole_notes.musicxml");
     let importer = MusicXMLImporter::new();
     let result = importer.import_file(&fixture_path);
-    
+
     match result {
         Ok(import_result) => {
             let score = import_result.score;
             println!("Import successful!");
             println!("Instruments: {}", score.instruments.len());
             if !score.instruments.is_empty() {
-                println!("Staves in instrument 0: {}", score.instruments[0].staves.len());
+                println!(
+                    "Staves in instrument 0: {}",
+                    score.instruments[0].staves.len()
+                );
                 for (i, staff) in score.instruments[0].staves.iter().enumerate() {
                     println!("Staff {} voices: {}", i, staff.voices.len());
                     if !staff.voices.is_empty() {
-                        println!("Staff {} voice 0 notes: {}", i, staff.voices[0].interval_events.len());
+                        println!(
+                            "Staff {} voice 0 notes: {}",
+                            i,
+                            staff.voices[0].interval_events.len()
+                        );
                         for (j, note) in staff.voices[0].interval_events.iter().enumerate() {
-                            println!("  Note {}: start={}, duration={}, pitch={}", 
-                                j, note.start_tick.value(), note.duration_ticks, note.pitch.value());
+                            println!(
+                                "  Note {}: start={}, duration={}, pitch={}",
+                                j,
+                                note.start_tick.value(),
+                                note.duration_ticks,
+                                note.pitch.value()
+                            );
                         }
                     }
                 }

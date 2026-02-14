@@ -1,0 +1,497 @@
+{
+  "systems": [
+    {
+      "index": 0,
+      "bounding_box": {
+        "width": 1200,
+        "height": 280,
+        "x": 0,
+        "y": 0
+      },
+      "staff_groups": [
+        {
+          "instrument_id": "piano",
+          "bracket_type": "Brace",
+          "staves": [
+            {
+              "staff_lines": [
+                {
+                  "y_position": 0,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 5,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 10,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 15,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 20,
+                  "start_x": 50,
+                  "end_x": 1180
+                }
+              ],
+              "structural_glyphs": [
+                {
+                  "position": {
+                    "x": 60,
+                    "y": 10
+                  },
+                  "bounding_box": {
+                    "width": 25,
+                    "height": 30,
+                    "x": 55,
+                    "y": 0
+                  },
+                  "codepoint": "\ue050",
+                  "source_reference": {
+                    "instrument_id": "piano",
+                    "staff_index": 0,
+                    "voice_index": 0,
+                    "event_index": 0
+                  }
+                }
+              ],
+              "glyph_runs": [
+                {
+                  "glyphs": [
+                    {
+                      "position": {
+                        "x": 100,
+                        "y": 5
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 0
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 0
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 200,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 1
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 300,
+                        "y": 0
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 295,
+                        "y": -5
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 2
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 400,
+                        "y": 15
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 395,
+                        "y": 10
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 3
+                      }
+                    }
+                  ],
+                  "font_family": "Bravura",
+                  "font_size": 40.0,
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
+                  "opacity": 1.0
+                }
+              ]
+            },
+            {
+              "staff_lines": [
+                {
+                  "y_position": 120,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 125,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 130,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 135,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 140,
+                  "start_x": 50,
+                  "end_x": 1180
+                }
+              ],
+              "structural_glyphs": [
+                {
+                  "position": {
+                    "x": 60,
+                    "y": 130
+                  },
+                  "bounding_box": {
+                    "width": 25,
+                    "height": 30,
+                    "x": 55,
+                    "y": 120
+                  },
+                  "codepoint": "\ue062",
+                  "source_reference": {
+                    "instrument_id": "piano",
+                    "staff_index": 1,
+                    "voice_index": 0,
+                    "event_index": 0
+                  }
+                }
+              ],
+              "glyph_runs": [
+                {
+                  "glyphs": [
+                    {
+                      "position": {
+                        "x": 100,
+                        "y": 135
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 130
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 0
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 200,
+                        "y": 130
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 125
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 1
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 300,
+                        "y": 140
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 295,
+                        "y": 135
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 2
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 400,
+                        "y": 125
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 395,
+                        "y": 120
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 3
+                      }
+                    }
+                  ],
+                  "font_family": "Bravura",
+                  "font_size": 40.0,
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
+                  "opacity": 1.0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tick_range": {
+        "start_tick": 0,
+        "end_tick": 3840
+      }
+    },
+    {
+      "index": 1,
+      "bounding_box": {
+        "width": 1200,
+        "height": 280,
+        "x": 0,
+        "y": 300
+      },
+      "staff_groups": [
+        {
+          "instrument_id": "piano",
+          "bracket_type": "Brace",
+          "staves": [
+            {
+              "staff_lines": [
+                {
+                  "y_position": 0,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 5,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 10,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 15,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 20,
+                  "start_x": 50,
+                  "end_x": 1180
+                }
+              ],
+              "structural_glyphs": [],
+              "glyph_runs": [
+                {
+                  "glyphs": [
+                    {
+                      "position": {
+                        "x": 100,
+                        "y": 10
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 5
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 4
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 200,
+                        "y": 5
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 0
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 0,
+                        "voice_index": 0,
+                        "event_index": 5
+                      }
+                    }
+                  ],
+                  "font_family": "Bravura",
+                  "font_size": 40.0,
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
+                  "opacity": 1.0
+                }
+              ]
+            },
+            {
+              "staff_lines": [
+                {
+                  "y_position": 120,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 125,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 130,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 135,
+                  "start_x": 50,
+                  "end_x": 1180
+                },
+                {
+                  "y_position": 140,
+                  "start_x": 50,
+                  "end_x": 1180
+                }
+              ],
+              "structural_glyphs": [],
+              "glyph_runs": [
+                {
+                  "glyphs": [
+                    {
+                      "position": {
+                        "x": 100,
+                        "y": 130
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 95,
+                        "y": 125
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 4
+                      }
+                    },
+                    {
+                      "position": {
+                        "x": 200,
+                        "y": 135
+                      },
+                      "bounding_box": {
+                        "width": 10,
+                        "height": 10,
+                        "x": 195,
+                        "y": 130
+                      },
+                      "codepoint": "\ue0a4",
+                      "source_reference": {
+                        "instrument_id": "piano",
+                        "staff_index": 1,
+                        "voice_index": 0,
+                        "event_index": 5
+                      }
+                    }
+                  ],
+                  "font_family": "Bravura",
+                  "font_size": 40.0,
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "a": 255
+                  },
+                  "opacity": 1.0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tick_range": {
+        "start_tick": 3840,
+        "end_tick": 7680
+      }
+    }
+  ],
+  "total_width": 1200,
+  "total_height": 580,
+  "units_per_space": 20.0
+}

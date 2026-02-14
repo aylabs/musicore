@@ -28,6 +28,12 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (visual presentation only) (001-staff-display-refinement)
 - Rust 1.93+ (backend/WASM), TypeScript 5.9+ (frontend) + quick-xml (XML parsing), wasm-bindgen (JS interop), serde (serialization), JSZip (frontend .mxl decompression) (015-musicxml-error-handling)
 - N/A (parser operates in-memory; storage handled by existing score persistence layer) (015-musicxml-error-handling)
+- Rust 1.93+ + serde 1.0+, serde_json 1.0+, wasm-bindgen 0.2+ (016-rust-layout-engine)
+- N/A (stateless layout computation, output cached in IndexedDB by frontend) (016-rust-layout-engine)
+- TypeScript 5.0+, React 19 + Canvas 2D API (browser native), Feature 016 WASM bindings (musicore_backend), layoutUtils.ts (47 unit tests) (017-layout-renderer)
+- N/A (stateless rendering, layout cached in IndexedDB by parent component) (017-layout-renderer)
+- Rust 1.75+ (stable), Edition 2021 (018-rust-layout-engraving)
+- N/A (stateless computation - inputs via WASM, outputs as JSON) (018-rust-layout-engraving)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -48,9 +54,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
-- 015-musicxml-error-handling: Added Rust 1.93+ (backend/WASM), TypeScript 5.9+ (frontend) + quick-xml (XML parsing), wasm-bindgen (JS interop), serde (serialization), JSZip (frontend .mxl decompression)
-- 001-staff-display-refinement: Added TypeScript 5.9, React 19 + React (UI), Vitest (testing), Bravura font (SMuFL notation)
-- 014-remove-edit-ui: Added TypeScript ~5.9.3, React 19.2.0 + React 19.2.0, Vite 7.2.4, WASM music engine (backend Rust compiled via wasm-pack)
+- 018-rust-layout-engraving: Added Rust 1.75+ (stable), Edition 2021
+- 017-layout-renderer: Added TypeScript 5.0+, React 19 + Canvas 2D API (browser native), Feature 016 WASM bindings (musicore_backend), layoutUtils.ts (47 unit tests)
+- 016-rust-layout-engine: Added Rust 1.93+ + serde 1.0+, serde_json 1.0+, wasm-bindgen 0.2+
 
 
 <!-- MANUAL ADDITIONS START -->

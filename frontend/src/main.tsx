@@ -4,6 +4,9 @@ import './index.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './sw-registration'
 
+// NOTE: WASM layout engine is now initialized lazily by services/wasm/loader.ts
+// when first needed (when LayoutView component mounts)
+
 // Register service worker (T020-T021)
 registerServiceWorker({
   onUpdate: (registration) => {
