@@ -568,7 +568,7 @@ mod tests {
         // C4 = ledger line below staff, 9.5 staff spaces below F5
         assert_eq!(glyphs[0].position.x, 0.0, "First note x-position");
         assert_eq!(glyphs[0].position.y, 190.0, "Middle C4 should be at y=190");
-        assert_eq!(glyphs[0].codepoint, String::from('\u{E0A4}'), "Quarter note uses black notehead");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E1D5}'), "Quarter note uses black notehead with stem");
 
         // Verify second notehead (D4 at x=100)
         // D4 = 8.5 staff spaces below F5

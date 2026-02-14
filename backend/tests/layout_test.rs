@@ -633,11 +633,11 @@ mod positioner_tests {
         let units_per_space = 10.0;
 
         // Test F5 (MIDI 77) = top line of treble staff (y = -5 with offset)
-        let f5_y = pitch_to_y(77, units_per_space);
+        let f5_y = pitch_to_y(77, "Treble", units_per_space);
         assert!((f5_y - (-5.0)).abs() < 0.1, "F5 should be on top line (y=-5): {}", f5_y);
 
         // Test E5 (MIDI 76) = space between lines 1-2 (y = 5)
-        let e5_y = pitch_to_y(76, units_per_space);
+        let e5_y = pitch_to_y(76, "Treble", units_per_space);
         assert!(
             (e5_y - 5.0).abs() < 0.1,
             "E5 should be in first space (y=5): {}",
@@ -645,7 +645,7 @@ mod positioner_tests {
         );
 
         // Test D5 (MIDI 74) = 2nd line (y = 15)
-        let d5_y = pitch_to_y(74, units_per_space);
+        let d5_y = pitch_to_y(74, "Treble", units_per_space);
         assert!(
             (d5_y - 15.0).abs() < 0.1,
             "D5 should be on 2nd line (y=15): {}",
@@ -653,11 +653,11 @@ mod positioner_tests {
         );
 
         // Test C5 (MIDI 72) = space between lines 2-3 (y = 25)
-        let c5_y = pitch_to_y(72, units_per_space);
+        let c5_y = pitch_to_y(72, "Treble", units_per_space);
         assert!((c5_y - 25.0).abs() < 0.1, "C5 should be in space (y=25): {}", c5_y);
 
         // Test G4 (MIDI 67) = 4th line (y = 55)
-        let g4_y = pitch_to_y(67, units_per_space);
+        let g4_y = pitch_to_y(67, "Treble", units_per_space);
         assert!(
             (g4_y - 55.0).abs() < 0.1,
             "G4 should be on 4th line (y=55): {}",
@@ -665,7 +665,7 @@ mod positioner_tests {
         );
 
         // Test C4 (Middle C, MIDI 60) = ledger line below staff (y = 95 with offset)
-        let c4_y = pitch_to_y(60, units_per_space);
+        let c4_y = pitch_to_y(60, "Treble", units_per_space);
         assert!(
             (c4_y - 95.0).abs() < 0.1,
             "C4 should be below staff (y=95): {}",
@@ -686,10 +686,10 @@ mod positioner_tests {
         let pitch = 60; // Middle C
 
         // Standard scaling (10 units per space)
-        let y_standard = pitch_to_y(pitch, 10.0);
+        let y_standard = pitch_to_y(pitch, "Treble", 10.0);
 
         // Double scaling (20 units per space)
-        let y_double = pitch_to_y(pitch, 20.0);
+        let y_double = pitch_to_y(pitch, "Treble", 20.0);
 
         // Double scaling should produce double the offset
         assert!(
@@ -941,7 +941,7 @@ mod batching_tests {
 
         // Verify run properties
         assert_eq!(runs[0].font_family, "Bravura");
-        assert_eq!(runs[0].font_size, 40.0);
+        assert_eq!(runs[0].font_size, 80.0); // SMuFL standard: 1em = 4 staff spaces = 80 logical units
         assert_eq!(
             runs[0].color,
             Color {
