@@ -613,11 +613,12 @@ fn position_glyphs_for_staff(
 
         all_glyphs.extend(glyphs);
         
-        // T056-T058: Generate stems and beams for notes
-        // Calculate middle line y-position for stem direction (3rd line of 5-line staff)
-        let staff_middle_y = staff_vertical_offset + (2.0 * units_per_space * 2.0); // Line 2 (0-indexed)
+        // T056-T058: Stem/beam generation disabled - using combined notehead+stem glyphs
+        // SMuFL provides U+E1D3/U+E1D5 which include stems in the glyph
+        // TODO: Restore beam generation for eighth notes in future phase
         
-        // Generate stems for notes (except whole notes which have duration >= 3840 ticks)
+        /*
+        // DISABLED: Generate stems for notes (except whole notes which have duration >= 3840 ticks)
         let mut stem_glyphs = Vec::new();
         let mut beamable_notes = Vec::new();
         
@@ -712,6 +713,7 @@ fn position_glyphs_for_staff(
                 all_glyphs.push(beam_glyph);
             }
         }
+        */
     }
 
     all_glyphs

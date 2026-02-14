@@ -177,14 +177,14 @@ pub fn position_noteheads(
             // T021-T022: Choose notehead codepoint based on duration_ticks
             // Duration mapping (assuming 960 PPQ = 1 beat):
             // - Whole note (4 beats): 3840+ ticks → U+E0A2 noteheadWhole (no stem)
-            // - Half note (2 beats): 1920-3839 ticks → U+E1D5 noteheadHalfWithStem
-            // - Quarter note and shorter: <1920 ticks → U+E1D3 noteheadBlackWithStem
+            // - Half note (2 beats): 1920-3839 ticks → U+E1D3 noteheadHalfWithStem (open oval + stem)
+            // - Quarter note and shorter: <1920 ticks → U+E1D5 noteheadBlackWithStem (filled oval + stem)
             let (codepoint, glyph_name) = if *duration >= 3840 {
                 ('\u{E0A2}', "noteheadWhole")
             } else if *duration >= 1920 {
-                ('\u{E1D5}', "noteheadHalfWithStem")
+                ('\u{E1D3}', "noteheadHalfWithStem")
             } else {
-                ('\u{E1D3}', "noteheadBlackWithStem")
+                ('\u{E1D5}', "noteheadBlackWithStem")
             };
             
             // DEBUG: Log selected codepoint
