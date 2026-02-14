@@ -437,6 +437,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Set SMuFL codepoint as text content (Task T020)
     // Handle invalid codepoints (Task T023)
     try {
+      // DEBUG: Log codepoint being rendered
+      if (glyph.codepoint && glyph.codepoint.charCodeAt(0) >= 0xE000) {
+        const codepointHex = glyph.codepoint.charCodeAt(0).toString(16).toUpperCase();
+        console.log(`[LayoutRenderer] Rendering SMuFL glyph U+${codepointHex} at (${glyph.position.x.toFixed(1)}, ${glyph.position.y.toFixed(1)})`);
+      }
       text.textContent = glyph.codepoint;
     } catch (error) {
       // Render placeholder for invalid codepoint (Task T023)
