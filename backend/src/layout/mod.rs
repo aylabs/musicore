@@ -783,11 +783,11 @@ fn create_bar_lines(
             continue;
         }
         
-        // Find the x-position for the barline by looking for the last note before measure end
-        // We need to find the highest tick <= end_tick that has a position
+        // Find the x-position for the barline by looking for the last note IN this measure
+        // Notes at end_tick belong to NEXT measure (tick range is exclusive end)
         let barline_x = note_positions
             .iter()
-            .filter(|(tick, _)| **tick > measure.start_tick && **tick <= measure.end_tick)
+            .filter(|(tick, _)| **tick >= measure.start_tick && **tick < measure.end_tick)
             .max_by_key(|(tick, _)| *tick)
             .map(|(_, x)| *x + 30.0) // Add clearance for notehead width + spacing
             .unwrap_or_else(|| {
