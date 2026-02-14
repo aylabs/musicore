@@ -611,9 +611,6 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).length;
             return ret;
         },
-        __wbg_log_6b5ca2e6124b2808: function(arg0) {
-            console.log(getObject(arg0));
-        },
         __wbg_new_361308b2356cecd0: function() {
             const ret = new Object();
             return addHeapObject(ret);

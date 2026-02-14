@@ -633,16 +633,6 @@ impl MusicXMLConverter {
 
         let fraction = Fraction::from_musicxml(note_data.duration, timing_context.divisions);
         let duration_ticks = fraction.to_ticks()?;
-
-        // DEBUG: Log duration conversion (WASM and native)
-        #[cfg(target_arch = "wasm32")]
-        {
-            console::log_1(&format!(
-                "[MusicXML Converter] Note: duration={}, divisions={}, result={} ticks (fraction={}/{})",
-                note_data.duration, timing_context.divisions, duration_ticks,
-                fraction.numerator, fraction.denominator
-            ).into());
-        }
         #[cfg(not(target_arch = "wasm32"))]
         {
             eprintln!(

@@ -574,22 +574,6 @@ fn position_glyphs_for_staff(
         if notes_in_range.is_empty() {
             continue;
         }
-        
-        // DEBUG: Log note durations being processed
-        #[cfg(target_arch = "wasm32")]
-        {
-            use web_sys::console;
-            console::log_1(&format!(
-                "[Layout Engine] Processing {} notes for staff {}, voice {}",
-                notes_in_range.len(), staff_index, voice_index
-            ).into());
-            for (i, (pitch, tick, duration)) in notes_in_range.iter().take(5).enumerate() {
-                console::log_1(&format!(
-                    "[Layout Engine]   Note[{}]: pitch={}, tick={}, duration={} ticks",
-                    i, pitch, tick, duration
-                ).into());
-            }
-        }
 
         // Use pre-computed positions from unified spacing (Principle VI)
         let horizontal_offsets: Vec<f32> = notes_in_range

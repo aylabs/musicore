@@ -192,16 +192,6 @@ pub fn position_noteheads(
             } else {
                 ('\u{E1D9}', "noteSixteenthUp")
             };
-            
-            // DEBUG: Log selected codepoint
-            #[cfg(target_arch = "wasm32")]
-            {
-                use web_sys::console;
-                console::log_1(&format!(
-                    "[Positioner] pitch={}, duration={} ticks → {} (U+{:04X})",
-                    pitch, duration, glyph_name, codepoint as u32
-                ).into());
-            }
 
             let bounding_box = compute_glyph_bounding_box(
                 glyph_name,
