@@ -248,6 +248,13 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Calculate scroll container dimensions based on layout and zoom
     const totalHeight = layout.total_height * zoom;
     const totalWidth = layout.total_width * zoom;
+    
+    console.log('[ScoreViewer] Render dimensions:', {
+      layoutWidth: layout.total_width,
+      totalWidth,
+      zoom,
+      viewportWidth: window.innerWidth,
+    });
 
     return (
       <div style={styles.wrapper}>
