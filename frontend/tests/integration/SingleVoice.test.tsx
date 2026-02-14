@@ -425,7 +425,7 @@ describe('User Story 1: Single Voice Rendering', () => {
       const systemGroups = container.querySelectorAll('g[data-system-index]');
       
       systemGroups.forEach((group, index) => {
-        const expectedY = layout.systems[index].bounding_box.y_position;
+        const expectedY = layout.systems[index].bounding_box.y;
         const transform = group.getAttribute('transform');
         
         // Extract y from transform="translate(x, y)"

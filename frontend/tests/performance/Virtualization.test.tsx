@@ -96,7 +96,7 @@ describe('User Story 4: Performance Validation', () => {
       const midViewport: Viewport = { x: 0, y: 5000, width: 1200, height: 800 };
       const midSystems = getVisibleSystems(layout.systems, midViewport);
       expect(midSystems.length).toBeGreaterThan(0);
-      expect(midSystems[0].bounding_box.y_position).toBeGreaterThanOrEqual(4200); // Before viewport
+      expect(midSystems[0].bounding_box.y).toBeGreaterThanOrEqual(4200); // Before viewport
 
       // Bottom of score
       const bottomViewport: Viewport = { x: 0, y: 11200, width: 1200, height: 800 };
@@ -216,8 +216,8 @@ describe('User Story 4: Performance Validation', () => {
         const system = layout.systems[systemIndex];
         
         // System should intersect with viewport
-        const systemTop = system.bounding_box.y_position;
-        const systemBottom = system.bounding_box.y_position + system.bounding_box.height;
+        const systemTop = system.bounding_box.y;
+        const systemBottom = system.bounding_box.y + system.bounding_box.height;
         const viewportTop = viewport.y;
         const viewportBottom = viewport.y + viewport.height;
 

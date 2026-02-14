@@ -485,7 +485,7 @@ describe('System Virtualization', () => {
       // Should return systems around y=10000
       expect(result.length).toBeGreaterThan(0);
       expect(result.every(s => {
-        const y = s.bounding_box.y_position;
+        const y = s.bounding_box.y;
         const height = s.bounding_box.height;
         return intersectsViewport(y, height, viewport);
       })).toBe(true);

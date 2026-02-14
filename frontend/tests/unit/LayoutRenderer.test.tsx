@@ -364,7 +364,7 @@ describe('LayoutRenderer Component', () => {
                         glyphs: [
                           {
                             position: { x: 100, y: 10 },
-                            bounding_box: { x_position: 95, y_position: 5, width: 10, height: 10 },
+                            bounding_box: { x: 95, y: 5, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -430,7 +430,7 @@ describe('LayoutRenderer Component', () => {
                         glyphs: [
                           {
                             position: { x: 100, y: 10 },
-                            bounding_box: { x_position: 95, y_position: 5, width: 10, height: 10 },
+                            bounding_box: { x: 95, y: 5, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -494,7 +494,7 @@ describe('LayoutRenderer Component', () => {
                         glyphs: [
                           {
                             position: { x: 100, y: 10 },
-                            bounding_box: { x_position: 95, y_position: 5, width: 10, height: 10 },
+                            bounding_box: { x: 95, y: 5, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -567,7 +567,7 @@ describe('LayoutRenderer Component', () => {
                         glyphs: [
                           {
                             position: { x: 100, y: 10 },
-                            bounding_box: { x_position: 95, y_position: 5, width: 10, height: 10 },
+                            bounding_box: { x: 95, y: 5, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -578,7 +578,7 @@ describe('LayoutRenderer Component', () => {
                           },
                           {
                             position: { x: 150, y: 15 },
-                            bounding_box: { x_position: 145, y_position: 10, width: 10, height: 10 },
+                            bounding_box: { x: 145, y: 10, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -589,7 +589,7 @@ describe('LayoutRenderer Component', () => {
                           },
                           {
                             position: { x: 200, y: 5 },
-                            bounding_box: { x_position: 195, y_position: 0, width: 10, height: 10 },
+                            bounding_box: { x: 195, y: 0, width: 10, height: 10 },
                             codepoint: '\uE0A4',
                             source_reference: {
                               instrument_id: 'test-instrument',
@@ -749,7 +749,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'piano',
@@ -807,7 +807,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'piano',
@@ -851,7 +851,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'piano',
@@ -898,7 +898,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 100 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 100 },
             staff_groups: [
               {
                 instrument_id: 'violin',
@@ -943,7 +943,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'strings',
@@ -1001,7 +1001,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'strings',
@@ -1045,7 +1045,7 @@ describe('LayoutRenderer Component', () => {
         systems: [
           {
             index: 0,
-            bounding_box: { x_position: 0, y_position: 0, width: 1200, height: 280 },
+            bounding_box: { x: 0, y: 0, width: 1200, height: 280 },
             staff_groups: [
               {
                 instrument_id: 'woodwinds',

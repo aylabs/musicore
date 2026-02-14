@@ -148,7 +148,7 @@ describe('Visual Comparison Integration', () => {
       
       systemGroups.forEach((group, index) => {
         const transform = group.getAttribute('transform');
-        const expectedY = layout.systems[index].bounding_box.y_position;
+        const expectedY = layout.systems[index].bounding_box.y;
         
         expect(transform).toMatch(new RegExp(`translate\\(0,\\s*${expectedY}\\)`));
       });
