@@ -333,7 +333,8 @@ const styles = {
   },
   container: {
     flex: 1,
-    overflow: 'visible', // Let page-level scrolling handle vertical scroll
+    overflowX: 'auto', // Container handles horizontal scrolling (accessible without scrolling down)
+    overflowY: 'visible', // Page handles vertical scrolling
     position: 'relative' as const,
   },
   message: {
