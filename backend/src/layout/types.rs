@@ -149,7 +149,7 @@ pub struct GlyphRun {
     pub glyphs: Vec<Glyph>,
     /// Font name (typically "Bravura" for SMuFL)
     pub font_family: String,
-    /// Font size in logical units (typically 40.0 = 4 staff spaces)
+    /// Font size in logical units (typically 80.0 = 4 staff spaces per SMuFL standard)
     #[serde(serialize_with = "round_f32")]
     pub font_size: f32,
     /// RGBA color for all glyphs
