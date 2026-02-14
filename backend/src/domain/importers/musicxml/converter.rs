@@ -19,6 +19,9 @@ use super::timing::Fraction;
 use super::types::{MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData};
 use std::collections::{BTreeMap, HashMap};
 
+#[cfg(target_arch = "wasm32")]
+use web_sys::console;
+
 /// Voice distributor for resolving overlapping notes by splitting into multiple voices
 ///
 /// Uses deterministic algorithm: sort notes by (start_tick, pitch), then assign
@@ -630,6 +633,24 @@ impl MusicXMLConverter {
 
         let fraction = Fraction::from_musicxml(note_data.duration, timing_context.divisions);
         let duration_ticks = fraction.to_ticks()?;
+
+        // DEBUG: Log duration conversion (WASM and native)
+        #[cfg(target_arch = "wasm32")]
+        {
+            console::log_1(&format!(
+                "[MusicXML Converter] Note: duration={}, divisions={}, result={} ticks (fraction={}/{})",
+                note_data.duration, timing_context.divisions, duration_ticks,
+                fraction.numerator, fraction.denominator
+            ).into());
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            eprintln!(
+                "[MusicXML Converter] Note: duration={}, divisions={}, result={} ticks (fraction={}/{})",
+                note_data.duration, timing_context.divisions, duration_ticks,
+                fraction.numerator, fraction.denominator
+            );
+        }
 
         // Advance timing cursor only for non-chord notes
         // Chord notes start at the same tick as the previous note
