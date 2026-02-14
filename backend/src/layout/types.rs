@@ -241,7 +241,7 @@ pub struct SourceReference {
 }
 
 /// Visual grouping indicator for multi-staff instruments
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum BracketType {
     /// Curved bracket (piano, harp)
     Brace,

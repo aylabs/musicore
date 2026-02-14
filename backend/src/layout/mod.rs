@@ -1041,4 +1041,211 @@ mod tests {
             panic!("Glyph codepoint is empty");
         }
     }
+
+    /// T063: Integration test for piano layout verifying 2 staves with correct vertical spacing
+    #[test]
+    fn test_piano_multi_staff_layout() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [
+                    {
+                        "clef": "Treble",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 72, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    },
+                    {
+                        "clef": "Bass",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 48, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        // Verify system exists
+        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        let system = &layout.systems[0];
+
+        // Verify staff group exists
+        assert!(!system.staff_groups.is_empty(), "Should have at least one staff group");
+        let staff_group = &system.staff_groups[0];
+
+        // Verify 2 staves exist (treble + bass)
+        assert_eq!(staff_group.staves.len(), 2, "Piano should have 2 staves");
+
+        // Verify vertical spacing between staves
+        let treble_staff = &staff_group.staves[0];
+        let bass_staff = &staff_group.staves[1];
+        
+        let treble_top = treble_staff.staff_lines[0].y_position;
+        let bass_top = bass_staff.staff_lines[0].y_position;
+        
+        // Vertical spacing should be 20 staff spaces (400 units at default units_per_space=20)
+        let expected_spacing = 20.0 * config.units_per_space; // 400 units
+        assert_eq!(bass_top - treble_top, expected_spacing, 
+            "Staff vertical spacing should be 20 staff spaces (400 units)");
+
+        // Verify bracket type is Brace for piano
+        assert_eq!(staff_group.bracket_type, BracketType::Brace,
+            "Piano should have Brace bracket type");
+
+        // Verify bracket glyph exists
+        assert!(staff_group.bracket_glyph.is_some(),
+            "Piano staff group should have bracket glyph");
+    }
+
+    /// T064: Unit test for brace/bracket positioning and vertical scaling
+    #[test]
+    fn test_create_bracket_glyph_brace() {
+        let config = LayoutConfig::default();
+        
+        // Create two dummy staves at different vertical positions
+        let staff_0_lines = create_staff_lines(0, 1200.0, config.units_per_space, 0.0);
+        let staff_1_lines = create_staff_lines(1, 1200.0, config.units_per_space, 0.0);
+        
+        let staff_0 = Staff {
+            staff_lines: staff_0_lines,
+            glyph_runs: vec![],
+            structural_glyphs: vec![],
+            bar_lines: vec![],
+        };
+        
+        let staff_1 = Staff {
+            staff_lines: staff_1_lines,
+            glyph_runs: vec![],
+            structural_glyphs: vec![],
+            bar_lines: vec![],
+        };
+        
+        let staves = vec![staff_0, staff_1];
+        let bracket_type = BracketType::Brace;
+        
+        let bracket_glyph = create_bracket_glyph(&staves, &bracket_type, &config);
+        
+        // Verify brace codepoint
+        assert_eq!(bracket_glyph.codepoint, "\u{E000}", 
+            "Brace should use SMuFL codepoint U+E000");
+        
+        // Verify x position (left margin)
+        assert_eq!(bracket_glyph.x, 15.0, "Brace should be at x=15");
+        
+        // Verify vertical scaling is applied
+        assert!(bracket_glyph.scale_y > 0.0, "Brace should have positive vertical scale");
+        
+        // Verify bounding box spans both staves
+        let first_staff_top = staves[0].staff_lines[0].y_position;
+        let last_staff_bottom = staves[1].staff_lines[4].y_position;
+        
+        // Brace should extend to cover both staves
+        assert!(bracket_glyph.bounding_box.y <= first_staff_top,
+            "Brace bounding box should start at or above first staff");
+        assert!(bracket_glyph.bounding_box.y + bracket_glyph.bounding_box.height >= last_staff_bottom,
+            "Brace bounding box should extend to or below last staff");
+    }
+
+    /// T064: Unit test for square bracket positioning (ensemble scores)
+    #[test]
+    fn test_create_bracket_glyph_bracket() {
+        let config = LayoutConfig::default();
+        
+        let staff_0_lines = create_staff_lines(0, 1200.0, config.units_per_space, 0.0);
+        let staff_1_lines = create_staff_lines(1, 1200.0, config.units_per_space, 0.0);
+        
+        let staff_0 = Staff {
+            staff_lines: staff_0_lines,
+            glyph_runs: vec![],
+            structural_glyphs: vec![],
+            bar_lines: vec![],
+        };
+        
+        let staff_1 = Staff {
+            staff_lines: staff_1_lines,
+            glyph_runs: vec![],
+            structural_glyphs: vec![],
+            bar_lines: vec![],
+        };
+        
+        let staves = vec![staff_0, staff_1];
+        let bracket_type = BracketType::Bracket;
+        
+        let bracket_glyph = create_bracket_glyph(&staves, &bracket_type, &config);
+        
+        // Verify bracket codepoint
+        assert_eq!(bracket_glyph.codepoint, "\u{E002}", 
+            "Bracket should use SMuFL codepoint U+E002");
+    }
+
+    /// T074: Test notes on both staves render correctly relative to their respective staff lines
+    #[test]
+    fn test_notes_on_multi_staff() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [
+                    {
+                        "clef": "Treble",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 72, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    },
+                    {
+                        "clef": "Bass",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 48, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let system = &layout.systems[0];
+        let staff_group = &system.staff_groups[0];
+        
+        // Both staves should have glyph runs (noteheads)
+        assert!(!staff_group.staves[0].glyph_runs.is_empty(), 
+            "Treble staff should have glyphs");
+        assert!(!staff_group.staves[1].glyph_runs.is_empty(), 
+            "Bass staff should have glyphs");
+
+        // Verify treble staff note is positioned relative to treble staff lines
+        let treble_line_0 = staff_group.staves[0].staff_lines[0].y_position;
+        let treble_glyph = &staff_group.staves[0].glyph_runs[0].glyphs[0];
+        assert!(treble_glyph.position.y >= treble_line_0 - 100.0, 
+            "Treble note should be near treble staff");
+
+        // Verify bass staff note is positioned relative to bass staff lines
+        let bass_line_0 = staff_group.staves[1].staff_lines[0].y_position;
+        let bass_glyph = &staff_group.staves[1].glyph_runs[0].glyphs[0];
+        assert!(bass_glyph.position.y >= bass_line_0 - 100.0, 
+            "Bass note should be near bass staff");
+        
+        // Verify bass staff is below treble staff
+        assert!(bass_line_0 > treble_line_0, 
+            "Bass staff should be below treble staff");
+    }
 }

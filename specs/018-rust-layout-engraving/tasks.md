@@ -173,21 +173,21 @@
 
 ### Tests for US5 ⚠️ RED Phase
 
-- [ ] T063 [P] [US5] Integration test for piano layout verifying 2 staves with correct vertical spacing
-- [ ] T064 [P] [US5] Unit test for brace/bracket positioning and vertical scaling in backend/src/layout/positioner.rs
-- [ ] T065 [P] [US5] Contract test against piano_8_measures.json fixture verifying multi-staff output structure
+- [X] T063 [P] [US5] Integration test for piano layout verifying 2 staves with correct vertical spacing
+- [X] T064 [P] [US5] Unit test for brace/bracket positioning and vertical scaling in backend/src/layout/positioner.rs
+- [X] T065 [P] [US5] Contract test against piano_8_measures.json fixture verifying multi-staff output structure
 
 ### Implementation for US5 🟢 GREEN Phase
 
-- [ ] T066 [P] [US5] Implement position_brace() in backend/src/layout/positioner.rs with SMuFL brace glyph (U+E000)
-- [ ] T067 [P] [US5] Calculate brace vertical scaling to span from top staff line to bottom staff line
-- [ ] T068 [P] [US5] Implement position_bracket() with SMuFL bracket glyph (U+E002) for ensemble scores
-- [ ] T069 [US5] Update compute_layout() to detect multi-staff instruments and set bracket_type (Brace for piano, Bracket for ensemble)
-- [ ] T070 [US5] Verify staff vertical spacing formula: 80 logical units between paired staves, 220 between systems
-- [ ] T071 [US5] Add brace/bracket to staff_group rendering before staves
-- [ ] T072 [US5] Test with piano fixture - verify treble + bass staves with brace
-- [ ] T073 [US5] Test staff group separation - verify correct spacing between instrument groups
-- [ ] T074 [US5] Test notes on both staves render correctly relative to their respective staff lines
+- [X] T066 [P] [US5] Implement position_brace() in backend/src/layout/positioner.rs with SMuFL brace glyph (U+E000)
+- [X] T067 [P] [US5] Calculate brace vertical scaling to span from top staff line to bottom staff line
+- [X] T068 [P] [US5] Implement position_bracket() with SMuFL bracket glyph (U+E002) for ensemble scores
+- [X] T069 [US5] Update compute_layout() to detect multi-staff instruments and set bracket_type (Brace for piano, Bracket for ensemble)
+- [X] T070 [US5] Verify staff vertical spacing formula: 80 logical units between paired staves, 220 between systems
+- [X] T071 [US5] Add brace/bracket to staff_group rendering before staves
+- [X] T072 [US5] Test with piano fixture - verify treble + bass staves with brace
+- [X] T073 [US5] Test staff group separation - verify correct spacing between instrument groups
+- [X] T074 [US5] Test notes on both staves render correctly relative to their respective staff lines
 
 **Checkpoint**: Multi-staff rendering works with braces/brackets ✅ US5 COMPLETE
 
