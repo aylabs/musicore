@@ -51,11 +51,13 @@ export async function initWasm(): Promise<WasmModule> {
         : `${import.meta.env.BASE_URL}/`;
       
       // Add cache-busting timestamp to force reload of updated WASM module
-      const cacheBuster = Date.now();
+      // Manual version bump when WASM changes: increment this number
+      const wasmVersion = 2; // Increment when WASM binary changes
+      const cacheBuster = `${wasmVersion}.${Date.now()}`;
       const jsUrl = new URL(`${basePath}wasm/musicore_backend.js?v=${cacheBuster}`, window.location.origin);
       const wasmUrl = new URL(`${basePath}wasm/musicore_backend_bg.wasm?v=${cacheBuster}`, window.location.origin);
       
-      console.log('[WASM] Loading module:', { jsUrl: jsUrl.href, wasmUrl: wasmUrl.href, cacheBuster });
+      console.log('[WASM] Loading module:', { jsUrl: jsUrl.href, wasmUrl: wasmUrl.href, cacheBuster, version: wasmVersion });
       
       // Dynamically import the JS bindings
       const wasm = await import(/* @vite-ignore */ jsUrl.href) as WasmModule;
