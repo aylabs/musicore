@@ -190,18 +190,18 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     staffGroupElement.setAttribute('data-staff-group', 'true');
     staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
 
-    // Render braces/brackets if multi-staff (Tasks T045, T046 - US3)
+    // Render each staff first (Task T019)
+    for (const staff of staffGroup.staves) {
+      const staffElement = this.renderStaff(staff);
+      staffGroupElement.appendChild(staffElement);
+    }
+
+    // Render braces/brackets AFTER staves so they appear on top (Tasks T045, T046 - US3)
     if (staffGroup.staves.length > 1 && staffGroup.bracket_type !== 'None') {
       const bracketElement = this.renderBracket(staffGroup);
       if (bracketElement) {
         staffGroupElement.appendChild(bracketElement);
       }
-    }
-
-    // Render each staff (Task T019)
-    for (const staff of staffGroup.staves) {
-      const staffElement = this.renderStaff(staff);
-      staffGroupElement.appendChild(staffElement);
     }
 
     return staffGroupElement;
@@ -213,8 +213,18 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param staffGroup - Staff group with multiple staves
    * @returns SVG group element with brace/bracket glyph, or null if not applicable
    */
+  /**
+   * Renders a bracket or brace using geometry calculated by the Rust layout engine.
+   * All positioning, scaling, and visual calculations are done in Rust (architecture requirement).
+   * 
+   * @param staffGroup - Staff group containing bracket_glyph from Rust
+   * @returns SVG group element or null if no bracket
+   */
   private renderBracket(staffGroup: StaffGroup): SVGGElement | null {
-    if (staffGroup.staves.length < 2) {
+    // Use bracket geometry calculated by Rust layout engine (no frontend calculations)
+    const { bracket_glyph } = staffGroup;
+    
+    if (!bracket_glyph) {
       return null;
     }
 
@@ -222,78 +232,32 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const bracketGroup = createSVGGroup();
     bracketGroup.setAttribute('class', 'bracket');
 
-    // Calculate vertical span of all staves
-    const firstStaff = staffGroup.staves[0];
-    const lastStaff = staffGroup.staves[staffGroup.staves.length - 1];
-    
-    const topY = firstStaff.staff_lines[0].y_position;
-    const bottomY = lastStaff.staff_lines[lastStaff.staff_lines.length - 1].y_position;
-    const centerY = (topY + bottomY) / 2;
-    const height = bottomY - topY;
-
-    // SMuFL brace/bracket glyphs
-    let codepoint: string;
-    let xPosition: number = 10; // Left margin before staff lines
-    
-    if (staffGroup.bracket_type === 'Brace') {
-      // Task T045: Brace rendering
-      codepoint = '\uE000'; // SMuFL: brace
-      
-      // Render brace glyph with SMuFL standard fontSize 80
-      const braceGlyph = this.renderGlyph(
-        {
-          position: { x: 0, y: 0 }, // Position via transform instead
-          bounding_box: { x: xPosition - 5, y: topY, width: 20, height },
-          codepoint,
-          source_reference: {
-            instrument_id: staffGroup.instrument_id,
-            staff_index: 0,
-            voice_index: 0,
-            event_index: 0,
-          },
+    // Render bracket glyph using geometry from Rust
+    const bracketGlyphElement = this.renderGlyph(
+      {
+        position: { x: 0, y: 0 }, // Position via transform
+        bounding_box: bracket_glyph.bounding_box,
+        codepoint: bracket_glyph.codepoint,
+        source_reference: {
+          instrument_id: staffGroup.instrument_id,
+          staff_index: 0,
+          voice_index: 0,
+          event_index: 0,
         },
-        config.fontFamily,
-        80,
-        config.glyphColor
-      );
-      
-      // Apply vertical scaling to stretch brace to cover staff height
-      // Use transform pattern: translate to position, then scale
-      const scale = height / 160; // Brace natural height ~160 logical units
-      braceGlyph.setAttribute('transform', `translate(${xPosition}, ${centerY}) scale(1, ${scale.toFixed(3)})`);
-      braceGlyph.setAttribute('data-bracket-type', 'brace');
-      
-      bracketGroup.appendChild(braceGlyph);
-      
-    } else if (staffGroup.bracket_type === 'Bracket') {
-      // Task T046: Bracket rendering
-      codepoint = '\uE002'; // SMuFL: bracket
-      
-      // Render bracket glyph with SMuFL standard fontSize 80
-      const bracketGlyph = this.renderGlyph(
-        {
-          position: { x: 0, y: 0 }, // Position via transform instead
-          bounding_box: { x: xPosition - 5, y: topY, width: 20, height },
-          codepoint,
-          source_reference: {
-            instrument_id: staffGroup.instrument_id,
-            staff_index: 0,
-            voice_index: 0,
-            event_index: 0,
-          },
-        },
-        config.fontFamily,
-        80,
-        config.glyphColor
-      );
-      
-      // Apply vertical scaling for bracket
-      const scale = height / 160;
-      bracketGlyph.setAttribute('transform', `translate(${xPosition}, ${centerY}) scale(1, ${scale.toFixed(3)})`);
-      bracketGlyph.setAttribute('data-bracket-type', 'bracket');
-      
-      bracketGroup.appendChild(bracketGlyph);
-    }
+      },
+      config.fontFamily,
+      80, // SMuFL standard fontSize
+      config.glyphColor
+    );
+    
+    // Apply transform using geometry from Rust
+    bracketGlyphElement.setAttribute(
+      'transform',
+      `translate(${bracket_glyph.x}, ${bracket_glyph.y}) scale(1, ${bracket_glyph.scale_y.toFixed(3)})`
+    );
+    bracketGlyphElement.setAttribute('data-bracket-type', staffGroup.bracket_type);
+    
+    bracketGroup.appendChild(bracketGlyphElement);
 
     return bracketGroup;
   }
@@ -353,76 +317,31 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   }
 
   /**
-   * Renders a bar line (vertical line separating measures).
+   * Renders a bar line using geometry calculated by the Rust layout engine.
+   * Compliant with Principle VI: Layout Engine Authority.
    * 
-   * @param barLine - Bar line data from staff
+   * @param barLine - Bar line data with pre-calculated segment positions
    * @param config - Render configuration
-   * @returns SVG group element containing bar line(s)
+   * @returns SVG group element containing bar line segment(s)
    */
   private renderBarLine(barLine: BarLine, config: RenderConfig): SVGGElement {
     const barLineGroup = createSVGGroup();
     barLineGroup.setAttribute('class', 'bar-line');
+    barLineGroup.setAttribute('data-bar-type', barLine.bar_type);
 
     const strokeColor = config.staffLineColor;
-    const thinWidth = 1.5;
-    const thickWidth = 4;
 
-    switch (barLine.bar_type) {
-      case 'Single':
-        // Single thin line
-        const singleLine = createSVGElement('line');
-        singleLine.setAttribute('x1', barLine.x_position.toString());
-        singleLine.setAttribute('y1', barLine.y_start.toString());
-        singleLine.setAttribute('x2', barLine.x_position.toString());
-        singleLine.setAttribute('y2', barLine.y_end.toString());
-        singleLine.setAttribute('stroke', strokeColor);
-        singleLine.setAttribute('stroke-width', thinWidth.toString());
-        barLineGroup.appendChild(singleLine);
-        break;
-
-      case 'Double':
-        // Two thin lines
-        const spacing = 4; // Space between double bar lines
-        const doubleLine1 = createSVGElement('line');
-        doubleLine1.setAttribute('x1', (barLine.x_position - spacing / 2).toString());
-        doubleLine1.setAttribute('y1', barLine.y_start.toString());
-        doubleLine1.setAttribute('x2', (barLine.x_position - spacing / 2).toString());
-        doubleLine1.setAttribute('y2', barLine.y_end.toString());
-        doubleLine1.setAttribute('stroke', strokeColor);
-        doubleLine1.setAttribute('stroke-width', thinWidth.toString());
-        barLineGroup.appendChild(doubleLine1);
-
-        const doubleLine2 = createSVGElement('line');
-        doubleLine2.setAttribute('x1', (barLine.x_position + spacing / 2).toString());
-        doubleLine2.setAttribute('y1', barLine.y_start.toString());
-        doubleLine2.setAttribute('x2', (barLine.x_position + spacing / 2).toString());
-        doubleLine2.setAttribute('y2', barLine.y_end.toString());
-        doubleLine2.setAttribute('stroke', strokeColor);
-        doubleLine2.setAttribute('stroke-width', thinWidth.toString());
-        barLineGroup.appendChild(doubleLine2);
-        break;
-
-      case 'Final':
-        // Thin line + thick line
-        const finalSpacing = 4;
-        const thinLine = createSVGElement('line');
-        thinLine.setAttribute('x1', (barLine.x_position - finalSpacing - thickWidth / 2).toString());
-        thinLine.setAttribute('y1', barLine.y_start.toString());
-        thinLine.setAttribute('x2', (barLine.x_position - finalSpacing - thickWidth / 2).toString());
-        thinLine.setAttribute('y2', barLine.y_end.toString());
-        thinLine.setAttribute('stroke', strokeColor);
-        thinLine.setAttribute('stroke-width', thinWidth.toString());
-        barLineGroup.appendChild(thinLine);
-
-        const thickLine = createSVGElement('line');
-        thickLine.setAttribute('x1', (barLine.x_position + thickWidth / 2).toString());
-        thickLine.setAttribute('y1', barLine.y_start.toString());
-        thickLine.setAttribute('x2', (barLine.x_position + thickWidth / 2).toString());
-        thickLine.setAttribute('y2', barLine.y_end.toString());
-        thickLine.setAttribute('stroke', strokeColor);
-        thickLine.setAttribute('stroke-width', thickWidth.toString());
-        barLineGroup.appendChild(thickLine);
-        break;
+    // Render each segment using geometry from Rust layout engine
+    // No position calculations in renderer (Principle VI compliance)
+    for (const segment of barLine.segments) {
+      const line = createSVGElement('line');
+      line.setAttribute('x1', segment.x_position.toString());
+      line.setAttribute('y1', segment.y_start.toString());
+      line.setAttribute('x2', segment.x_position.toString());
+      line.setAttribute('y2', segment.y_end.toString());
+      line.setAttribute('stroke', strokeColor);
+      line.setAttribute('stroke-width', segment.stroke_width.toString());
+      barLineGroup.appendChild(line);
     }
 
     return barLineGroup;

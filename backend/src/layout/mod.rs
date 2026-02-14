@@ -6,6 +6,7 @@
 //! hit testing, and interaction.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub mod batcher;
 pub mod breaker;
@@ -19,8 +20,9 @@ pub mod wasm;
 
 pub use breaker::MeasureInfo;
 pub use types::{
-    BarLine, BarLineType, BoundingBox, BracketType, Color, GlobalLayout, Glyph, GlyphRun, Point,
-    SourceReference, Staff, StaffGroup, StaffLine, System, TickRange,
+    BarLine, BarLineSegment, BarLineType, BoundingBox, BracketGlyph, BracketType, Color,
+    GlobalLayout, Glyph, GlyphRun, Point, SourceReference, Staff, StaffGroup, StaffLine, System,
+    TickRange,
 };
 
 /// Configuration for layout computation
@@ -41,8 +43,8 @@ impl Default for LayoutConfig {
         Self {
             max_system_width: 800.0,
             units_per_space: 20.0, // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
-            system_spacing: 550.0, // Increased spacing to accommodate larger grand staff
-            system_height: 480.0, // Height for grand staff with 14 staff spaces separation
+            system_spacing: 200.0, // Spacing between systems (gap after system_height)
+            system_height: 600.0, // Height for grand staff with 20 staff spaces separation
         }
     }
 }
@@ -95,26 +97,36 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         for instrument in &instruments {
             let mut staves = Vec::new();
 
-            for (staff_index, staff_data) in instrument.staves.iter().enumerate() {
-                // Calculate vertical offset for this staff (same formula as create_staff_lines)
-                // Staff spacing: 14 staff spaces between staves (provides clear separation for piano grand staff)
-                let staff_vertical_offset = staff_index as f32 * 14.0 * config.units_per_space;
+            // Calculate left margin (same for all staves in this instrument)
+            let key_sig_width = instrument.staves.first()
+                .map(|s| s.key_sharps.abs() as f32 * 15.0)
+                .unwrap_or(0.0);
+            let left_margin = 210.0 + key_sig_width;
 
-                // Calculate left margin needed for structural glyphs
-                // Clef (~60 units) + key sig (15 * sharps) + time sig (~50 units) + spacing (~60 units)
-                let key_sig_width = staff_data.key_sharps.abs() as f32 * 15.0;
-                let left_margin = 170.0 + key_sig_width;
+            // Compute unified note positions across all staves in this instrument (Principle VI)
+            // This ensures notes at the same tick align horizontally between treble/bass staves
+            let note_positions = compute_unified_note_positions(
+                &instrument.staves,
+                &system.tick_range,
+                system.bounding_box.width,
+                left_margin,
+                &spacing_config,
+            );
+
+            for (staff_index, staff_data) in instrument.staves.iter().enumerate() {
+                // Calculate vertical offset for this staff relative to system position
+                // Staff spacing: 20 staff spaces between staves (provides clear separation for piano grand staff)
+                let staff_vertical_offset = system.bounding_box.y + (staff_index as f32 * 20.0 * config.units_per_space);
                 
-                // Position glyphs for this staff within the system's tick range
+                // Position glyphs for this staff using unified note positions
                 let glyphs = position_glyphs_for_staff(
                     staff_data,
                     &system.tick_range,
-                    system.bounding_box.width,
                     config.units_per_space,
                     &instrument.id,
                     staff_index,
-                    left_margin,
                     staff_vertical_offset,
+                    &note_positions,
                 );
 
                 // Batch glyphs for efficient rendering
@@ -125,25 +137,26 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     staff_index,
                     system.bounding_box.width,
                     config.units_per_space,
+                    system.bounding_box.y,
                 );
 
                 // T036-T037: Generate structural glyphs (clef, time sig, key sig) at system start
                 let mut structural_glyphs = Vec::new();
 
-                // Position clef at x=20 (left margin)
+                // Position clef at x=60 (left margin with room for brace and glyph extent)
                 let clef_glyph = positioner::position_clef(
                     &staff_data.clef,
-                    20.0,
+                    60.0,
                     config.units_per_space,
                     staff_vertical_offset,
                 );
                 structural_glyphs.push(clef_glyph);
 
-                // Position key signature after clef (x=80)
+                // Position key signature after clef (x=120)
                 let key_sig_glyphs = positioner::position_key_signature(
                     staff_data.key_sharps,
                     &staff_data.clef,
-                    80.0,
+                    120.0,
                     config.units_per_space,
                     staff_vertical_offset,
                 );
@@ -152,7 +165,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 // Position time signature after key signature
                 // Key sig takes ~15 units per accidental, so calculate dynamic x position
                 let key_sig_width = staff_data.key_sharps.abs() as f32 * 15.0;
-                let time_sig_x = 80.0 + key_sig_width + 20.0; // Add 20 unit gap
+                let time_sig_x = 120.0 + key_sig_width + 20.0; // Add 20 unit gap
                 let time_sig_glyphs = positioner::position_time_signature(
                     staff_data.time_numerator,
                     staff_data.time_denominator,
@@ -170,6 +183,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     left_margin,
                     system.bounding_box.width,
                     config.units_per_space,
+                    system.bounding_box.y,
                 );
 
                 // Create staff with batched glyphs and structural glyphs
@@ -183,15 +197,25 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 staves.push(staff);
             }
 
+            // Calculate bracket glyph geometry if multi-staff instrument
+            let bracket_type = if instrument.staves.len() > 1 {
+                BracketType::Brace
+            } else {
+                BracketType::None
+            };
+            
+            let bracket_glyph = if instrument.staves.len() > 1 {
+                Some(create_bracket_glyph(&staves, &bracket_type, config))
+            } else {
+                None
+            };
+
             // Create staff group for this instrument
             let staff_group = StaffGroup {
                 instrument_id: instrument.id.clone(),
                 staves,
-                bracket_type: if instrument.staves.len() > 1 {
-                    BracketType::Brace
-                } else {
-                    BracketType::None
-                },
+                bracket_type,
+                bracket_glyph,
             };
 
             staff_groups.push(staff_group);
@@ -427,16 +451,110 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
     instruments
 }
 
+/// Compute unified note positions across all staves in a staff group
+/// 
+/// For multi-staff instruments (e.g., piano), notes at the same tick must align
+/// horizontally across all staves. This function collects all unique tick positions
+/// from all staves and computes a unified spacing map.
+///
+/// # Arguments
+/// * `staves` - All staves in the staff group (e.g., treble + bass for piano)
+/// * `tick_range` - Tick range for this system
+/// * `system_width` - Total system width in logical units
+/// * `left_margin` - Left margin for note area
+/// * `spacing_config` - Spacing configuration
+///
+/// # Returns
+/// HashMap mapping tick positions to x-coordinates (Principle VI: Layout Engine Authority)
+fn compute_unified_note_positions(
+    staves: &[StaffData],
+    tick_range: &TickRange,
+    system_width: f32,
+    left_margin: f32,
+    spacing_config: &spacer::SpacingConfig,
+) -> HashMap<u32, f32> {
+    // Collect all unique (tick, duration) pairs from all staves
+    let mut tick_durations: Vec<(u32, u32)> = Vec::new();
+    
+    for staff_data in staves {
+        for voice in &staff_data.voices {
+            for note in &voice.notes {
+                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick {
+                    tick_durations.push((note.start_tick, note.duration_ticks));
+                }
+            }
+        }
+    }
+    
+    if tick_durations.is_empty() {
+        return HashMap::new();
+    }
+    
+    // Sort by tick position and remove duplicates
+    tick_durations.sort_by_key(|(tick, _)| *tick);
+    tick_durations.dedup_by_key(|(tick, _)| *tick);
+    
+    // Calculate cumulative spacing based on durations
+    let mut cumulative_spacing = Vec::new();
+    let mut current_position = 0.0;
+    let mut last_tick = tick_range.start_tick;
+    
+    for (start_tick, duration_ticks) in &tick_durations {
+        if *start_tick > last_tick {
+            let gap_duration = (*start_tick - last_tick).min(*duration_ticks);
+            current_position += spacer::compute_note_spacing(gap_duration, spacing_config);
+        }
+        cumulative_spacing.push(current_position);
+        last_tick = *start_tick;
+    }
+    
+    // Calculate total natural width
+    let total_natural_width = if let Some(&last_pos) = cumulative_spacing.last() {
+        let (_, last_duration) = tick_durations.last().unwrap();
+        last_pos + spacer::compute_note_spacing(*last_duration, spacing_config)
+    } else {
+        spacing_config.minimum_spacing
+    };
+    
+    // Scale positions to fit available width
+    let available_width = system_width - left_margin;
+    let scale_factor = if total_natural_width > 0.0 {
+        available_width / total_natural_width
+    } else {
+        1.0
+    };
+    
+    // Build position map: tick -> x_position
+    let mut position_map = HashMap::new();
+    for (i, (tick, _)) in tick_durations.iter().enumerate() {
+        let x_position = left_margin + (cumulative_spacing[i] * scale_factor);
+        position_map.insert(*tick, x_position);
+    }
+    
+    position_map
+}
+
 /// Position glyphs for a single staff within a system's tick range
+///
+/// Uses pre-computed unified note positions to ensure horizontal alignment
+/// across all staves in a staff group (e.g., piano treble/bass).
+///
+/// # Arguments
+/// * `staff_data` - Staff data containing voices and notes
+/// * `tick_range` - Tick range for this system
+/// * `units_per_space` - Scaling factor (20 units = 1 staff space)
+/// * `instrument_id` - Instrument identifier
+/// * `staff_index` - Index of this staff within the instrument
+/// * `staff_vertical_offset` - Vertical offset for this staff
+/// * `note_positions` - Pre-computed tick -> x_position map (unified across staves)
 fn position_glyphs_for_staff(
     staff_data: &StaffData,
     tick_range: &TickRange,
-    system_width: f32,
     units_per_space: f32,
     instrument_id: &str,
     staff_index: usize,
-    left_margin: f32,
     staff_vertical_offset: f32,
+    note_positions: &HashMap<u32, f32>,
 ) -> Vec<Glyph> {
     let mut all_glyphs = Vec::new();
 
@@ -455,16 +573,11 @@ fn position_glyphs_for_staff(
             continue;
         }
 
-        // Calculate horizontal offsets for notes based on their tick positions
-        // Notes start after the left margin (structural glyphs)
-        let tick_span = (tick_range.end_tick - tick_range.start_tick) as f32;
-        let available_width = system_width - left_margin;
+        // Use pre-computed positions from unified spacing (Principle VI)
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
             .map(|(_, start_tick, _)| {
-                let relative_tick = (*start_tick - tick_range.start_tick) as f32;
-                let position_ratio = relative_tick / tick_span;
-                left_margin + (position_ratio * available_width)
+                *note_positions.get(start_tick).unwrap_or(&0.0)
             })
             .collect();
 
@@ -491,10 +604,11 @@ fn create_staff_lines(
     staff_index: usize,
     system_width: f32,
     units_per_space: f32,
+    system_y_position: f32,
 ) -> [StaffLine; 5] {
-    // Each staff is vertically offset based on its index
-    // Staff spacing: 14 staff spaces (280 logical units at default scale of 20)
-    let staff_vertical_offset = staff_index as f32 * 14.0 * units_per_space;
+    // Each staff is vertically offset based on its index, relative to system
+    // Staff spacing: 20 staff spaces (400 logical units at default scale of 20)
+    let staff_vertical_offset = system_y_position + (staff_index as f32 * 20.0 * units_per_space);
 
     // Create 5 evenly spaced lines (2 staff spaces apart = 20 logical units)
     let mut lines = Vec::new();
@@ -520,6 +634,7 @@ fn create_staff_lines(
 /// * `left_margin` - Left margin where music content starts
 /// * `system_width` - Total width of the system
 /// * `units_per_space` - Scaling factor
+/// * `system_y_position` - Vertical position of the system
 ///
 /// # Returns
 /// Vector of bar lines positioned at measure boundaries
@@ -530,11 +645,12 @@ fn create_bar_lines(
     left_margin: f32,
     system_width: f32,
     units_per_space: f32,
+    system_y_position: f32,
 ) -> Vec<BarLine> {
     let mut bar_lines = Vec::new();
     
-    // Calculate staff vertical offset
-    let staff_vertical_offset = staff_index as f32 * 14.0 * units_per_space;
+    // Calculate staff vertical offset relative to system
+    let staff_vertical_offset = system_y_position + (staff_index as f32 * 20.0 * units_per_space);
     
     // Y positions for top and bottom staff lines
     let y_start = staff_vertical_offset; // Top line (line 0)
@@ -550,28 +666,33 @@ fn create_bar_lines(
         return bar_lines;
     }
     
-    // Calculate available width for measures (excluding left margin)
+    // Calculate total width of measures in this system
+    let total_measure_width: f32 = measures_in_system.iter().map(|m| m.width).sum();
     let available_width = system_width - left_margin;
-    let tick_span = (tick_range.end_tick - tick_range.start_tick) as f32;
     
-    // Add bar lines at the end of each measure
-    for measure in &measures_in_system {
-        let measure_end_tick = measure.end_tick;
+    // Scale factor to fit measures into available width
+    let scale = if total_measure_width > 0.0 {
+        available_width / total_measure_width
+    } else {
+        1.0
+    };
+    
+    // Add bar lines at the end of each measure using cumulative widths
+    let mut cumulative_x = left_margin;
+    for measure in measures_in_system.iter() {
+        // Add this measure's width (scaled to fit available space)
+        let scaled_width = measure.width * scale;
+        cumulative_x += scaled_width;
         
-        // Skip if measure end is beyond system range
-        if measure_end_tick > tick_range.end_tick {
+        // Skip barline if measure extends beyond system
+        if measure.end_tick > tick_range.end_tick {
             continue;
         }
         
-        // Calculate x position based on tick position
-        let relative_tick = (measure_end_tick - tick_range.start_tick) as f32;
-        let position_ratio = relative_tick / tick_span;
-        let x_position = left_margin + (position_ratio * available_width);
-        
         // Determine bar line type
-        let bar_type = if measure_end_tick == tick_range.end_tick {
+        let bar_type = if measure.end_tick == tick_range.end_tick {
             // Check if this is the very last measure in the entire score
-            let is_last_measure = measure_infos.last().map(|m| m.end_tick) == Some(measure_end_tick);
+            let is_last_measure = measure_infos.last().map(|m| m.end_tick) == Some(measure.end_tick);
             if is_last_measure {
                 BarLineType::Final
             } else {
@@ -581,15 +702,118 @@ fn create_bar_lines(
             BarLineType::Single
         };
         
+        // Create bar line segments with explicit geometry (Principle VI: Layout Engine Authority)
+        let segments = create_bar_line_segments(cumulative_x, y_start, y_end, &bar_type);
+        
         bar_lines.push(BarLine {
-            x_position,
-            y_start,
-            y_end,
+            segments,
             bar_type,
         });
     }
     
     bar_lines
+}
+
+/// Creates bar line segments with explicit geometry for each line
+/// This ensures the renderer doesn't calculate positions (Principle VI compliance)
+fn create_bar_line_segments(
+    x_position: f32,
+    y_start: f32,
+    y_end: f32,
+    bar_type: &BarLineType,
+) -> Vec<BarLineSegment> {
+    const THIN_WIDTH: f32 = 1.5;
+    const THICK_WIDTH: f32 = 4.0;
+    const DOUBLE_SPACING: f32 = 4.0;  // Space between double bar lines
+    const FINAL_SPACING: f32 = 4.0;   // Space between thin and thick in final bar
+    
+    match bar_type {
+        BarLineType::Single => {
+            vec![BarLineSegment {
+                x_position,
+                y_start,
+                y_end,
+                stroke_width: THIN_WIDTH,
+            }]
+        }
+        BarLineType::Double => {
+            vec![
+                BarLineSegment {
+                    x_position: x_position - DOUBLE_SPACING / 2.0,
+                    y_start,
+                    y_end,
+                    stroke_width: THIN_WIDTH,
+                },
+                BarLineSegment {
+                    x_position: x_position + DOUBLE_SPACING / 2.0,
+                    y_start,
+                    y_end,
+                    stroke_width: THIN_WIDTH,
+                },
+            ]
+        }
+        BarLineType::Final => {
+            vec![
+                BarLineSegment {
+                    x_position: x_position - FINAL_SPACING - THICK_WIDTH / 2.0,
+                    y_start,
+                    y_end,
+                    stroke_width: THIN_WIDTH,
+                },
+                BarLineSegment {
+                    x_position: x_position + THICK_WIDTH / 2.0,
+                    y_start,
+                    y_end,
+                    stroke_width: THICK_WIDTH,
+                },
+            ]
+        }
+    }
+}
+
+/// Creates bracket/brace glyph with calculated geometry for multi-staff groups
+fn create_bracket_glyph(
+    staves: &[Staff],
+    bracket_type: &BracketType,
+    config: &LayoutConfig,
+) -> BracketGlyph {
+    let first_staff = &staves[0];
+    let last_staff = &staves[staves.len() - 1];
+    
+    // Calculate gap center between first staff bottom and last staff top
+    let first_staff_bottom = first_staff.staff_lines[4].y_position;
+    let last_staff_top = last_staff.staff_lines[0].y_position;
+    let gap_center = (first_staff_bottom + last_staff_top) / 2.0;
+    
+    // Brace parameters (fine-tuned for visual centering)
+    let extension = 280.0; // Distance from gap center to top/bottom of brace
+    let centerY = gap_center + 54.0; // Offset to account for SMuFL glyph baseline
+    let height = extension * 2.0;
+    const BRACE_NATURAL_HEIGHT: f32 = 320.0; // SMuFL brace U+E000 at fontSize 80
+    let scale_y = height / BRACE_NATURAL_HEIGHT;
+    
+    let codepoint = match bracket_type {
+        BracketType::Brace => "\u{E000}".to_string(),
+        BracketType::Bracket => "\u{E002}".to_string(),
+        BracketType::None => String::new(),
+    };
+    
+    let x_position = 15.0; // Left margin
+    let top_y = gap_center - extension;
+    let bottom_y = gap_center + extension;
+    
+    BracketGlyph {
+        codepoint,
+        x: x_position,
+        y: centerY,
+        scale_y,
+        bounding_box: BoundingBox {
+            x: x_position - 5.0,
+            y: top_y,
+            width: 20.0,
+            height,
+        },
+    }
 }
 
 #[cfg(test)]
@@ -603,7 +827,7 @@ mod tests {
         let system_width = 1200.0;
         let staff_index = 0;
 
-        let lines = create_staff_lines(staff_index, system_width, units_per_space);
+        let lines = create_staff_lines(staff_index, system_width, units_per_space, 0.0);
 
         // Verify exactly 5 lines
         assert_eq!(lines.len(), 5, "Should have exactly 5 staff lines");
@@ -628,14 +852,14 @@ mod tests {
         let units_per_space = 20.0;
         let system_width = 1200.0;
 
-        // First staff (staff_index = 0)
-        let staff_0 = create_staff_lines(0, system_width, units_per_space);
+        // First staff (staff_index = 0) in system at y=0
+        let staff_0 = create_staff_lines(0, system_width, units_per_space, 0.0);
         assert_eq!(staff_0[0].y_position, 0.0);
         assert_eq!(staff_0[4].y_position, 160.0);
 
-        // Second staff (staff_index = 1) - should be offset by 14 staff spaces (280 units)
-        let staff_1 = create_staff_lines(1, system_width, units_per_space);
-        let expected_offset = 14.0 * units_per_space; // 280 units
+        // Second staff (staff_index = 1) - should be offset by 20 staff spaces (400 units)
+        let staff_1 = create_staff_lines(1, system_width, units_per_space, 0.0);
+        let expected_offset = 20.0 * units_per_space; // 400 units
         assert_eq!(staff_1[0].y_position, expected_offset);
         assert_eq!(staff_1[4].y_position, expected_offset + 160.0);
     }
@@ -647,13 +871,13 @@ mod tests {
         let staff_index = 0;
 
         // Test with different scale (units_per_space = 10)
-        let lines_scale_10 = create_staff_lines(staff_index, system_width, 10.0);
+        let lines_scale_10 = create_staff_lines(staff_index, system_width, 10.0, 0.0);
         assert_eq!(lines_scale_10[0].y_position, 0.0);
         assert_eq!(lines_scale_10[1].y_position, 20.0);  // 2 * 10
         assert_eq!(lines_scale_10[4].y_position, 80.0);  // 4 * 2 * 10
 
         // Test with different scale (units_per_space = 25)
-        let lines_scale_25 = create_staff_lines(staff_index, system_width, 25.0);
+        let lines_scale_25 = create_staff_lines(staff_index, system_width, 25.0, 0.0);
         assert_eq!(lines_scale_25[0].y_position, 0.0);
         assert_eq!(lines_scale_25[1].y_position, 50.0);  // 2 * 25
         assert_eq!(lines_scale_25[4].y_position, 200.0); // 4 * 2 * 25

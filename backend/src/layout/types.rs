@@ -59,6 +59,23 @@ pub struct StaffGroup {
     pub staves: Vec<Staff>,
     /// Visual grouping indicator
     pub bracket_type: BracketType,
+    /// Bracket/brace glyph with positioning and scale (calculated by layout engine)
+    pub bracket_glyph: Option<BracketGlyph>,
+}
+
+/// Bracket/brace glyph with vertical scaling information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BracketGlyph {
+    /// SMuFL codepoint (e.g., "\u{E000}" for brace)
+    pub codepoint: String,
+    /// X position (left margin)
+    pub x: f32,
+    /// Y position (vertical center point for transform)
+    pub y: f32,
+    /// Vertical scale factor (height / natural_glyph_height)
+    pub scale_y: f32,
+    /// Bounding box for the scaled glyph
+    pub bounding_box: BoundingBox,
 }
 
 /// Single 5-line staff with positioned glyphs
@@ -91,6 +108,15 @@ pub struct StaffLine {
 /// Vertical bar line that separates measures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BarLine {
+    /// Individual line segments (1 for Single, 2 for Double/Final)
+    pub segments: Vec<BarLineSegment>,
+    /// Type of bar line (single, double, final)
+    pub bar_type: BarLineType,
+}
+
+/// Individual line segment within a bar line
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BarLineSegment {
     /// Horizontal position in logical units
     #[serde(serialize_with = "round_f32")]
     pub x_position: f32,
@@ -100,8 +126,9 @@ pub struct BarLine {
     /// Bottom of bar line (y-coordinate of bottom staff line)
     #[serde(serialize_with = "round_f32")]
     pub y_end: f32,
-    /// Type of bar line (single, double, final)
-    pub bar_type: BarLineType,
+    /// Stroke width (1.5 for thin, 4.0 for thick)
+    #[serde(serialize_with = "round_f32")]
+    pub stroke_width: f32,
 }
 
 /// Type of bar line
