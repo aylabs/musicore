@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NoteDisplay } from "../../components/NoteDisplay";
 
 /**
@@ -47,21 +48,24 @@ describe("NoteDisplay - Editing UI Removal", () => {
   /**
    * Test: Notes should render when present
    */
-  it("should render notes list without Add Note button", () => {
+  it("should render notes list without Add Note button", async () => {
+    const user = userEvent.setup();
     const propsWithNotes = {
       ...mockProps,
       notes: [
         {
-          Note: {
-            start_tick: 0,
-            duration_ticks: 960,
-            pitch: 60, // Middle C
-          },
+          start_tick: 0,
+          duration_ticks: 960,
+          pitch: 60, // Middle C
         },
       ],
     };
 
     render(<NoteDisplay {...propsWithNotes} />);
+
+    // Click "Show Note Details" button to reveal note details
+    const toggleButton = screen.getByText(/Show Note Details/i);
+    await user.click(toggleButton);
 
     // Verify note renders (checking for "C4" note name or MIDI 60)
     expect(screen.getByText(/MIDI 60/)).toBeInTheDocument();
