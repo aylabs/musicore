@@ -373,15 +373,44 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   }
 
   /**
-   * Renders a single glyph as SVG <text> element with SMuFL codepoint.
+   * Renders a single glyph as SVG element.
+   * Special handling for stems (U+0000) and beams (U+0001).
    * 
    * @param glyph - Glyph to render
    * @param fontFamily - Font family (e.g., 'Bravura')
    * @param fontSize - Font size in logical units
    * @param color - Fill color
-   * @returns SVG text element
+   * @returns SVG element (text for SMuFL, line for stem, rect for beam)
    */
-  private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string): SVGTextElement {
+  private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string): SVGElement {
+    // Check for special glyphs (stems and beams)
+    const codepoint = glyph.codepoint;
+    
+    // U+0000: Stem (vertical line)
+    if (codepoint === '\u{0000}' || codepoint === '\0') {
+      const line = createSVGElement('line');
+      line.setAttribute('x1', glyph.position.x.toString());
+      line.setAttribute('y1', glyph.position.y.toString());
+      line.setAttribute('x2', glyph.position.x.toString());
+      line.setAttribute('y2', (glyph.position.y + glyph.bounding_box.height).toString());
+      line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width', glyph.bounding_box.width.toString());
+      line.setAttribute('stroke-linecap', 'butt');
+      return line;
+    }
+    
+    // U+0001: Beam (filled rectangle)
+    if (codepoint === '\u{0001}' || codepoint === '\x01') {
+      const rect = createSVGElement('rect');
+      rect.setAttribute('x', glyph.bounding_box.x.toString());
+      rect.setAttribute('y', glyph.bounding_box.y.toString());
+      rect.setAttribute('width', glyph.bounding_box.width.toString());
+      rect.setAttribute('height', glyph.bounding_box.height.toString());
+      rect.setAttribute('fill', color);
+      return rect;
+    }
+    
+    // Regular SMuFL glyph (text element)
     const text = createSVGElement('text');
     
     // Validate position values to catch NaN errors

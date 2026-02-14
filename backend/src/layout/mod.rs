@@ -9,10 +9,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub mod batcher;
+pub mod beams;
 pub mod breaker;
 pub mod metrics;
 pub mod positioner;
 pub mod spacer;
+pub mod stems;
 pub mod types;
 
 #[cfg(target_arch = "wasm32")]
@@ -594,6 +596,96 @@ fn position_glyphs_for_staff(
         );
 
         all_glyphs.extend(glyphs);
+        
+        // T056-T058: Generate stems and beams for notes
+        // Calculate middle line y-position for stem direction (3rd line of 5-line staff)
+        let staff_middle_y = staff_vertical_offset + (2.0 * units_per_space * 2.0); // Line 2 (0-indexed)
+        
+        // Generate stems for notes (except whole notes which have duration >= 3840 ticks)
+        let mut stem_glyphs = Vec::new();
+        let mut beamable_notes = Vec::new();
+        
+        for (i, (pitch, start_tick, duration_ticks)) in notes_in_range.iter().enumerate() {
+            // Skip whole notes (no stems)
+            if *duration_ticks >= 3840 {
+                continue;
+            }
+            
+            let notehead_x = horizontal_offsets[i];
+            let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space);
+            
+            // Compute stem direction
+            let direction = stems::compute_stem_direction(notehead_y, staff_middle_y);
+            
+            // Create stem (assuming notehead width of 10 logical units)
+            let notehead_width = 10.0;
+            let stem = stems::create_stem(notehead_x, notehead_y, direction, notehead_width);
+            
+            // Encode stem as special glyph (U+0000)
+            let stem_glyph = Glyph {
+                codepoint: '\u{0000}'.to_string(),
+                position: Point {
+                    x: stem.x,
+                    y: stem.y_start,
+                },
+                bounding_box: BoundingBox {
+                    x: stem.x - (stem.thickness / 2.0),
+                    y: stem.y_start.min(stem.y_end),
+                    width: stem.thickness,
+                    height: (stem.y_end - stem.y_start).abs(),
+                },
+                source_reference: SourceReference {
+                    instrument_id: instrument_id.to_string(),
+                    staff_index,
+                    voice_index,
+                    event_index: i,
+                },
+            };
+            stem_glyphs.push(stem_glyph);
+            
+            // Track beamable notes (eighth notes and shorter: <= 480 ticks)
+            if *duration_ticks <= 480 {
+                beamable_notes.push(beams::BeamableNote {
+                    x: notehead_x,
+                    y: notehead_y,
+                    stem_end_y: stem.y_end,
+                    tick: *start_tick,
+                    duration_ticks: *duration_ticks,
+                });
+            }
+        }
+        
+        all_glyphs.extend(stem_glyphs);
+        
+        // Generate beams for grouped eighth notes
+        let beam_groups = beams::group_beamable_notes(&beamable_notes, 960); // 960 ticks per beat (quarter note)
+        
+        for (group_index, group) in beam_groups.iter().enumerate() {
+            let slope = beams::compute_beam_slope(group, units_per_space);
+            if let Some(beam) = beams::create_beam(group, slope) {
+                // Encode beam as special glyph (U+0001)
+                let beam_glyph = Glyph {
+                    codepoint: '\u{0001}'.to_string(),
+                    position: Point {
+                        x: beam.x_start,
+                        y: beam.y_start,
+                    },
+                    bounding_box: BoundingBox {
+                        x: beam.x_start,
+                        y: beam.y_start.min(beam.y_end),
+                        width: beam.x_end - beam.x_start,
+                        height: (beam.y_end - beam.y_start).abs().max(beam.thickness),
+                    },
+                    source_reference: SourceReference {
+                        instrument_id: instrument_id.to_string(),
+                        staff_index,
+                        voice_index,
+                        event_index: group_index,
+                    },
+                };
+                all_glyphs.push(beam_glyph);
+            }
+        }
     }
 
     all_glyphs

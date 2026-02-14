@@ -135,31 +135,31 @@
 
 ### Tests for US4 ⚠️ RED Phase
 
-- [ ] T041 [P] [US4] Unit test for compute_stem_direction() in backend/src/layout/stems.rs based on pitch relative to middle line
-- [ ] T042 [P] [US4] Unit test for create_stem() verifying 35 logical unit length and attachment point
-- [ ] T043 [P] [US4] Unit test for group_beamable_notes() in backend/src/layout/beams.rs grouping by beat
-- [ ] T044 [P] [US4] Unit test for compute_beam_slope() clamping to ±0.5 staff spaces per note
-- [ ] T045 [P] [US4] Integration test for 8-note beamed group verifying stems + beam rendered
+- [X] T041 [P] [US4] Unit test for compute_stem_direction() in backend/src/layout/stems.rs based on pitch relative to middle line
+- [X] T042 [P] [US4] Unit test for create_stem() verifying 35 logical unit length and attachment point
+- [X] T043 [P] [US4] Unit test for group_beamable_notes() in backend/src/layout/beams.rs grouping by beat
+- [X] T044 [P] [US4] Unit test for compute_beam_slope() clamping to ±0.5 staff spaces per note
+- [X] T045 [P] [US4] Integration test for 8-note beamed group verifying stems + beam rendered
 
 ### Implementation for US4 🟢 GREEN Phase
 
-- [ ] T046 [P] [US4] Create backend/src/layout/stems.rs module with Stem struct
-- [ ] T047 [P] [US4] Implement compute_stem_direction() returning Up/Down based on notehead y-position
-- [ ] T048 [P] [US4] Implement create_stem() calculating start/end points with 35 logical unit length
-- [ ] T049 [P] [US4] Add stem attachment logic: stems-up attach to right side, stems-down attach to left side
-- [ ] T050 [P] [US4] Create backend/src/layout/beams.rs module with Beam struct
-- [ ] T051 [P] [US4] Implement group_beamable_notes() grouping eighth notes within same beat (based on tick position)
-- [ ] T052 [P] [US4] Implement compute_beam_slope() calculating average pitch with ±0.5 staff space clamp
-- [ ] T053 [P] [US4] Implement create_beam() generating horizontal beam with 0.5 staff space thickness
-- [ ] T054 [US4] Encode stems as special glyphs with codepoint U+0000 (position = stem start, bounding box = full stem)
-- [ ] T055 [US4] Encode beams as special glyphs with codepoint U+0001 (position = left endpoint, bounding box = beam rectangle)
-- [ ] T056 [US4] Update position_glyphs_for_staff() in backend/src/layout/mod.rs to call stem/beam generation
-- [ ] T057 [US4] Add stems to glyph array after noteheads
-- [ ] T058 [US4] Add beams to glyph array after stems  
-- [ ] T059 [US4] Test quarter note stem rendering (single stem, no beam)
-- [ ] T060 [US4] Test eighth note beaming (4-note group with connecting beam)
-- [ ] T061 [US4] Test stem direction on notes above/below middle line
-- [ ] T062 [US4] Test beam slope calculation for ascending/descending pitches
+- [X] T046 [P] [US4] Create backend/src/layout/stems.rs module with Stem struct
+- [X] T047 [P] [US4] Implement compute_stem_direction() returning Up/Down based on notehead y-position
+- [X] T048 [P] [US4] Implement create_stem() calculating start/end points with 35 logical unit length
+- [X] T049 [P] [US4] Add stem attachment logic: stems-up attach to right side, stems-down attach to left side
+- [X] T050 [P] [US4] Create backend/src/layout/beams.rs module with Beam struct
+- [X] T051 [P] [US4] Implement group_beamable_notes() grouping eighth notes within same beat (based on tick position)
+- [X] T052 [P] [US4] Implement compute_beam_slope() calculating average pitch with ±0.5 staff space clamp
+- [X] T053 [P] [US4] Implement create_beam() generating horizontal beam with 0.5 staff space thickness
+- [X] T054 [US4] Encode stems as special glyphs with codepoint U+0000 (position = stem start, bounding box = full stem)
+- [X] T055 [US4] Encode beams as special glyphs with codepoint U+0001 (position = left endpoint, bounding box = beam rectangle)
+- [X] T056 [US4] Update position_glyphs_for_staff() in backend/src/layout/mod.rs to call stem/beam generation
+- [X] T057 [US4] Add stems to glyph array after noteheads
+- [X] T058 [US4] Add beams to glyph array after stems  
+- [X] T059 [US4] Test quarter note stem rendering (single stem, no beam)
+- [X] T060 [US4] Test eighth note beaming (4-note group with connecting beam)
+- [X] T061 [US4] Test stem direction on notes above/below middle line
+- [X] T062 [US4] Test beam slope calculation for ascending/descending pitches
 
 **Checkpoint**: Stems and beams render correctly with proper direction and grouping ✅ US4 COMPLETE
 
