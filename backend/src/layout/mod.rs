@@ -510,14 +510,15 @@ fn compute_unified_note_positions(
         last_tick = *start_tick;
     }
     
-    // Calculate total natural width including space for notehead and barline clearance
-    // Add right margin (20 units = 1 staff space) to prevent noteheads from overlapping barlines
-    let right_margin = 20.0;
+    // Calculate total natural width
+    // Add clearance space after last note for notehead width (≈20 units = half the notehead)
+    // plus barline spacing (≈10 units) = 30 units total
+    let end_clearance = 30.0;
     let total_natural_width = if let Some(&last_pos) = cumulative_spacing.last() {
         let (_, last_duration) = tick_durations.last().unwrap();
-        last_pos + spacer::compute_note_spacing(*last_duration, spacing_config) + right_margin
+        last_pos + spacer::compute_note_spacing(*last_duration, spacing_config) + end_clearance
     } else {
-        spacing_config.minimum_spacing + right_margin
+        spacing_config.minimum_spacing + end_clearance
     };
     
     // Scale positions to fit available width
