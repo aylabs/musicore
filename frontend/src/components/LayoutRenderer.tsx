@@ -255,7 +255,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       'transform',
       `translate(${bracket_glyph.x}, ${bracket_glyph.y}) scale(1, ${bracket_glyph.scale_y.toFixed(3)})`
     );
-    bracketGlyphElement.setAttribute('data-bracket-type', staffGroup.bracket_type);
+    // Use lowercase for data attribute value
+    bracketGlyphElement.setAttribute(
+      'data-bracket-type', 
+      staffGroup.bracket_type.toLowerCase()
+    );
     
     bracketGroup.appendChild(bracketGlyphElement);
 

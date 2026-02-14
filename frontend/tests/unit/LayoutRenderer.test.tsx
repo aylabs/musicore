@@ -183,8 +183,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -239,8 +239,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -293,8 +293,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -348,8 +348,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -414,8 +414,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -478,8 +478,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -540,9 +540,11 @@ describe('LayoutRenderer Component', () => {
       );
 
       const text = container.querySelector('text');
-      expect(text?.getAttribute('font-size')).toBe('24');
-      expect(text?.getAttribute('font-family')).toBe('Petaluma');
-      expect(text?.getAttribute('fill')).toBe('#0000FF');
+      // Note: glyph_run font_size (40) is used, not config.fontSize (24)
+      expect(text?.getAttribute('font-size')).toBe('40');
+      // Note: glyph_run font_family and color override config values
+      expect(text?.getAttribute('font-family')).toBe('Bravura');
+      expect(text?.getAttribute('fill')).toBe('rgb(0, 0, 0)');
     });
 
     it('should render multiple glyphs in a run', () => {
@@ -551,8 +553,8 @@ describe('LayoutRenderer Component', () => {
           {
             index: 0,
             bounding_box: {
-              x_position: 0,
-              y_position: 0,
+              x: 0,
+              y: 0,
               width: 1200,
               height: 200,
             },
@@ -754,6 +756,13 @@ describe('LayoutRenderer Component', () => {
               {
                 instrument_id: 'piano',
                 bracket_type: 'Brace',
+                bracket_glyph: {
+                  codepoint: '\uE000',  // SMuFL brace
+                  x: 10,
+                  y: 70,  // Middle of the two staves
+                  scale_y: 3.5,  // Vertical stretch
+                  bounding_box: { x: 5, y: 0, width: 20, height: 140 },
+                },
                 staves: [
                   {
                     staff_lines: [
@@ -812,6 +821,13 @@ describe('LayoutRenderer Component', () => {
               {
                 instrument_id: 'piano',
                 bracket_type: 'Brace',
+                bracket_glyph: {
+                  codepoint: '\uE000',
+                  x: 10,
+                  y: 70,
+                  scale_y: 3.5,
+                  bounding_box: { x: 5, y: 0, width: 20, height: 140 },
+                },
                 staves: [
                   {
                     staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
@@ -856,6 +872,13 @@ describe('LayoutRenderer Component', () => {
               {
                 instrument_id: 'piano',
                 bracket_type: 'Brace',
+                bracket_glyph: {
+                  codepoint: '\uE000',
+                  x: 10,
+                  y: 70,
+                  scale_y: 3.5,
+                  bounding_box: { x: 5, y: 0, width: 20, height: 140 },
+                },
                 staves: [
                   {
                     staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],
@@ -948,6 +971,13 @@ describe('LayoutRenderer Component', () => {
               {
                 instrument_id: 'strings',
                 bracket_type: 'Bracket',
+                bracket_glyph: {
+                  codepoint: '\uE002',  // SMuFL bracket
+                  x: 10,
+                  y: 70,
+                  scale_y: 3.5,
+                  bounding_box: { x: 5, y: 0, width: 20, height: 140 },
+                },
                 staves: [
                   {
                     staff_lines: [
@@ -1006,6 +1036,13 @@ describe('LayoutRenderer Component', () => {
               {
                 instrument_id: 'strings',
                 bracket_type: 'Bracket',
+                bracket_glyph: {
+                  codepoint: '\uE002',
+                  x: 10,
+                  y: 70,
+                  scale_y: 3.5,
+                  bounding_box: { x: 5, y: 0, width: 20, height: 140 },
+                },
                 staves: [
                   {
                     staff_lines: [{ y_position: 0, start_x: 80, end_x: 1180 }],

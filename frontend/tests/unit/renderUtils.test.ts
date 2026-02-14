@@ -341,11 +341,9 @@ describe('Viewport Utilities', () => {
       );
     });
 
-    it('should throw if y is negative', () => {
+    it('should allow negative y (for glyphs above first system)', () => {
       const viewport: Viewport = { x: 0, y: -10, width: 800, height: 600 };
-      expect(() => validateViewport(viewport)).toThrow(
-        'Viewport.y must be >= 0'
-      );
+      expect(() => validateViewport(viewport)).not.toThrow();
     });
 
     it('should throw if width is zero', () => {
@@ -389,8 +387,8 @@ describe('System Virtualization', () => {
       return {
         index,
         bounding_box: {
-          x_position: 0,
-          y_position: y,
+          x: 0,
+          y: y,
           width: 800,
           height,
         } as BoundingBox,
