@@ -628,7 +628,8 @@ fn position_glyphs_for_staff(
             }
             
             let notehead_x = horizontal_offsets[i];
-            let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space);
+            // IMPORTANT: Add staff_vertical_offset to match notehead positioning
+            let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space) + staff_vertical_offset;
             
             // Compute stem direction
             let direction = stems::compute_stem_direction(notehead_y, staff_middle_y);
