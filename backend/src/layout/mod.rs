@@ -30,7 +30,7 @@ pub use types::{
 /// Configuration for layout computation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayoutConfig {
-    /// Maximum system width in logical units (default: 800.0)
+    /// Maximum system width in logical units (default: 1600.0)
     pub max_system_width: f32,
     /// Scaling factor: logical units per staff space (default: 10.0)
     pub units_per_space: f32,
@@ -43,7 +43,7 @@ pub struct LayoutConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            max_system_width: 800.0,
+            max_system_width: 1600.0, // Wide enough to require horizontal scrolling on most displays
             units_per_space: 20.0, // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
             system_spacing: 200.0, // Spacing between systems (gap after system_height)
             system_height: 600.0, // Height for grand staff with 20 staff spaces separation
