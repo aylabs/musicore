@@ -334,7 +334,7 @@ const styles = {
   container: {
     flex: 1,
     overflowX: 'auto', // Container handles horizontal scrolling (accessible without scrolling down)
-    overflowY: 'visible', // Page handles vertical scrolling
+    overflowY: 'hidden', // Prevent vertical scrolling in container - page handles it
     position: 'relative' as const,
   },
   message: {
