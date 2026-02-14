@@ -80,15 +80,16 @@ struct GlyphProperties {
 
 /// Extract drawing properties from a glyph
 ///
-/// These are the default properties used for all glyphs (Bravura font, 80pt, black).
-/// Font size is 80 logical units = 4 staff spaces = 1em per SMuFL standard.
+/// These are the default properties used for all noteheads (Bravura font, 40pt, black).
+/// Font size is 40 logical units = 2 staff spaces (standard notehead size).
+/// Structural glyphs (clefs, time/key signatures) use 80pt but are NOT batched.
 /// plus the glyph's codepoint to distinguish different glyph types
 fn extract_glyph_properties(glyph: &Glyph) -> GlyphProperties {
-    // For MVP, all glyphs use same font/color properties
-    // but different codepoints represent different visual glyphs
+    // Noteheads use 40 logical units (2 staff spaces = 2 × 20)
+    // Different codepoints represent different note durations (whole, half, quarter, etc.)
     GlyphProperties {
         font_family: "Bravura".to_string(),
-        font_size: 80.0, // SMuFL standard: 1em = 4 staff spaces = 4 × 20 = 80 logical units
+        font_size: 40.0, // Notehead standard: 2 staff spaces = 2 × 20 = 40 logical units
         color: Color {
             r: 0,
             g: 0,
