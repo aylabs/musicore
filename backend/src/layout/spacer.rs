@@ -5,20 +5,20 @@
 /// Configuration for horizontal spacing algorithm
 #[derive(Debug, Clone)]
 pub struct SpacingConfig {
-    /// Minimum space for any note in logical units (default: 20.0 = 2 staff spaces)
+    /// Minimum space for any note in logical units (default: 30.0 = 3 staff spaces)
     pub base_spacing: f32,
-    /// Multiplier for duration-based spacing (default: 40.0, quarter note = 4 staff spaces)
+    /// Multiplier for duration-based spacing (default: 50.0, quarter note = ~5 staff spaces)
     pub duration_factor: f32,
-    /// Collision prevention minimum in logical units (default: 20.0 = 2 staff spaces)
+    /// Collision prevention minimum in logical units (default: 30.0 = 3 staff spaces)
     pub minimum_spacing: f32,
 }
 
 impl Default for SpacingConfig {
     fn default() -> Self {
         Self {
-            base_spacing: 20.0,
-            duration_factor: 40.0,
-            minimum_spacing: 20.0,
+            base_spacing: 30.0,
+            duration_factor: 50.0,
+            minimum_spacing: 30.0,
         }
     }
 }
