@@ -2,7 +2,7 @@
  * Integration Tests for Multi-Staff Rendering (User Story 3)
  * Feature 017 - LayoutRenderer Component
  * 
- * Tests piano score rendering with brace, multi-staff spacing, and vertical alignment.
+ * Tests piano score rendering with multi-staff spacing and vertical alignment.
  * Uses piano_8_measures.json fixture (2 staves: treble + bass).
  */
 
@@ -186,56 +186,6 @@ describe('User Story 3: Multi-Staff Rendering', () => {
   });
 
   // ============================================================================
-  // Task T053: Integration test - verify brace
-  // ============================================================================
-
-  describe('Brace Validation (T053)', () => {
-    it.skip('should render brace connecting both staves (requires bracket_glyph in fixture)', () => {
-      const { container } = render(
-        <LayoutRenderer layout={layout} config={config} viewport={viewport} />
-      );
-
-      // Piano uses brace
-      const braces = container.querySelectorAll('[data-bracket-type="brace"]');
-      expect(braces.length).toBeGreaterThanOrEqual(1);
-    });
-
-    it.skip('should render brace with correct SMuFL codepoint (requires bracket_glyph in fixture)', () => {
-      const { container } = render(
-        <LayoutRenderer layout={layout} config={config} viewport={viewport} />
-      );
-
-      const brace = container.querySelector('[data-bracket-type="brace"]');
-      expect(brace?.textContent).toBe('\uE000'); // SMuFL brace
-    });
-
-    it.skip('should scale brace to span both staves (requires bracket_glyph in fixture)', () => {
-      const { container } = render(
-        <LayoutRenderer layout={layout} config={config} viewport={viewport} />
-      );
-
-      const brace = container.querySelector('[data-bracket-type="brace"]');
-      const transform = brace?.getAttribute('transform');
-      
-      // Brace should have vertical scaling
-      expect(transform).toBeTruthy();
-      expect(transform).toMatch(/scale\(1,\s*[\d.]+\)/);
-    });
-
-    it.skip('should render one brace per system (requires bracket_glyph in fixture)', () => {
-      const { container } = render(
-        <LayoutRenderer layout={layout} config={config} viewport={viewport} />
-      );
-
-      const braces = container.querySelectorAll('[data-bracket-type="brace"]');
-      const systems = container.querySelectorAll('g[data-system-index]');
-      
-      // One brace per system (piano fixture has 2 systems)
-      expect(braces).toHaveLength(systems.length);
-    });
-  });
-
-  // ============================================================================
   // Task T054: Integration test - verify vertical alignment
   // ============================================================================
 
@@ -332,22 +282,10 @@ describe('User Story 3: Multi-Staff Rendering', () => {
   });
 
   // ============================================================================
-  // Task T055: Playwright test - visual comparison for piano_8_measures
+  // Task T055: Integration tests - piano score rendering
   // ============================================================================
 
-  describe('Piano Visual Comparison (T055)', () => {
-    it.skip('should achieve <5% pixel difference vs old renderer', async () => {
-      // TODO: Implement when old renderer is available
-      // This test compares multi-staff rendering accuracy
-      
-      // Expected workflow:
-      // 1. Render piano_8_measures with old renderer
-      // 2. Render with new LayoutRenderer
-      // 3. Use VisualComparison to compute pixel diff
-      // 4. Assert <5% difference
-      // 5. Save diff image if failed
-    });
-
+  describe('Piano Score Integration', () => {
     it('should render complete piano score without errors', () => {
       expect(() => {
         render(
@@ -397,10 +335,6 @@ describe('User Story 3: Multi-Staff Rendering', () => {
       // Staff groups
       const staffGroups = container.querySelectorAll('g[data-staff-group]');
       expect(staffGroups.length).toBeGreaterThanOrEqual(2);
-
-      // Braces (optional - depends on fixture having bracket_glyph data)
-      // const braces = container.querySelectorAll('[data-bracket-type="brace"]');
-      // expect(braces.length).toBeGreaterThanOrEqual(1);
 
       // Staff lines (2 systems × 2 staves × 5 lines = 20)
       const staffLines = container.querySelectorAll('line');
