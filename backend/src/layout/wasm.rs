@@ -44,14 +44,27 @@ pub fn compute_layout_wasm(score_json: &str, config_json: &str) -> Result<JsValu
     // DEBUG: Inspect first glyph codepoint before serialization
     #[cfg(target_arch = "wasm32")]
     if let Some(system) = layout.systems.first() {
+        console::log_1(&format!("[WASM] Layout generated with {} systems", layout.systems.len()).into());
+        
         if let Some(staff_group) = system.staff_groups.first() {
+            console::log_1(&format!("[WASM] First staff group has {} staves", staff_group.staves.len()).into());
+            
             if let Some(staff) = staff_group.staves.first() {
+                console::log_1(&format!("[WASM] First staff has {} glyph runs", staff.glyph_runs.len()).into());
+                
                 if let Some(glyph_run) = staff.glyph_runs.first() {
-                    if let Some(first_glyph) = glyph_run.glyphs.first() {
-                        let first_char = first_glyph.codepoint.chars().next().unwrap_or('\0');
+                    console::log_1(&format!(
+                        "[WASM] First glyph run: font_family='{}', font_size={}, {} glyphs", 
+                        glyph_run.font_family, glyph_run.font_size, glyph_run.glyphs.len()
+                    ).into());
+                    
+                    // Log first few glyphs to see different codepoints
+                    for (i, glyph) in glyph_run.glyphs.iter().take(10).enumerate() {
+                        let first_char = glyph.codepoint.chars().next().unwrap_or('\0');
                         console::log_1(&format!(
-                            "[WASM compute_layout] First glyph codepoint='{}' (len={}, first_char U+{:04X})", 
-                            first_glyph.codepoint, first_glyph.codepoint.len(), first_char as u32
+                            "[WASM]   Glyph[{}]: codepoint='{}' (U+{:04X}) at ({:.1}, {:.1})", 
+                            i, glyph.codepoint, first_char as u32,
+                            glyph.position.x, glyph.position.y
                         ).into());
                     }
                 }
