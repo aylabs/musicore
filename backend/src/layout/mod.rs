@@ -186,6 +186,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     system.bounding_box.width,
                     config.units_per_space,
                     system.bounding_box.y,
+                    &note_positions,
                 );
 
                 // Create staff with batched glyphs and structural glyphs
@@ -753,6 +754,7 @@ fn create_bar_lines(
     system_width: f32,
     units_per_space: f32,
     system_y_position: f32,
+    note_positions: &HashMap<u32, f32>,
 ) -> Vec<BarLine> {
     let mut bar_lines = Vec::new();
     
@@ -773,30 +775,27 @@ fn create_bar_lines(
         return bar_lines;
     }
     
-    // Calculate total width of measures in this system
-    let total_measure_width: f32 = measures_in_system.iter().map(|m| m.width).sum();
-    let available_width = system_width - left_margin;
-    
-    // Scale factor to fit measures into available width
-    let scale = if total_measure_width > 0.0 {
-        available_width / total_measure_width
-    } else {
-        1.0
-    };
-    
-    // Add bar lines at the end of each measure using cumulative widths
-    let mut cumulative_x = left_margin;
+    // Add bar lines at the end of each measure using note positions
+    // This ensures barlines use the same scaling as notes
     for measure in measures_in_system.iter() {
-        // Add this measure's width (scaled to fit available space)
-        let scaled_width = measure.width * scale;
-        cumulative_x += scaled_width;
-        
         // Skip barline if measure extends beyond system
         if measure.end_tick > tick_range.end_tick {
             continue;
         }
         
-        // Determine bar line type
+        // Find the x-position for the barline by looking for the last note before measure end
+        // We need to find the highest tick <= end_tick that has a position
+        let barline_x = note_positions
+            .iter()
+            .filter(|(tick, _)| **tick > measure.start_tick && **tick <= measure.end_tick)
+            .max_by_key(|(tick, _)| *tick)
+            .map(|(_, x)| *x + 30.0) // Add clearance for notehead width + spacing
+            .unwrap_or_else(|| {
+                // No notes in this measure, use left_margin as fallback
+                left_margin + 30.0
+            });
+        
+        // Determine bar line type  
         let bar_type = if measure.end_tick == tick_range.end_tick {
             // Check if this is the very last measure in the entire score
             let is_last_measure = measure_infos.last().map(|m| m.end_tick) == Some(measure.end_tick);
@@ -810,7 +809,7 @@ fn create_bar_lines(
         };
         
         // Create bar line segments with explicit geometry (Principle VI: Layout Engine Authority)
-        let segments = create_bar_line_segments(cumulative_x, y_start, y_end, &bar_type);
+        let segments = create_bar_line_segments(barline_x, y_start, y_end, &bar_type);
         
         bar_lines.push(BarLine {
             segments,
