@@ -178,13 +178,19 @@ pub fn position_noteheads(
             // Duration mapping (assuming 960 PPQ = 1 beat):
             // - Whole note (4 beats): 3840+ ticks → U+E0A2 noteheadWhole (no stem)
             // - Half note (2 beats): 1920-3839 ticks → U+E1D3 noteheadHalfWithStem (open oval + stem)
-            // - Quarter note and shorter: <1920 ticks → U+E1D5 noteheadBlackWithStem (filled oval + stem)
+            // - Quarter note (1 beat): 960-1919 ticks → U+E1D5 noteheadBlackWithStem (filled oval + stem, no flag)
+            // - Eighth note (1/2 beat): 480-959 ticks → U+E1D7 noteEighthUp (filled oval + stem + single flag)
+            // - Sixteenth note (1/4 beat): <480 ticks → U+E1D9 noteSixteenthUp (filled oval + stem + double flag)
             let (codepoint, glyph_name) = if *duration >= 3840 {
                 ('\u{E0A2}', "noteheadWhole")
             } else if *duration >= 1920 {
                 ('\u{E1D3}', "noteheadHalfWithStem")
-            } else {
+            } else if *duration >= 960 {
                 ('\u{E1D5}', "noteheadBlackWithStem")
+            } else if *duration >= 480 {
+                ('\u{E1D7}', "noteEighthUp")
+            } else {
+                ('\u{E1D9}', "noteSixteenthUp")
             };
             
             // DEBUG: Log selected codepoint
