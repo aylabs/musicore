@@ -538,7 +538,13 @@ pub fn position_note_accidentals(
     let mut measure_accidental_state: HashMap<u8, i8> = HashMap::new();
     let mut current_measure: u32 = u32::MAX; // Force reset on first note
 
-    let accidental_x_offset = -18.0; // Position accidental to the left of notehead
+    // Position accidental to the left of notehead.
+    // Both accidental and notehead use text-anchor:middle in SVG rendering,
+    // so the offset must account for half-widths of both glyphs plus a gap.
+    // At font-size 80: notehead ~23.6 units wide (half=11.8),
+    // sharp ~23.6 units wide (half=11.8), standard gap ~5 units.
+    // Total center-to-center offset: -(11.8 + 5 + 11.8) ≈ -29
+    let accidental_x_offset = -29.0;
 
     for (i, ((pitch, start_tick, _duration), &notehead_x)) in
         notes.iter().zip(horizontal_offsets.iter()).enumerate()
