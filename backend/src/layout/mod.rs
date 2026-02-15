@@ -775,6 +775,7 @@ fn create_staff_lines(
 ///
 /// # Returns
 /// Vector of bar lines positioned at measure boundaries
+#[allow(clippy::too_many_arguments)]
 fn create_bar_lines(
     measure_infos: &[breaker::MeasureInfo],
     tick_range: &TickRange,
@@ -920,7 +921,7 @@ fn create_bracket_glyph(
 
     // Brace parameters (fine-tuned for visual centering)
     let extension = 280.0; // Distance from gap center to top/bottom of brace
-    let centerY = gap_center + 54.0; // Offset to account for SMuFL glyph baseline
+    let center_y = gap_center + 54.0; // Offset to account for SMuFL glyph baseline
     let height = extension * 2.0;
     const BRACE_NATURAL_HEIGHT: f32 = 320.0; // SMuFL brace U+E000 at fontSize 80
     let scale_y = height / BRACE_NATURAL_HEIGHT;
@@ -938,7 +939,7 @@ fn create_bracket_glyph(
     BracketGlyph {
         codepoint,
         x: x_position,
-        y: centerY,
+        y: center_y,
         scale_y,
         bounding_box: BoundingBox {
             x: x_position - 5.0,

@@ -61,10 +61,7 @@ fn test_staff_add_clef_event() {
     let clef_events: Vec<_> = staff
         .staff_structural_events
         .iter()
-        .filter_map(|e| match e {
-            musicore_backend::domain::events::staff::StaffStructuralEvent::Clef(_) => Some(e),
-            _ => None,
-        })
+        .filter(|e| matches!(e, musicore_backend::domain::events::staff::StaffStructuralEvent::Clef(_)))
         .collect();
 
     assert_eq!(clef_events.len(), 2); // Default + new one

@@ -71,14 +71,12 @@ fn main() {
                 eprintln!("Caused by: {}", source);
             }
             // Try to downcast to ImportError for detailed validation errors
-            if let Some(import_err) =
+            if let Some(musicore_backend::domain::importers::musicxml::ImportError::ValidationError { errors }) =
                 e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>()
             {
-                if let musicore_backend::domain::importers::musicxml::ImportError::ValidationError { errors } = import_err {
-                    eprintln!("Validation errors:");
-                    for err in errors {
-                        eprintln!("  - {}", err);
-                    }
+                eprintln!("Validation errors:");
+                for err in errors {
+                    eprintln!("  - {}", err);
                 }
             }
             process::exit(2);
