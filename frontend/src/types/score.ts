@@ -88,12 +88,19 @@ export type StaffStructuralEvent =
   | { Clef: ClefEvent }
   | { KeySignature: KeySignatureEvent };
 
+/** Note spelling preserving enharmonic representation (e.g., D# vs Eb) */
+export interface NoteSpelling {
+  step: string;  // Note letter: 'C', 'D', 'E', 'F', 'G', 'A', 'B'
+  alter: number; // Chromatic alteration: -1=flat, 0=natural, 1=sharp
+}
+
 /** Note event */
 export interface Note {
   id: string; // UUID
   start_tick: Tick;
   duration_ticks: number;
   pitch: Pitch;
+  spelling?: NoteSpelling;
 }
 
 // ============================================================================
