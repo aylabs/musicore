@@ -1167,7 +1167,10 @@ mod measure_numbering_tests {
         let config = LayoutConfig::default();
         let layout = compute_layout(&score, &config);
 
-        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
         let system = &layout.systems[0];
         assert!(
             system.measure_number.is_some(),
@@ -1305,7 +1308,12 @@ mod measure_numbering_tests {
             "Same input should produce same number of systems"
         );
 
-        for (idx, (s1, s2)) in layout1.systems.iter().zip(layout2.systems.iter()).enumerate() {
+        for (idx, (s1, s2)) in layout1
+            .systems
+            .iter()
+            .zip(layout2.systems.iter())
+            .enumerate()
+        {
             let mn1 = s1.measure_number.as_ref().unwrap();
             let mn2 = s2.measure_number.as_ref().unwrap();
             assert_eq!(
@@ -1345,7 +1353,10 @@ mod measure_numbering_tests {
             .as_ref()
             .expect("Single system should have measure_number");
 
-        assert_eq!(mn.number, 1, "Single system should have measure_number == 1");
+        assert_eq!(
+            mn.number, 1,
+            "Single system should have measure_number == 1"
+        );
         assert_eq!(mn.position.x, 60.0, "Position should be clef-aligned");
     }
 }

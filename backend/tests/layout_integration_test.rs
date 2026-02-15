@@ -326,7 +326,9 @@ fn test_measure_number_above_topmost_staff_multi_instrument() {
     // Get topmost staff line y from first staff group, first staff, first line
     let first_staff_group = &system["staff_groups"][0];
     let first_staff = &first_staff_group["staves"][0];
-    let first_staff_line_y = first_staff["staff_lines"][0]["y_position"].as_f64().unwrap();
+    let first_staff_line_y = first_staff["staff_lines"][0]["y_position"]
+        .as_f64()
+        .unwrap();
 
     assert!(
         mn_y < first_staff_line_y,

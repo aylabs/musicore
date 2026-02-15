@@ -249,7 +249,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         system.measure_number = Some(MeasureNumber {
             number: measure_num,
             position: Point {
-                x: 60.0, // Aligned with clef
+                x: 60.0,                         // Aligned with clef
                 y: system.bounding_box.y - 30.0, // Above topmost staff line
             },
         });
