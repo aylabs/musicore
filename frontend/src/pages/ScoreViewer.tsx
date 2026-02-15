@@ -31,6 +31,10 @@ export interface ScoreViewerProps {
   sourceToNoteIdMap?: Map<string, string>;
   /** Toggle playback on click/touch of the score */
   onTogglePlayback?: () => void;
+  /** Callback when a note glyph is clicked */
+  onNoteClick?: (noteId: string) => void;
+  /** ID of the currently selected note */
+  selectedNoteId?: string;
 }
 
 /**
@@ -407,7 +411,6 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
               left: 0,
               width: `${totalWidth}px`,
               height: `${viewport.height * zoom}px`,
-              pointerEvents: 'none',
             }}>
               <LayoutRenderer 
                 layout={layout} 
@@ -415,6 +418,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 viewport={viewport}
                 highlightedNoteIds={this.props.highlightedNoteIds}
                 sourceToNoteIdMap={this.props.sourceToNoteIdMap}
+                onNoteClick={this.props.onNoteClick}
+                selectedNoteId={this.props.selectedNoteId}
               />
             </div>
           </div>

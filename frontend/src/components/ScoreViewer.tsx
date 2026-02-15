@@ -340,6 +340,11 @@ export function ScoreViewer({
     playbackState.currentTick,
     playbackState.status
   );
+
+  /**
+   * Selected note state: tracks which note was clicked for seek-and-play
+   */
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   
   /**
    * Toggle playback between play and pause
@@ -352,6 +357,32 @@ export function ScoreViewer({
       playbackState.play();
     }
   }, [playbackState]);
+
+  /**
+   * Handle note click: select the note, seek to its position, and start playback.
+   * Clicking a note in the rendered score will:
+   * 1. Visually select it (orange highlight)
+   * 2. Seek playback to the note's start tick
+   * 3. Start playing from that position
+   */
+  const handleNoteClick = useCallback((noteId: string) => {
+    const note = allNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    setSelectedNoteId(noteId);
+    playbackState.seekToTick(note.start_tick);
+    // Brief delay to allow React state update from seekToTick before playing
+    setTimeout(() => {
+      playbackState.play();
+    }, 50);
+  }, [allNotes, playbackState]);
+
+  // Clear selected note when playback stops
+  useEffect(() => {
+    if (playbackState.status === 'stopped') {
+      setSelectedNoteId(null);
+    }
+  }, [playbackState.status]);
 
   /**
    * Auto-play demo when loaded (Feature 013)
@@ -512,6 +543,8 @@ export function ScoreViewer({
           score={score} 
           highlightedNoteIds={highlightedNoteIds}
           onTogglePlayback={togglePlayback}
+          onNoteClick={handleNoteClick}
+          selectedNoteId={selectedNoteId ?? undefined}
         />
       )}
 

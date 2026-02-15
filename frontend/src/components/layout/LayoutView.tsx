@@ -39,6 +39,10 @@ interface LayoutViewProps {
   highlightedNoteIds?: Set<string>;
   /** Toggle playback on click/touch */
   onTogglePlayback?: () => void;
+  /** Callback when a note glyph is clicked */
+  onNoteClick?: (noteId: string) => void;
+  /** ID of the currently selected note */
+  selectedNoteId?: string;
 }
 
 /**
@@ -133,7 +137,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -239,6 +243,8 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback }: Layo
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
         onTogglePlayback={onTogglePlayback}
+        onNoteClick={onNoteClick}
+        selectedNoteId={selectedNoteId}
       />
     </div>
   );

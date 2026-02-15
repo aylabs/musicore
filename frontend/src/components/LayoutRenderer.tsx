@@ -38,6 +38,10 @@ export interface LayoutRendererProps {
   highlightedNoteIds?: Set<string>;
   /** Feature 019: Map from SourceReference keys to Note IDs */
   sourceToNoteIdMap?: Map<string, string>;
+  /** Callback when a note glyph is clicked */
+  onNoteClick?: (noteId: string) => void;
+  /** ID of the currently selected note (for visual feedback) */
+  selectedNoteId?: string;
 }
 
 /**
@@ -71,23 +75,53 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   }
 
   /**
+   * Handle click events on SVG via event delegation.
+   * Walks up from click target to find a glyph with data-note-id.
+   */
+  private handleSVGClick = (event: MouseEvent): void => {
+    const { onNoteClick } = this.props;
+    if (!onNoteClick) return;
+
+    let target = event.target as Element | null;
+    const svg = this.svgRef.current;
+    while (target && target !== svg) {
+      if (target instanceof SVGElement && target.dataset.noteId) {
+        event.stopPropagation(); // Prevent toggle playback on container
+        onNoteClick(target.dataset.noteId);
+        return;
+      }
+      target = target.parentElement;
+    }
+    // Click was not on a note — let it propagate for togglePlayback
+  };
+
+  /**
    * Render SVG after component mounts
    */
   componentDidMount(): void {
     this.renderSVG();
+    this.svgRef.current?.addEventListener('click', this.handleSVGClick);
+  }
+
+  /**
+   * Cleanup event listener
+   */
+  componentWillUnmount(): void {
+    this.svgRef.current?.removeEventListener('click', this.handleSVGClick);
   }
 
   /**
    * Re-render SVG when props change
    */
   componentDidUpdate(prevProps: LayoutRendererProps): void {
-    // Re-render if layout, config, viewport, or highlighting state changed
+    // Re-render if layout, config, viewport, or highlighting/selection state changed
     if (
       prevProps.layout !== this.props.layout ||
       prevProps.config !== this.props.config ||
       prevProps.viewport !== this.props.viewport ||
       prevProps.highlightedNoteIds !== this.props.highlightedNoteIds ||
-      prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
+      prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap ||
+      prevProps.selectedNoteId !== this.props.selectedNoteId
     ) {
       this.renderSVG();
     }
@@ -398,21 +432,33 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const { highlightedNoteIds, sourceToNoteIdMap } = this.props;
     
     for (const glyph of run.glyphs) {
-      // Check if this specific glyph should be highlighted
+      // Resolve noteId from source reference
+      let noteId: string | undefined;
       let isHighlighted = false;
-      if (highlightedNoteIds && sourceToNoteIdMap && glyph.source_reference) {
+      let isSelected = false;
+      if (sourceToNoteIdMap && glyph.source_reference) {
         const sourceKey = createSourceKey({
           system_index: systemIndex,
           ...glyph.source_reference
         });
-        const noteId = sourceToNoteIdMap.get(sourceKey);
+        noteId = sourceToNoteIdMap.get(sourceKey);
         
-        if (noteId && highlightedNoteIds.has(noteId)) {
-          isHighlighted = true;
+        if (noteId) {
+          if (highlightedNoteIds && highlightedNoteIds.has(noteId)) {
+            isHighlighted = true;
+          }
+          if (this.props.selectedNoteId === noteId) {
+            isSelected = true;
+          }
         }
       }
       
-      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isHighlighted);
+      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isHighlighted, isSelected);
+      // Add data-note-id for click detection
+      if (noteId) {
+        (glyphElement as SVGElement).dataset.noteId = noteId;
+        glyphElement.style.cursor = 'pointer';
+      }
       glyphRunGroup.appendChild(glyphElement);
     }
 
@@ -428,15 +474,16 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param fontSize - Font size in logical units
    * @param color - Fill color
    * @param isHighlighted - Whether this glyph should be highlighted (Feature 019)
+   * @param isSelected - Whether this glyph belongs to the selected note
    * @returns SVG element (text for SMuFL, line for stem, rect for beam)
    */
-  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isHighlighted = false): SVGElement {
+  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isHighlighted = false, isSelected = false): SVGElement {
     // Check for special glyphs (stems and beams)
     const codepoint = glyph.codepoint;
     
-    // Feature 019: Determine colors based on highlighting state
-    const fillColor = isHighlighted ? '#4A90E2' : color;
-    const strokeColor = isHighlighted ? '#2E5C8A' : color;
+    // Determine colors: highlighted (blue) > selected (orange) > normal
+    const fillColor = isHighlighted ? '#4A90E2' : isSelected ? '#FF6B00' : color;
+    const strokeColor = isHighlighted ? '#2E5C8A' : isSelected ? '#CC5500' : color;
     
     // U+0000: Stem (vertical line)
     if (codepoint === '\u{0000}' || codepoint === '\0') {
@@ -450,6 +497,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       line.setAttribute('stroke-linecap', 'butt');
       if (isHighlighted) {
         line.setAttribute('class', 'highlighted');
+      } else if (isSelected) {
+        line.setAttribute('class', 'selected');
       }
       return line;
     }
@@ -464,6 +513,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       rect.setAttribute('fill', fillColor);
       if (isHighlighted) {
         rect.setAttribute('class', 'highlighted');
+      } else if (isSelected) {
+        rect.setAttribute('class', 'selected');
       }
       return rect;
     }
@@ -487,6 +538,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     text.setAttribute('fill', fillColor);
     if (isHighlighted) {
       text.setAttribute('class', 'highlighted');
+    } else if (isSelected) {
+      text.setAttribute('class', 'selected');
     }
     
     // SMuFL noteheads should be vertically centered on staff lines
