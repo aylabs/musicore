@@ -3,7 +3,7 @@
 //! Positions glyphs based on pitch (vertical) and timing (horizontal).
 
 use crate::layout::metrics::get_glyph_bbox;
-use crate::layout::types::{BoundingBox, Glyph, Point, SourceReference};
+use crate::layout::types::{BoundingBox, Glyph, LedgerLine, Point, SourceReference};
 
 /// Convert pitch to y-coordinate on staff
 ///
@@ -713,6 +713,87 @@ pub fn position_note_accidentals(
     }
 
     accidental_glyphs
+}
+
+/// Position ledger lines for notes above or below the 5-line staff
+///
+/// Ledger lines are short horizontal lines drawn at every staff-space interval
+/// between the staff boundary and the note position, for notes outside the
+/// standard 5-line range.
+///
+/// Staff lines span y=0 (top) to y=4*2*units_per_space = 160 (bottom) relative
+/// to the staff's vertical offset. Notes above the top line (y < 0) or below
+/// the bottom line (y > 160) need ledger lines.
+///
+/// # Arguments
+/// * `notes` - Note events (pitch, start_tick, duration)
+/// * `horizontal_offsets` - Pre-computed x offsets for each note
+/// * `clef_type` - Clef type for pitch positioning
+/// * `units_per_space` - Scaling factor (20.0 = 1 staff space)
+/// * `staff_vertical_offset` - Vertical offset for this staff
+///
+/// # Returns
+/// Vector of LedgerLine structs for notes outside staff range
+pub fn position_ledger_lines(
+    notes: &[(u8, u32, u32)],
+    horizontal_offsets: &[f32],
+    clef_type: &str,
+    units_per_space: f32,
+    staff_vertical_offset: f32,
+) -> Vec<LedgerLine> {
+    let mut ledger_lines = Vec::new();
+
+    // Staff line positions relative to staff_vertical_offset:
+    // Top line: y = staff_vertical_offset + 0
+    // Bottom line: y = staff_vertical_offset + 8 * units_per_space (= 160 at ups=20)
+    let top_line_y = staff_vertical_offset;
+    let bottom_line_y = staff_vertical_offset + 8.0 * units_per_space;
+
+    // Ledger line width: ~2.5 staff spaces, centered on note x
+    let ledger_half_width = 1.25 * units_per_space;
+
+    // Use a set to deduplicate ledger lines at the same (x, y) position
+    // (multiple notes at the same tick/pitch shouldn't duplicate ledger lines)
+    let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
+
+    for ((pitch, _start_tick, _duration), &notehead_x) in
+        notes.iter().zip(horizontal_offsets.iter())
+    {
+        let note_y = pitch_to_y(*pitch, clef_type, units_per_space) + staff_vertical_offset;
+
+        if note_y < top_line_y {
+            // Note is above the staff — draw ledger lines from (top_line - 2*ups) up to note
+            // Ledger lines at every 2*units_per_space interval above top line
+            let mut y = top_line_y - 2.0 * units_per_space;
+            while y >= note_y - units_per_space * 0.5 {
+                let key = (notehead_x as i32, (y * 10.0) as i32);
+                if seen.insert(key) {
+                    ledger_lines.push(LedgerLine {
+                        y_position: y,
+                        start_x: notehead_x - ledger_half_width,
+                        end_x: notehead_x + ledger_half_width,
+                    });
+                }
+                y -= 2.0 * units_per_space;
+            }
+        } else if note_y > bottom_line_y {
+            // Note is below the staff — draw ledger lines from (bottom_line + 2*ups) down to note
+            let mut y = bottom_line_y + 2.0 * units_per_space;
+            while y <= note_y + units_per_space * 0.5 {
+                let key = (notehead_x as i32, (y * 10.0) as i32);
+                if seen.insert(key) {
+                    ledger_lines.push(LedgerLine {
+                        y_position: y,
+                        start_x: notehead_x - ledger_half_width,
+                        end_x: notehead_x + ledger_half_width,
+                    });
+                }
+                y += 2.0 * units_per_space;
+            }
+        }
+    }
+
+    ledger_lines
 }
 
 /// Position structural glyphs (clefs, key sigs, time sigs) at system start

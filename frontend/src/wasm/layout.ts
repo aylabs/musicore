@@ -101,6 +101,20 @@ export interface Staff {
   structural_glyphs: Glyph[];
   /** Vertical bar lines that separate measures */
   bar_lines: BarLine[];
+  /** Ledger lines for notes above/below staff */
+  ledger_lines: LedgerLine[];
+}
+
+/**
+ * Short horizontal line for notes outside the 5-line staff range
+ */
+export interface LedgerLine {
+  /** Vertical position in logical units (system-relative) */
+  y_position: number;
+  /** Left edge of ledger line in logical units */
+  start_x: number;
+  /** Right edge of ledger line in logical units */
+  end_x: number;
 }
 
 /**

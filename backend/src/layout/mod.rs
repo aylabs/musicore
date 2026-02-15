@@ -23,8 +23,8 @@ pub mod wasm;
 pub use breaker::MeasureInfo;
 pub use types::{
     BarLine, BarLineSegment, BarLineType, BoundingBox, BracketGlyph, BracketType, Color,
-    GlobalLayout, Glyph, GlyphRun, MeasureNumber, Point, SourceReference, Staff, StaffGroup,
-    StaffLine, System, TickRange,
+    GlobalLayout, Glyph, GlyphRun, LedgerLine, MeasureNumber, Point, SourceReference, Staff,
+    StaffGroup, StaffLine, System, TickRange,
 };
 
 /// Configuration for layout computation
@@ -206,12 +206,38 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     &note_positions,
                 );
 
+                // Generate ledger lines for notes outside the 5-line staff
+                let mut ledger_lines = Vec::new();
+                for voice in &staff_data.voices {
+                    let notes_in_range: Vec<(u8, u32, u32)> = voice
+                        .notes
+                        .iter()
+                        .filter(|note| {
+                            note.start_tick >= system.tick_range.start_tick
+                                && note.start_tick < system.tick_range.end_tick
+                        })
+                        .map(|note| (note.pitch, note.start_tick, note.duration_ticks))
+                        .collect();
+                    let offsets: Vec<f32> = notes_in_range
+                        .iter()
+                        .map(|(_, tick, _)| *note_positions.get(tick).unwrap_or(&0.0))
+                        .collect();
+                    ledger_lines.extend(positioner::position_ledger_lines(
+                        &notes_in_range,
+                        &offsets,
+                        &staff_data.clef,
+                        config.units_per_space,
+                        staff_vertical_offset,
+                    ));
+                }
+
                 // Create staff with batched glyphs and structural glyphs
                 let staff = Staff {
                     staff_lines,
                     glyph_runs,
                     structural_glyphs,
                     bar_lines,
+                    ledger_lines,
                 };
 
                 staves.push(staff);
@@ -1233,6 +1259,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staff_1 = Staff {
@@ -1240,6 +1267,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -1290,6 +1318,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staff_1 = Staff {
@@ -1297,6 +1326,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staves = vec![staff_0, staff_1];

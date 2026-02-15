@@ -103,6 +103,22 @@ pub struct Staff {
     pub structural_glyphs: Vec<Glyph>,
     /// Vertical bar lines that separate measures
     pub bar_lines: Vec<BarLine>,
+    /// Ledger lines for notes above/below staff
+    pub ledger_lines: Vec<LedgerLine>,
+}
+
+/// Short horizontal line for notes outside the 5-line staff range
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LedgerLine {
+    /// Vertical position in logical units (system-relative)
+    #[serde(serialize_with = "round_f32")]
+    pub y_position: f32,
+    /// Left edge of ledger line in logical units
+    #[serde(serialize_with = "round_f32")]
+    pub start_x: f32,
+    /// Right edge of ledger line in logical units
+    #[serde(serialize_with = "round_f32")]
+    pub end_x: f32,
 }
 
 /// Single horizontal line in a staff
