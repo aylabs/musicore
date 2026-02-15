@@ -657,6 +657,21 @@ fn position_glyphs_for_staff(
 
         all_glyphs.extend(glyphs);
 
+        // Position accidentals based on key signature and measure context
+        let accidental_glyphs = positioner::position_note_accidentals(
+            &notes_in_range,
+            &horizontal_offsets,
+            &staff_data.clef,
+            units_per_space,
+            instrument_id,
+            staff_index,
+            voice_index,
+            staff_vertical_offset,
+            staff_data.key_sharps,
+        );
+
+        all_glyphs.extend(accidental_glyphs);
+
         // T056-T058: Stem/beam generation disabled - using combined notehead+stem glyphs
         // SMuFL provides U+E1D3/U+E1D5 which include stems in the glyph
         // TODO: Restore beam generation for eighth notes in future phase
