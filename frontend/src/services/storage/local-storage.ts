@@ -110,7 +110,8 @@ export async function loadScoreFromIndexedDB(scoreId: string): Promise<Score | n
 
       console.log(`[IndexedDB] Score ${scoreId} loaded successfully`);
       // Remove metadata before returning
-      const { lastModified, ...scoreWithoutMetadata } = score as Score & { lastModified?: string };
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { lastModified: _lastModified, ...scoreWithoutMetadata } = score as Score & { lastModified?: string };
       return scoreWithoutMetadata;
     }
 

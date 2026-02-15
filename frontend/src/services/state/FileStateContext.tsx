@@ -112,6 +112,7 @@ export const FileStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
  * resetFileState();
  * ```
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useFileState = (): FileStateContextValue => {
   const context = useContext(FileStateContext);
   if (!context) {

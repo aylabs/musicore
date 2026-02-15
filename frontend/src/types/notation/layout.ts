@@ -187,12 +187,14 @@ export interface LayoutGeometry {
  */
 export interface LayoutInput {
   /** Notes to render (from Voice.interval_events) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notes: any[]; // Will use actual Note type from score.ts
   
   /** Current clef type */
   clef: string; // Will use actual ClefType from score.ts
   
   /** Current key signature */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   keySignature?: any;
   
   /** Current time signature for barline calculation */

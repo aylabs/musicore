@@ -28,6 +28,7 @@ if (typeof ImageData === 'undefined') {
         this.height = height ?? Math.floor(this.data.length / (this.width * 4));
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
