@@ -34,6 +34,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (stateless rendering, layout cached in IndexedDB by parent component) (017-layout-renderer)
 - Rust 1.75+ (stable), Edition 2021 (018-rust-layout-engraving)
 - N/A (stateless computation - inputs via WASM, outputs as JSON) (018-rust-layout-engraving)
+- Rust (latest stable) for backend/WASM, TypeScript/React 19+ for frontend + React 19.2, Tone.js 14.9, wasm-bindgen 0.2, Vite (bundler) (019-playback-note-highlight)
+- N/A (feature uses in-memory state, no persistence) (019-playback-note-highlight)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -54,9 +56,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 019-playback-note-highlight: Added Rust (latest stable) for backend/WASM, TypeScript/React 19+ for frontend + React 19.2, Tone.js 14.9, wasm-bindgen 0.2, Vite (bundler)
 - 018-rust-layout-engraving: Added Rust 1.75+ (stable), Edition 2021
 - 017-layout-renderer: Added TypeScript 5.0+, React 19 + Canvas 2D API (browser native), Feature 016 WASM bindings (musicore_backend), layoutUtils.ts (47 unit tests)
-- 016-rust-layout-engine: Added Rust 1.93+ + serde 1.0+, serde_json 1.0+, wasm-bindgen 0.2+
 
 
 <!-- MANUAL ADDITIONS START -->

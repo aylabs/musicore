@@ -52,7 +52,6 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   layout,
   selectedNoteId = null,
   onNoteClick,
-  scrollX: _scrollX = 0, // Unused - clef no longer sticky
   showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
@@ -205,7 +204,16 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
             pixelsPerTick,
             marginLeft: layout.marginLeft,
             staffSpace: 10,
-          } as any}
+            minNoteSpacing: 15,
+            viewportWidth: 1200,
+            viewportHeight: 600,
+            scrollX: 0,
+            clefWidth: 40,
+            keySignatureWidthPerAccidental: 15,
+            barlineWidth: 2,
+            renderBuffer: 200,
+            glyphFontSizeMultiplier: 4.0,
+          }}
         />
       )}
     </svg>

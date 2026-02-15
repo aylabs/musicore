@@ -4,21 +4,46 @@
  * Converts Score data to layout format and displays using LayoutRenderer
  */
 
-import { useState, useEffect } from 'react';
-import type { Score } from '../../types/score';
+import { useState, useEffect, useMemo } from 'react';
+import type { Score, GlobalStructuralEvent, StaffStructuralEvent, Note } from '../../types/score';
 import { ScoreViewer } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
+import { buildSourceToNoteIdMap } from '../../services/highlight/sourceMapping';
+
+interface ConvertedScore {
+  instruments: Array<{
+    id: string;
+    name: string;
+    staves: Array<{
+      clef: string;
+      time_signature: { numerator: number; denominator: number };
+      key_signature: { sharps: number };
+      voices: Array<{
+        notes: Array<{
+          tick: number;
+          duration: number;
+          pitch: number;
+          articulation: null;
+        }>;
+      }>;
+    }>;
+  }>;
+  tempo_changes: unknown[];
+  time_signature_changes: unknown[];
+}
 
 interface LayoutViewProps {
   score: Score;
+  /** Feature 019: Set of note IDs to highlight during playback */
+  highlightedNoteIds?: Set<string>;
 }
 
 /**
  * Convert Score to format expected by computeLayout
  * Processes all staves from first instrument (needed for piano grand staff)
  */
-function convertScoreToLayoutFormat(score: Score): any {
+function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   // Start with first instrument
   const firstInstrument = score.instruments[0];
   if (!firstInstrument) {
@@ -27,9 +52,9 @@ function convertScoreToLayoutFormat(score: Score): any {
 
   // Extract time signature from global structural events (default to 4/4)
   let timeSignature = { numerator: 4, denominator: 4 };
-  const firstTimeSigEvent = score.global_structural_events.find((e: any) => 'TimeSignature' in e);
-  if (firstTimeSigEvent) {
-    const timeSig = (firstTimeSigEvent as any).TimeSignature;
+  const firstTimeSigEvent = score.global_structural_events.find((e: GlobalStructuralEvent) => 'TimeSignature' in e);
+  if (firstTimeSigEvent && 'TimeSignature' in firstTimeSigEvent) {
+    const timeSig = firstTimeSigEvent.TimeSignature;
     timeSignature = {
       numerator: timeSig.numerator,
       denominator: timeSig.denominator,
@@ -37,7 +62,7 @@ function convertScoreToLayoutFormat(score: Score): any {
   }
 
   // Process all staves from the instrument (piano has 2: treble + bass)
-  const convertedStaves = firstInstrument.staves.map((staff: any) => {
+  const convertedStaves = firstInstrument.staves.map(staff => {
     // Get first voice from this staff
     const firstVoice = staff.voices[0];
     if (!firstVoice) {
@@ -46,9 +71,9 @@ function convertScoreToLayoutFormat(score: Score): any {
 
     // Extract key signature from staff structural events (default to 0 = C major)
     let keySharps = 0;
-    const firstKeySigEvent = staff.staff_structural_events.find((e: any) => 'KeySignature' in e);
-    if (firstKeySigEvent) {
-      const keySig = (firstKeySigEvent as any).KeySignature.key;
+    const firstKeySigEvent = staff.staff_structural_events.find((e: StaffStructuralEvent) => 'KeySignature' in e);
+    if (firstKeySigEvent && 'KeySignature' in firstKeySigEvent) {
+      const keySig = firstKeySigEvent.KeySignature.key;
       // Map key signature enum to number of sharps/flats
       const keyMap: { [key: string]: number } = {
         'CMajor': 0, 'AMinor': 0,
@@ -75,7 +100,7 @@ function convertScoreToLayoutFormat(score: Score): any {
       time_signature: timeSignature,
       key_signature: { sharps: keySharps },
       voices: [{
-        notes: firstVoice.interval_events.map((note: any) => ({
+        notes: firstVoice.interval_events.map((note: Note) => ({
           tick: note.start_tick,
           duration: note.duration_ticks,
           pitch: note.pitch,
@@ -94,18 +119,30 @@ function convertScoreToLayoutFormat(score: Score): any {
     }],
     // Extract tempo and time signature from global_structural_events
     tempo_changes: score.global_structural_events
-      .filter((e: any) => 'Tempo' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((e): e is any => 'Tempo' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((e: any) => e.Tempo),
     time_signature_changes: score.global_structural_events
-      .filter((e: any) => 'TimeSignature' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((e): e is any => 'TimeSignature' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((e: any) => e.TimeSignature),
   };
 }
 
-export function LayoutView({ score }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * Feature 019: Build mapping from layout source references to note IDs
+   * Must use layout's instrument_ids (not score's) to match glyph source_references
+   */
+  const sourceToNoteIdMap = useMemo(() => {
+    return buildSourceToNoteIdMap(score, layout);
+  }, [score, layout]);
 
   useEffect(() => {
     const computeAndSetLayout = async () => {
@@ -194,7 +231,11 @@ export function LayoutView({ score }: LayoutViewProps) {
       <div style={styles.info}>
         📐 Layout View: First voice from {score.instruments[0]?.name || 'instrument'}
       </div>
-      <ScoreViewer layout={layout} />
+      <ScoreViewer 
+        layout={layout} 
+        highlightedNoteIds={highlightedNoteIds}
+        sourceToNoteIdMap={sourceToNoteIdMap}
+      />
     </div>
   );
 }

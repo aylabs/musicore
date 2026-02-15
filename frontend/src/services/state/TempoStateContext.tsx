@@ -141,6 +141,7 @@ export function TempoStateProvider({ children }: TempoStateProviderProps) {
  * @returns Tempo state context value
  * @throws Error if used outside TempoStateProvider
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTempoState(): TempoStateContextValue {
   const context = useContext(TempoStateContext);
   if (context === undefined) {

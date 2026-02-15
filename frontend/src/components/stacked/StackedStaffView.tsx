@@ -44,7 +44,7 @@ export function StackedStaffView({
   const [sharedScrollX, setSharedScrollX] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [measuredViewportWidth, setMeasuredViewportWidth] = useState(1200);
-  const lastAutoScrollTimeRef = useRef<number>(Date.now());
+  const lastAutoScrollTimeRef = useRef<number>(0);
 
   const flattenedStaves = useMemo((): FlattenedStaff[] => {
     const staves: FlattenedStaff[] = [];
@@ -113,8 +113,6 @@ export function StackedStaffView({
       return undefined;
     }
 
-    let animationFrameId: number;
-
     const smoothScroll = () => {
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollLeft = targetScrollX;
@@ -123,7 +121,7 @@ export function StackedStaffView({
       }
     };
 
-    animationFrameId = requestAnimationFrame(smoothScroll);
+    const animationFrameId = requestAnimationFrame(smoothScroll);
     return () => cancelAnimationFrame(animationFrameId);
   }, [autoScrollEnabled, playbackStatus, targetScrollX]);
 

@@ -46,6 +46,7 @@ export class DemoLoaderService implements IDemoLoaderService {
     try {
       // Use unfiltered version to find demos with ANY schema version (for cleanup)
       const allScores = await getAllScoresFromIndexedDBUnfiltered();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const demoScore = allScores.find((score: any) => score.isDemoScore === true) as DemoScoreMetadata | undefined;
       return demoScore ?? null;
     } catch (error) {
@@ -185,6 +186,7 @@ export class DemoLoaderService implements IDemoLoaderService {
       const allScores = await getAllScoresFromIndexedDB();
       
       // Find the demo score (marked with isDemoScore=true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const demoScore = allScores.find((score: any) => score.isDemoScore === true) as DemoScoreMetadata | undefined;
       
       if (!demoScore) {
@@ -220,6 +222,7 @@ export class DemoLoaderService implements IDemoLoaderService {
   /**
    * Type guard for DemoLoadingError
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private isDemoLoadingError(error: any): error is DemoLoadingError {
     return (
       typeof error === 'object' &&

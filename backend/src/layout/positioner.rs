@@ -156,6 +156,7 @@ pub fn compute_glyph_bounding_box(
 ///
 /// # Returns
 /// Vector of positioned glyph structs
+#[allow(clippy::too_many_arguments)]
 pub fn position_noteheads(
     notes: &[(u8, u32, u32)], // (pitch, start_tick, duration)
     horizontal_offsets: &[f32],
@@ -408,10 +409,14 @@ pub fn position_key_signature(
     let count = sharps.unsigned_abs() as usize;
     let horizontal_spacing = 15.0; // Space between accidentals
 
-    for i in 0..count.min(positions.len()) {
+    for (i, &y_pos) in positions
+        .iter()
+        .enumerate()
+        .take(count.min(positions.len()))
+    {
         let position = Point {
             x: x_start + (i as f32 * horizontal_spacing),
-            y: positions[i] + staff_vertical_offset,
+            y: y_pos + staff_vertical_offset,
         };
 
         let bbox = compute_glyph_bounding_box("accidentalSharp", &position, 40.0, units_per_space);

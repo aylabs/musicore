@@ -1046,7 +1046,7 @@ mod batching_tests {
         println!("Mixed glyphs test:");
         println!("  Input: 50 noteheads + 30 sharps + 20 noteheads");
         println!("  Output: {} runs", runs.len());
-        for (_i, _run) in runs.iter().enumerate() {}
+        for _run in runs.iter() {}
 
         // Should create 3 runs: noteheads, sharps, noteheads
         assert_eq!(

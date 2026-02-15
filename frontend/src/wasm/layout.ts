@@ -272,6 +272,7 @@ export interface LayoutConfig {
  * visibleSystems.forEach(system => renderSystem(system));
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function computeLayout(score: any, config?: LayoutConfig): Promise<GlobalLayout> {
   // Ensure WASM is initialized
   await initWasm();

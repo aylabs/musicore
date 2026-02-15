@@ -37,7 +37,7 @@ interface InstrumentListProps {
  * />
  * ```
  */
-export function InstrumentList({ instruments, scoreId: _scoreId, onUpdate: _onUpdate, onScoreCreated: _onScoreCreated, onSync: _onSync, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
+export function InstrumentList({ instruments, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
 
   /**

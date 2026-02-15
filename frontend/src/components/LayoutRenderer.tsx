@@ -8,7 +8,7 @@
  */
 
 import { Component, createRef, type RefObject } from 'react';
-import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun, BarLine } from '../wasm/layout';
+import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun, BarLine, Glyph } from '../wasm/layout';
 import type { RenderConfig } from '../types/RenderConfig';
 import type { Viewport } from '../types/Viewport';
 import { 
@@ -19,6 +19,8 @@ import {
   createSVGGroup,
   svgNS,
 } from '../utils/renderUtils';
+import { createSourceKey } from '../services/highlight/sourceMapping';
+import './LayoutRenderer.css';
 
 /**
  * Props for LayoutRenderer component
@@ -32,6 +34,10 @@ export interface LayoutRendererProps {
   viewport: Viewport;
   /** Optional CSS class name for SVG element */
   className?: string;
+  /** Feature 019: Set of note IDs to highlight during playback */
+  highlightedNoteIds?: Set<string>;
+  /** Feature 019: Map from SourceReference keys to Note IDs */
+  sourceToNoteIdMap?: Map<string, string>;
 }
 
 /**
@@ -75,11 +81,13 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Re-render SVG when props change
    */
   componentDidUpdate(prevProps: LayoutRendererProps): void {
-    // Re-render if layout, config, or viewport changed
+    // Re-render if layout, config, viewport, or highlighting state changed
     if (
       prevProps.layout !== this.props.layout ||
       prevProps.config !== this.props.config ||
-      prevProps.viewport !== this.props.viewport
+      prevProps.viewport !== this.props.viewport ||
+      prevProps.highlightedNoteIds !== this.props.highlightedNoteIds ||
+      prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
     ) {
       this.renderSVG();
     }
@@ -172,7 +180,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Render each staff group (Task T018)
     for (const staffGroup of system.staff_groups) {
-      const staffGroupElement = this.renderStaffGroup(staffGroup);
+      const staffGroupElement = this.renderStaffGroup(staffGroup, system.index);
       systemGroup.appendChild(staffGroupElement);
     }
 
@@ -183,16 +191,17 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Renders staff lines, braces, brackets for a group of staves (Task T018).
    * 
    * @param staffGroup - Staff group from system.staffGroups
+   * @param systemIndex - System index for source reference mapping
    * @returns SVG group element containing staff group content
    */
-  private renderStaffGroup(staffGroup: StaffGroup): SVGGElement {
+  private renderStaffGroup(staffGroup: StaffGroup, systemIndex: number): SVGGElement {
     const staffGroupElement = createSVGGroup();
     staffGroupElement.setAttribute('data-staff-group', 'true');
     staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
 
     // Render each staff first (Task T019)
     for (const staff of staffGroup.staves) {
-      const staffElement = this.renderStaff(staff);
+      const staffElement = this.renderStaff(staff, systemIndex);
       staffGroupElement.appendChild(staffElement);
     }
 
@@ -272,7 +281,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param staff - Staff from staffGroup.staves
    * @returns SVG group element containing staff lines and glyphs
    */
-  private renderStaff(staff: Staff): SVGGElement {
+  private renderStaff(staff: Staff, systemIndex: number): SVGGElement {
     const staffElement = createSVGGroup();
     staffElement.setAttribute('class', 'staff');
 
@@ -306,7 +315,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Render glyph runs (Task T020)
     for (const glyphRun of staff.glyph_runs) {
-      const glyphRunElement = this.renderGlyphRun(glyphRun);
+      const glyphRunElement = this.renderGlyphRun(glyphRun, systemIndex);
       staffElement.appendChild(glyphRunElement);
     }
 
@@ -358,7 +367,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param run - Glyph run from system.glyphRuns
    * @returns SVG group element containing glyph batch
    */
-  private renderGlyphRun(run: GlyphRun): SVGGElement {
+  private renderGlyphRun(run: GlyphRun, systemIndex: number): SVGGElement {
     const glyphRunGroup = createSVGGroup();
     glyphRunGroup.setAttribute('class', 'glyph-run');
 
@@ -368,8 +377,25 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const color = run.color ? `rgb(${run.color.r}, ${run.color.g}, ${run.color.b})` : '#000000';
 
     // Render each glyph in the run (Task T020)
+    // Feature 019: Check each glyph individually for highlighting
+    const { highlightedNoteIds, sourceToNoteIdMap } = this.props;
+    
     for (const glyph of run.glyphs) {
-      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color);
+      // Check if this specific glyph should be highlighted
+      let isHighlighted = false;
+      if (highlightedNoteIds && sourceToNoteIdMap && glyph.source_reference) {
+        const sourceKey = createSourceKey({
+          system_index: systemIndex,
+          ...glyph.source_reference
+        });
+        const noteId = sourceToNoteIdMap.get(sourceKey);
+        
+        if (noteId && highlightedNoteIds.has(noteId)) {
+          isHighlighted = true;
+        }
+      }
+      
+      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isHighlighted);
       glyphRunGroup.appendChild(glyphElement);
     }
 
@@ -384,11 +410,16 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param fontFamily - Font family (e.g., 'Bravura')
    * @param fontSize - Font size in logical units
    * @param color - Fill color
+   * @param isHighlighted - Whether this glyph should be highlighted (Feature 019)
    * @returns SVG element (text for SMuFL, line for stem, rect for beam)
    */
-  private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string): SVGElement {
+  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isHighlighted = false): SVGElement {
     // Check for special glyphs (stems and beams)
     const codepoint = glyph.codepoint;
+    
+    // Feature 019: Determine colors based on highlighting state
+    const fillColor = isHighlighted ? '#4A90E2' : color;
+    const strokeColor = isHighlighted ? '#2E5C8A' : color;
     
     // U+0000: Stem (vertical line)
     if (codepoint === '\u{0000}' || codepoint === '\0') {
@@ -397,9 +428,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       line.setAttribute('y1', glyph.position.y.toString());
       line.setAttribute('x2', glyph.position.x.toString());
       line.setAttribute('y2', (glyph.position.y + glyph.bounding_box.height).toString());
-      line.setAttribute('stroke', color);
-      line.setAttribute('stroke-width', glyph.bounding_box.width.toString());
+      line.setAttribute('stroke', strokeColor);
+      line.setAttribute('stroke-width', isHighlighted ? '2' : glyph.bounding_box.width.toString());
       line.setAttribute('stroke-linecap', 'butt');
+      if (isHighlighted) {
+        line.setAttribute('class', 'highlighted');
+      }
       return line;
     }
     
@@ -410,7 +444,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       rect.setAttribute('y', glyph.bounding_box.y.toString());
       rect.setAttribute('width', glyph.bounding_box.width.toString());
       rect.setAttribute('height', glyph.bounding_box.height.toString());
-      rect.setAttribute('fill', color);
+      rect.setAttribute('fill', fillColor);
+      if (isHighlighted) {
+        rect.setAttribute('class', 'highlighted');
+      }
       return rect;
     }
     
@@ -430,7 +467,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     
     text.setAttribute('font-family', fontFamily);
     text.setAttribute('font-size', fontSize.toString());
-    text.setAttribute('fill', color);
+    text.setAttribute('fill', fillColor);
+    if (isHighlighted) {
+      text.setAttribute('class', 'highlighted');
+    }
     
     // SMuFL noteheads should be vertically centered on staff lines
     // Use 'middle' to center horizontally on X coordinate

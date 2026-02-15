@@ -12,6 +12,7 @@ import { StackedStaffView } from "./stacked/StackedStaffView";
 import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { demoLoaderService } from "../services/onboarding/demoLoader";
+import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -59,35 +60,6 @@ export function ScoreViewer({
   // File state management (Feature 004 - Score File Persistence)
   const { fileState, resetFileState } = useFileState();
 
-  // Load score when scoreId changes (but only for backend-sourced scores)
-  useEffect(() => {
-    if (scoreId && !skipNextLoad && !isFileSourced) {
-      loadScore(scoreId);
-    }
-    if (skipNextLoad) {
-      setSkipNextLoad(false); // Reset flag
-    }
-  }, [scoreId]);
-
-  // Feature 004 T032: Keyboard shortcuts for file operations
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Ctrl/Cmd modifier
-      if (event.ctrlKey || event.metaKey) {
-        // Removed: Ctrl+S (Save), Ctrl+N (New), Ctrl+O (Load from backend)
-        // All editing shortcuts removed per Feature 014
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [score, fileState.isModified]); // Dependencies: score and isModified state
-
-  // Removed: Feature 004 T033 - Browser beforeunload warning
-  // No unsaved changes warning needed since editing is disabled (Feature 014)
-
   /**
    * Load a score by ID
    * Feature 013: Try IndexedDB first (for demo scores), then fall back to API
@@ -117,6 +89,35 @@ export function ScoreViewer({
       setLoading(false);
     }
   };
+
+  // Load score when scoreId changes (but only for backend-sourced scores)
+  useEffect(() => {
+    if (scoreId && !skipNextLoad && !isFileSourced) {
+      loadScore(scoreId);
+    }
+    if (skipNextLoad) {
+      setSkipNextLoad(false); // Reset flag
+    }
+  }, [scoreId, skipNextLoad, isFileSourced]);
+
+  // Feature 004 T032: Keyboard shortcuts for file operations
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Ctrl/Cmd modifier
+      if (event.ctrlKey || event.metaKey) {
+        // Removed: Ctrl+S (Save), Ctrl+N (New), Ctrl+O (Load from backend)
+        // All editing shortcuts removed per Feature 014
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [score, fileState.isModified]); // Dependencies: score and isModified state
+
+  // Removed: Feature 004 T033 - Browser beforeunload warning
+  // No unsaved changes warning needed since editing is disabled (Feature 014)
 
   /**
    * Create a new score via API (legacy method - kept for backward compatibility)
@@ -312,9 +313,11 @@ export function ScoreViewer({
     const notes: Note[] = [];
     for (const instrument of score.instruments) {
       for (const staff of instrument.staves) {
-        for (const voice of staff.voices) {
+        // Only include voice 0 notes (matching layout's convertScoreToLayoutFormat)
+        const firstVoice = staff.voices[0];
+        if (firstVoice) {
           // interval_events is already an array of Notes
-          notes.push(...voice.interval_events);
+          notes.push(...firstVoice.interval_events);
         }
       }
     }
@@ -328,6 +331,16 @@ export function ScoreViewer({
   const initialTempo = getInitialTempo();
   const playbackState = usePlayback(allNotes, initialTempo);
 
+  /**
+   * Feature 019: Note highlighting during playback
+   * Compute which notes should be highlighted based on current playback position
+   */
+  const highlightedNoteIds = useNoteHighlight(
+    allNotes,
+    playbackState.currentTick,
+    playbackState.status
+  );
+  
   /**
    * Toggle playback between play and pause
    * Used for tablet: tapping outside staff regions in stacked view
@@ -357,7 +370,7 @@ export function ScoreViewer({
       
       return () => clearTimeout(timer);
     }
-  }, [shouldAutoPlay, score]);
+  }, [shouldAutoPlay, score, playbackState]);
 
   // Render loading state
   if (loading && !score) {
@@ -495,7 +508,10 @@ export function ScoreViewer({
         />
       ) : (
         /* Feature 017: Layout View */
-        <LayoutView score={score} />
+        <LayoutView 
+          score={score} 
+          highlightedNoteIds={highlightedNoteIds}
+        />
       )}
 
       {loading && <div className="loading-overlay">Updating...</div>}

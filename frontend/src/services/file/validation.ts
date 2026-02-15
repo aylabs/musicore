@@ -16,6 +16,7 @@ export function validateScoreFile(json: string): ValidationResult {
   // ============================================================================
   // Layer 1: Syntax Validation
   // ============================================================================
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let parsedData: any;
   try {
     if (!json || json.trim() === '') {
@@ -61,6 +62,7 @@ export function validateScoreFile(json: string): ValidationResult {
 /**
  * Layer 2: Validate required fields and types
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function validateStructure(data: any, errors: string[]): void {
   // Required root fields
   if (!('id' in data)) {
@@ -81,6 +83,7 @@ function validateStructure(data: any, errors: string[]): void {
     errors.push('Invalid type for instruments: expected array, got ' + typeof data.instruments);
   } else {
     // Validate each instrument structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data.instruments.forEach((instrument: any, idx: number) => {
       const prefix = `instruments[${idx}]`;
       
@@ -99,6 +102,7 @@ function validateStructure(data: any, errors: string[]): void {
         errors.push(`Invalid type for ${prefix}.staves: expected array, got ` + typeof instrument.staves);
       } else {
         // Validate each staff structure
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         instrument.staves.forEach((staff: any, staffIdx: number) => {
           const staffPrefix = `${prefix}.staves[${staffIdx}]`;
           
@@ -116,6 +120,7 @@ function validateStructure(data: any, errors: string[]): void {
             errors.push(`Invalid type for ${staffPrefix}.voices: expected array`);
           } else {
             // Validate each voice structure
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             staff.voices.forEach((voice: any, voiceIdx: number) => {
               const voicePrefix = `${staffPrefix}.voices[${voiceIdx}]`;
               

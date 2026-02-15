@@ -100,6 +100,7 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   // Auto re-enable scroll when playback stops and restarts
   useEffect(() => {
     if (playbackStatus === 'stopped') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAutoScrollEnabled(true);
     }
   }, [playbackStatus]);

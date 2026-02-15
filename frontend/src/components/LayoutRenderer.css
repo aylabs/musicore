@@ -1,0 +1,33 @@
+/**
+ * LayoutRenderer CSS
+ * Feature 019 - Playback Note Highlighting
+ * 
+ * Styles for music notation rendering and note highlighting during playback.
+ */
+
+/* Base glyph run styling */
+.glyph-run {
+  /* Default styling for glyph groups */
+}
+
+/* Highlighted glyph styling - Feature 019 */
+/* Applied to individual glyphs (text, line, rect elements) */
+text.highlighted {
+  fill: #4A90E2 !important;  /* Blue fill for highlighted noteheads */
+}
+
+line.highlighted {
+  stroke: #2E5C8A !important;  /* Darker blue stroke for highlighted stems */
+  stroke-width: 2 !important;
+}
+
+rect.highlighted {
+  fill: #4A90E2 !important;  /* Blue fill for highlighted beams */
+}
+
+/* Optional: Smooth transition for highlight appearance */
+.glyph-run text,
+.glyph-run line,
+.glyph-run rect {
+  transition: fill 50ms ease-out, stroke 50ms ease-out;
+}

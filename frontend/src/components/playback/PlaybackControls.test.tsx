@@ -2,12 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PlaybackControls } from './PlaybackControls';
 import { TempoStateProvider } from '../../services/state/TempoStateContext';
-import React, { type ReactNode } from 'react';
-
-// Wrapper to provide TempoStateContext for TempoControl component
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <TempoStateProvider>{children}</TempoStateProvider>
-);
 
 /**
  * T015: Unit tests for PlaybackControls component

@@ -148,7 +148,7 @@ export class LocalStorageViewModeAdapter implements IViewModePreferenceStorage {
   hasViewModePreference(): boolean {
     try {
       return localStorage.getItem(this.KEY) !== null;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

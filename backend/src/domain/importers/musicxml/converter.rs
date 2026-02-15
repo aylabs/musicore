@@ -671,8 +671,10 @@ mod tests {
     #[test]
     fn test_convert_single_part_to_score() {
         // T042: Convert MusicXMLDocument with 1 part → Score with 1 Instrument
-        let mut doc = MusicXMLDocument::default();
-        doc.version = "3.1".to_string();
+        let mut doc = MusicXMLDocument {
+            version: "3.1".to_string(),
+            ..Default::default()
+        };
 
         // Create part with basic attributes
         let mut part = PartData {

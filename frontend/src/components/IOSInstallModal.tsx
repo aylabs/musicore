@@ -1,5 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import './IOSInstallModal.css';
+
+// Extend Navigator interface for iOS-specific standalone property
+interface IOSNavigator extends Navigator {
+  standalone?: boolean;
+}
 
 /**
  * IOSInstallModal Component
@@ -19,26 +24,23 @@ import './IOSInstallModal.css';
  * <IOSInstallModal />
  */
 export const IOSInstallModal: React.FC = () => {
-  const [showModal, setShowModal] = useState(false);
-
-  useEffect(() => {
+  // Compute initial state to avoid setState in effect
+  const [showModal, setShowModal] = useState(() => {
     // Detect iOS (iPad, iPhone, iPod) or iPad Pro with touchscreen
-    // iPad Pro reports as 'MacIntel' but has touch support
     const isIOS = /iPad|iPhone|iPod/.test(navigator.platform) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
+    
     // Check if user is already in standalone mode (PWA installed)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-
+      (window.navigator as IOSNavigator).standalone === true;
+    
     // Show modal only if iOS and not installed, and user hasn't dismissed it
     if (isIOS && !isStandalone) {
       const dismissed = localStorage.getItem('ios-install-dismissed');
-      if (!dismissed) {
-        setShowModal(true);
-      }
+      return !dismissed;
     }
-  }, []);
+    return false;
+  });
 
   const handleDismiss = () => {
     // Remember dismissal to avoid annoying user

@@ -25,6 +25,10 @@ export interface ScoreViewerProps {
   initialZoom?: number;
   /** Enable dark mode (overrides config colors) */
   darkMode?: boolean;
+  /** Feature 019: Set of note IDs to highlight during playback */
+  highlightedNoteIds?: Set<string>;
+  /** Feature 019: Map from SourceReference keys to Note IDs */
+  sourceToNoteIdMap?: Map<string, string>;
 }
 
 /**
@@ -287,7 +291,13 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
               height: `${viewport.height * zoom}px`,
               pointerEvents: 'none',
             }}>
-              <LayoutRenderer layout={layout} config={config} viewport={viewport} />
+              <LayoutRenderer 
+                layout={layout} 
+                config={config} 
+                viewport={viewport}
+                highlightedNoteIds={this.props.highlightedNoteIds}
+                sourceToNoteIdMap={this.props.sourceToNoteIdMap}
+              />
             </div>
           </div>
         </div>

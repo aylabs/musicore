@@ -10,9 +10,8 @@ import type { Score } from '../../types/score';
 describe('FileService - saveScore', () => {
   // Mock HTML anchor element for download trigger
   let mockAnchor: HTMLAnchorElement;
-  let createElementSpy: any;
-  let createObjectURLSpy: any;
-  let revokeObjectURLSpy: any;
+  let createObjectURLSpy: ReturnType<typeof vi.spyOn>;
+  let revokeObjectURLSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     // Create mock anchor element
@@ -24,7 +23,7 @@ describe('FileService - saveScore', () => {
     } as unknown as HTMLAnchorElement;
 
     // Mock document.createElement
-    createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
+    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
 
     // Mock URL.createObjectURL and URL.revokeObjectURL
     createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
