@@ -1,0 +1,41 @@
+# Git
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+target/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Testing
+tests/
+test-results/
+playwright-report/
+coverage/
+
+# Documentation
+docs/
+specs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# Logs
+*.log
+*.log.*
+
+# Environment
+.env
+.env.*

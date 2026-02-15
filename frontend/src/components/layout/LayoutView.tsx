@@ -4,14 +4,17 @@
  * Converts Score data to layout format and displays using LayoutRenderer
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Score } from '../../types/score';
 import { ScoreViewer } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
+import { buildSourceToNoteIdMap } from '../../services/highlight/sourceMapping';
 
 interface LayoutViewProps {
   score: Score;
+  /** Feature 019: Set of note IDs to highlight during playback */
+  highlightedNoteIds?: Set<string>;
 }
 
 /**
@@ -102,10 +105,18 @@ function convertScoreToLayoutFormat(score: Score): any {
   };
 }
 
-export function LayoutView({ score }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * Feature 019: Build mapping from layout source references to note IDs
+   * Must use layout's instrument_ids (not score's) to match glyph source_references
+   */
+  const sourceToNoteIdMap = useMemo(() => {
+    return buildSourceToNoteIdMap(score, layout);
+  }, [score, layout]);
 
   useEffect(() => {
     const computeAndSetLayout = async () => {
@@ -194,7 +205,11 @@ export function LayoutView({ score }: LayoutViewProps) {
       <div style={styles.info}>
         📐 Layout View: First voice from {score.instruments[0]?.name || 'instrument'}
       </div>
-      <ScoreViewer layout={layout} />
+      <ScoreViewer 
+        layout={layout} 
+        highlightedNoteIds={highlightedNoteIds}
+        sourceToNoteIdMap={sourceToNoteIdMap}
+      />
     </div>
   );
 }
