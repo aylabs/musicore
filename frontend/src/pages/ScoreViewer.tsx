@@ -411,6 +411,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
               left: 0,
               width: `${totalWidth}px`,
               height: `${viewport.height * zoom}px`,
+              pointerEvents: 'none',
             }}>
               <LayoutRenderer 
                 layout={layout} 

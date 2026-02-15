@@ -598,7 +598,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
         ref={this.svgRef}
         className={className}
         xmlns={svgNS}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
       />
     );
   }
