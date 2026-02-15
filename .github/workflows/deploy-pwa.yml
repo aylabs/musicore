@@ -62,9 +62,12 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to v$NEW_VERSION [skip ci]"
           
-          # Create and push tag (force push enabled in branch settings)
+          # Fetch latest remote state and force push our version bump
+          git fetch origin main
+          git push --force origin HEAD:main
+          
+          # Create and push tag
           git tag "v$NEW_VERSION"
-          git push --force origin main
           git push origin "v$NEW_VERSION"
           
           echo "✅ Version bumped from $CURRENT_VERSION to $NEW_VERSION"
