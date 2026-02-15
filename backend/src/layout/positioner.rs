@@ -199,6 +199,8 @@ pub fn compute_glyph_bounding_box(
 /// * `staff_index` - Staff index for source reference
 /// * `voice_index` - Voice index for source reference
 /// * `staff_vertical_offset` - Vertical offset in logical units for this staff
+/// * `beamed_note_indices` - Set of note indices that are part of beam groups
+///   (these use bare noteheadBlack instead of combined head+stem+flag glyphs)
 ///
 /// # Returns
 /// Vector of positioned glyph structs
@@ -212,6 +214,7 @@ pub fn position_noteheads(
     staff_index: usize,
     voice_index: usize,
     staff_vertical_offset: f32,
+    beamed_note_indices: &std::collections::HashSet<usize>,
 ) -> Vec<Glyph> {
     notes
         .iter()
@@ -224,13 +227,12 @@ pub fn position_noteheads(
             let position = Point { x, y };
 
             // T021-T022: Choose notehead codepoint based on duration_ticks
-            // Duration mapping (assuming 960 PPQ = 1 beat):
-            // - Whole note (4 beats): 3840+ ticks → U+E0A2 noteheadWhole (no stem)
-            // - Half note (2 beats): 1920-3839 ticks → U+E1D3 noteheadHalfWithStem (open oval + stem)
-            // - Quarter note (1 beat): 960-1919 ticks → U+E1D5 noteheadBlackWithStem (filled oval + stem, no flag)
-            // - Eighth note (1/2 beat): 480-959 ticks → U+E1D7 noteEighthUp (filled oval + stem + single flag)
-            // - Sixteenth note (1/4 beat): <480 ticks → U+E1D9 noteSixteenthUp (filled oval + stem + double flag)
-            let (codepoint, glyph_name) = if *duration >= 3840 {
+            // For beamed notes (in beamed_note_indices), use bare noteheadBlack (U+E0A4)
+            // instead of combined head+stem+flag glyphs
+            let is_beamed = beamed_note_indices.contains(&i) && *duration < 960;
+            let (codepoint, glyph_name) = if is_beamed {
+                ('\u{E0A4}', "noteheadBlack")
+            } else if *duration >= 3840 {
                 ('\u{E0A2}', "noteheadWhole")
             } else if *duration >= 1920 {
                 ('\u{E1D3}', "noteheadHalfWithStem")
@@ -994,7 +996,8 @@ mod tests {
             "test-instrument",
             0,
             0,
-            0.0, // staff_vertical_offset
+            0.0,                               // staff_vertical_offset
+            &std::collections::HashSet::new(), // no beamed notes
         );
 
         // Verify correct number of glyphs
@@ -1248,5 +1251,107 @@ mod tests {
         let glyphs = position_key_signature(0, "Treble", x_start, units_per_space, 0.0);
 
         assert_eq!(glyphs.len(), 0, "C major has no accidentals");
+    }
+
+    /// T016: Beamed eighth note should use bare noteheadBlack (U+E0A4)
+    #[test]
+    fn test_beamed_eighth_uses_bare_notehead() {
+        let units_per_space = 20.0;
+        let notes = vec![
+            (60, 0, 480, None),   // C4 eighth note
+            (62, 480, 480, None), // D4 eighth note
+        ];
+        let offsets = vec![0.0, 100.0];
+        let mut beamed = std::collections::HashSet::new();
+        beamed.insert(0);
+        beamed.insert(1);
+
+        let glyphs = position_noteheads(
+            &notes,
+            &offsets,
+            "Treble",
+            units_per_space,
+            "inst",
+            0,
+            0,
+            0.0,
+            &beamed,
+        );
+
+        assert_eq!(glyphs.len(), 2);
+        // Beamed eighths → bare noteheadBlack U+E0A4
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E0A4}'),
+            "Beamed eighth should use bare noteheadBlack"
+        );
+        assert_eq!(
+            glyphs[1].codepoint,
+            String::from('\u{E0A4}'),
+            "Beamed eighth should use bare noteheadBlack"
+        );
+    }
+
+    /// T016: Unbeamed eighth note should use combined glyph (U+E1D7)
+    #[test]
+    fn test_unbeamed_eighth_uses_combined_glyph() {
+        let units_per_space = 20.0;
+        let notes = vec![
+            (60, 0, 480, None), // C4 eighth note, NOT in beamed set
+        ];
+        let offsets = vec![0.0];
+        let beamed = std::collections::HashSet::new(); // empty
+
+        let glyphs = position_noteheads(
+            &notes,
+            &offsets,
+            "Treble",
+            units_per_space,
+            "inst",
+            0,
+            0,
+            0.0,
+            &beamed,
+        );
+
+        assert_eq!(glyphs.len(), 1);
+        // Unbeamed eighth → combined noteEighthUp U+E1D7
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E1D7}'),
+            "Unbeamed eighth should use combined glyph with flag"
+        );
+    }
+
+    /// T016: Quarter note is NOT affected by beam status
+    #[test]
+    fn test_quarter_note_unchanged_by_beam_set() {
+        let units_per_space = 20.0;
+        let notes = vec![
+            (60, 0, 960, None), // C4 quarter note
+        ];
+        let offsets = vec![0.0];
+        let mut beamed = std::collections::HashSet::new();
+        beamed.insert(0); // mark as beamed — but duration >= 960 so it should be ignored
+
+        let glyphs = position_noteheads(
+            &notes,
+            &offsets,
+            "Treble",
+            units_per_space,
+            "inst",
+            0,
+            0,
+            0.0,
+            &beamed,
+        );
+
+        assert_eq!(glyphs.len(), 1);
+        // Quarter note → combined noteheadBlackWithStem U+E1D5 regardless of beam set
+        assert_eq!(
+            glyphs[0].codepoint,
+            String::from('\u{E1D5}'),
+            "Quarter note should always use combined glyph regardless of beam set"
+        );
     }
 }

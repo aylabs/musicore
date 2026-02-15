@@ -563,6 +563,7 @@ impl MusicXMLParser {
             staff: 1,
             note_type: None,
             is_chord: false,
+            beams: Vec::new(),
         };
 
         let mut buf = Vec::new();
@@ -601,6 +602,35 @@ impl MusicXMLParser {
                     }
                     b"chord" => {
                         note.is_chord = true;
+                    }
+                    b"beam" => {
+                        // Parse <beam number="N">type</beam>
+                        // Extract beam level from 'number' attribute
+                        let mut beam_number: u8 = 1;
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == b"number" {
+                                let val = std::str::from_utf8(&attr.value).unwrap_or("1");
+                                beam_number = val.parse().unwrap_or(1);
+                            }
+                        }
+                        // Read the text content for beam type
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            let beam_text = text.unescape().unwrap_or_default();
+                            let beam_type = match beam_text.as_ref() {
+                                "begin" => Some(BeamType::Begin),
+                                "continue" => Some(BeamType::Continue),
+                                "end" => Some(BeamType::End),
+                                "forward hook" => Some(BeamType::ForwardHook),
+                                "backward hook" => Some(BeamType::BackwardHook),
+                                _ => None,
+                            };
+                            if let Some(bt) = beam_type {
+                                note.beams.push(BeamData {
+                                    number: beam_number,
+                                    beam_type: bt,
+                                });
+                            }
+                        }
                     }
                     _ => {}
                 },

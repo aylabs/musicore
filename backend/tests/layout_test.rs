@@ -733,17 +733,25 @@ mod batching_tests {
         let config = LayoutConfig::default();
         let layout = compute_layout(&score, &config);
 
-        // Count total glyphs and glyph runs across all systems
+        // Count total glyphs and glyph runs across all systems.
+        // Note: stem/beam pseudo-glyphs are batched separately from text glyphs
+        // in the layout engine, so they don't affect text batching efficiency.
         let mut total_glyphs = 0;
         let mut total_runs = 0;
 
         for system in &layout.systems {
             for staff_group in &system.staff_groups {
                 for staff in &staff_group.staves {
-                    // Count glyphs in runs
                     for run in &staff.glyph_runs {
-                        total_glyphs += run.glyphs.len();
-                        total_runs += 1;
+                        // Skip pseudo-glyph runs (stems U+0000, beams U+0001)
+                        let is_pseudo = run
+                            .glyphs
+                            .iter()
+                            .all(|g| g.codepoint == "\u{0000}" || g.codepoint == "\u{0001}");
+                        if !is_pseudo {
+                            total_glyphs += run.glyphs.len();
+                            total_runs += 1;
+                        }
                     }
                     // Count structural glyphs (not batched)
                     total_glyphs += staff.structural_glyphs.len();

@@ -2,6 +2,36 @@
 
 use std::collections::HashMap;
 
+/// Beam state at a specific beam level for a note
+///
+/// Maps directly to MusicXML `<beam>` element text content.
+/// A note can have multiple beam annotations (one per beam level).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BeamType {
+    /// Start of a beam group at this level
+    Begin,
+    /// Middle note — beam passes through
+    Continue,
+    /// End of a beam group at this level
+    End,
+    /// Partial beam extending forward (right)
+    ForwardHook,
+    /// Partial beam extending backward (left)
+    BackwardHook,
+}
+
+/// A single beam annotation on a parsed MusicXML note
+///
+/// Represents one `<beam number="N">type</beam>` element.
+/// `number` is the beam level (1=8th, 2=16th, 3=32nd, etc.)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BeamData {
+    /// Beam level (1=8th, 2=16th, 3=32nd, 4=64th, 5=128th)
+    pub number: u8,
+    /// Beam state at this note for this level
+    pub beam_type: BeamType,
+}
+
 /// Raw MusicXML document structure after parsing
 #[derive(Debug, Clone)]
 pub struct MusicXMLDocument {
@@ -140,6 +170,9 @@ pub struct NoteData {
 
     /// Is this a chord note? (starts at same time as previous note)
     pub is_chord: bool,
+
+    /// Beam annotations parsed from `<beam>` elements (empty if no beams)
+    pub beams: Vec<BeamData>,
 }
 
 /// Pitch from <pitch> element

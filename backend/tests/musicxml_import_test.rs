@@ -214,6 +214,262 @@ fn test_parse_rest() {
 // User Story 2: Multi-Staff Piano Tests (T087-T089)
 // ============================================================================
 
+// ============================================================================
+// Beam Parsing Tests (021-note-beaming T007)
+// ============================================================================
+
+#[test]
+fn test_parse_beam_single_level() {
+    // T007: Test single-level beam parsing (begin/continue/end)
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>240</duration>
+        <voice>1</voice>
+        <type>eighth</type>
+        <beam number="1">begin</beam>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>240</duration>
+        <voice>1</voice>
+        <type>eighth</type>
+        <beam number="1">continue</beam>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>240</duration>
+        <voice>1</voice>
+        <type>eighth</type>
+        <beam number="1">continue</beam>
+      </note>
+      <note>
+        <pitch><step>F</step><octave>4</octave></pitch>
+        <duration>240</duration>
+        <voice>1</voice>
+        <type>eighth</type>
+        <beam number="1">end</beam>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
+    let elements = &doc.parts[0].measures[0].elements;
+
+    use musicore_backend::domain::importers::musicxml::types::{BeamData, BeamType};
+
+    // First note: beam begin
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[0]
+    {
+        assert_eq!(
+            note.beams.len(),
+            1,
+            "First note should have 1 beam annotation"
+        );
+        assert_eq!(note.beams[0].number, 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::Begin);
+    } else {
+        panic!("Expected Note element");
+    }
+
+    // Second note: beam continue
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[1]
+    {
+        assert_eq!(note.beams.len(), 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::Continue);
+    } else {
+        panic!("Expected Note element");
+    }
+
+    // Third note: beam continue
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[2]
+    {
+        assert_eq!(note.beams.len(), 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::Continue);
+    } else {
+        panic!("Expected Note element");
+    }
+
+    // Fourth note: beam end
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[3]
+    {
+        assert_eq!(note.beams.len(), 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::End);
+    } else {
+        panic!("Expected Note element");
+    }
+}
+
+#[test]
+fn test_parse_beam_multi_level() {
+    // T007: Test multi-level beam parsing (sixteenth notes have 2 beam levels)
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>120</duration>
+        <voice>1</voice>
+        <type>16th</type>
+        <beam number="1">begin</beam>
+        <beam number="2">begin</beam>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>120</duration>
+        <voice>1</voice>
+        <type>16th</type>
+        <beam number="1">continue</beam>
+        <beam number="2">end</beam>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
+    let elements = &doc.parts[0].measures[0].elements;
+
+    use musicore_backend::domain::importers::musicxml::types::BeamType;
+
+    // First note: beam level 1 begin, beam level 2 begin
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[0]
+    {
+        assert_eq!(
+            note.beams.len(),
+            2,
+            "First note should have 2 beam annotations"
+        );
+        assert_eq!(note.beams[0].number, 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::Begin);
+        assert_eq!(note.beams[1].number, 2);
+        assert_eq!(note.beams[1].beam_type, BeamType::Begin);
+    } else {
+        panic!("Expected Note element");
+    }
+
+    // Second note: beam level 1 continue, beam level 2 end
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[1]
+    {
+        assert_eq!(note.beams.len(), 2);
+        assert_eq!(note.beams[0].number, 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::Continue);
+        assert_eq!(note.beams[1].number, 2);
+        assert_eq!(note.beams[1].beam_type, BeamType::End);
+    } else {
+        panic!("Expected Note element");
+    }
+}
+
+#[test]
+fn test_parse_beam_hooks() {
+    // T007: Test forward and backward hook parsing
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>240</duration>
+        <voice>1</voice>
+        <type>eighth</type>
+        <beam number="1">begin</beam>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>120</duration>
+        <voice>1</voice>
+        <type>16th</type>
+        <beam number="1">end</beam>
+        <beam number="2">backward hook</beam>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
+    let elements = &doc.parts[0].measures[0].elements;
+
+    use musicore_backend::domain::importers::musicxml::types::BeamType;
+
+    // Second note should have backward hook at level 2
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[1]
+    {
+        assert_eq!(note.beams.len(), 2);
+        assert_eq!(note.beams[0].number, 1);
+        assert_eq!(note.beams[0].beam_type, BeamType::End);
+        assert_eq!(note.beams[1].number, 2);
+        assert_eq!(note.beams[1].beam_type, BeamType::BackwardHook);
+    } else {
+        panic!("Expected Note element");
+    }
+}
+
+#[test]
+fn test_parse_note_without_beams() {
+    // T007: Test that notes without beam elements have empty beams vec
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse");
+    let elements = &doc.parts[0].measures[0].elements;
+
+    if let musicore_backend::domain::importers::musicxml::MeasureElement::Note(note) = &elements[0]
+    {
+        assert!(
+            note.beams.is_empty(),
+            "Quarter note should have no beam annotations"
+        );
+    } else {
+        panic!("Expected Note element");
+    }
+}
+
 #[test]
 fn test_import_piano_grand_staff_structure() {
     // T087: Import piano_grand_staff.musicxml → verify 1 instrument with 2 staves

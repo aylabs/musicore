@@ -148,8 +148,17 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     &note_positions,
                 );
 
-                // Batch glyphs for efficient rendering
-                let glyph_runs = batcher::batch_glyphs(glyphs);
+                // Separate pseudo-glyphs (stems U+0000, beams U+0001) from text glyphs
+                // so they don't break text batching efficiency. Pseudo-glyphs are
+                // rendered as SVG elements, not Canvas text.
+                let (text_glyphs, pseudo_glyphs): (Vec<_>, Vec<_>) = glyphs
+                    .into_iter()
+                    .partition(|g| g.codepoint != "\u{0000}" && g.codepoint != "\u{0001}");
+
+                // Batch text glyphs for efficient rendering
+                let mut glyph_runs = batcher::batch_glyphs(text_glyphs);
+                // Add pseudo-glyphs as individual runs (each rendered separately)
+                glyph_runs.extend(batcher::batch_glyphs(pseudo_glyphs));
 
                 // Create staff lines (5 lines evenly spaced)
                 let staff_lines = create_staff_lines(
@@ -432,6 +441,8 @@ struct NoteEvent {
     duration_ticks: u32,
     /// Explicit spelling from MusicXML: (step_letter, alter) e.g. ('E', -1) for Eb
     spelling: Option<(char, i8)>,
+    /// Beam annotations from MusicXML import (empty = needs algorithmic grouping)
+    beam_info: Vec<(u8, String)>, // (beam_level, beam_type_string)
 }
 
 /// Extract instruments from CompiledScore JSON
@@ -530,6 +541,23 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                                         start_tick,
                                         duration_ticks,
                                         spelling,
+                                        beam_info: {
+                                            let mut beams = Vec::new();
+                                            if let Some(beam_array) = note_item["beams"].as_array()
+                                            {
+                                                for beam_item in beam_array {
+                                                    let number =
+                                                        beam_item["number"].as_u64().unwrap_or(1)
+                                                            as u8;
+                                                    let beam_type = beam_item["beam_type"]
+                                                        .as_str()
+                                                        .unwrap_or("")
+                                                        .to_string();
+                                                    beams.push((number, beam_type));
+                                                }
+                                            }
+                                            beams
+                                        },
                                     });
                                 }
                                 eprintln!(
@@ -703,6 +731,103 @@ fn position_glyphs_for_staff(
             .collect();
 
         // Position noteheads using positioner module
+        // First, compute beam groups to determine which notes are beamed
+        let voice_notes_in_range: Vec<&NoteEvent> = voice
+            .notes
+            .iter()
+            .filter(|note| {
+                note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
+            })
+            .collect();
+
+        // Build beamable notes with beam info for beam group analysis
+        let beamable_for_analysis_raw: Vec<beams::BeamableNote> = voice_notes_in_range
+            .iter()
+            .enumerate()
+            .filter(|(_, note)| note.duration_ticks <= 480) // Only eighth notes and shorter
+            .map(|(i, note)| {
+                let notehead_x = horizontal_offsets[i];
+                let notehead_y =
+                    positioner::pitch_to_y(note.pitch, &staff_data.clef, units_per_space)
+                        + staff_vertical_offset;
+
+                // Convert beam_info from (number, type_string) to beam_types list
+                let beam_types: Vec<String> =
+                    note.beam_info.iter().map(|(_, bt)| bt.clone()).collect();
+                let beam_levels = note.beam_info.len() as u8;
+
+                beams::BeamableNote {
+                    x: notehead_x,
+                    y: notehead_y,
+                    stem_end_y: 0.0, // Will be computed after stems
+                    tick: note.start_tick,
+                    duration_ticks: note.duration_ticks,
+                    beam_levels,
+                    beam_types,
+                }
+            })
+            .collect();
+
+        // Deduplicate chord notes: keep only one entry per tick for beam grouping.
+        // Chord notes share a stem, so beaming only needs one note per time position.
+        // For the Y position, use the lowest note (highest Y) for stem-down groups
+        // and the highest note (lowest Y) for stem-up groups — we'll pick the first
+        // occurrence which is sufficient for beam grouping since stem direction is
+        // determined later by the group as a whole.
+        let mut beamable_for_analysis: Vec<beams::BeamableNote> = Vec::new();
+        let mut seen_ticks: std::collections::HashSet<u32> = std::collections::HashSet::new();
+        for note in beamable_for_analysis_raw {
+            if seen_ticks.insert(note.tick) {
+                beamable_for_analysis.push(note);
+            }
+        }
+
+        // Determine beam groups from MusicXML beam data
+        let has_beam_info = beamable_for_analysis
+            .iter()
+            .any(|n| !n.beam_types.is_empty());
+        let beam_groups = if has_beam_info {
+            beams::build_beam_groups_from_musicxml(&beamable_for_analysis)
+        } else {
+            // T041: Algorithmic fallback using time signature-aware beat grouping
+            let groups = beams::group_beamable_by_time_signature(
+                &beamable_for_analysis,
+                staff_data.time_numerator,
+                staff_data.time_denominator,
+            );
+            groups
+                .into_iter()
+                .map(|notes| beams::BeamGroup {
+                    beam_count: 1,
+                    notes,
+                })
+                .collect()
+        };
+
+        // Build set of beamed note indices (indices into notes_in_range)
+        let mut beamed_note_indices = std::collections::HashSet::<usize>::new();
+        // Map tick → ALL note indices at that tick (chords have multiple notes per tick)
+        let mut tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
+            std::collections::HashMap::new();
+        for (idx, (_, start_tick, duration_ticks, _)) in notes_in_range.iter().enumerate() {
+            if *duration_ticks <= 480 {
+                tick_to_indices.entry(*start_tick).or_default().push(idx);
+            }
+        }
+        for group in &beam_groups {
+            // T050: Skip degenerate single-note groups — they render with flags, not beams
+            if group.notes.len() < 2 {
+                continue;
+            }
+            for note in &group.notes {
+                if let Some(indices) = tick_to_indices.get(&note.tick) {
+                    for &idx in indices {
+                        beamed_note_indices.insert(idx);
+                    }
+                }
+            }
+        }
+
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &horizontal_offsets,
@@ -712,6 +837,7 @@ fn position_glyphs_for_staff(
             staff_index,
             voice_index,
             staff_vertical_offset,
+            &beamed_note_indices,
         );
 
         all_glyphs.extend(glyphs);
@@ -731,84 +857,173 @@ fn position_glyphs_for_staff(
 
         all_glyphs.extend(accidental_glyphs);
 
-        // T056-T058: Stem/beam generation disabled - using combined notehead+stem glyphs
-        // SMuFL provides U+E1D3/U+E1D5 which include stems in the glyph
-        // TODO: Restore beam generation for eighth notes in future phase
+        // Generate stems and beams for beamed notes
+        // Staff middle line is at y offset: staff_vertical_offset + 4 * units_per_space (line 2 of 5)
+        let staff_middle_y = staff_vertical_offset + 4.0 * units_per_space;
 
-        /*
-        // DISABLED: Generate stems for notes (except whole notes which have duration >= 3840 ticks)
         let mut stem_glyphs = Vec::new();
-        let mut beamable_notes = Vec::new();
 
-        for (i, (pitch, start_tick, duration_ticks)) in notes_in_range.iter().enumerate() {
-            // Skip whole notes (no stems)
-            if *duration_ticks >= 3840 {
-                continue;
+        // For each beam group, compute uniform stem direction and generate stems + beams
+        for group in &beam_groups {
+            if group.notes.len() < 2 {
+                continue; // Skip degenerate groups (single note → use flag)
             }
 
-            #[cfg(target_arch = "wasm32")]
-            {
-                use web_sys::console;
-                console::log_1(&format!(
-                    "[Stem Gen] pitch={}, duration={} ticks (generating stem)",
-                    pitch, duration_ticks
-                ).into());
+            // T033: Compute uniform stem direction for the group using majority rule
+            let group_direction = beams::compute_group_stem_direction(&group.notes, staff_middle_y);
+
+            let notehead_width = stems::Stem::NOTEHEAD_WIDTH;
+
+            // === PHASE 1: Compute initial stems and beam line ===
+            // Create initial stems (may not reach the beam yet)
+            // Adjust note Y for visual rendering: pitch_to_y subtracts 0.5 staff spaces
+            // to compensate for dominant-baseline:middle in SVG text rendering. But stems
+            // are SVG <line> elements (not text), so they need the visual center Y.
+            let visual_y_offset = 0.5 * units_per_space;
+            let mut initial_stems: Vec<stems::Stem> = Vec::new();
+            for note in &group.notes {
+                let visual_y = note.y + visual_y_offset;
+                let mut stem =
+                    stems::create_stem(note.x, visual_y, group_direction, notehead_width);
+
+                // Enforce minimum stem length for beamed notes
+                let stem_length = (stem.y_end - stem.y_start).abs();
+                let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH;
+                if stem_length < min_length {
+                    match group_direction {
+                        stems::StemDirection::Up => {
+                            stem.y_end = stem.y_start - min_length;
+                        }
+                        stems::StemDirection::Down => {
+                            stem.y_end = stem.y_start + min_length;
+                        }
+                    }
+                }
+                initial_stems.push(stem);
             }
 
-            let notehead_x = horizontal_offsets[i];
-            // IMPORTANT: Add staff_vertical_offset to match notehead positioning
-            let notehead_y = positioner::pitch_to_y(*pitch, &staff_data.clef, units_per_space) + staff_vertical_offset;
-
-            // Compute stem direction
-            let direction = stems::compute_stem_direction(notehead_y, staff_middle_y);
-
-            // Create stem (assuming notehead width of 10 logical units)
-            let notehead_width = 10.0;
-            let stem = stems::create_stem(notehead_x, notehead_y, direction, notehead_width);
-
-            // Encode stem as special glyph (U+0000)
-            let stem_glyph = Glyph {
-                codepoint: '\u{0000}'.to_string(),
-                position: Point {
-                    x: stem.x,
-                    y: stem.y_start,
-                },
-                bounding_box: BoundingBox {
-                    x: stem.x - (stem.thickness / 2.0),
-                    y: stem.y_start.min(stem.y_end),
-                    width: stem.thickness,
-                    height: (stem.y_end - stem.y_start).abs(),
-                },
-                source_reference: SourceReference {
-                    instrument_id: instrument_id.to_string(),
-                    staff_index,
-                    voice_index,
-                    event_index: i,
-                },
+            // Compute the beam line from first and last stem endpoints
+            let first_stem_end = initial_stems[0].y_end;
+            let last_stem_end = initial_stems.last().unwrap().y_end;
+            let first_stem_x = initial_stems[0].x;
+            let last_stem_x = initial_stems.last().unwrap().x;
+            let dx = last_stem_x - first_stem_x;
+            let beam_slope = if dx.abs() > 0.001 {
+                (last_stem_end - first_stem_end) / dx
+            } else {
+                0.0
             };
-            stem_glyphs.push(stem_glyph);
 
-            // Track beamable notes (eighth notes and shorter: <= 480 ticks)
-            if *duration_ticks <= 480 {
-                beamable_notes.push(beams::BeamableNote {
-                    x: notehead_x,
-                    y: notehead_y,
-                    stem_end_y: stem.y_end,
-                    tick: *start_tick,
-                    duration_ticks: *duration_ticks,
-                });
+            // Clamp beam slope
+            let max_slope_units = beams::Beam::MAX_SLOPE * units_per_space;
+            let max_slope_per_unit = if dx.abs() > 0.001 {
+                max_slope_units / dx
+            } else {
+                0.0
+            };
+            let clamped_slope = beam_slope.clamp(-max_slope_per_unit, max_slope_per_unit);
+
+            // Compute the beam Y at each stem's X position
+            // Then find the "outermost" beam position that ensures ALL stems are long enough
+            // For stem-up: beam is above (smaller Y), so we need the MINIMUM y_end
+            // For stem-down: beam is below (larger Y), so we need the MAXIMUM y_end
+            let mut beam_y_at_stems: Vec<f32> = Vec::new();
+            for stem in &initial_stems {
+                let beam_y = first_stem_end + clamped_slope * (stem.x - first_stem_x);
+                beam_y_at_stems.push(beam_y);
             }
-        }
 
-        all_glyphs.extend(stem_glyphs);
+            // Check if any stem is too short to reach the beam line and adjust
+            // The beam must be positioned so ALL stems can reach it
+            let mut beam_offset = 0.0f32;
+            for (i, stem) in initial_stems.iter().enumerate() {
+                let beam_y = beam_y_at_stems[i];
+                let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH;
+                match group_direction {
+                    stems::StemDirection::Up => {
+                        // Stem goes up (negative Y). beam_y should be <= stem.y_start - min_length
+                        let required_beam_y = stem.y_start - min_length;
+                        if beam_y > required_beam_y {
+                            // Beam needs to move further up (more negative)
+                            let needed_offset = required_beam_y - beam_y;
+                            beam_offset = beam_offset.min(needed_offset);
+                        }
+                    }
+                    stems::StemDirection::Down => {
+                        // Stem goes down (positive Y). beam_y should be >= stem.y_start + min_length
+                        let required_beam_y = stem.y_start + min_length;
+                        if beam_y < required_beam_y {
+                            // Beam needs to move further down (more positive)
+                            let needed_offset = required_beam_y - beam_y;
+                            beam_offset = beam_offset.max(needed_offset);
+                        }
+                    }
+                }
+            }
 
-        // Generate beams for grouped eighth notes
-        let beam_groups = beams::group_beamable_notes(&beamable_notes, 960); // 960 ticks per beat (quarter note)
+            // === PHASE 2: Extend ALL stems to reach the beam line ===
+            let mut stem_end_ys = Vec::new();
+            let mut stem_xs = Vec::new();
 
-        for (group_index, group) in beam_groups.iter().enumerate() {
-            let slope = beams::compute_beam_slope(group, units_per_space);
-            if let Some(beam) = beams::create_beam(group, slope) {
+            for (i, stem) in initial_stems.iter().enumerate() {
+                let adjusted_beam_y = beam_y_at_stems[i] + beam_offset;
+                // Extend stem to reach the beam
+                let final_stem_end = adjusted_beam_y;
+
+                // Create stem glyph with adjusted length
+                let stem_top_y = stem.y_start.min(final_stem_end);
+                let stem_height = (final_stem_end - stem.y_start).abs();
+
+                let stem_glyph = Glyph {
+                    codepoint: '\u{0000}'.to_string(),
+                    position: Point {
+                        x: stem.x,
+                        y: stem_top_y,
+                    },
+                    bounding_box: BoundingBox {
+                        x: stem.x - (stem.thickness / 2.0),
+                        y: stem_top_y,
+                        width: stem.thickness,
+                        height: stem_height,
+                    },
+                    source_reference: SourceReference {
+                        instrument_id: instrument_id.to_string(),
+                        staff_index,
+                        voice_index,
+                        event_index: 0,
+                    },
+                };
+                stem_glyphs.push(stem_glyph);
+                stem_end_ys.push(final_stem_end);
+                stem_xs.push(stem.x);
+            }
+
+            // === PHASE 3: Create beam at the adjusted position ===
+            let beamable_with_stems: Vec<beams::BeamableNote> = group
+                .notes
+                .iter()
+                .zip(stem_end_ys.iter().zip(stem_xs.iter()))
+                .map(|(n, (&stem_end_y, &stem_x))| beams::BeamableNote {
+                    x: stem_x,
+                    y: n.y,
+                    stem_end_y,
+                    tick: n.tick,
+                    duration_ticks: n.duration_ticks,
+                    beam_levels: n.beam_levels,
+                    beam_types: n.beam_types.clone(),
+                })
+                .collect();
+
+            // Create beam — slope is already embedded in the stem_end_y values
+            let slope = clamped_slope;
+            if let Some(beam) = beams::create_beam(&beamable_with_stems, slope) {
                 // Encode beam as special glyph (U+0001)
+                // For sloped beam rendering, we encode:
+                //   position.x/y = left-side beam start (x_start, y_start)
+                //   bounding_box.x = x_start
+                //   bounding_box.y = y_end (right-side Y for slope reconstruction)
+                //   bounding_box.width = horizontal span (x_end - x_start)
+                //   bounding_box.height = beam thickness
                 let beam_glyph = Glyph {
                     codepoint: '\u{0001}'.to_string(),
                     position: Point {
@@ -817,21 +1032,54 @@ fn position_glyphs_for_staff(
                     },
                     bounding_box: BoundingBox {
                         x: beam.x_start,
-                        y: beam.y_start.min(beam.y_end),
+                        y: beam.y_end, // Right-side Y for slope
                         width: beam.x_end - beam.x_start,
-                        height: (beam.y_end - beam.y_start).abs().max(beam.thickness),
+                        height: beam.thickness,
                     },
                     source_reference: SourceReference {
                         instrument_id: instrument_id.to_string(),
                         staff_index,
                         voice_index,
-                        event_index: group_index,
+                        event_index: 0,
+                    },
+                };
+                all_glyphs.push(beam_glyph);
+            }
+
+            // T027: Create secondary/tertiary beam levels for 16th, 32nd notes, etc.
+            // Use beamable_with_stems (with correct stem_end_y) instead of original group
+            let stem_direction_up = group_direction == stems::StemDirection::Up;
+            let updated_group = beams::BeamGroup {
+                notes: beamable_with_stems,
+                beam_count: group.beam_count,
+            };
+            let multi_beams =
+                beams::create_multi_level_beams(&updated_group, slope, stem_direction_up);
+            for beam in multi_beams {
+                let beam_glyph = Glyph {
+                    codepoint: '\u{0001}'.to_string(),
+                    position: Point {
+                        x: beam.x_start,
+                        y: beam.y_start,
+                    },
+                    bounding_box: BoundingBox {
+                        x: beam.x_start,
+                        y: beam.y_end, // Right-side Y for slope
+                        width: beam.x_end - beam.x_start,
+                        height: beam.thickness,
+                    },
+                    source_reference: SourceReference {
+                        instrument_id: instrument_id.to_string(),
+                        staff_index,
+                        voice_index,
+                        event_index: 0,
                     },
                 };
                 all_glyphs.push(beam_glyph);
             }
         }
-        */
+
+        all_glyphs.extend(stem_glyphs);
     }
 
     all_glyphs
@@ -1441,6 +1689,598 @@ mod tests {
         assert!(
             bass_line_0 > treble_line_0,
             "Bass staff should be below treble staff"
+        );
+    }
+
+    /// T020: Integration test — 4 eighth notes with beam info produce correct glyphs
+    #[test]
+    fn test_four_beamed_eighths_produce_noteheads_stems_beam() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Begin"}] },
+                            { "pitch": 74, "tick": 480, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Continue"}] },
+                            { "pitch": 76, "tick": 960, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Continue"}] },
+                            { "pitch": 77, "tick": 1440, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "End"}] }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        // Collect all glyphs across all runs
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        // Count glyph types
+        let noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+        let stems = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0000}")
+            .count();
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+        let combined_eighth = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D7}")
+            .count();
+
+        assert_eq!(
+            noteheads, 4,
+            "Should have 4 bare noteheadBlack glyphs (U+E0A4)"
+        );
+        assert_eq!(stems, 4, "Should have 4 stem glyphs (U+0000)");
+        assert_eq!(beams, 1, "Should have 1 beam glyph (U+0001)");
+        assert_eq!(
+            combined_eighth, 0,
+            "Should have 0 combined eighth note glyphs (U+E1D7)"
+        );
+    }
+
+    /// T021: Integration test — mixed quarters and eighths produce correct glyphs
+    #[test]
+    fn test_mixed_quarters_and_beamed_eighths() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 960 },
+                            { "pitch": 74, "tick": 960, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Begin"}] },
+                            { "pitch": 76, "tick": 1440, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "End"}] },
+                            { "pitch": 77, "tick": 1920, "duration": 960 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        // Count glyph types
+        let combined_quarter = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D5}")
+            .count();
+        let bare_noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+        let stems = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0000}")
+            .count();
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+        let combined_eighth = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D7}")
+            .count();
+
+        assert_eq!(
+            combined_quarter, 2,
+            "Should have 2 combined quarter note glyphs (U+E1D5)"
+        );
+        assert_eq!(
+            bare_noteheads, 2,
+            "Should have 2 bare noteheadBlack for beamed eighths"
+        );
+        assert_eq!(stems, 2, "Should have 2 stem glyphs for beamed eighths");
+        assert_eq!(
+            beams, 1,
+            "Should have 1 beam glyph connecting the 2 eighths"
+        );
+        assert_eq!(combined_eighth, 0, "Should have 0 combined eighth glyphs");
+    }
+
+    /// T028: Integration test — 4 sixteenth notes produce 2 beam levels
+    #[test]
+    fn test_four_sixteenths_two_beam_levels() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "Begin"}, {"number": 2, "beam_type": "Begin"}] },
+                            { "pitch": 74, "tick": 240, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "Continue"}, {"number": 2, "beam_type": "Continue"}] },
+                            { "pitch": 76, "tick": 480, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "Continue"}, {"number": 2, "beam_type": "Continue"}] },
+                            { "pitch": 77, "tick": 720, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "End"}, {"number": 2, "beam_type": "End"}] }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+
+        assert_eq!(
+            beams, 2,
+            "4 sixteenth notes should produce 2 beam glyphs (level 1 + level 2)"
+        );
+    }
+
+    /// T029: Integration test — mixed eighths + sixteenths produce correct beaming
+    #[test]
+    fn test_mixed_eighths_sixteenths_multi_level() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Begin"}] },
+                            { "pitch": 74, "tick": 480, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "Continue"}, {"number": 2, "beam_type": "Begin"}] },
+                            { "pitch": 76, "tick": 720, "duration": 240,
+                              "beams": [{"number": 1, "beam_type": "End"}, {"number": 2, "beam_type": "End"}] }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+        let noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+
+        assert_eq!(noteheads, 3, "Should have 3 bare noteheads (all beamed)");
+        assert_eq!(
+            beams, 2,
+            "Should have 2 beams (level 1 spans all, level 2 spans sixteenths)"
+        );
+    }
+
+    /// T036: High-pitched beamed group → stems down, beam below noteheads
+    #[test]
+    fn test_stem_direction_high_notes_stems_down() {
+        // All notes above middle line (high pitches like C6, D6, E6, F6)
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 84, "tick": 0, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Begin"}] },
+                            { "pitch": 86, "tick": 480, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "End"}] }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        // Find stem glyphs
+        let stem_glyphs: Vec<_> = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0000}")
+            .collect();
+
+        assert_eq!(stem_glyphs.len(), 2, "Should have 2 stems");
+
+        // For high notes, stems should point down (y_end > y_start in screen coordinates)
+        // Find the noteheads to compare positions
+        let notehead_glyphs: Vec<_> = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .collect();
+
+        assert_eq!(notehead_glyphs.len(), 2, "Should have 2 noteheads");
+
+        // Stem bounding box y + height should extend below the notehead y
+        // (stems down = extending downward from notehead)
+        for stem in &stem_glyphs {
+            let stem_bottom = stem.bounding_box.y + stem.bounding_box.height;
+            assert!(
+                stem_bottom > stem.position.y,
+                "Stem should extend downward (stem_bottom {} > position.y {})",
+                stem_bottom,
+                stem.position.y
+            );
+        }
+    }
+
+    /// T037: Beamed group spanning both sides → uniform direction
+    #[test]
+    fn test_uniform_stem_direction_mixed_positions() {
+        // Mix of notes: 2 above middle, 1 below → majority above → stems down
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 48, "tick": 0, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Begin"}] },
+                            { "pitch": 48, "tick": 480, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "Continue"}] },
+                            { "pitch": 84, "tick": 960, "duration": 480,
+                              "beams": [{"number": 1, "beam_type": "End"}] }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let stem_glyphs: Vec<_> = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0000}")
+            .collect();
+
+        assert_eq!(stem_glyphs.len(), 3, "Should have 3 stems");
+
+        // All stems should have a consistent direction (same sign of displacement)
+        // Collect stem displacement directions (positive = down, negative = up)
+        let displacements: Vec<f32> = stem_glyphs.iter().map(|s| s.bounding_box.height).collect();
+
+        // All stems should be non-zero height
+        for d in &displacements {
+            assert!(*d > 0.0, "Stem height should be positive: {}", d);
+        }
+    }
+
+    /// T046: Algorithmic beaming for 4/4 without <beam> elements
+    #[test]
+    fn test_algorithmic_beaming_4_4() {
+        // No beam_info → algorithmic fallback groups by beat
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480 },
+                            { "pitch": 74, "tick": 480, "duration": 480 },
+                            { "pitch": 76, "tick": 960, "duration": 480 },
+                            { "pitch": 77, "tick": 1440, "duration": 480 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+        let noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+
+        assert_eq!(noteheads, 4, "All 4 eighths should use bare noteheadBlack");
+        assert_eq!(
+            beams, 2,
+            "Algorithmic beaming in 4/4 should produce 2 beam groups (2 per beat)"
+        );
+    }
+
+    /// T047: Single isolated eighth note uses combined flag glyph
+    #[test]
+    fn test_single_eighth_uses_flag() {
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480 },
+                            { "pitch": 74, "tick": 960, "duration": 960 },
+                            { "pitch": 76, "tick": 1920, "duration": 960 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let combined_eighth = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D7}")
+            .count();
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+
+        // Single eighth note can't form a beam group, so it should use the combined flag glyph
+        assert_eq!(
+            combined_eighth, 1,
+            "Single eighth should use combined flag glyph U+E1D7"
+        );
+        assert_eq!(beams, 0, "No beams for single eighth note");
+    }
+
+    /// T051: Degenerate single-note beam group falls back to flagged rendering
+    #[test]
+    fn test_degenerate_single_note_group_uses_flag() {
+        // A single eighth note at beat boundary with no partner → no beam, uses flag
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480 },
+                            { "pitch": 74, "tick": 480, "duration": 960 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let combined_eighth = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D7}")
+            .count();
+        let bare_noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+
+        assert_eq!(
+            combined_eighth, 1,
+            "Single eighth should use combined flag glyph"
+        );
+        assert_eq!(
+            bare_noteheads, 0,
+            "No bare noteheads when no beam group forms"
+        );
+        assert_eq!(beams, 0, "No beams for degenerate single-note group");
+    }
+
+    /// T052: Beams do not cross bar lines
+    #[test]
+    fn test_beams_do_not_cross_barlines() {
+        // 2 eighths at end of measure 1 + 2 eighths at start of measure 2
+        // Should produce 2 separate beam groups, not 1 spanning the barline
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 2880, "duration": 480 },
+                            { "pitch": 74, "tick": 3360, "duration": 480 },
+                            { "pitch": 76, "tick": 3840, "duration": 480 },
+                            { "pitch": 77, "tick": 4320, "duration": 480 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+
+        assert_eq!(
+            beams, 2,
+            "Should produce 2 separate beams (one per measure, not crossing barline)"
+        );
+    }
+
+    /// T053: Beams break at rests
+    #[test]
+    fn test_beams_break_at_rests() {
+        // 2 eighths, then a quarter rest, then 2 more eighths → 2 beam groups
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 4, "denominator": 4 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 72, "tick": 0, "duration": 480 },
+                            { "pitch": 74, "tick": 480, "duration": 480 },
+                            { "pitch": 76, "tick": 1920, "duration": 480 },
+                            { "pitch": 77, "tick": 2400, "duration": 480 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        let beams = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0001}")
+            .count();
+
+        assert_eq!(
+            beams, 2,
+            "Should produce 2 beams (broken by rest gap between beats)"
         );
     }
 }

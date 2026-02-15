@@ -26,6 +26,10 @@ pub struct Beam {
     pub y_end: f32,
     /// Beam thickness in logical units
     pub thickness: f32,
+    /// Beam level (1=primary, 2=secondary, etc.)
+    pub level: u8,
+    /// True if this is a partial beam (hook)
+    pub is_hook: bool,
 }
 
 impl Beam {
@@ -34,6 +38,12 @@ impl Beam {
 
     /// Maximum beam slope in staff spaces per note
     pub const MAX_SLOPE: f32 = 0.5;
+
+    /// Gap between multiple beam levels (0.25 staff spaces = 5 logical units)
+    pub const INTER_BEAM_GAP: f32 = 5.0;
+
+    /// Length of a beam hook (partial beam) in logical units (0.75 staff spaces = 15 logical units)
+    pub const BEAM_HOOK_LENGTH: f32 = 15.0;
 }
 
 /// Note group eligible for beaming
@@ -44,6 +54,10 @@ pub struct BeamableNote {
     pub stem_end_y: f32,
     pub tick: u32,
     pub duration_ticks: u32,
+    /// Number of beam levels this note participates in (0 = from algorithmic grouping)
+    pub beam_levels: u8,
+    /// Beam type per level (Begin/Continue/End/Hook) — empty if algorithmic
+    pub beam_types: Vec<String>,
 }
 
 /// Group notes that should be beamed together
@@ -103,6 +117,140 @@ pub fn group_beamable_notes(notes: &[BeamableNote], ticks_per_beat: u32) -> Vec<
     }
 
     // Add final group if valid
+    if current_group.len() >= 2 {
+        groups.push(current_group);
+    }
+
+    groups
+}
+
+/// Compute beat boundaries for a given time signature
+///
+/// Returns the tick positions within a measure where beaming groups should break.
+/// This handles simple, compound, and asymmetric meters.
+///
+/// # Arguments
+/// * `numerator` - Time signature numerator (e.g., 4 in 4/4)
+/// * `denominator` - Time signature denominator (e.g., 4 in 4/4)
+///
+/// # Returns
+/// Vector of beat boundary tick offsets within one measure
+///
+/// # Meter Types
+/// - Simple (2/4, 3/4, 4/4): beat = 960 ticks (quarter note)
+/// - Compound (6/8, 9/8, 12/8): beat = 1440 ticks (dotted quarter)
+/// - Asymmetric 5/8: beats at 1440 + 960 (3+2 grouping)
+/// - Asymmetric 7/8: beats at 960 + 960 + 1440 (2+2+3 grouping)
+fn compute_beat_boundaries(numerator: u8, denominator: u8) -> Vec<u32> {
+    let mut boundaries = vec![0u32];
+
+    match (numerator, denominator) {
+        // Compound meters: dotted quarter = 1440 ticks
+        (6, 8) => {
+            boundaries.push(1440);
+        }
+        (9, 8) => {
+            boundaries.push(1440);
+            boundaries.push(2880);
+        }
+        (12, 8) => {
+            boundaries.push(1440);
+            boundaries.push(2880);
+            boundaries.push(4320);
+        }
+        // Asymmetric 5/8: 3+2 grouping
+        (5, 8) => {
+            boundaries.push(1440); // After dotted quarter
+        }
+        // Asymmetric 7/8: 2+2+3 grouping
+        (7, 8) => {
+            boundaries.push(960); // After 2 eighths
+            boundaries.push(1920); // After 2 more eighths
+        }
+        // Simple meters: quarter note = 960 ticks
+        _ => {
+            for i in 1..numerator {
+                boundaries.push(i as u32 * 960);
+            }
+        }
+    }
+
+    boundaries
+}
+
+/// Group beamable notes by time signature beat boundaries
+///
+/// A more sophisticated version of `group_beamable_notes()` that handles
+/// compound meters (6/8, 9/8, 12/8) and asymmetric meters (5/8, 7/8).
+///
+/// # Arguments
+/// * `notes` - Notes with positions and timing
+/// * `time_numerator` - Time signature numerator
+/// * `time_denominator` - Time signature denominator
+///
+/// # Returns
+/// Vector of note groups, where each group should be connected with a beam
+pub fn group_beamable_by_time_signature(
+    notes: &[BeamableNote],
+    time_numerator: u8,
+    time_denominator: u8,
+) -> Vec<Vec<BeamableNote>> {
+    let beat_boundaries = compute_beat_boundaries(time_numerator, time_denominator);
+    let measure_length: u32 = match time_denominator {
+        8 => time_numerator as u32 * 480,
+        4 => time_numerator as u32 * 960,
+        2 => time_numerator as u32 * 1920,
+        _ => time_numerator as u32 * 960,
+    };
+
+    let mut groups: Vec<Vec<BeamableNote>> = Vec::new();
+    let mut current_group: Vec<BeamableNote> = Vec::new();
+    let mut current_beat_idx: Option<usize> = None;
+
+    for note in notes {
+        // Only beam eighth notes (480 ticks) or shorter
+        if note.duration_ticks > 480 {
+            if current_group.len() >= 2 {
+                groups.push(current_group.clone());
+            }
+            current_group.clear();
+            current_beat_idx = None;
+            continue;
+        }
+
+        // Determine which beat this note belongs to (within its measure)
+        let tick_in_measure = note.tick % measure_length;
+        let beat_idx = beat_boundaries
+            .iter()
+            .rposition(|&b| tick_in_measure >= b)
+            .unwrap_or(0);
+
+        match current_beat_idx {
+            None => {
+                current_group.push(note.clone());
+                current_beat_idx = Some(beat_idx);
+            }
+            Some(current)
+                if current == beat_idx
+                    && (note.tick / measure_length)
+                        == (current_group
+                            .last()
+                            .map(|n| n.tick / measure_length)
+                            .unwrap_or(0)) =>
+            {
+                current_group.push(note.clone());
+            }
+            _ => {
+                if current_group.len() >= 2 {
+                    groups.push(current_group.clone());
+                }
+                current_group.clear();
+                current_group.push(note.clone());
+                current_beat_idx = Some(beat_idx);
+            }
+        }
+    }
+
     if current_group.len() >= 2 {
         groups.push(current_group);
     }
@@ -175,7 +323,369 @@ pub fn create_beam(notes: &[BeamableNote], slope: f32) -> Option<Beam> {
         x_end,
         y_end,
         thickness: Beam::BEAM_THICKNESS,
+        level: 1,
+        is_hook: false,
     })
+}
+
+/// Create secondary/tertiary beams for multi-level beam groups (16ths, 32nds, etc.)
+///
+/// For each beam level > 1, identifies sub-groups of consecutive notes at that level
+/// and creates beam segments. The Y offset is computed from the stem direction:
+/// - Stem up: beams stack downward from the primary beam
+/// - Stem down: beams stack upward from the primary beam
+///
+/// # Arguments
+/// * `group` - The beam group with notes and beam_count
+/// * `slope` - Primary beam slope
+/// * `stem_direction_up` - Whether stems point up (affects stacking direction)
+///
+/// # Returns
+/// Vector of secondary/tertiary Beam structs
+pub fn create_multi_level_beams(
+    group: &BeamGroup,
+    slope: f32,
+    stem_direction_up: bool,
+) -> Vec<Beam> {
+    let mut beams = Vec::new();
+
+    if group.notes.len() < 2 || group.beam_count <= 1 {
+        return beams;
+    }
+
+    let first_stem_end_y = group.notes[0].stem_end_y;
+
+    // Process each beam level > 1
+    for level in 2..=group.beam_count {
+        // Find sub-groups at this level: consecutive notes that have beam_types at this level
+        let mut sub_group: Vec<&BeamableNote> = Vec::new();
+
+        for note in &group.notes {
+            // A note participates at this level if it has enough beam_types entries
+            let has_this_level = note.beam_types.len() >= level as usize;
+            let level_type = if has_this_level {
+                note.beam_types[(level - 1) as usize].as_str()
+            } else {
+                ""
+            };
+
+            match level_type {
+                "Begin" | "Continue" => {
+                    sub_group.push(note);
+                }
+                "End" => {
+                    sub_group.push(note);
+                    // Finalize sub-group
+                    if sub_group.len() >= 2 {
+                        if let Some(beam) = create_level_beam(
+                            &sub_group,
+                            level,
+                            slope,
+                            first_stem_end_y,
+                            stem_direction_up,
+                        ) {
+                            beams.push(beam);
+                        }
+                    }
+                    sub_group.clear();
+                }
+                "ForwardHook" | "BackwardHook" => {
+                    // Create a beam hook for this note
+                    let is_forward = level_type == "ForwardHook";
+                    if let Some(hook) = create_beam_hook(
+                        note,
+                        level,
+                        slope,
+                        first_stem_end_y,
+                        stem_direction_up,
+                        is_forward,
+                    ) {
+                        beams.push(hook);
+                    }
+                }
+                _ => {
+                    // Note doesn't participate at this level — finalize any pending sub-group
+                    if sub_group.len() >= 2 {
+                        if let Some(beam) = create_level_beam(
+                            &sub_group,
+                            level,
+                            slope,
+                            first_stem_end_y,
+                            stem_direction_up,
+                        ) {
+                            beams.push(beam);
+                        }
+                    }
+                    sub_group.clear();
+                }
+            }
+        }
+
+        // Handle any remaining sub-group
+        if sub_group.len() >= 2 {
+            if let Some(beam) = create_level_beam(
+                &sub_group,
+                level,
+                slope,
+                first_stem_end_y,
+                stem_direction_up,
+            ) {
+                beams.push(beam);
+            }
+        }
+    }
+
+    beams
+}
+
+/// Create a beam at a specific level, offset from the primary beam
+///
+/// Uses each note's actual stem_end_y (which already includes slope and offset
+/// adjustments from the 3-phase stem pipeline) to position the beam accurately.
+fn create_level_beam(
+    notes: &[&BeamableNote],
+    level: u8,
+    _slope: f32,
+    _first_stem_end_y: f32,
+    stem_direction_up: bool,
+) -> Option<Beam> {
+    if notes.len() < 2 {
+        return None;
+    }
+
+    let first = notes[0];
+    let last = notes[notes.len() - 1];
+
+    // Y offset: stack beams toward noteheads (away from stem tips)
+    // Stem up → beams stack downward from stem endpoint (toward noteheads)
+    // Stem down → beams stack upward from stem endpoint (toward noteheads)
+    let level_offset = (level as f32 - 1.0) * (Beam::BEAM_THICKNESS + Beam::INTER_BEAM_GAP);
+    let y_offset = if stem_direction_up {
+        level_offset // Move down toward noteheads
+    } else {
+        -level_offset // Move up toward noteheads
+    };
+
+    // Use each note's actual stem_end_y for accurate beam positioning
+    let x_start = first.x;
+    let y_start = first.stem_end_y + y_offset;
+    let x_end = last.x;
+    let y_end = last.stem_end_y + y_offset;
+
+    Some(Beam {
+        x_start,
+        y_start,
+        x_end,
+        y_end,
+        thickness: Beam::BEAM_THICKNESS,
+        level,
+        is_hook: false,
+    })
+}
+
+/// Create a beam hook (partial beam) extending from a single note's stem
+///
+/// Hooks extend in the direction of the adjacent note within the group.
+/// Forward hooks extend toward the next note; backward hooks toward the previous.
+///
+/// # Arguments
+/// * `note` - The note at which to create the hook
+/// * `level` - Beam level for Y offset
+/// * `slope` - Primary beam slope
+/// * `first_stem_end_y` - Y position of first note's stem end (for slope reference)
+/// * `stem_direction_up` - Stem direction for Y offset stacking
+/// * `is_forward` - True for forward hook, false for backward hook
+pub fn create_beam_hook(
+    note: &BeamableNote,
+    level: u8,
+    slope: f32,
+    _first_stem_end_y: f32,
+    stem_direction_up: bool,
+    is_forward: bool,
+) -> Option<Beam> {
+    let level_offset = (level as f32 - 1.0) * (Beam::BEAM_THICKNESS + Beam::INTER_BEAM_GAP);
+    let y_offset = if stem_direction_up {
+        level_offset
+    } else {
+        -level_offset
+    };
+
+    // Use the note's actual stem_end_y + level offset
+    let hook_y = note.stem_end_y + y_offset;
+
+    let (x_start, x_end) = if is_forward {
+        (note.x, note.x + Beam::BEAM_HOOK_LENGTH)
+    } else {
+        (note.x - Beam::BEAM_HOOK_LENGTH, note.x)
+    };
+
+    let y_start = hook_y;
+    let y_end = hook_y + slope * (x_end - x_start);
+
+    Some(Beam {
+        x_start,
+        y_start,
+        x_end,
+        y_end,
+        thickness: Beam::BEAM_THICKNESS,
+        level,
+        is_hook: true,
+    })
+}
+
+/// Represents a group of notes connected by beams
+#[derive(Debug, Clone)]
+pub struct BeamGroup {
+    /// Notes in the group, ordered by tick
+    pub notes: Vec<BeamableNote>,
+    /// Number of beam levels (1 for 8ths, 2 for 16ths, etc.)
+    pub beam_count: u8,
+}
+
+/// Compute uniform stem direction for a beam group using majority rule
+///
+/// All notes in a beamed group must have the same stem direction.
+/// The direction is determined by which side of the staff middle line
+/// the majority of notes fall on.
+///
+/// # Arguments
+/// * `notes` - Notes in the beam group
+/// * `staff_middle_y` - Y position of the staff's middle line
+///
+/// # Returns
+/// Uniform `StemDirection` for the entire group.
+/// Tie-break: defaults to `StemDirection::Up`.
+pub fn compute_group_stem_direction(
+    notes: &[BeamableNote],
+    staff_middle_y: f32,
+) -> crate::layout::stems::StemDirection {
+    use crate::layout::stems::{StemDirection, compute_stem_direction};
+
+    if notes.is_empty() {
+        return StemDirection::Up;
+    }
+
+    let up_count = notes
+        .iter()
+        .filter(|n| compute_stem_direction(n.y, staff_middle_y) == StemDirection::Up)
+        .count();
+
+    if up_count * 2 >= notes.len() {
+        StemDirection::Up
+    } else {
+        StemDirection::Down
+    }
+}
+
+/// Build beam groups from MusicXML beam annotations at beam level 1
+///
+/// Uses a state machine: Begin → starts group, Continue → extends group, End → finalizes group.
+/// Groups with fewer than 2 notes are discarded (single notes render with flags).
+///
+/// # Arguments
+/// * `notes` - Notes with beam_types populated from MusicXML parsing
+///
+/// # Returns
+/// Vector of BeamGroups
+pub fn build_beam_groups_from_musicxml(notes: &[BeamableNote]) -> Vec<BeamGroup> {
+    let mut groups: Vec<BeamGroup> = Vec::new();
+    let mut current_group: Vec<BeamableNote> = Vec::new();
+    let mut in_group = false;
+
+    for note in notes {
+        // Look for level-1 beam type
+        let _level1_type = note.beam_types.iter().find(|_bt| {
+            // beam_types stores types as strings for level 1+ in order
+            // The first entry corresponds to level 1
+            true // We'll match by position
+        });
+
+        // Check level-1 beam info: beam_types[0] is level 1
+        let has_level1 = !note.beam_types.is_empty();
+        let level1_str = if has_level1 {
+            note.beam_types[0].as_str()
+        } else {
+            ""
+        };
+
+        match level1_str {
+            "Begin" => {
+                // Start new group (finalize any dangling group first)
+                if current_group.len() >= 2 {
+                    let beam_count = current_group
+                        .iter()
+                        .map(|n| n.beam_levels)
+                        .max()
+                        .unwrap_or(1)
+                        .max(1);
+                    groups.push(BeamGroup {
+                        notes: current_group.clone(),
+                        beam_count,
+                    });
+                }
+                current_group.clear();
+                current_group.push(note.clone());
+                in_group = true;
+            }
+            "Continue" => {
+                if in_group {
+                    current_group.push(note.clone());
+                }
+            }
+            "End" => {
+                if in_group {
+                    current_group.push(note.clone());
+                    if current_group.len() >= 2 {
+                        let beam_count = current_group
+                            .iter()
+                            .map(|n| n.beam_levels)
+                            .max()
+                            .unwrap_or(1)
+                            .max(1);
+                        groups.push(BeamGroup {
+                            notes: current_group.clone(),
+                            beam_count,
+                        });
+                    }
+                    current_group.clear();
+                    in_group = false;
+                }
+            }
+            _ => {
+                // No beam info or unrecognized — not part of a beam group
+                if in_group && current_group.len() >= 2 {
+                    let beam_count = current_group
+                        .iter()
+                        .map(|n| n.beam_levels)
+                        .max()
+                        .unwrap_or(1)
+                        .max(1);
+                    groups.push(BeamGroup {
+                        notes: current_group.clone(),
+                        beam_count,
+                    });
+                }
+                current_group.clear();
+                in_group = false;
+            }
+        }
+    }
+
+    // Handle any remaining group
+    if current_group.len() >= 2 {
+        let beam_count = current_group
+            .iter()
+            .map(|n| n.beam_levels)
+            .max()
+            .unwrap_or(1)
+            .max(1);
+        groups.push(BeamGroup {
+            notes: current_group,
+            beam_count,
+        });
+    }
+
+    groups
 }
 
 #[cfg(test)]
@@ -192,6 +702,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 480, // Eighth note
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 140.0,
@@ -199,6 +711,8 @@ mod tests {
                 stem_end_y: 35.0,
                 tick: 480,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 180.0,
@@ -206,6 +720,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 960,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 220.0,
@@ -213,6 +729,8 @@ mod tests {
                 stem_end_y: 45.0,
                 tick: 1440,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -233,6 +751,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 960, // Quarter note - should not beam
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 140.0,
@@ -240,6 +760,8 @@ mod tests {
                 stem_end_y: 35.0,
                 tick: 960,
                 duration_ticks: 960,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -256,6 +778,8 @@ mod tests {
             stem_end_y: 25.0,
             tick: 0,
             duration_ticks: 480,
+            beam_levels: 0,
+            beam_types: Vec::new(),
         }];
 
         let groups = group_beamable_notes(&notes, 960);
@@ -273,6 +797,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 140.0,
@@ -280,6 +806,8 @@ mod tests {
                 stem_end_y: 25.0, // Same stem height
                 tick: 480,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -297,6 +825,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 140.0,
@@ -304,6 +834,8 @@ mod tests {
                 stem_end_y: 35.0, // 10 units higher
                 tick: 480,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -323,6 +855,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 120.0, // Short distance
@@ -330,6 +864,8 @@ mod tests {
                 stem_end_y: 85.0, // Very steep: 60 units over 20 pixels
                 tick: 480,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -350,6 +886,8 @@ mod tests {
                 stem_end_y: 25.0,
                 tick: 0,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
             BeamableNote {
                 x: 140.0,
@@ -357,6 +895,8 @@ mod tests {
                 stem_end_y: 35.0,
                 tick: 480,
                 duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
             },
         ];
 
@@ -381,10 +921,577 @@ mod tests {
             stem_end_y: 25.0,
             tick: 0,
             duration_ticks: 480,
+            beam_levels: 0,
+            beam_types: Vec::new(),
         }];
 
         let beam = create_beam(&notes, 0.0);
 
         assert!(beam.is_none(), "Cannot create beam with single note");
+    }
+
+    // ========================================================================
+    // T014: Tests for build_beam_groups_from_musicxml()
+    // ========================================================================
+
+    #[test]
+    fn test_build_beam_groups_four_eighths_one_group() {
+        // 4 eighth notes with beam Begin/Continue/Continue/End → 1 group
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Begin".to_string()],
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Continue".to_string()],
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 70.0,
+                stem_end_y: 35.0,
+                tick: 960,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Continue".to_string()],
+            },
+            BeamableNote {
+                x: 220.0,
+                y: 75.0,
+                stem_end_y: 40.0,
+                tick: 1440,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["End".to_string()],
+            },
+        ];
+
+        let groups = build_beam_groups_from_musicxml(&notes);
+        assert_eq!(groups.len(), 1, "4 eighth notes should form 1 group");
+        assert_eq!(groups[0].notes.len(), 4, "Group should have 4 notes");
+        assert_eq!(groups[0].beam_count, 1, "Eighth notes have 1 beam level");
+    }
+
+    #[test]
+    fn test_build_beam_groups_mixed_quarters_eighths() {
+        // Quarter + 2 eighths + Quarter → 1 group of 2
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 960,
+                beam_levels: 0,
+                beam_types: Vec::new(), // quarter, no beams
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 960,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Begin".to_string()],
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 70.0,
+                stem_end_y: 35.0,
+                tick: 1440,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["End".to_string()],
+            },
+            BeamableNote {
+                x: 220.0,
+                y: 75.0,
+                stem_end_y: 40.0,
+                tick: 1920,
+                duration_ticks: 960,
+                beam_levels: 0,
+                beam_types: Vec::new(), // quarter, no beams
+            },
+        ];
+
+        let groups = build_beam_groups_from_musicxml(&notes);
+        assert_eq!(groups.len(), 1, "Should form 1 beam group from 2 eighths");
+        assert_eq!(groups[0].notes.len(), 2, "Group should have 2 notes");
+    }
+
+    #[test]
+    fn test_build_beam_groups_single_note_no_group() {
+        // A single eighth note cannot form a group → empty
+        let notes = vec![BeamableNote {
+            x: 100.0,
+            y: 60.0,
+            stem_end_y: 25.0,
+            tick: 0,
+            duration_ticks: 480,
+            beam_levels: 1,
+            beam_types: vec!["Begin".to_string()],
+        }];
+
+        let groups = build_beam_groups_from_musicxml(&notes);
+        assert_eq!(groups.len(), 0, "Single note should not form a beam group");
+    }
+
+    #[test]
+    fn test_build_beam_groups_two_separate_groups() {
+        // 2 eighths + 2 eighths → 2 groups
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Begin".to_string()],
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["End".to_string()],
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 70.0,
+                stem_end_y: 35.0,
+                tick: 960,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Begin".to_string()],
+            },
+            BeamableNote {
+                x: 220.0,
+                y: 75.0,
+                stem_end_y: 40.0,
+                tick: 1440,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["End".to_string()],
+            },
+        ];
+
+        let groups = build_beam_groups_from_musicxml(&notes);
+        assert_eq!(groups.len(), 2, "Should form 2 separate beam groups");
+        assert_eq!(groups[0].notes.len(), 2);
+        assert_eq!(groups[1].notes.len(), 2);
+    }
+
+    /// T026: Four sixteenth notes → 2 beam lines (level 1 and level 2)
+    #[test]
+    fn test_multi_level_beams_four_sixteenths() {
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["Begin".to_string(), "Begin".to_string()],
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 240,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["Continue".to_string(), "Continue".to_string()],
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 70.0,
+                stem_end_y: 35.0,
+                tick: 480,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["Continue".to_string(), "Continue".to_string()],
+            },
+            BeamableNote {
+                x: 220.0,
+                y: 75.0,
+                stem_end_y: 40.0,
+                tick: 720,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["End".to_string(), "End".to_string()],
+            },
+        ];
+
+        let group = BeamGroup {
+            beam_count: 2,
+            notes: notes.clone(),
+        };
+
+        let secondary_beams = create_multi_level_beams(&group, 0.0, true);
+
+        assert_eq!(secondary_beams.len(), 1, "Should create 1 secondary beam");
+        assert_eq!(
+            secondary_beams[0].level, 2,
+            "Secondary beam should be level 2"
+        );
+        assert!(!secondary_beams[0].is_hook, "Should not be a hook");
+    }
+
+    /// T026: Mixed eighths + sixteenths → primary spans all, secondary spans sixteenths
+    #[test]
+    fn test_multi_level_beams_mixed_eighths_sixteenths() {
+        // 2 eighths + 2 sixteenths: primary beam spans all 4, secondary spans last 2
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["Begin".to_string()],
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 480,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["Continue".to_string(), "Begin".to_string()],
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 70.0,
+                stem_end_y: 35.0,
+                tick: 720,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["End".to_string(), "End".to_string()],
+            },
+        ];
+
+        let group = BeamGroup {
+            beam_count: 2,
+            notes: notes.clone(),
+        };
+
+        let secondary_beams = create_multi_level_beams(&group, 0.0, true);
+
+        assert_eq!(
+            secondary_beams.len(),
+            1,
+            "Should create 1 secondary beam for sixteenths"
+        );
+        assert_eq!(secondary_beams[0].level, 2);
+        // Secondary beam should only span the 2 sixteenth notes
+        assert!(
+            (secondary_beams[0].x_start - 140.0).abs() < 0.1,
+            "Secondary beam should start at second note x=140"
+        );
+        assert!(
+            (secondary_beams[0].x_end - 180.0).abs() < 0.1,
+            "Secondary beam should end at third note x=180"
+        );
+    }
+
+    /// T026: Forward/backward hooks at level 2
+    #[test]
+    fn test_multi_level_beams_hooks() {
+        // 1 sixteenth + 1 eighth → primary beam + backward hook on first note
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 60.0,
+                stem_end_y: 25.0,
+                tick: 0,
+                duration_ticks: 240,
+                beam_levels: 2,
+                beam_types: vec!["Begin".to_string(), "BackwardHook".to_string()],
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 65.0,
+                stem_end_y: 30.0,
+                tick: 240,
+                duration_ticks: 480,
+                beam_levels: 1,
+                beam_types: vec!["End".to_string()],
+            },
+        ];
+
+        let group = BeamGroup {
+            beam_count: 2,
+            notes: notes.clone(),
+        };
+
+        let secondary_beams = create_multi_level_beams(&group, 0.0, true);
+
+        assert_eq!(secondary_beams.len(), 1, "Should create 1 hook");
+        assert!(secondary_beams[0].is_hook, "Should be a hook");
+        assert_eq!(secondary_beams[0].level, 2, "Hook should be at level 2");
+        // Backward hook extends to the left
+        assert!(
+            secondary_beams[0].x_start < secondary_beams[0].x_end,
+            "Hook should have x_start < x_end"
+        );
+    }
+
+    /// T032: All notes above middle line → stems Down
+    #[test]
+    fn test_group_stem_direction_all_above() {
+        let staff_middle_y = 80.0;
+        // All notes at y < 80 (above middle — higher pitch)
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 50.0,
+                stem_end_y: 0.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 40.0,
+                stem_end_y: 0.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+        ];
+
+        let dir = compute_group_stem_direction(&notes, staff_middle_y);
+        assert_eq!(
+            dir,
+            crate::layout::stems::StemDirection::Up,
+            "All notes above middle → Up (below middle_y value in coordinate system)"
+        );
+    }
+
+    /// T032: All notes below middle line → stems Up
+    #[test]
+    fn test_group_stem_direction_all_below() {
+        let staff_middle_y = 80.0;
+        // All notes at y >= 80 (on or below middle line)
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 100.0,
+                stem_end_y: 0.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 120.0,
+                stem_end_y: 0.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+        ];
+
+        let dir = compute_group_stem_direction(&notes, staff_middle_y);
+        assert_eq!(
+            dir,
+            crate::layout::stems::StemDirection::Down,
+            "All notes on/below middle → Down"
+        );
+    }
+
+    /// T032: Mixed with majority above → Up (stems up since below middle_y)
+    #[test]
+    fn test_group_stem_direction_majority_above() {
+        let staff_middle_y = 80.0;
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 50.0,
+                stem_end_y: 0.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 60.0,
+                stem_end_y: 0.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+            BeamableNote {
+                x: 180.0,
+                y: 100.0,
+                stem_end_y: 0.0,
+                tick: 960,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+        ];
+
+        let dir = compute_group_stem_direction(&notes, staff_middle_y);
+        // 2 notes above (y<80), 1 below → majority above → Up
+        assert_eq!(
+            dir,
+            crate::layout::stems::StemDirection::Up,
+            "Majority above middle → Up"
+        );
+    }
+
+    /// T032: Even split → defaults to Up
+    #[test]
+    fn test_group_stem_direction_even_split() {
+        let staff_middle_y = 80.0;
+        let notes = vec![
+            BeamableNote {
+                x: 100.0,
+                y: 50.0,
+                stem_end_y: 0.0,
+                tick: 0,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+            BeamableNote {
+                x: 140.0,
+                y: 100.0,
+                stem_end_y: 0.0,
+                tick: 480,
+                duration_ticks: 480,
+                beam_levels: 0,
+                beam_types: Vec::new(),
+            },
+        ];
+
+        let dir = compute_group_stem_direction(&notes, staff_middle_y);
+        assert_eq!(
+            dir,
+            crate::layout::stems::StemDirection::Up,
+            "Even split defaults to Up"
+        );
+    }
+
+    // Helper to create a simple BeamableNote for time signature tests
+    fn make_note(tick: u32, duration: u32) -> BeamableNote {
+        BeamableNote {
+            x: tick as f32,
+            y: 60.0,
+            stem_end_y: 25.0,
+            tick,
+            duration_ticks: duration,
+            beam_levels: 0,
+            beam_types: Vec::new(),
+        }
+    }
+
+    /// T040: 4/4 time — groups of 2 eighths per beat
+    #[test]
+    fn test_group_by_time_sig_4_4() {
+        let notes = vec![
+            make_note(0, 480),
+            make_note(480, 480), // beat 0
+            make_note(960, 480),
+            make_note(1440, 480), // beat 1
+            make_note(1920, 480),
+            make_note(2400, 480), // beat 2
+            make_note(2880, 480),
+            make_note(3360, 480), // beat 3
+        ];
+
+        let groups = group_beamable_by_time_signature(&notes, 4, 4);
+
+        assert_eq!(
+            groups.len(),
+            4,
+            "4/4: should produce 4 groups (one per beat)"
+        );
+        for g in &groups {
+            assert_eq!(g.len(), 2, "Each group should have 2 eighths");
+        }
+    }
+
+    /// T040: 6/8 compound time — groups of 3 eighths per dotted quarter beat
+    #[test]
+    fn test_group_by_time_sig_6_8() {
+        let notes = vec![
+            make_note(0, 480),
+            make_note(480, 480),
+            make_note(960, 480), // beat 0 (0-1439)
+            make_note(1440, 480),
+            make_note(1920, 480),
+            make_note(2400, 480), // beat 1 (1440-2879)
+        ];
+
+        let groups = group_beamable_by_time_signature(&notes, 6, 8);
+
+        assert_eq!(
+            groups.len(),
+            2,
+            "6/8: should produce 2 groups (one per dotted-quarter beat)"
+        );
+        assert_eq!(groups[0].len(), 3, "First group should have 3 eighths");
+        assert_eq!(groups[1].len(), 3, "Second group should have 3 eighths");
+    }
+
+    /// T040: 3/4 simple time — groups of 2 eighths per beat
+    #[test]
+    fn test_group_by_time_sig_3_4() {
+        let notes = vec![
+            make_note(0, 480),
+            make_note(480, 480), // beat 0
+            make_note(960, 480),
+            make_note(1440, 480), // beat 1
+            make_note(1920, 480),
+            make_note(2400, 480), // beat 2
+        ];
+
+        let groups = group_beamable_by_time_signature(&notes, 3, 4);
+
+        assert_eq!(groups.len(), 3, "3/4: should produce 3 groups");
+        for g in &groups {
+            assert_eq!(g.len(), 2, "Each group should have 2 eighths");
+        }
+    }
+
+    /// T040: 5/8 asymmetric — 3+2 grouping
+    #[test]
+    fn test_group_by_time_sig_5_8() {
+        let notes = vec![
+            make_note(0, 480),
+            make_note(480, 480),
+            make_note(960, 480), // beat 0 (3 eighths)
+            make_note(1440, 480),
+            make_note(1920, 480), // beat 1 (2 eighths)
+        ];
+
+        let groups = group_beamable_by_time_signature(&notes, 5, 8);
+
+        assert_eq!(groups.len(), 2, "5/8: should produce 2 groups (3+2)");
+        assert_eq!(groups[0].len(), 3, "First group should have 3 eighths");
+        assert_eq!(groups[1].len(), 2, "Second group should have 2 eighths");
     }
 }
