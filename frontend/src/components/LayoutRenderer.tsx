@@ -8,7 +8,7 @@
  */
 
 import { Component, createRef, type RefObject } from 'react';
-import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun, BarLine } from '../wasm/layout';
+import type { GlobalLayout, System, StaffGroup, Staff, GlyphRun, BarLine, Glyph } from '../wasm/layout';
 import type { RenderConfig } from '../types/RenderConfig';
 import type { Viewport } from '../types/Viewport';
 import { 
@@ -413,7 +413,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param isHighlighted - Whether this glyph should be highlighted (Feature 019)
    * @returns SVG element (text for SMuFL, line for stem, rect for beam)
    */
-  private renderGlyph(glyph: any, fontFamily: string, fontSize: number, color: string, isHighlighted = false): SVGElement {
+  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isHighlighted = false): SVGElement {
     // Check for special glyphs (stems and beams)
     const codepoint = glyph.codepoint;
     

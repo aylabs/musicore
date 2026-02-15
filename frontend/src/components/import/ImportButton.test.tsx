@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ImportButton } from "./ImportButton";
-import type { ImportResult } from "../../services/import/MusicXMLImportService";
 
 /**
  * T079: Unit tests for ImportButton component

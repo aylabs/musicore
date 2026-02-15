@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ViewModeSelector, type ViewMode } from './ViewModeSelector';
+import { ViewModeSelector } from './ViewModeSelector';
 
 describe('ViewModeSelector', () => {
   it('should render both view mode buttons', () => {

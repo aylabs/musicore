@@ -48,8 +48,8 @@ interface RendererDemoState {
  * }
  * ```
  */
-export class RendererDemo extends Component<{}, RendererDemoState> {
-  constructor(props: {}) {
+export class RendererDemo extends Component<Record<string, never>, RendererDemoState> {
+  constructor(props: Record<string, never>) {
     super(props);
     this.state = {
       activeDemo: 'violin',
@@ -118,7 +118,7 @@ export class RendererDemo extends Component<{}, RendererDemoState> {
             <label style={styles.label}>Demo:</label>
             <select
               value={activeDemo}
-              onChange={(e) => this.handleDemoChange(e.target.value as any)}
+              onChange={(e) => this.handleDemoChange(e.target.value as 'violin' | 'piano' | 'performance')}
               style={styles.select}
             >
               <option value="violin">Violin (10 measures)</option>

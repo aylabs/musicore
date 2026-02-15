@@ -80,7 +80,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
   const scrollX = externalScrollX !== undefined ? externalScrollX : internalScrollX;
   
   // Feature 009: Track last auto-scroll time for manual override detection
-  const lastAutoScrollTimeRef = useRef<number>(Date.now());
+  const lastAutoScrollTimeRef = useRef<number>(0);
 
   // T061: Add resize observer to update viewport width when container resizes
   useEffect(() => {
@@ -170,8 +170,6 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
       return undefined;
     }
     
-    let animationFrameId: number;
-    
     const smoothScroll = () => {
       if (containerRef.current) {
         containerRef.current.scrollLeft = targetScrollX;
@@ -180,7 +178,7 @@ export const StaffNotation: React.FC<StaffNotationProps> = ({
     };
     
     // Schedule scroll on next animation frame for smooth 60 FPS rendering
-    animationFrameId = requestAnimationFrame(smoothScroll);
+    const animationFrameId = requestAnimationFrame(smoothScroll);
     
     return () => cancelAnimationFrame(animationFrameId);
   }, [autoScrollEnabled, targetScrollX, playbackStatus, disableInternalScroll]);

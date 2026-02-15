@@ -129,7 +129,7 @@ export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult 
       if (isFirstRun || isDemoLoading) {
         return;
       }
-
+      
       try {
         const demoScore = await demoLoaderService.getDemoScore();
         if (demoScore && mounted) {
