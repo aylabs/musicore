@@ -209,7 +209,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 // Generate ledger lines for notes outside the 5-line staff
                 let mut ledger_lines = Vec::new();
                 for voice in &staff_data.voices {
-                    let notes_in_range: Vec<(u8, u32, u32, Option<(char, i8)>)> = voice
+                    let notes_in_range: Vec<NoteData> = voice
                         .notes
                         .iter()
                         .filter(|note| {
@@ -417,6 +417,12 @@ struct StaffData {
 struct VoiceData {
     notes: Vec<NoteEvent>,
 }
+
+/// Note data tuple: (pitch, start_tick, duration_ticks, spelling)
+///
+/// Spelling is an optional (step_letter, alter) pair from MusicXML,
+/// e.g. ('E', -1) for Eb, ('D', 1) for D#.
+pub type NoteData = (u8, u32, u32, Option<(char, i8)>);
 
 /// Represents a single note event
 #[derive(Debug, Clone)]
@@ -670,7 +676,7 @@ fn position_glyphs_for_staff(
 
     for (voice_index, voice) in staff_data.voices.iter().enumerate() {
         // Filter notes that fall within this system's tick range
-        let notes_in_range: Vec<(u8, u32, u32, Option<(char, i8)>)> = voice
+        let notes_in_range: Vec<NoteData> = voice
             .notes
             .iter()
             .filter(|note| {

@@ -204,7 +204,7 @@ pub fn compute_glyph_bounding_box(
 /// Vector of positioned glyph structs
 #[allow(clippy::too_many_arguments)]
 pub fn position_noteheads(
-    notes: &[(u8, u32, u32, Option<(char, i8)>)], // (pitch, start_tick, duration, spelling)
+    notes: &[super::NoteData], // (pitch, start_tick, duration, spelling)
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -511,7 +511,7 @@ pub fn position_key_signature(
 /// Vector of accidental glyphs positioned to the left of their noteheads
 #[allow(clippy::too_many_arguments)]
 pub fn position_note_accidentals(
-    notes: &[(u8, u32, u32, Option<(char, i8)>)],
+    notes: &[super::NoteData],
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -789,7 +789,7 @@ pub fn position_note_accidentals(
 /// # Returns
 /// Vector of LedgerLine structs for notes outside staff range
 pub fn position_ledger_lines(
-    notes: &[(u8, u32, u32, Option<(char, i8)>)],
+    notes: &[super::NoteData],
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
