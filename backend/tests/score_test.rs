@@ -63,7 +63,12 @@ fn test_score_add_tempo_event() {
     let tempo_events: Vec<_> = score
         .global_structural_events
         .iter()
-        .filter(|e| matches!(e, musicore_backend::domain::events::global::GlobalStructuralEvent::Tempo(_)))
+        .filter(|e| {
+            matches!(
+                e,
+                musicore_backend::domain::events::global::GlobalStructuralEvent::Tempo(_)
+            )
+        })
         .collect();
 
     assert_eq!(tempo_events.len(), 2); // Default + new one

@@ -409,7 +409,11 @@ pub fn position_key_signature(
     let count = sharps.unsigned_abs() as usize;
     let horizontal_spacing = 15.0; // Space between accidentals
 
-    for (i, &y_pos) in positions.iter().enumerate().take(count.min(positions.len())) {
+    for (i, &y_pos) in positions
+        .iter()
+        .enumerate()
+        .take(count.min(positions.len()))
+    {
         let position = Point {
             x: x_start + (i as f32 * horizontal_spacing),
             y: y_pos + staff_vertical_offset,

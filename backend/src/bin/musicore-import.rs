@@ -71,8 +71,11 @@ fn main() {
                 eprintln!("Caused by: {}", source);
             }
             // Try to downcast to ImportError for detailed validation errors
-            if let Some(musicore_backend::domain::importers::musicxml::ImportError::ValidationError { errors }) =
-                e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>()
+            if let Some(
+                musicore_backend::domain::importers::musicxml::ImportError::ValidationError {
+                    errors,
+                },
+            ) = e.downcast_ref::<musicore_backend::domain::importers::musicxml::ImportError>()
             {
                 eprintln!("Validation errors:");
                 for err in errors {
