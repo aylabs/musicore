@@ -3,7 +3,7 @@
 //! Positions glyphs based on pitch (vertical) and timing (horizontal).
 
 use crate::layout::metrics::get_glyph_bbox;
-use crate::layout::types::{BoundingBox, Glyph, Point, SourceReference};
+use crate::layout::types::{BoundingBox, Glyph, LedgerLine, Point, SourceReference};
 
 /// Convert pitch to y-coordinate on staff
 ///
@@ -40,34 +40,80 @@ use crate::layout::types::{BoundingBox, Glyph, Point, SourceReference};
 /// # Returns
 /// Y-coordinate in logical units (system-relative, positive = downward)
 pub fn pitch_to_y(pitch: u8, clef_type: &str, units_per_space: f32) -> f32 {
+    pitch_to_y_with_spelling(pitch, clef_type, units_per_space, None)
+}
+
+/// Convert MIDI pitch to Y coordinate, optionally using explicit note spelling
+///
+/// When `spelling` is provided (step letter + alter), the note is positioned on the
+/// correct diatonic line/space for its spelled name. Without spelling, sharps are assumed
+/// for chromatic pitches (e.g., MIDI 63 = D# not Eb).
+pub fn pitch_to_y_with_spelling(
+    pitch: u8,
+    clef_type: &str,
+    units_per_space: f32,
+    spelling: Option<(char, i8)>,
+) -> f32 {
     // Convert MIDI pitch to diatonic staff position
     // Each octave has 7 diatonic notes (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
 
-    // Map chromatic pitch classes to diatonic letter positions
-    // Accidentals (sharps/flats) sit on the same line as their natural note
-    // C and C# both at position 0, D and D# at position 1, etc.
-    const DIATONIC_POSITIONS: [f32; 12] = [
-        0.0, // C
-        0.0, // C# (same Y position as C, sharp drawn separately)
-        1.0, // D
-        1.0, // D# (same Y position as D, sharp drawn separately)
-        2.0, // E
-        3.0, // F
-        3.0, // F# (same Y position as F, sharp drawn separately)
-        4.0, // G
-        4.0, // G# (same Y position as G, sharp drawn separately)
-        5.0, // A
-        5.0, // A# (same Y position as A, sharp drawn separately)
-        6.0, // B
-    ];
+    // Map step letter to diatonic position within octave
+    fn step_to_diatonic(step: char) -> f32 {
+        match step {
+            'C' => 0.0,
+            'D' => 1.0,
+            'E' => 2.0,
+            'F' => 3.0,
+            'G' => 4.0,
+            'A' => 5.0,
+            'B' => 6.0,
+            _ => 0.0,
+        }
+    }
 
-    let pitch_class = (pitch % 12) as usize;
-    // MIDI octave: C(-1) = 0, C0 = 12, C1 = 24, C5 = 60, etc.
-    // So octave number = (pitch / 12) - 1, but we count from C(-1) as octave 0 for calculation
-    let octave = (pitch / 12) as i32;
-
-    // Calculate diatonic position within octave
-    let diatonic_pos_in_octave = DIATONIC_POSITIONS[pitch_class];
+    let (diatonic_pos_in_octave, octave) = if let Some((step, _alter)) = spelling {
+        // Use explicit spelling to determine staff position
+        let diatonic = step_to_diatonic(step);
+        // MIDI octave: C4 = 60, so octave = pitch / 12
+        // But we need to handle boundary: B# is in the next octave, Cb is in the previous
+        let midi_octave = (pitch / 12) as i32;
+        // Check for octave boundary crossings:
+        // - Cb/Cbb: spelled as C but sounds as B (one octave lower MIDI-wise)
+        //   MIDI gives us octave of B, but the note is spelled as C in that same octave
+        // - B#/B##: spelled as B but sounds as C (one octave higher MIDI-wise)
+        //   MIDI gives us octave of C, but the note is spelled as B in the previous octave
+        let adjusted_octave = if step == 'B' && (pitch % 12) < 2 {
+            // B# or B## — MIDI pitch is in C/C# range but note is spelled as B
+            // Use the octave below the MIDI octave
+            midi_octave - 1
+        } else if step == 'C' && (pitch % 12) > 10 {
+            // Cb or Cbb — MIDI pitch is in B/Bb range but note is spelled as C
+            // Use the octave above the MIDI octave
+            midi_octave + 1
+        } else {
+            midi_octave
+        };
+        (diatonic, adjusted_octave)
+    } else {
+        // Fallback: infer from MIDI pitch class (assumes sharps for chromatic notes)
+        const DIATONIC_POSITIONS: [f32; 12] = [
+            0.0, // C
+            0.0, // C# (same Y position as C, sharp drawn separately)
+            1.0, // D
+            1.0, // D# (same Y position as D, sharp drawn separately)
+            2.0, // E
+            3.0, // F
+            3.0, // F# (same Y position as F, sharp drawn separately)
+            4.0, // G
+            4.0, // G# (same Y position as G, sharp drawn separately)
+            5.0, // A
+            5.0, // A# (same Y position as A, sharp drawn separately)
+            6.0, // B
+        ];
+        let pitch_class = (pitch % 12) as usize;
+        let octave = (pitch / 12) as i32;
+        (DIATONIC_POSITIONS[pitch_class], octave)
+    };
 
     // Total diatonic steps from C(-1) (MIDI 0)
     let diatonic_steps_from_c_minus1 = (octave * 7) as f32 + diatonic_pos_in_octave;
@@ -158,7 +204,7 @@ pub fn compute_glyph_bounding_box(
 /// Vector of positioned glyph structs
 #[allow(clippy::too_many_arguments)]
 pub fn position_noteheads(
-    notes: &[(u8, u32, u32)], // (pitch, start_tick, duration)
+    notes: &[super::NoteData], // (pitch, start_tick, duration, spelling)
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -171,8 +217,10 @@ pub fn position_noteheads(
         .iter()
         .zip(horizontal_offsets.iter())
         .enumerate()
-        .map(|(i, ((pitch, _start, duration), &x))| {
-            let y = pitch_to_y(*pitch, clef_type, units_per_space) + staff_vertical_offset;
+        .map(|(i, ((pitch, _start, duration, spelling), &x))| {
+            // Use explicit spelling for Y position when available (e.g., Eb vs D#)
+            let y = pitch_to_y_with_spelling(*pitch, clef_type, units_per_space, *spelling)
+                + staff_vertical_offset;
             let position = Point { x, y };
 
             // T021-T022: Choose notehead codepoint based on duration_ticks
@@ -437,12 +485,370 @@ pub fn position_key_signature(
     glyphs
 }
 
-/// Position accidentals before noteheads with minimum separation
+/// Position accidentals before noteheads
 ///
-/// Stub for now - will be implemented when needed
-pub fn position_accidentals() {
-    // Stub implementation - accidentals positioning is complex
-    // For MVP, we'll skip accidentals and implement this in future iterations
+/// Determines which notes need accidentals based on key signature and
+/// measure context, then creates positioned glyph structs.
+///
+/// Accidental rules:
+/// - Notes altered from the key signature need an accidental
+/// - Accidentals carry through the measure (same pitch = no repeat)
+/// - A natural sign cancels a key signature accidental
+/// - Barline boundaries (every 3840 ticks in 4/4) reset accidental state
+///
+/// # Arguments
+/// * `notes` - Note events (pitch, start_tick, duration)
+/// * `horizontal_offsets` - Pre-computed x offsets for each note
+/// * `clef_type` - Clef type for pitch positioning
+/// * `units_per_space` - Scaling factor
+/// * `instrument_id` - Instrument ID for source reference
+/// * `staff_index` - Staff index for source reference
+/// * `voice_index` - Voice index for source reference
+/// * `staff_vertical_offset` - Vertical offset for this staff
+/// * `key_sharps` - Key signature (positive = sharps, negative = flats, 0 = C major)
+///
+/// # Returns
+/// Vector of accidental glyphs positioned to the left of their noteheads
+#[allow(clippy::too_many_arguments)]
+pub fn position_note_accidentals(
+    notes: &[super::NoteData],
+    horizontal_offsets: &[f32],
+    clef_type: &str,
+    units_per_space: f32,
+    instrument_id: &str,
+    staff_index: usize,
+    voice_index: usize,
+    staff_vertical_offset: f32,
+    key_sharps: i8,
+) -> Vec<Glyph> {
+    use std::collections::HashMap;
+
+    // Build set of pitch classes affected by key signature
+    // Sharp order: F C G D A E B (pitch classes: 5,0,7,2,9,4,11)
+    // Flat order:  B E A D G C F (pitch classes: 11,4,9,2,7,0,5)
+    let sharp_order: [u8; 7] = [5, 0, 7, 2, 9, 4, 11]; // F, C, G, D, A, E, B
+    let flat_order: [u8; 7] = [11, 4, 9, 2, 7, 0, 5]; // B, E, A, D, G, C, F
+
+    // key_alterations maps pitch_class -> alteration (+1 = sharp, -1 = flat)
+    let mut key_alterations: HashMap<u8, i8> = HashMap::new();
+    if key_sharps > 0 {
+        for &pc in sharp_order.iter().take(key_sharps as usize) {
+            key_alterations.insert(pc, 1);
+        }
+    } else if key_sharps < 0 {
+        for &pc in flat_order.iter().take(key_sharps.unsigned_abs() as usize) {
+            key_alterations.insert(pc, -1);
+        }
+    }
+
+    // Map pitch classes to their "natural" (white key) MIDI value
+    // C=0, D=2, E=4, F=5, G=7, A=9, B=11
+    let natural_pitch_classes: [u8; 12] = [
+        0,  // C  -> natural = C(0)
+        0,  // C# -> natural = C(0), so alteration = +1
+        2,  // D  -> natural = D(2)
+        2,  // D# -> natural = D(2), so alteration = +1
+        4,  // E  -> natural = E(4)
+        5,  // F  -> natural = F(5)
+        5,  // F# -> natural = F(5), so alteration = +1
+        7,  // G  -> natural = G(7)
+        7,  // G# -> natural = G(7), so alteration = +1
+        9,  // A  -> natural = A(9)
+        9,  // A# -> natural = A(9), so alteration = +1
+        11, // B  -> natural = B(11)
+    ];
+
+    // Compute the chromatic alteration of each pitch class
+    // 0 = natural, +1 = sharp, -1 = flat
+    let chromatic_alteration: [i8; 12] = [
+        0, // C  = natural
+        1, // C# = sharp
+        0, // D  = natural
+        1, // D# = sharp (enharmonic Eb = flat, but MIDI doesn't distinguish)
+        0, // E  = natural
+        0, // F  = natural
+        1, // F# = sharp
+        0, // G  = natural
+        1, // G# = sharp (enharmonic Ab = flat)
+        0, // A  = natural
+        1, // A# = sharp (enharmonic Bb = flat)
+        0, // B  = natural
+    ];
+
+    // For flats in the key signature, we need to interpret certain pitch classes as flats
+    // E.g., in F major (1 flat = Bb), MIDI pitch class 10 is Bb (flat), not A#
+    // The key signature tells us which way to spell ambiguous pitches
+
+    let mut accidental_glyphs = Vec::new();
+
+    // Track accidentals stated so far in the current measure
+    // Maps pitch_class -> last stated alteration in this measure
+    let mut measure_accidental_state: HashMap<u8, i8> = HashMap::new();
+    let mut current_measure: u32 = u32::MAX; // Force reset on first note
+
+    // Position accidental to the left of notehead.
+    // Both accidental and notehead use text-anchor:middle in SVG rendering,
+    // so the offset must account for half-widths of both glyphs plus a gap.
+    // At font-size 80: notehead ~23.6 units wide (half=11.8),
+    // sharp ~23.6 units wide (half=11.8), standard gap ~5 units.
+    // Total center-to-center offset: -(11.8 + 5 + 11.8) ≈ -29
+    let accidental_x_offset = -29.0;
+
+    for (i, ((pitch, start_tick, _duration, spelling), &notehead_x)) in
+        notes.iter().zip(horizontal_offsets.iter()).enumerate()
+    {
+        let pitch = *pitch;
+        let start_tick = *start_tick;
+        let pitch_class = pitch % 12;
+
+        // Check for measure boundary (reset accidental state)
+        let measure = start_tick / 3840;
+        if measure != current_measure {
+            measure_accidental_state.clear();
+            current_measure = measure;
+        }
+
+        // Determine the note's actual alteration
+        // If explicit spelling is available from MusicXML, use it; otherwise infer from MIDI
+        let note_alteration = if let Some((_step, alter)) = spelling {
+            *alter
+        } else {
+            chromatic_alteration[pitch_class as usize]
+        };
+
+        // What does the key signature say about this pitch class's diatonic note?
+        let diatonic_pc = natural_pitch_classes[pitch_class as usize];
+        let _key_says = key_alterations.get(&diatonic_pc).copied().unwrap_or(0);
+
+        // For flat keys: if the key says sharp on a diatonic note, that means the
+        // pitch class one semitone up is the default. But we deal with it differently:
+        // In flat keys, check if the key signature covers this specific pitch class.
+        // E.g. key of F (1 flat = Bb): diatonic B (pc=11) is flatted to Bb (pc=10)
+        // So for pc=10, key_says for diatonic_pc=9(A)? No...
+        //
+        // Let's simplify: determine if the note needs an accidental by checking
+        // whether the key signature already accounts for this note's sound.
+
+        // A note needs an accidental if:
+        // 1. It has an alteration not covered by the key signature, OR
+        // 2. It is natural but the key signature would alter it (needs a natural sign)
+
+        let needs_accidental;
+        let accidental_type: i8; // +1=sharp, -1=flat, 0=natural
+
+        if key_sharps > 0 {
+            // Sharp key: key signature sharps certain diatonic notes
+            if key_alterations.contains_key(&pitch_class) {
+                // This pitch class IS a sharp in the key (e.g., F# in G major)
+                // The note should sound as this pitch naturally, no accidental needed
+                needs_accidental = false;
+                accidental_type = 0;
+            } else if note_alteration == 1 {
+                // Note is sharp but NOT in key signature → needs explicit sharp
+                needs_accidental = true;
+                accidental_type = 1; // sharp
+            } else if note_alteration == 0 {
+                // Natural note — check if key signature sharpens this diatonic note
+                if key_alterations.contains_key(&pitch_class) {
+                    // Already handled above (unreachable here)
+                    needs_accidental = false;
+                    accidental_type = 0;
+                } else {
+                    // Check if this diatonic note is sharped by key sig
+                    // e.g., in G major, F is sharped → natural F needs a natural sign
+                    // pitch_class is the diatonic (natural) pitch class
+                    // Check if key_alterations has an entry that would sharpen this note
+                    let is_sharped_by_key = key_alterations.contains_key(&pitch_class);
+                    if is_sharped_by_key {
+                        needs_accidental = true;
+                        accidental_type = 0; // natural
+                    } else {
+                        needs_accidental = false;
+                        accidental_type = 0;
+                    }
+                }
+            } else {
+                // Flat note in a sharp key → always needs accidental
+                needs_accidental = true;
+                accidental_type = -1;
+            }
+        } else if key_sharps < 0 {
+            // Flat key: key signature flats certain diatonic notes
+            // E.g., F major (1 flat): B is flatted to Bb
+            // In flat keys, the flattened pitch classes are:
+            // flat_order gives the diatonic notes that get flatted
+            // The SOUNDING pitch class of a flatted note = diatonic_pc - 1
+            let flatted_sounding: Vec<u8> = flat_order
+                .iter()
+                .take(key_sharps.unsigned_abs() as usize)
+                .map(|&pc| (pc + 12 - 1) % 12) // B(11)->Bb(10), E(4)->Eb(3), etc.
+                .collect();
+
+            if flatted_sounding.contains(&pitch_class) {
+                // This note is a flat that's in the key signature → no accidental
+                needs_accidental = false;
+                accidental_type = 0;
+            } else if note_alteration == 0 {
+                // Natural note — check if key would flat the diatonic version
+                let diatonic_is_flatted = flat_order
+                    .iter()
+                    .take(key_sharps.unsigned_abs() as usize)
+                    .any(|&pc| pc == pitch_class);
+                if diatonic_is_flatted {
+                    // e.g., B natural in key of F (where B is normally flatted) → needs natural
+                    needs_accidental = true;
+                    accidental_type = 0; // natural
+                } else {
+                    needs_accidental = false;
+                    accidental_type = 0;
+                }
+            } else if note_alteration == 1 {
+                // Sharp note in flat key → needs sharp accidental
+                needs_accidental = true;
+                accidental_type = 1;
+            } else {
+                // Flat note not in key signature → needs explicit flat
+                needs_accidental = true;
+                accidental_type = -1;
+            }
+        } else {
+            // C major / A minor: no key signature accidentals
+            if note_alteration != 0 {
+                needs_accidental = true;
+                accidental_type = note_alteration;
+            } else {
+                needs_accidental = false;
+                accidental_type = 0;
+            }
+        }
+
+        if !needs_accidental {
+            continue;
+        }
+
+        // Check measure-scoped state: skip if same accidental already stated for this pitch
+        if let Some(&prev) = measure_accidental_state.get(&pitch_class) {
+            if prev == accidental_type {
+                continue; // Already stated this accidental in this measure
+            }
+        }
+
+        // Record this accidental in the measure state
+        measure_accidental_state.insert(pitch_class, accidental_type);
+
+        // Choose SMuFL codepoint
+        let (codepoint, glyph_name) = match accidental_type {
+            1 => ('\u{E262}', "accidentalSharp"),
+            -1 => ('\u{E260}', "accidentalFlat"),
+            _ => ('\u{E261}', "accidentalNatural"),
+        };
+
+        // Position accidental at same Y as notehead, offset to the left
+        let y = pitch_to_y_with_spelling(pitch, clef_type, units_per_space, *spelling)
+            + staff_vertical_offset;
+        let position = Point {
+            x: notehead_x + accidental_x_offset,
+            y,
+        };
+
+        let bounding_box = compute_glyph_bounding_box(glyph_name, &position, 40.0, units_per_space);
+
+        accidental_glyphs.push(Glyph {
+            position,
+            bounding_box,
+            codepoint: codepoint.to_string(),
+            source_reference: SourceReference {
+                instrument_id: instrument_id.to_string(),
+                staff_index,
+                voice_index,
+                event_index: i,
+            },
+        });
+    }
+
+    accidental_glyphs
+}
+
+/// Position ledger lines for notes above or below the 5-line staff
+///
+/// Ledger lines are short horizontal lines drawn at every staff-space interval
+/// between the staff boundary and the note position, for notes outside the
+/// standard 5-line range.
+///
+/// Staff lines span y=0 (top) to y=4*2*units_per_space = 160 (bottom) relative
+/// to the staff's vertical offset. Notes above the top line (y < 0) or below
+/// the bottom line (y > 160) need ledger lines.
+///
+/// # Arguments
+/// * `notes` - Note events (pitch, start_tick, duration)
+/// * `horizontal_offsets` - Pre-computed x offsets for each note
+/// * `clef_type` - Clef type for pitch positioning
+/// * `units_per_space` - Scaling factor (20.0 = 1 staff space)
+/// * `staff_vertical_offset` - Vertical offset for this staff
+///
+/// # Returns
+/// Vector of LedgerLine structs for notes outside staff range
+pub fn position_ledger_lines(
+    notes: &[super::NoteData],
+    horizontal_offsets: &[f32],
+    clef_type: &str,
+    units_per_space: f32,
+    staff_vertical_offset: f32,
+) -> Vec<LedgerLine> {
+    let mut ledger_lines = Vec::new();
+
+    // Staff line positions relative to staff_vertical_offset:
+    // Top line: y = staff_vertical_offset + 0
+    // Bottom line: y = staff_vertical_offset + 8 * units_per_space (= 160 at ups=20)
+    let top_line_y = staff_vertical_offset;
+    let bottom_line_y = staff_vertical_offset + 8.0 * units_per_space;
+
+    // Ledger line width: ~2.5 staff spaces, centered on note x
+    let ledger_half_width = 1.25 * units_per_space;
+
+    // Use a set to deduplicate ledger lines at the same (x, y) position
+    // (multiple notes at the same tick/pitch shouldn't duplicate ledger lines)
+    let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
+
+    for ((pitch, _start_tick, _duration, spelling), &notehead_x) in
+        notes.iter().zip(horizontal_offsets.iter())
+    {
+        let note_y = pitch_to_y_with_spelling(*pitch, clef_type, units_per_space, *spelling)
+            + staff_vertical_offset;
+
+        if note_y < top_line_y {
+            // Note is above the staff — draw ledger lines from (top_line - 2*ups) up to note
+            // Ledger lines at every 2*units_per_space interval above top line
+            let mut y = top_line_y - 2.0 * units_per_space;
+            while y >= note_y - units_per_space * 0.5 {
+                let key = (notehead_x as i32, (y * 10.0) as i32);
+                if seen.insert(key) {
+                    ledger_lines.push(LedgerLine {
+                        y_position: y,
+                        start_x: notehead_x - ledger_half_width,
+                        end_x: notehead_x + ledger_half_width,
+                    });
+                }
+                y -= 2.0 * units_per_space;
+            }
+        } else if note_y > bottom_line_y {
+            // Note is below the staff — draw ledger lines from (bottom_line + 2*ups) down to note
+            let mut y = bottom_line_y + 2.0 * units_per_space;
+            while y <= note_y + units_per_space * 0.5 {
+                let key = (notehead_x as i32, (y * 10.0) as i32);
+                if seen.insert(key) {
+                    ledger_lines.push(LedgerLine {
+                        y_position: y,
+                        start_x: notehead_x - ledger_half_width,
+                        end_x: notehead_x + ledger_half_width,
+                    });
+                }
+                y += 2.0 * units_per_space;
+            }
+        }
+    }
+
+    ledger_lines
 }
 
 /// Position structural glyphs (clefs, key sigs, time sigs) at system start
@@ -574,9 +980,9 @@ mod tests {
     fn test_position_noteheads_integration() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 960),    // Middle C, quarter note
-            (62, 960, 960),  // D4, quarter note
-            (64, 1920, 960), // E4, quarter note
+            (60, 0, 960, None),    // Middle C, quarter note
+            (62, 960, 960, None),  // D4, quarter note
+            (64, 1920, 960, None), // E4, quarter note
         ];
         let horizontal_offsets = vec![0.0, 100.0, 200.0];
 

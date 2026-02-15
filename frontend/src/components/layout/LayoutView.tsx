@@ -25,6 +25,7 @@ interface ConvertedScore {
           duration: number;
           pitch: number;
           articulation: null;
+          spelling?: { step: string; alter: number };
         }>;
       }>;
     }>;
@@ -111,6 +112,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
           duration: note.duration_ticks,
           pitch: note.pitch,
           articulation: null,
+          spelling: note.spelling,
         }))
       }]
     };

@@ -1,6 +1,6 @@
 use crate::domain::{
     ids::NoteId,
-    value_objects::{Pitch, Tick},
+    value_objects::{NoteSpelling, Pitch, Tick},
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,9 @@ pub struct Note {
     pub start_tick: Tick,
     pub duration_ticks: u32,
     pub pitch: Pitch,
+    /// Optional enharmonic spelling (e.g., D# vs Eb) preserved from MusicXML import
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spelling: Option<NoteSpelling>,
 }
 
 impl Note {
@@ -24,7 +27,14 @@ impl Note {
             start_tick,
             duration_ticks,
             pitch,
+            spelling: None,
         })
+    }
+
+    /// Set the enharmonic spelling for this note (builder pattern)
+    pub fn with_spelling(mut self, spelling: NoteSpelling) -> Self {
+        self.spelling = Some(spelling);
+        self
     }
 
     pub fn end_tick(&self) -> Tick {

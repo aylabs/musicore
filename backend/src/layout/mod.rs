@@ -23,8 +23,8 @@ pub mod wasm;
 pub use breaker::MeasureInfo;
 pub use types::{
     BarLine, BarLineSegment, BarLineType, BoundingBox, BracketGlyph, BracketType, Color,
-    GlobalLayout, Glyph, GlyphRun, MeasureNumber, Point, SourceReference, Staff, StaffGroup,
-    StaffLine, System, TickRange,
+    GlobalLayout, Glyph, GlyphRun, LedgerLine, MeasureNumber, Point, SourceReference, Staff,
+    StaffGroup, StaffLine, System, TickRange,
 };
 
 /// Configuration for layout computation
@@ -206,12 +206,45 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     &note_positions,
                 );
 
+                // Generate ledger lines for notes outside the 5-line staff
+                let mut ledger_lines = Vec::new();
+                for voice in &staff_data.voices {
+                    let notes_in_range: Vec<NoteData> = voice
+                        .notes
+                        .iter()
+                        .filter(|note| {
+                            note.start_tick >= system.tick_range.start_tick
+                                && note.start_tick < system.tick_range.end_tick
+                        })
+                        .map(|note| {
+                            (
+                                note.pitch,
+                                note.start_tick,
+                                note.duration_ticks,
+                                note.spelling,
+                            )
+                        })
+                        .collect();
+                    let offsets: Vec<f32> = notes_in_range
+                        .iter()
+                        .map(|(_, tick, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
+                        .collect();
+                    ledger_lines.extend(positioner::position_ledger_lines(
+                        &notes_in_range,
+                        &offsets,
+                        &staff_data.clef,
+                        config.units_per_space,
+                        staff_vertical_offset,
+                    ));
+                }
+
                 // Create staff with batched glyphs and structural glyphs
                 let staff = Staff {
                     staff_lines,
                     glyph_runs,
                     structural_glyphs,
                     bar_lines,
+                    ledger_lines,
                 };
 
                 staves.push(staff);
@@ -385,12 +418,20 @@ struct VoiceData {
     notes: Vec<NoteEvent>,
 }
 
+/// Note data tuple: (pitch, start_tick, duration_ticks, spelling)
+///
+/// Spelling is an optional (step_letter, alter) pair from MusicXML,
+/// e.g. ('E', -1) for Eb, ('D', 1) for D#.
+pub type NoteData = (u8, u32, u32, Option<(char, i8)>);
+
 /// Represents a single note event
 #[derive(Debug, Clone)]
 struct NoteEvent {
     pitch: u8,
     start_tick: u32,
     duration_ticks: u32,
+    /// Explicit spelling from MusicXML: (step_letter, alter) e.g. ('E', -1) for Eb
+    spelling: Option<(char, i8)>,
 }
 
 /// Extract instruments from CompiledScore JSON
@@ -474,10 +515,21 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
                                         note_item["duration_ticks"].as_u64().unwrap_or(960) as u32 // Format 2
                                     };
 
+                                    // Extract optional note spelling (step + alter) from MusicXML
+                                    let spelling = note_item["spelling"]["step"]
+                                        .as_str()
+                                        .and_then(|s| s.chars().next())
+                                        .and_then(|step| {
+                                            note_item["spelling"]["alter"]
+                                                .as_i64()
+                                                .map(|alter| (step, alter as i8))
+                                        });
+
                                     notes.push(NoteEvent {
                                         pitch,
                                         start_tick,
                                         duration_ticks,
+                                        spelling,
                                     });
                                 }
                                 eprintln!(
@@ -624,13 +676,20 @@ fn position_glyphs_for_staff(
 
     for (voice_index, voice) in staff_data.voices.iter().enumerate() {
         // Filter notes that fall within this system's tick range
-        let notes_in_range: Vec<(u8, u32, u32)> = voice
+        let notes_in_range: Vec<NoteData> = voice
             .notes
             .iter()
             .filter(|note| {
                 note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
             })
-            .map(|note| (note.pitch, note.start_tick, note.duration_ticks))
+            .map(|note| {
+                (
+                    note.pitch,
+                    note.start_tick,
+                    note.duration_ticks,
+                    note.spelling,
+                )
+            })
             .collect();
 
         if notes_in_range.is_empty() {
@@ -640,7 +699,7 @@ fn position_glyphs_for_staff(
         // Use pre-computed positions from unified spacing (Principle VI)
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
+            .map(|(_, start_tick, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
             .collect();
 
         // Position noteheads using positioner module
@@ -656,6 +715,21 @@ fn position_glyphs_for_staff(
         );
 
         all_glyphs.extend(glyphs);
+
+        // Position accidentals based on key signature and measure context
+        let accidental_glyphs = positioner::position_note_accidentals(
+            &notes_in_range,
+            &horizontal_offsets,
+            &staff_data.clef,
+            units_per_space,
+            instrument_id,
+            staff_index,
+            voice_index,
+            staff_vertical_offset,
+            staff_data.key_sharps,
+        );
+
+        all_glyphs.extend(accidental_glyphs);
 
         // T056-T058: Stem/beam generation disabled - using combined notehead+stem glyphs
         // SMuFL provides U+E1D3/U+E1D5 which include stems in the glyph
@@ -1218,6 +1292,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staff_1 = Staff {
@@ -1225,6 +1300,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -1275,6 +1351,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staff_1 = Staff {
@@ -1282,6 +1359,7 @@ mod tests {
             glyph_runs: vec![],
             structural_glyphs: vec![],
             bar_lines: vec![],
+            ledger_lines: vec![],
         };
 
         let staves = vec![staff_0, staff_1];

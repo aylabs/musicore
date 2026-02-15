@@ -364,6 +364,20 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       }
     }
 
+    // Render ledger lines (short lines for notes above/below staff)
+    if (staff.ledger_lines) {
+      for (const ledgerLine of staff.ledger_lines) {
+        const line = createSVGElement('line');
+        line.setAttribute('x1', ledgerLine.start_x.toString());
+        line.setAttribute('y1', ledgerLine.y_position.toString());
+        line.setAttribute('x2', ledgerLine.end_x.toString());
+        line.setAttribute('y2', ledgerLine.y_position.toString());
+        line.setAttribute('stroke', config.staffLineColor);
+        line.setAttribute('stroke-width', '1.5');
+        staffElement.appendChild(line);
+      }
+    }
+
     // Render glyph runs (Task T020)
     for (const glyphRun of staff.glyph_runs) {
       const glyphRunElement = this.renderGlyphRun(glyphRun, systemIndex);

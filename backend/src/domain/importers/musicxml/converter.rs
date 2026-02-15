@@ -659,6 +659,13 @@ impl MusicXMLConverter {
             }
         })?;
 
+        // Preserve the enharmonic spelling from MusicXML (e.g., D# vs Eb)
+        let spelling = crate::domain::value_objects::NoteSpelling {
+            step: pitch_data.step,
+            alter: pitch_data.alter as i8,
+        };
+        let note = note.with_spelling(spelling);
+
         Ok(note)
     }
 }
