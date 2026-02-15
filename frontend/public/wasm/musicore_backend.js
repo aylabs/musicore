@@ -548,6 +548,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).call(getObject(arg1));
             return addHeapObject(ret);
         }, arguments); },
+        __wbg_codePointAt_bf59dbf74d8db275: function(arg0, arg1) {
+            const ret = getObject(arg0).codePointAt(arg1 >>> 0);
+            return addHeapObject(ret);
+        },
         __wbg_done_57b39ecd9addfe81: function(arg0) {
             const ret = getObject(arg0).done;
             return ret;
@@ -556,6 +560,10 @@ function __wbg_get_imports() {
             const ret = Object.entries(getObject(arg0));
             return addHeapObject(ret);
         },
+        __wbg_fromCodePoint_22365db7b7d6ac39: function() { return handleError(function (arg0) {
+            const ret = String.fromCodePoint(arg0 >>> 0);
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_getRandomValues_9c5c1b115e142bb8: function() { return handleError(function (arg0, arg1) {
             globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
         }, arguments); },
@@ -608,6 +616,10 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbg_length_35a7bace40f36eac: function(arg0) {
+            const ret = getObject(arg0).length;
+            return ret;
+        },
+        __wbg_length_68dc7c5cf1b6d349: function(arg0) {
             const ret = getObject(arg0).length;
             return ret;
         },

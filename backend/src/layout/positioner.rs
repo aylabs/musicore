@@ -40,34 +40,80 @@ use crate::layout::types::{BoundingBox, Glyph, LedgerLine, Point, SourceReferenc
 /// # Returns
 /// Y-coordinate in logical units (system-relative, positive = downward)
 pub fn pitch_to_y(pitch: u8, clef_type: &str, units_per_space: f32) -> f32 {
+    pitch_to_y_with_spelling(pitch, clef_type, units_per_space, None)
+}
+
+/// Convert MIDI pitch to Y coordinate, optionally using explicit note spelling
+///
+/// When `spelling` is provided (step letter + alter), the note is positioned on the
+/// correct diatonic line/space for its spelled name. Without spelling, sharps are assumed
+/// for chromatic pitches (e.g., MIDI 63 = D# not Eb).
+pub fn pitch_to_y_with_spelling(
+    pitch: u8,
+    clef_type: &str,
+    units_per_space: f32,
+    spelling: Option<(char, i8)>,
+) -> f32 {
     // Convert MIDI pitch to diatonic staff position
     // Each octave has 7 diatonic notes (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
 
-    // Map chromatic pitch classes to diatonic letter positions
-    // Accidentals (sharps/flats) sit on the same line as their natural note
-    // C and C# both at position 0, D and D# at position 1, etc.
-    const DIATONIC_POSITIONS: [f32; 12] = [
-        0.0, // C
-        0.0, // C# (same Y position as C, sharp drawn separately)
-        1.0, // D
-        1.0, // D# (same Y position as D, sharp drawn separately)
-        2.0, // E
-        3.0, // F
-        3.0, // F# (same Y position as F, sharp drawn separately)
-        4.0, // G
-        4.0, // G# (same Y position as G, sharp drawn separately)
-        5.0, // A
-        5.0, // A# (same Y position as A, sharp drawn separately)
-        6.0, // B
-    ];
+    // Map step letter to diatonic position within octave
+    fn step_to_diatonic(step: char) -> f32 {
+        match step {
+            'C' => 0.0,
+            'D' => 1.0,
+            'E' => 2.0,
+            'F' => 3.0,
+            'G' => 4.0,
+            'A' => 5.0,
+            'B' => 6.0,
+            _ => 0.0,
+        }
+    }
 
-    let pitch_class = (pitch % 12) as usize;
-    // MIDI octave: C(-1) = 0, C0 = 12, C1 = 24, C5 = 60, etc.
-    // So octave number = (pitch / 12) - 1, but we count from C(-1) as octave 0 for calculation
-    let octave = (pitch / 12) as i32;
-
-    // Calculate diatonic position within octave
-    let diatonic_pos_in_octave = DIATONIC_POSITIONS[pitch_class];
+    let (diatonic_pos_in_octave, octave) = if let Some((step, _alter)) = spelling {
+        // Use explicit spelling to determine staff position
+        let diatonic = step_to_diatonic(step);
+        // MIDI octave: C4 = 60, so octave = pitch / 12
+        // But we need to handle boundary: B# is in the next octave, Cb is in the previous
+        let midi_octave = (pitch / 12) as i32;
+        // Check for octave boundary crossings:
+        // - Cb/Cbb: spelled as C but sounds as B (one octave lower MIDI-wise)
+        //   MIDI gives us octave of B, but the note is spelled as C in that same octave
+        // - B#/B##: spelled as B but sounds as C (one octave higher MIDI-wise)
+        //   MIDI gives us octave of C, but the note is spelled as B in the previous octave
+        let adjusted_octave = if step == 'B' && (pitch % 12) < 2 {
+            // B# or B## — MIDI pitch is in C/C# range but note is spelled as B
+            // Use the octave below the MIDI octave
+            midi_octave - 1
+        } else if step == 'C' && (pitch % 12) > 10 {
+            // Cb or Cbb — MIDI pitch is in B/Bb range but note is spelled as C
+            // Use the octave above the MIDI octave
+            midi_octave + 1
+        } else {
+            midi_octave
+        };
+        (diatonic, adjusted_octave)
+    } else {
+        // Fallback: infer from MIDI pitch class (assumes sharps for chromatic notes)
+        const DIATONIC_POSITIONS: [f32; 12] = [
+            0.0, // C
+            0.0, // C# (same Y position as C, sharp drawn separately)
+            1.0, // D
+            1.0, // D# (same Y position as D, sharp drawn separately)
+            2.0, // E
+            3.0, // F
+            3.0, // F# (same Y position as F, sharp drawn separately)
+            4.0, // G
+            4.0, // G# (same Y position as G, sharp drawn separately)
+            5.0, // A
+            5.0, // A# (same Y position as A, sharp drawn separately)
+            6.0, // B
+        ];
+        let pitch_class = (pitch % 12) as usize;
+        let octave = (pitch / 12) as i32;
+        (DIATONIC_POSITIONS[pitch_class], octave)
+    };
 
     // Total diatonic steps from C(-1) (MIDI 0)
     let diatonic_steps_from_c_minus1 = (octave * 7) as f32 + diatonic_pos_in_octave;
@@ -158,7 +204,7 @@ pub fn compute_glyph_bounding_box(
 /// Vector of positioned glyph structs
 #[allow(clippy::too_many_arguments)]
 pub fn position_noteheads(
-    notes: &[(u8, u32, u32)], // (pitch, start_tick, duration)
+    notes: &[(u8, u32, u32, Option<(char, i8)>)], // (pitch, start_tick, duration, spelling)
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -171,8 +217,10 @@ pub fn position_noteheads(
         .iter()
         .zip(horizontal_offsets.iter())
         .enumerate()
-        .map(|(i, ((pitch, _start, duration), &x))| {
-            let y = pitch_to_y(*pitch, clef_type, units_per_space) + staff_vertical_offset;
+        .map(|(i, ((pitch, _start, duration, spelling), &x))| {
+            // Use explicit spelling for Y position when available (e.g., Eb vs D#)
+            let y = pitch_to_y_with_spelling(*pitch, clef_type, units_per_space, *spelling)
+                + staff_vertical_offset;
             let position = Point { x, y };
 
             // T021-T022: Choose notehead codepoint based on duration_ticks
@@ -463,7 +511,7 @@ pub fn position_key_signature(
 /// Vector of accidental glyphs positioned to the left of their noteheads
 #[allow(clippy::too_many_arguments)]
 pub fn position_note_accidentals(
-    notes: &[(u8, u32, u32)],
+    notes: &[(u8, u32, u32, Option<(char, i8)>)],
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -546,7 +594,7 @@ pub fn position_note_accidentals(
     // Total center-to-center offset: -(11.8 + 5 + 11.8) ≈ -29
     let accidental_x_offset = -29.0;
 
-    for (i, ((pitch, start_tick, _duration), &notehead_x)) in
+    for (i, ((pitch, start_tick, _duration, spelling), &notehead_x)) in
         notes.iter().zip(horizontal_offsets.iter()).enumerate()
     {
         let pitch = *pitch;
@@ -561,7 +609,12 @@ pub fn position_note_accidentals(
         }
 
         // Determine the note's actual alteration
-        let note_alteration = chromatic_alteration[pitch_class as usize];
+        // If explicit spelling is available from MusicXML, use it; otherwise infer from MIDI
+        let note_alteration = if let Some((_step, alter)) = spelling {
+            *alter
+        } else {
+            chromatic_alteration[pitch_class as usize]
+        };
 
         // What does the key signature say about this pitch class's diatonic note?
         let diatonic_pc = natural_pitch_classes[pitch_class as usize];
@@ -691,7 +744,8 @@ pub fn position_note_accidentals(
         };
 
         // Position accidental at same Y as notehead, offset to the left
-        let y = pitch_to_y(pitch, clef_type, units_per_space) + staff_vertical_offset;
+        let y = pitch_to_y_with_spelling(pitch, clef_type, units_per_space, *spelling)
+            + staff_vertical_offset;
         let position = Point {
             x: notehead_x + accidental_x_offset,
             y,
@@ -735,7 +789,7 @@ pub fn position_note_accidentals(
 /// # Returns
 /// Vector of LedgerLine structs for notes outside staff range
 pub fn position_ledger_lines(
-    notes: &[(u8, u32, u32)],
+    notes: &[(u8, u32, u32, Option<(char, i8)>)],
     horizontal_offsets: &[f32],
     clef_type: &str,
     units_per_space: f32,
@@ -756,10 +810,11 @@ pub fn position_ledger_lines(
     // (multiple notes at the same tick/pitch shouldn't duplicate ledger lines)
     let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
 
-    for ((pitch, _start_tick, _duration), &notehead_x) in
+    for ((pitch, _start_tick, _duration, spelling), &notehead_x) in
         notes.iter().zip(horizontal_offsets.iter())
     {
-        let note_y = pitch_to_y(*pitch, clef_type, units_per_space) + staff_vertical_offset;
+        let note_y = pitch_to_y_with_spelling(*pitch, clef_type, units_per_space, *spelling)
+            + staff_vertical_offset;
 
         if note_y < top_line_y {
             // Note is above the staff — draw ledger lines from (top_line - 2*ups) up to note
@@ -925,9 +980,9 @@ mod tests {
     fn test_position_noteheads_integration() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 960),    // Middle C, quarter note
-            (62, 960, 960),  // D4, quarter note
-            (64, 1920, 960), // E4, quarter note
+            (60, 0, 960, None),    // Middle C, quarter note
+            (62, 960, 960, None),  // D4, quarter note
+            (64, 1920, 960, None), // E4, quarter note
         ];
         let horizontal_offsets = vec![0.0, 100.0, 200.0];
 

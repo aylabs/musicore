@@ -55,6 +55,18 @@ impl Pitch {
     }
 }
 
+/// Note spelling preserving the enharmonic representation (e.g., D# vs Eb)
+///
+/// Stores the note name (step) and chromatic alteration from MusicXML or user input,
+/// so the original enharmonic spelling is maintained through the layout pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoteSpelling {
+    /// Note letter name: 'C', 'D', 'E', 'F', 'G', 'A', 'B'
+    pub step: char,
+    /// Chromatic alteration: -1 = flat, 0 = natural, 1 = sharp
+    pub alter: i8,
+}
+
 /// Musical clef types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Clef {
