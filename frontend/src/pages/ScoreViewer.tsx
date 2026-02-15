@@ -85,6 +85,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Track which system we last auto-scrolled to, to avoid redundant scrolls */
   private lastAutoScrollSystemIndex: number = -1;
 
+  /** Active auto-scroll animation frame ID */
+  private autoScrollAnimationId: number | null = null;
+
   constructor(props: ScoreViewerProps) {
     super(props);
     this.containerRef = createRef();
@@ -139,6 +142,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
+    }
+    if (this.autoScrollAnimationId !== null) {
+      cancelAnimationFrame(this.autoScrollAnimationId);
     }
   }
 
@@ -235,22 +241,18 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
   /**
    * Auto-scroll to keep the system containing highlighted notes visible.
-   * Called during playback when highlightedNoteIds changes.
-   * Finds which system contains the playing notes and scrolls the page
-   * so that system is visible, using smooth scrolling for natural feel.
+   * Uses requestAnimationFrame with ease-out interpolation for smooth scrolling
+   * that doesn't jump abruptly between systems.
    */
   private scrollToHighlightedSystem(): void {
     const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
     if (!layout || !highlightedNoteIds || !sourceToNoteIdMap) return;
 
     // Find the system index containing highlighted notes
-    // by checking which system's sourceToNoteIdMap entries match highlighted IDs
     let targetSystemIndex = -1;
 
     for (const system of layout.systems) {
-      // Check if any note in this system is highlighted
       for (const [key, noteId] of sourceToNoteIdMap.entries()) {
-        // Key format: "{system_index}/..."
         const keySystemIndex = parseInt(key.split('/')[0], 10);
         if (keySystemIndex === system.index && highlightedNoteIds.has(noteId)) {
           targetSystemIndex = system.index;
@@ -260,7 +262,6 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       if (targetSystemIndex >= 0) break;
     }
 
-    // Only scroll if we found a system and it's different from the last one
     if (targetSystemIndex < 0 || targetSystemIndex === this.lastAutoScrollSystemIndex) {
       return;
     }
@@ -270,26 +271,52 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const targetSystem = layout.systems[targetSystemIndex];
     if (!targetSystem) return;
 
-    // Calculate the pixel position of the target system
     const { zoom } = this.state;
     const systemTopPx = targetSystem.bounding_box.y * zoom;
 
-    // Find the wrapper element and scroll so the system is near the top
     const wrapper = this.wrapperRef.current;
-    if (wrapper) {
-      // Get the wrapper's position relative to the page
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
-      const wrapperTopInPage = wrapperRect.top + currentPageScroll;
+    if (!wrapper) return;
 
-      // Target: scroll so the system is ~60px from the top of the viewport
-      const targetScroll = wrapperTopInPage + systemTopPx - 60;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
+    const wrapperTopInPage = wrapperRect.top + currentPageScroll;
 
-      window.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth',
-      });
+    // Target: position system ~60px from the top of the viewport
+    const targetScroll = Math.max(0, wrapperTopInPage + systemTopPx - 60);
+
+    // Cancel any in-progress animation
+    if (this.autoScrollAnimationId !== null) {
+      cancelAnimationFrame(this.autoScrollAnimationId);
+      this.autoScrollAnimationId = null;
     }
+
+    // Animate scroll with ease-out curve over 600ms for smooth feel
+    const startScroll = window.scrollY;
+    const distance = targetScroll - startScroll;
+
+    // Skip if distance is negligible
+    if (Math.abs(distance) < 2) return;
+
+    const duration = 600; // ms
+    const startTime = performance.now();
+
+    const animateScroll = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease-out cubic: decelerates smoothly
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      window.scrollTo(0, startScroll + distance * eased);
+
+      if (progress < 1) {
+        this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+      } else {
+        this.autoScrollAnimationId = null;
+      }
+    };
+
+    this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
   }
 
   /**
