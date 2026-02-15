@@ -29,6 +29,12 @@ export interface ScoreViewerProps {
   highlightedNoteIds?: Set<string>;
   /** Feature 019: Map from SourceReference keys to Note IDs */
   sourceToNoteIdMap?: Map<string, string>;
+  /** Toggle playback on click/touch of the score */
+  onTogglePlayback?: () => void;
+  /** Callback when a note glyph is clicked */
+  onNoteClick?: (noteId: string) => void;
+  /** ID of the currently selected note */
+  selectedNoteId?: string;
 }
 
 /**
@@ -74,12 +80,22 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
   private containerRef: RefObject<HTMLDivElement | null>;
   
+  /** Reference to the wrapper div for scroll-into-view calculations */
+  private wrapperRef: RefObject<HTMLDivElement | null>;
+  
   /** Debounce timer for scroll events */
   private scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Track which system we last auto-scrolled to, to avoid redundant scrolls */
+  private lastAutoScrollSystemIndex: number = -1;
+
+  /** Active auto-scroll animation frame ID */
+  private autoScrollAnimationId: number | null = null;
 
   constructor(props: ScoreViewerProps) {
     super(props);
     this.containerRef = createRef();
+    this.wrapperRef = createRef();
 
     const baseConfig = props.config || createDefaultConfig();
     const config = props.darkMode ? this.createDarkModeConfig(baseConfig) : baseConfig;
@@ -88,7 +104,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       viewport: {
         x: 0,
         y: 0,
-        width: 1200,
+        width: 2400,
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: props.initialZoom || 1.0,
@@ -131,10 +147,14 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
     }
+    if (this.autoScrollAnimationId !== null) {
+      cancelAnimationFrame(this.autoScrollAnimationId);
+    }
   }
 
   /**
-   * Update config when dark mode changes, and update viewport when layout changes
+   * Update config when dark mode changes, update viewport when layout changes,
+   * and auto-scroll to follow highlighted notes during playback.
    */
   componentDidUpdate(prevProps: ScoreViewerProps): void {
     if (prevProps.darkMode !== this.props.darkMode) {
@@ -146,6 +166,26 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Update viewport when layout changes (new score loaded)
     if (prevProps.layout !== this.props.layout && this.props.layout) {
       this.updateViewport();
+    }
+
+    // Auto-scroll to follow highlighted notes during playback
+    if (
+      this.props.highlightedNoteIds !== prevProps.highlightedNoteIds &&
+      this.props.highlightedNoteIds &&
+      this.props.highlightedNoteIds.size > 0 &&
+      this.props.layout &&
+      this.props.sourceToNoteIdMap
+    ) {
+      this.scrollToHighlightedSystem();
+    }
+
+    // Reset auto-scroll tracking when highlighting stops (playback stopped)
+    if (
+      prevProps.highlightedNoteIds &&
+      prevProps.highlightedNoteIds.size > 0 &&
+      (!this.props.highlightedNoteIds || this.props.highlightedNoteIds.size === 0)
+    ) {
+      this.lastAutoScrollSystemIndex = -1;
     }
   }
 
@@ -204,6 +244,86 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
+   * Auto-scroll to keep the system containing highlighted notes visible.
+   * Uses requestAnimationFrame with ease-out interpolation for smooth scrolling
+   * that doesn't jump abruptly between systems.
+   */
+  private scrollToHighlightedSystem(): void {
+    const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
+    if (!layout || !highlightedNoteIds || !sourceToNoteIdMap) return;
+
+    // Find the system index containing highlighted notes
+    let targetSystemIndex = -1;
+
+    for (const system of layout.systems) {
+      for (const [key, noteId] of sourceToNoteIdMap.entries()) {
+        const keySystemIndex = parseInt(key.split('/')[0], 10);
+        if (keySystemIndex === system.index && highlightedNoteIds.has(noteId)) {
+          targetSystemIndex = system.index;
+          break;
+        }
+      }
+      if (targetSystemIndex >= 0) break;
+    }
+
+    if (targetSystemIndex < 0 || targetSystemIndex === this.lastAutoScrollSystemIndex) {
+      return;
+    }
+
+    this.lastAutoScrollSystemIndex = targetSystemIndex;
+
+    const targetSystem = layout.systems[targetSystemIndex];
+    if (!targetSystem) return;
+
+    const { zoom } = this.state;
+    const systemTopPx = targetSystem.bounding_box.y * zoom;
+
+    const wrapper = this.wrapperRef.current;
+    if (!wrapper) return;
+
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
+    const wrapperTopInPage = wrapperRect.top + currentPageScroll;
+
+    // Target: position system ~60px from the top of the viewport
+    const targetScroll = Math.max(0, wrapperTopInPage + systemTopPx - 60);
+
+    // Cancel any in-progress animation
+    if (this.autoScrollAnimationId !== null) {
+      cancelAnimationFrame(this.autoScrollAnimationId);
+      this.autoScrollAnimationId = null;
+    }
+
+    // Animate scroll with ease-out curve over 600ms for smooth feel
+    const startScroll = window.scrollY;
+    const distance = targetScroll - startScroll;
+
+    // Skip if distance is negligible
+    if (Math.abs(distance) < 2) return;
+
+    const duration = 600; // ms
+    const startTime = performance.now();
+
+    const animateScroll = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease-out cubic: decelerates smoothly
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      window.scrollTo(0, startScroll + distance * eased);
+
+      if (progress < 1) {
+        this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+      } else {
+        this.autoScrollAnimationId = null;
+      }
+    };
+
+    this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+  }
+
+  /**
    * Handle zoom in (T067)
    */
   private handleZoomIn = (): void => {
@@ -254,7 +374,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const totalWidth = layout.total_width * zoom;
 
     return (
-      <div style={styles.wrapper}>
+      <div ref={this.wrapperRef} style={styles.wrapper}>
         {/* Zoom Controls (T067) */}
         <div style={styles.controls}>
           <button onClick={this.handleZoomOut} style={styles.button} title="Zoom Out">
@@ -272,9 +392,11 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         {/* Scroll Container (T066) */}
         <div
           ref={this.containerRef}
+          onClick={this.props.onTogglePlayback}
           style={{
             ...styles.container,
             backgroundColor: config.backgroundColor,
+            cursor: this.props.onTogglePlayback ? 'pointer' : 'default',
           }}
         >
           <div style={{ 
@@ -297,6 +419,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 viewport={viewport}
                 highlightedNoteIds={this.props.highlightedNoteIds}
                 sourceToNoteIdMap={this.props.sourceToNoteIdMap}
+                onNoteClick={this.props.onNoteClick}
+                selectedNoteId={this.props.selectedNoteId}
               />
             </div>
           </div>

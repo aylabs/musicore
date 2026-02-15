@@ -102,9 +102,9 @@ describe('User Story 3: Multi-Staff Rendering', () => {
       const system0 = systems[0];
       expect(system0.getAttribute('transform')).toMatch(/translate\(0,\s*0\)/);
       
-      // System 1 at y=300
+      // System 1: transform is translate(0, 0) because child elements use absolute coordinates
       const system1 = systems[1];
-      expect(system1.getAttribute('transform')).toMatch(/translate\(0,\s*300\)/);
+      expect(system1.getAttribute('transform')).toMatch(/translate\(0,\s*0\)/);
     });
   });
 

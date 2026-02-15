@@ -23,8 +23,8 @@ pub mod wasm;
 pub use breaker::MeasureInfo;
 pub use types::{
     BarLine, BarLineSegment, BarLineType, BoundingBox, BracketGlyph, BracketType, Color,
-    GlobalLayout, Glyph, GlyphRun, Point, SourceReference, Staff, StaffGroup, StaffLine, System,
-    TickRange,
+    GlobalLayout, Glyph, GlyphRun, MeasureNumber, Point, SourceReference, Staff, StaffGroup,
+    StaffLine, System, TickRange,
 };
 
 /// Configuration for layout computation
@@ -43,7 +43,7 @@ pub struct LayoutConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            max_system_width: 1600.0, // Wide enough to require horizontal scrolling on most displays
+            max_system_width: 2400.0, // Wide enough for 4-6 measures per system
             units_per_space: 20.0,    // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
             system_spacing: 200.0,    // Spacing between systems (gap after system_height)
             system_height: 600.0,     // Height for grand staff with 20 staff spaces separation
@@ -81,16 +81,30 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         })
         .collect();
 
-    // Break into systems
+    // Extract instruments from score (needed before breaking to compute system height)
+    let instruments = extract_instruments(score);
+
+    // Compute effective system height based on number of staves.
+    // A single staff occupies 8 * units_per_space (5 lines, 4 gaps of 2 spaces each).
+    // Each additional staff adds 20 * units_per_space of vertical offset.
+    // Add padding for measure numbers above (30 units) and spacing below (10 units).
+    let max_staves = instruments
+        .iter()
+        .map(|i| i.staves.len())
+        .max()
+        .unwrap_or(1);
+    let content_height = (max_staves as f32 - 1.0) * 20.0 * config.units_per_space
+        + 8.0 * config.units_per_space
+        + 40.0;
+    let effective_system_height = config.system_height.max(content_height);
+
+    // Break into systems using effective height that accommodates all staves
     let mut systems = breaker::break_into_systems(
         &measure_infos,
         config.max_system_width,
-        config.system_height,
+        effective_system_height,
         config.system_spacing,
     );
-
-    // Extract instruments from score
-    let instruments = extract_instruments(score);
 
     // Populate staff_groups for each system with positioned and batched glyphs
     for system in &mut systems {
@@ -228,6 +242,17 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         }
 
         system.staff_groups = staff_groups;
+
+        // T010: Compute measure number for this system
+        // Derive measure number from the system's start tick (3840 ticks per measure in 4/4)
+        let measure_num = (system.tick_range.start_tick / 3840) + 1;
+        system.measure_number = Some(MeasureNumber {
+            number: measure_num,
+            position: Point {
+                x: 60.0,                         // Aligned with clef
+                y: system.bounding_box.y - 30.0, // Above topmost staff line
+            },
+        });
     }
 
     // Compute GlobalLayout dimensions
@@ -239,7 +264,9 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         0.0
     } else {
         let last_system = systems.last().unwrap();
-        last_system.bounding_box.y + last_system.bounding_box.height
+        // Add bottom padding (100 units) so the last system's content
+        // (notes below staff, stems, etc.) isn't clipped
+        last_system.bounding_box.y + last_system.bounding_box.height + 100.0
     };
 
     GlobalLayout {

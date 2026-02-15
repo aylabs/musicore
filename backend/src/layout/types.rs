@@ -46,6 +46,20 @@ pub struct System {
     pub staff_groups: Vec<StaffGroup>,
     /// Musical time span covered by system (in 960 PPQ ticks)
     pub tick_range: TickRange,
+    /// Measure number displayed at start of system (1-based)
+    pub measure_number: Option<MeasureNumber>,
+}
+
+/// Positioned measure number at the start of a system
+///
+/// Displays the 1-based measure number above the topmost staff line,
+/// horizontally aligned with the clef glyph.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MeasureNumber {
+    /// 1-based measure number
+    pub number: u32,
+    /// Absolute (x, y) coordinates for rendering
+    pub position: Point,
 }
 
 /// Groups related staves for multi-staff instruments

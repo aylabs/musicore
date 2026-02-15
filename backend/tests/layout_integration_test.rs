@@ -197,3 +197,145 @@ fn test_multi_staff_layout_structure() {
 
     println!("✅ Multi-staff layout structure test passed");
 }
+
+/// T012: Multi-instrument score has exactly one measure number per system (US2)
+#[test]
+fn test_measure_number_single_per_multi_instrument_system() {
+    // Create a multi-instrument score (violin + cello)
+    let input = serde_json::json!({
+        "instruments": [
+            {
+                "id": "violin-1",
+                "name": "Violin",
+                "staves": [{
+                    "clef": "Treble",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 67},
+                            {"tick": 3840, "duration": 3840, "pitch": 69},
+                            {"tick": 7680, "duration": 3840, "pitch": 71}
+                        ]
+                    }]
+                }]
+            },
+            {
+                "id": "cello-1",
+                "name": "Cello",
+                "staves": [{
+                    "clef": "Bass",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 48},
+                            {"tick": 3840, "duration": 3840, "pitch": 50},
+                            {"tick": 7680, "duration": 3840, "pitch": 52}
+                        ]
+                    }]
+                }]
+            }
+        ]
+    });
+
+    let config = LayoutConfig::default();
+    let layout = compute_layout(&input, &config);
+    let layout_json = serde_json::to_value(&layout).unwrap();
+
+    let systems = layout_json["systems"].as_array().unwrap();
+    assert!(!systems.is_empty(), "Should have at least one system");
+
+    for (idx, system) in systems.iter().enumerate() {
+        // Each system should have exactly one measure_number (not per staff group)
+        assert!(
+            system["measure_number"].is_object(),
+            "System {} should have a single measure_number object",
+            idx
+        );
+
+        // Verify it has the expected fields
+        let mn = &system["measure_number"];
+        assert!(
+            mn["number"].is_number(),
+            "measure_number.number should be present for system {}",
+            idx
+        );
+        assert!(
+            mn["position"]["x"].is_number() && mn["position"]["y"].is_number(),
+            "measure_number.position should have x and y for system {}",
+            idx
+        );
+
+        // Verify it's NOT duplicated at the staff group level
+        let staff_groups = system["staff_groups"].as_array().unwrap();
+        assert!(
+            staff_groups.len() >= 2,
+            "Should have 2+ staff groups for multi-instrument score"
+        );
+
+        for sg in staff_groups {
+            assert!(
+                sg.get("measure_number").is_none() || sg["measure_number"].is_null(),
+                "measure_number should NOT appear on staff_group level"
+            );
+        }
+    }
+
+    println!("✅ Multi-instrument measure number single-per-system test passed");
+}
+
+/// T013: Measure number is above the topmost staff in multi-instrument layout (US2)
+#[test]
+fn test_measure_number_above_topmost_staff_multi_instrument() {
+    // Create a multi-instrument score
+    let input = serde_json::json!({
+        "instruments": [
+            {
+                "id": "violin-1",
+                "name": "Violin",
+                "staves": [{
+                    "clef": "Treble",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 67}
+                        ]
+                    }]
+                }]
+            },
+            {
+                "id": "cello-1",
+                "name": "Cello",
+                "staves": [{
+                    "clef": "Bass",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 48}
+                        ]
+                    }]
+                }]
+            }
+        ]
+    });
+
+    let config = LayoutConfig::default();
+    let layout = compute_layout(&input, &config);
+    let layout_json = serde_json::to_value(&layout).unwrap();
+
+    let systems = layout_json["systems"].as_array().unwrap();
+    let system = &systems[0];
+
+    let mn_y = system["measure_number"]["position"]["y"].as_f64().unwrap();
+
+    // Get topmost staff line y from first staff group, first staff, first line
+    let first_staff_group = &system["staff_groups"][0];
+    let first_staff = &first_staff_group["staves"][0];
+    let first_staff_line_y = first_staff["staff_lines"][0]["y_position"]
+        .as_f64()
+        .unwrap();
+
+    assert!(
+        mn_y < first_staff_line_y,
+        "Measure number y ({}) should be above topmost staff line y ({}) in multi-instrument layout",
+        mn_y,
+        first_staff_line_y
+    );
+
+    println!("✅ Multi-instrument measure number position test passed");
+}
