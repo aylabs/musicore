@@ -122,5 +122,6 @@ fn create_system(
             start_tick,
             end_tick,
         },
+        measure_number: None, // Will be computed during layout computation
     }
 }

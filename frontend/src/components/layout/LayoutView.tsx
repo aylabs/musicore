@@ -37,6 +37,8 @@ interface LayoutViewProps {
   score: Score;
   /** Feature 019: Set of note IDs to highlight during playback */
   highlightedNoteIds?: Set<string>;
+  /** Toggle playback on click/touch */
+  onTogglePlayback?: () => void;
 }
 
 /**
@@ -131,7 +133,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,7 +166,7 @@ export function LayoutView({ score, highlightedNoteIds }: LayoutViewProps) {
 
         // Compute layout with complete config (now async)
         const result = await computeLayout(layoutInput, {
-          max_system_width: 1200,
+          max_system_width: 2400,
           system_height: 200,
           system_spacing: 300,
           units_per_space: 20, // 20 logical units = 1 staff space
@@ -233,8 +235,10 @@ export function LayoutView({ score, highlightedNoteIds }: LayoutViewProps) {
       </div>
       <ScoreViewer 
         layout={layout} 
+        initialZoom={0.5}
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
+        onTogglePlayback={onTogglePlayback}
       />
     </div>
   );

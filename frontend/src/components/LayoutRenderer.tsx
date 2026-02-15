@@ -173,10 +173,27 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const systemGroup = createSVGGroup();
     
     // Apply transform to position system (Task T017)
+    // Note: All element positions (staff lines, glyphs, bar lines) are computed
+    // by the Rust layout engine as absolute coordinates that already include
+    // system.bounding_box.y. We must NOT add it again as a translate offset,
+    // otherwise elements get double-offset vertically.
     const x = system.bounding_box.x + offsetX;
-    const y = system.bounding_box.y + offsetY;
+    const y = offsetY;
     systemGroup.setAttribute('transform', `translate(${x}, ${y})`);
     systemGroup.setAttribute('data-system-index', system.index.toString());
+
+    // Render measure number above the system (T011)
+    if (system.measure_number) {
+      const text = createSVGElement('text');
+      text.setAttribute('x', system.measure_number.position.x.toString());
+      text.setAttribute('y', system.measure_number.position.y.toString());
+      text.setAttribute('font-family', this.props.config.fontFamily);
+      text.setAttribute('font-size', '40');
+      text.setAttribute('fill', this.props.config.staffLineColor);
+      text.setAttribute('data-measure-number', system.measure_number.number.toString());
+      text.textContent = system.measure_number.number.toString();
+      systemGroup.appendChild(text);
+    }
 
     // Render each staff group (Task T018)
     for (const staffGroup of system.staff_groups) {

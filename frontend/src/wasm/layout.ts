@@ -42,6 +42,21 @@ export interface System {
   staff_groups: StaffGroup[];
   /** Musical time span covered by system (960 PPQ ticks) */
   tick_range: TickRange;
+  /** Measure number displayed at start of system (1-based) */
+  measure_number?: MeasureNumber;
+}
+
+/**
+ * Positioned measure number at the start of a system
+ *
+ * Displays the 1-based measure number above the topmost staff line,
+ * horizontally aligned with the clef glyph.
+ */
+export interface MeasureNumber {
+  /** 1-based measure number */
+  number: number;
+  /** Absolute (x, y) coordinates for rendering */
+  position: Point;
 }
 
 /**

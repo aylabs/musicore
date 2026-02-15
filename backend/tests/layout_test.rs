@@ -1129,3 +1129,223 @@ mod performance_tests {
         println!("Status: ✅ PASS (well under target)");
     }
 }
+
+/// Feature 020 - Measure Numbering tests
+mod measure_numbering_tests {
+    use musicore_backend::layout::{LayoutConfig, compute_layout};
+
+    /// Helper to create a single-instrument score with N notes (one per measure in 4/4)
+    fn create_score_with_measures(num_measures: usize) -> serde_json::Value {
+        let notes: Vec<serde_json::Value> = (0..num_measures)
+            .map(|i| {
+                serde_json::json!({
+                    "tick": i as u32 * 3840,
+                    "duration": 3840,
+                    "pitch": 60
+                })
+            })
+            .collect();
+
+        serde_json::json!({
+            "instruments": [{
+                "id": "violin-1",
+                "name": "Violin",
+                "staves": [{
+                    "clef": "Treble",
+                    "voices": [{
+                        "notes": notes
+                    }]
+                }]
+            }]
+        })
+    }
+
+    /// T006: Measure number is present on system
+    #[test]
+    fn test_measure_number_present_on_system() {
+        let score = create_score_with_measures(4);
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(!layout.systems.is_empty(), "Should have at least one system");
+        let system = &layout.systems[0];
+        assert!(
+            system.measure_number.is_some(),
+            "System should have a measure_number"
+        );
+        assert_eq!(
+            system.measure_number.as_ref().unwrap().number,
+            1,
+            "First system should have measure_number == 1"
+        );
+    }
+
+    /// T007: Measure numbers are sequential across systems
+    #[test]
+    fn test_measure_number_sequential_across_systems() {
+        // Create enough measures to span multiple systems
+        let score = create_score_with_measures(20);
+        let config = LayoutConfig {
+            max_system_width: 800.0,
+            units_per_space: 20.0,
+            system_spacing: 200.0,
+            system_height: 600.0,
+        };
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            layout.systems.len() >= 2,
+            "Should have at least 2 systems for 20 measures with max_width=800"
+        );
+
+        // Verify sequential measure numbering
+        let mut prev_number = 0u32;
+        for (idx, system) in layout.systems.iter().enumerate() {
+            let mn = system
+                .measure_number
+                .as_ref()
+                .unwrap_or_else(|| panic!("System {} should have measure_number", idx));
+            assert!(
+                mn.number > prev_number,
+                "System {} measure_number ({}) should be greater than previous ({})",
+                idx,
+                mn.number,
+                prev_number
+            );
+            // Verify derived from tick_range
+            let expected = (system.tick_range.start_tick / 3840) + 1;
+            assert_eq!(
+                mn.number, expected,
+                "System {} measure_number should be {} (derived from start_tick {})",
+                idx, expected, system.tick_range.start_tick
+            );
+            prev_number = mn.number;
+        }
+    }
+
+    /// T008: Measure number position aligned with clef
+    #[test]
+    fn test_measure_number_position_aligned_with_clef() {
+        let score = create_score_with_measures(4);
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let system = &layout.systems[0];
+        let mn = system
+            .measure_number
+            .as_ref()
+            .expect("System should have measure_number");
+
+        // x should be aligned with clef (x=60.0)
+        assert_eq!(
+            mn.position.x, 60.0,
+            "Measure number x should be aligned with clef at 60.0"
+        );
+
+        // y should be above the topmost staff line
+        let top_staff_line_y = system.staff_groups[0].staves[0].staff_lines[0].y_position;
+        assert!(
+            mn.position.y < top_staff_line_y,
+            "Measure number y ({}) should be above topmost staff line y ({})",
+            mn.position.y,
+            top_staff_line_y
+        );
+    }
+
+    /// T009: First system always has measure number 1
+    #[test]
+    fn test_measure_number_first_system_is_one() {
+        // Test with different score sizes
+        for num_measures in [1, 4, 10, 20] {
+            let score = create_score_with_measures(num_measures);
+            let config = LayoutConfig::default();
+            let layout = compute_layout(&score, &config);
+
+            assert!(
+                !layout.systems.is_empty(),
+                "Should have at least one system for {} measures",
+                num_measures
+            );
+
+            let mn = layout.systems[0]
+                .measure_number
+                .as_ref()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "First system should have measure_number for {} measures",
+                        num_measures
+                    )
+                });
+
+            assert_eq!(
+                mn.number, 1,
+                "First system measure_number should always be 1 (score has {} measures)",
+                num_measures
+            );
+        }
+    }
+
+    /// T015: Measure number is deterministic across multiple computations
+    #[test]
+    fn test_measure_number_deterministic() {
+        let score = create_score_with_measures(12);
+        let config = LayoutConfig {
+            max_system_width: 800.0,
+            units_per_space: 20.0,
+            system_spacing: 200.0,
+            system_height: 600.0,
+        };
+
+        let layout1 = compute_layout(&score, &config);
+        let layout2 = compute_layout(&score, &config);
+
+        assert_eq!(
+            layout1.systems.len(),
+            layout2.systems.len(),
+            "Same input should produce same number of systems"
+        );
+
+        for (idx, (s1, s2)) in layout1.systems.iter().zip(layout2.systems.iter()).enumerate() {
+            let mn1 = s1.measure_number.as_ref().unwrap();
+            let mn2 = s2.measure_number.as_ref().unwrap();
+            assert_eq!(
+                mn1.number, mn2.number,
+                "System {} measure_number should be deterministic",
+                idx
+            );
+            assert_eq!(
+                mn1.position.x, mn2.position.x,
+                "System {} measure_number position.x should be deterministic",
+                idx
+            );
+            assert_eq!(
+                mn1.position.y, mn2.position.y,
+                "System {} measure_number position.y should be deterministic",
+                idx
+            );
+        }
+    }
+
+    /// T016: Single-system score has measure number 1
+    #[test]
+    fn test_measure_number_single_system_score() {
+        // A score that fits entirely in one system
+        let score = create_score_with_measures(2);
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert_eq!(
+            layout.systems.len(),
+            1,
+            "Two measures should fit in a single system"
+        );
+
+        let mn = layout.systems[0]
+            .measure_number
+            .as_ref()
+            .expect("Single system should have measure_number");
+
+        assert_eq!(mn.number, 1, "Single system should have measure_number == 1");
+        assert_eq!(mn.position.x, 60.0, "Position should be clef-aligned");
+    }
+}

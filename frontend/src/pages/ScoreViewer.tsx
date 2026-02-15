@@ -29,6 +29,8 @@ export interface ScoreViewerProps {
   highlightedNoteIds?: Set<string>;
   /** Feature 019: Map from SourceReference keys to Note IDs */
   sourceToNoteIdMap?: Map<string, string>;
+  /** Toggle playback on click/touch of the score */
+  onTogglePlayback?: () => void;
 }
 
 /**
@@ -74,12 +76,19 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
   private containerRef: RefObject<HTMLDivElement | null>;
   
+  /** Reference to the wrapper div for scroll-into-view calculations */
+  private wrapperRef: RefObject<HTMLDivElement | null>;
+  
   /** Debounce timer for scroll events */
   private scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Track which system we last auto-scrolled to, to avoid redundant scrolls */
+  private lastAutoScrollSystemIndex: number = -1;
 
   constructor(props: ScoreViewerProps) {
     super(props);
     this.containerRef = createRef();
+    this.wrapperRef = createRef();
 
     const baseConfig = props.config || createDefaultConfig();
     const config = props.darkMode ? this.createDarkModeConfig(baseConfig) : baseConfig;
@@ -88,7 +97,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       viewport: {
         x: 0,
         y: 0,
-        width: 1200,
+        width: 2400,
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: props.initialZoom || 1.0,
@@ -134,7 +143,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
-   * Update config when dark mode changes, and update viewport when layout changes
+   * Update config when dark mode changes, update viewport when layout changes,
+   * and auto-scroll to follow highlighted notes during playback.
    */
   componentDidUpdate(prevProps: ScoreViewerProps): void {
     if (prevProps.darkMode !== this.props.darkMode) {
@@ -146,6 +156,26 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Update viewport when layout changes (new score loaded)
     if (prevProps.layout !== this.props.layout && this.props.layout) {
       this.updateViewport();
+    }
+
+    // Auto-scroll to follow highlighted notes during playback
+    if (
+      this.props.highlightedNoteIds !== prevProps.highlightedNoteIds &&
+      this.props.highlightedNoteIds &&
+      this.props.highlightedNoteIds.size > 0 &&
+      this.props.layout &&
+      this.props.sourceToNoteIdMap
+    ) {
+      this.scrollToHighlightedSystem();
+    }
+
+    // Reset auto-scroll tracking when highlighting stops (playback stopped)
+    if (
+      prevProps.highlightedNoteIds &&
+      prevProps.highlightedNoteIds.size > 0 &&
+      (!this.props.highlightedNoteIds || this.props.highlightedNoteIds.size === 0)
+    ) {
+      this.lastAutoScrollSystemIndex = -1;
     }
   }
 
@@ -204,6 +234,65 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
+   * Auto-scroll to keep the system containing highlighted notes visible.
+   * Called during playback when highlightedNoteIds changes.
+   * Finds which system contains the playing notes and scrolls the page
+   * so that system is visible, using smooth scrolling for natural feel.
+   */
+  private scrollToHighlightedSystem(): void {
+    const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
+    if (!layout || !highlightedNoteIds || !sourceToNoteIdMap) return;
+
+    // Find the system index containing highlighted notes
+    // by checking which system's sourceToNoteIdMap entries match highlighted IDs
+    let targetSystemIndex = -1;
+
+    for (const system of layout.systems) {
+      // Check if any note in this system is highlighted
+      for (const [key, noteId] of sourceToNoteIdMap.entries()) {
+        // Key format: "{system_index}/..."
+        const keySystemIndex = parseInt(key.split('/')[0], 10);
+        if (keySystemIndex === system.index && highlightedNoteIds.has(noteId)) {
+          targetSystemIndex = system.index;
+          break;
+        }
+      }
+      if (targetSystemIndex >= 0) break;
+    }
+
+    // Only scroll if we found a system and it's different from the last one
+    if (targetSystemIndex < 0 || targetSystemIndex === this.lastAutoScrollSystemIndex) {
+      return;
+    }
+
+    this.lastAutoScrollSystemIndex = targetSystemIndex;
+
+    const targetSystem = layout.systems[targetSystemIndex];
+    if (!targetSystem) return;
+
+    // Calculate the pixel position of the target system
+    const { zoom } = this.state;
+    const systemTopPx = targetSystem.bounding_box.y * zoom;
+
+    // Find the wrapper element and scroll so the system is near the top
+    const wrapper = this.wrapperRef.current;
+    if (wrapper) {
+      // Get the wrapper's position relative to the page
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
+      const wrapperTopInPage = wrapperRect.top + currentPageScroll;
+
+      // Target: scroll so the system is ~60px from the top of the viewport
+      const targetScroll = wrapperTopInPage + systemTopPx - 60;
+
+      window.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth',
+      });
+    }
+  }
+
+  /**
    * Handle zoom in (T067)
    */
   private handleZoomIn = (): void => {
@@ -254,7 +343,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const totalWidth = layout.total_width * zoom;
 
     return (
-      <div style={styles.wrapper}>
+      <div ref={this.wrapperRef} style={styles.wrapper}>
         {/* Zoom Controls (T067) */}
         <div style={styles.controls}>
           <button onClick={this.handleZoomOut} style={styles.button} title="Zoom Out">
@@ -272,9 +361,11 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         {/* Scroll Container (T066) */}
         <div
           ref={this.containerRef}
+          onClick={this.props.onTogglePlayback}
           style={{
             ...styles.container,
             backgroundColor: config.backgroundColor,
+            cursor: this.props.onTogglePlayback ? 'pointer' : 'default',
           }}
         >
           <div style={{ 

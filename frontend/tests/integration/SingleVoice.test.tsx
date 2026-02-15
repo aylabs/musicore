@@ -390,49 +390,48 @@ describe('User Story 1: Single Voice Rendering', () => {
       expect(transform).toMatch(/translate\(0,\s*0\)/);
     });
 
-    it('should position System 1 at y=220', () => {
+    it('should position System 1 at y=0 (absolute coords in children)', () => {
       const { container } = render(
         <LayoutRenderer layout={layout} config={config} viewport={viewport} />
       );
 
-      // System 1 bounding box y_position from fixture: 220
+      // System group transform is (0,0) — child elements use absolute coordinates
       const system1 = container.querySelector('g[data-system-index="1"]');
       expect(system1).toBeTruthy();
       
       const transform = system1?.getAttribute('transform');
-      expect(transform).toMatch(/translate\(0,\s*220\)/);
+      expect(transform).toMatch(/translate\(0,\s*0\)/);
     });
 
-    it('should position System 2 at y=440', () => {
+    it('should position System 2 at y=0 (absolute coords in children)', () => {
       const { container } = render(
         <LayoutRenderer layout={layout} config={config} viewport={viewport} />
       );
 
-      // System 2 bounding box y_position from fixture: 440
+      // System group transform is (0,0) — child elements use absolute coordinates
       const system2 = container.querySelector('g[data-system-index="2"]');
       expect(system2).toBeTruthy();
       
       const transform = system2?.getAttribute('transform');
-      expect(transform).toMatch(/translate\(0,\s*440\)/);
+      expect(transform).toMatch(/translate\(0,\s*0\)/);
     });
 
-    it('should respect system bounding box dimensions', () => {
+    it('should use translate(0,0) for all systems (absolute coords)', () => {
       const { container } = render(
         <LayoutRenderer layout={layout} config={config} viewport={viewport} />
       );
 
-      // Verify at least that systems are positioned within total layout bounds
+      // All system groups use translate(0,0) — child elements use absolute coordinates
       const systemGroups = container.querySelectorAll('g[data-system-index]');
       
-      systemGroups.forEach((group, index) => {
-        const expectedY = layout.systems[index].bounding_box.y;
+      systemGroups.forEach((group) => {
         const transform = group.getAttribute('transform');
         
         // Extract y from transform="translate(x, y)"
         const match = transform?.match(/translate\(\s*[\d.]+,\s*([\d.]+)\s*\)/);
         if (match) {
           const actualY = parseFloat(match[1]);
-          expect(actualY).toBe(expectedY);
+          expect(actualY).toBe(0);
         }
       });
     });

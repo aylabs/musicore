@@ -511,6 +511,7 @@ export function ScoreViewer({
         <LayoutView 
           score={score} 
           highlightedNoteIds={highlightedNoteIds}
+          onTogglePlayback={togglePlayback}
         />
       )}
 
