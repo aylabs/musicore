@@ -1,34 +1,37 @@
 //! Horizontal spacing algorithm
 //!
 //! Implements duration-proportional spacing with minimum separation constraint.
+//! Uses sqrt-based scaling (standard in music engraving) so shorter notes
+//! receive proportionally more space, preventing accidental/flag overlap.
 
 /// Configuration for horizontal spacing algorithm
 #[derive(Debug, Clone)]
 pub struct SpacingConfig {
-    /// Minimum space for any note in logical units (default: 45.0 ≈ 4.5 staff spaces)
+    /// Base space for any note in logical units (default: 60.0 = 3 staff spaces)
     pub base_spacing: f32,
-    /// Multiplier for duration-based spacing (default: 50.0, quarter note = ~5 staff spaces)
+    /// Multiplier for duration-based spacing (default: 60.0)
     pub duration_factor: f32,
-    /// Collision prevention minimum in logical units (default: 40.0 = 4 staff spaces)
+    /// Collision prevention minimum in logical units (default: 60.0 = 3 staff spaces)
     pub minimum_spacing: f32,
 }
 
 impl Default for SpacingConfig {
     fn default() -> Self {
         Self {
-            base_spacing: 45.0,
-            duration_factor: 50.0,
-            minimum_spacing: 40.0,
+            base_spacing: 60.0,
+            duration_factor: 60.0,
+            minimum_spacing: 60.0,
         }
     }
 }
 
 /// Compute horizontal spacing for a note based on duration
 ///
-/// Uses formula: `spacing_width = max(base + duration/960 * factor, minimum)`
+/// Uses formula: `spacing_width = max(base + sqrt(duration/960) * factor, minimum)`
 ///
-/// Maintains strict time-proportional spacing (longer duration = more space).
-/// Visual spacing adjustments for flags are applied at measure level to preserve proportionality.
+/// The sqrt function matches traditional music engraving practice (Gould, Ross):
+/// shorter notes get proportionally more space than a linear mapping would give,
+/// preventing flag and accidental collisions while keeping longer notes compact.
 ///
 /// # Arguments
 /// * `duration_ticks` - Note duration in ticks (960 = quarter note at 960 PPQ)
@@ -38,7 +41,7 @@ impl Default for SpacingConfig {
 /// Horizontal spacing width in logical units
 pub fn compute_note_spacing(duration_ticks: u32, config: &SpacingConfig) -> f32 {
     let duration_based =
-        config.base_spacing + (duration_ticks as f32 / 960.0) * config.duration_factor;
+        config.base_spacing + (duration_ticks as f32 / 960.0).sqrt() * config.duration_factor;
     duration_based.max(config.minimum_spacing)
 }
 
