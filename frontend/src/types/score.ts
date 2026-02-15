@@ -95,12 +95,19 @@ export interface NoteSpelling {
 }
 
 /** Note event */
+/** Beam annotation on a note from MusicXML import */
+export interface NoteBeamData {
+  number: number; // Beam level (1=8th, 2=16th, 3=32nd)
+  beam_type: 'Begin' | 'Continue' | 'End' | 'ForwardHook' | 'BackwardHook';
+}
+
 export interface Note {
   id: string; // UUID
   start_tick: Tick;
   duration_ticks: number;
   pitch: Pitch;
   spelling?: NoteSpelling;
+  beams?: NoteBeamData[];
 }
 
 // ============================================================================

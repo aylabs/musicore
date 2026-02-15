@@ -517,20 +517,31 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       return line;
     }
     
-    // U+0001: Beam (filled rectangle)
+    // U+0001: Beam (filled polygon for sloped beams)
+    // Encoding contract from backend:
+    //   position.x/y = left-side beam start (x_start, y_start)
+    //   bounding_box.y = right-side Y (y_end) for slope reconstruction
+    //   bounding_box.width = horizontal span (x_end - x_start)
+    //   bounding_box.height = beam thickness
     if (codepoint === '\u{0001}' || codepoint === '\x01') {
-      const rect = createSVGElement('rect');
-      rect.setAttribute('x', glyph.bounding_box.x.toString());
-      rect.setAttribute('y', glyph.bounding_box.y.toString());
-      rect.setAttribute('width', glyph.bounding_box.width.toString());
-      rect.setAttribute('height', glyph.bounding_box.height.toString());
-      rect.setAttribute('fill', fillColor);
+      const x1 = glyph.position.x;        // Left X
+      const y1Top = glyph.position.y;      // Left Y (top of beam)
+      const x2 = x1 + glyph.bounding_box.width; // Right X
+      const y2Top = glyph.bounding_box.y;  // Right Y (top of beam, may differ from y1 for slope)
+      const thickness = glyph.bounding_box.height;
+      
+      // Build a 4-point polygon for the sloped beam:
+      // top-left, top-right, bottom-right, bottom-left
+      const polygon = createSVGElement('polygon');
+      const points = `${x1},${y1Top} ${x2},${y2Top} ${x2},${y2Top + thickness} ${x1},${y1Top + thickness}`;
+      polygon.setAttribute('points', points);
+      polygon.setAttribute('fill', fillColor);
       if (isHighlighted) {
-        rect.setAttribute('class', 'highlighted');
+        polygon.setAttribute('class', 'highlighted');
       } else if (isSelected) {
-        rect.setAttribute('class', 'selected');
+        polygon.setAttribute('class', 'selected');
       }
-      return rect;
+      return polygon;
     }
     
     // Regular SMuFL glyph (text element)

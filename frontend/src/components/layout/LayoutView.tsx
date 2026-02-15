@@ -113,6 +113,8 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
           pitch: note.pitch,
           articulation: null,
           spelling: note.spelling,
+          // Forward MusicXML beam annotations to layout engine
+          ...(note.beams && note.beams.length > 0 ? { beams: note.beams } : {}),
         }))
       }]
     };

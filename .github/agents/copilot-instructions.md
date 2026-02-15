@@ -38,6 +38,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (feature uses in-memory state, no persistence) (019-playback-note-highlight)
 - Rust (latest stable) for backend layout engine; TypeScript + React for frontend renderer + serde/serde_json (Rust serialization), wasm-bindgen/wasm-pack (WASM compilation), React 18+ (frontend) (020-measure-numbering)
 - N/A — computed at layout time, no persistence required (020-measure-numbering)
+- Rust (latest stable) for backend/layout engine; TypeScript + React 18 for frontend + `quick-xml` (MusicXML parsing), `wasm-bindgen`/`wasm-pack` (WASM bridge), `serde`/`serde_json` (serialization), Bravura SMuFL font (glyph rendering) (021-note-beaming)
+- N/A (in-memory layout computation; scores loaded from MusicXML files) (021-note-beaming)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -58,9 +60,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 021-note-beaming: Added Rust (latest stable) for backend/layout engine; TypeScript + React 18 for frontend + `quick-xml` (MusicXML parsing), `wasm-bindgen`/`wasm-pack` (WASM bridge), `serde`/`serde_json` (serialization), Bravura SMuFL font (glyph rendering)
 - 020-measure-numbering: Added Rust (latest stable) for backend layout engine; TypeScript + React for frontend renderer + serde/serde_json (Rust serialization), wasm-bindgen/wasm-pack (WASM compilation), React 18+ (frontend)
 - 019-playback-note-highlight: Added Rust (latest stable) for backend/WASM, TypeScript/React 19+ for frontend + React 19.2, Tone.js 14.9, wasm-bindgen 0.2, Vite (bundler)
-- 018-rust-layout-engraving: Added Rust 1.75+ (stable), Edition 2021
 
 
 <!-- MANUAL ADDITIONS START -->

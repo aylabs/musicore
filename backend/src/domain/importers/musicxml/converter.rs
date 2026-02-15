@@ -16,6 +16,7 @@ use super::ImportContext;
 use super::errors::ImportError;
 use super::mapper::ElementMapper;
 use super::timing::Fraction;
+use super::types::BeamType;
 use super::types::{MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData};
 use std::collections::{BTreeMap, HashMap};
 
@@ -666,6 +667,29 @@ impl MusicXMLConverter {
         };
         let note = note.with_spelling(spelling);
 
+        // Preserve beam annotations from MusicXML
+        let beams: Vec<crate::domain::events::note::NoteBeamData> = note_data
+            .beams
+            .iter()
+            .map(|b| crate::domain::events::note::NoteBeamData {
+                number: b.number,
+                beam_type: match b.beam_type {
+                    BeamType::Begin => crate::domain::events::note::NoteBeamType::Begin,
+                    BeamType::Continue => crate::domain::events::note::NoteBeamType::Continue,
+                    BeamType::End => crate::domain::events::note::NoteBeamType::End,
+                    BeamType::ForwardHook => crate::domain::events::note::NoteBeamType::ForwardHook,
+                    BeamType::BackwardHook => {
+                        crate::domain::events::note::NoteBeamType::BackwardHook
+                    }
+                },
+            })
+            .collect();
+        let note = if beams.is_empty() {
+            note
+        } else {
+            note.with_beams(beams)
+        };
+
         Ok(note)
     }
 }
@@ -722,6 +746,7 @@ mod tests {
                 staff: 1,
                 note_type: Some("quarter".to_string()),
                 is_chord: false,
+                beams: Vec::new(),
             })],
         };
 
@@ -785,6 +810,7 @@ mod tests {
             staff: 1,
             note_type: Some("quarter".to_string()),
             is_chord: false,
+            beams: Vec::new(),
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -827,6 +853,7 @@ mod tests {
                     staff: 1,
                     note_type: Some("quarter".to_string()),
                     is_chord: false,
+                    beams: Vec::new(),
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -839,6 +866,7 @@ mod tests {
                     staff: 1,
                     note_type: Some("quarter".to_string()),
                     is_chord: false,
+                    beams: Vec::new(),
                 }),
             ],
         }];
@@ -887,6 +915,7 @@ mod tests {
                     staff: 1,
                     note_type: Some("half".to_string()),
                     is_chord: false, // First note in chord
+                    beams: Vec::new(),
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -900,6 +929,7 @@ mod tests {
                     staff: 1,
                     note_type: Some("half".to_string()),
                     is_chord: true, // Chord note - starts at same time
+                    beams: Vec::new(),
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -913,6 +943,7 @@ mod tests {
                     staff: 1,
                     note_type: Some("half".to_string()),
                     is_chord: false, // Not a chord - starts after previous chord
+                    beams: Vec::new(),
                 }),
             ],
         }];

@@ -42,6 +42,18 @@ impl Stem {
 
     /// Standard stem thickness in logical units
     pub const STEM_THICKNESS: f32 = 1.5;
+
+    /// Half-width of rendered noteheadBlack (U+E0A4) — distance from center to edge.
+    /// Bravura bBoxNE[0] = 1.18 staff spaces. At font-size 80 (1 staff space = 20 units),
+    /// full width = 1.18 * 20 = 23.6. With text-anchor=middle rendering, the center
+    /// of the glyph is at the X coordinate, so half-width = 23.6 / 2 = 11.8.
+    pub const NOTEHEAD_WIDTH: f32 = 11.8;
+
+    /// Minimum stem length for beamed notes (2.5 staff spaces = 50 logical units)
+    pub const MIN_BEAMED_STEM_LENGTH: f32 = 50.0;
+
+    /// Minimum stem length for notes on ledger lines (3.0 staff spaces = 60 logical units)
+    pub const MIN_LEDGER_STEM_LENGTH: f32 = 60.0;
 }
 
 /// Compute stem direction based on notehead pitch position
@@ -76,8 +88,9 @@ pub fn compute_stem_direction(notehead_y: f32, staff_middle_y: f32) -> StemDirec
 /// Stem struct with calculated geometry
 ///
 /// # Attachment Logic
-/// - Stems up: attach to right edge of notehead (x + width/2)
-/// - Stems down: attach to left edge of notehead (x - width/2)
+/// SMuFL noteheads have their origin at the left edge of the glyph.
+/// - Stems up: attach to right edge of notehead (x + width)
+/// - Stems down: attach to left edge of notehead (x)
 /// - Stem extends 35 logical units (3.5 staff spaces) from notehead
 pub fn create_stem(
     notehead_x: f32,
@@ -85,10 +98,14 @@ pub fn create_stem(
     direction: StemDirection,
     notehead_width: f32,
 ) -> Stem {
-    // Calculate stem x position based on direction
+    // Calculate stem x position based on direction.
+    // Frontend renders noteheads with text-anchor=middle, so the glyph center is at X.
+    // notehead_width = half the rendered glyph width (center-to-edge distance).
+    // - Up stems attach at right edge: center + half_width
+    // - Down stems attach at left edge: center - half_width
     let stem_x = match direction {
-        StemDirection::Up => notehead_x + (notehead_width / 2.0),
-        StemDirection::Down => notehead_x - (notehead_width / 2.0),
+        StemDirection::Up => notehead_x + notehead_width,
+        StemDirection::Down => notehead_x - notehead_width,
     };
 
     // Calculate stem y positions (stems go up = negative y, down = positive y)
@@ -155,15 +172,16 @@ mod tests {
     fn test_create_stem_up() {
         let notehead_x = 100.0;
         let notehead_y = 60.0;
-        let notehead_width = 10.0;
+        let notehead_width = 11.8;
         let direction = StemDirection::Up;
 
         let stem = create_stem(notehead_x, notehead_y, direction, notehead_width);
 
-        // Verify stem attaches to right side of notehead
-        assert_eq!(
-            stem.x, 105.0,
-            "Stem up should attach to right edge (x + width/2)"
+        // Verify stem attaches to right edge of notehead (center + half_width with text-anchor=middle)
+        assert!(
+            (stem.x - 111.8).abs() < 0.01,
+            "Stem up should attach to right edge (x + half_width), got {}",
+            stem.x
         );
 
         // Verify stem extends 35 units upward (negative y direction)
@@ -178,15 +196,16 @@ mod tests {
     fn test_create_stem_down() {
         let notehead_x = 100.0;
         let notehead_y = 100.0;
-        let notehead_width = 10.0;
+        let notehead_width = 11.8;
         let direction = StemDirection::Down;
 
         let stem = create_stem(notehead_x, notehead_y, direction, notehead_width);
 
-        // Verify stem attaches to left side of notehead
-        assert_eq!(
-            stem.x, 95.0,
-            "Stem down should attach to left edge (x - width/2)"
+        // Verify stem attaches to left edge of notehead (center - half_width with text-anchor=middle)
+        assert!(
+            (stem.x - 88.2).abs() < 0.01,
+            "Stem down should attach to left edge (x - half_width), got {}",
+            stem.x
         );
 
         // Verify stem extends 35 units downward (positive y direction)
