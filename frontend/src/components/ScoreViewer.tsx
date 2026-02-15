@@ -98,7 +98,6 @@ export function ScoreViewer({
     if (skipNextLoad) {
       setSkipNextLoad(false); // Reset flag
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoreId, skipNextLoad, isFileSourced]);
 
   // Feature 004 T032: Keyboard shortcuts for file operations

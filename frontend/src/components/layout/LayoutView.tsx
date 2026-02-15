@@ -118,13 +118,15 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
       staves: convertedStaves
     }],
     // Extract tempo and time signature from global_structural_events
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tempo_changes: score.global_structural_events
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((e): e is any => 'Tempo' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((e: any) => e.Tempo),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     time_signature_changes: score.global_structural_events
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((e): e is any => 'TimeSignature' in e)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((e: any) => e.TimeSignature),
   };
 }

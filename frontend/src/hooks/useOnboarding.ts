@@ -116,7 +116,7 @@ export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult 
     return () => {
       mounted = false;
     };
-  }, [wasmReady]); // Re-run when WASM becomes ready
+  }, [wasmReady, isFirstRun]); // Re-run when WASM becomes ready or first-run status changes
 
   /**
    * Load demo score ID for returning users
