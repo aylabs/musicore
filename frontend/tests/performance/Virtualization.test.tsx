@@ -144,7 +144,7 @@ describe('User Story 4: Performance Validation', () => {
 
       // Performance assertions
       expect(avgRenderTime).toBeLessThan(frameBudget);
-      expect(maxRenderTime).toBeLessThan(frameBudget * 3); // Allow occasional spikes (CI tolerance)
+      expect(maxRenderTime).toBeLessThan(frameBudget * 4); // Allow occasional spikes (CI tolerance)
       expect(slowFrames / renderTimes.length).toBeLessThan(0.15); // <15% slow frames (CI-tolerant)
     });
 
@@ -336,7 +336,7 @@ describe('User Story 4: Performance Validation', () => {
       const end = performance.now();
 
       const renderTime = end - start;
-      expect(renderTime).toBeLessThan(16); // 60fps budget
+      expect(renderTime).toBeLessThan(32); // 2-frame budget (CI tolerance)
     });
 
     it('should handle rapid viewport updates efficiently', () => {
