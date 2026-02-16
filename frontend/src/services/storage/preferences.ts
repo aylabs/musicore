@@ -99,7 +99,7 @@ export class LocalStorageFirstRunAdapter implements IFirstRunStorage {
  */
 export class LocalStorageViewModeAdapter implements IViewModePreferenceStorage {
   private readonly KEY = STORAGE_KEYS.VIEW_MODE;
-  private readonly DEFAULT_MODE: ViewMode = 'stacked';
+  private readonly DEFAULT_MODE: ViewMode = 'layout';
 
   /**
    * Get current view mode preference
@@ -116,7 +116,7 @@ export class LocalStorageViewModeAdapter implements IViewModePreferenceStorage {
 
   /**
    * Get current view mode (convenience method)
-   * Returns default "stacked" if not set
+   * Returns default "layout" (Play View) if not set
    */
   getViewMode(): ViewMode {
     const pref = this.getViewModePreference();

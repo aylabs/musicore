@@ -23,18 +23,18 @@ export function ViewModeSelector({ currentMode, onChange }: ViewModeSelectorProp
         Instruments View
       </button>
       <button 
-        className={`view-mode-button ${currentMode === 'stacked' ? 'active' : ''}`}
-        onClick={() => onChange('stacked')}
+        className={`view-mode-button ${currentMode === 'layout' ? 'active' : ''}`}
+        onClick={() => onChange('layout')}
         aria-label="Switch to play view"
       >
         Play View
       </button>
       <button 
-        className={`view-mode-button ${currentMode === 'layout' ? 'active' : ''}`}
-        onClick={() => onChange('layout')}
-        aria-label="Switch to layout view"
+        className={`view-mode-button ${currentMode === 'stacked' ? 'active' : ''}`}
+        onClick={() => onChange('stacked')}
+        aria-label="Switch to play legacy view"
       >
-        Layout View
+        Play Legacy View
       </button>
     </div>
   );

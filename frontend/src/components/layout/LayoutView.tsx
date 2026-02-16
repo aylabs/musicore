@@ -6,10 +6,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Score, GlobalStructuralEvent, StaffStructuralEvent, Note } from '../../types/score';
+import type { PlaybackStatus } from '../../types/playback';
 import { ScoreViewer } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
 import { buildSourceToNoteIdMap } from '../../services/highlight/sourceMapping';
+import TempoControl from '../playback/TempoControl';
 
 interface ConvertedScore {
   instruments: Array<{
@@ -44,6 +46,8 @@ interface LayoutViewProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note */
   selectedNoteId?: string;
+  /** Feature 022: Playback status for disabling TempoControl during playback */
+  playbackStatus?: PlaybackStatus;
 }
 
 /**
@@ -141,7 +145,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -239,7 +243,11 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
   return (
     <div style={styles.container}>
       <div style={styles.info}>
-        📐 Layout View: First voice from {score.instruments[0]?.name || 'instrument'}
+        <span>🎵 Play View: First voice from {score.instruments[0]?.name || 'instrument'}</span>
+        {/* Feature 022: TempoControl in Play View */}
+        <div style={styles.tempoControlWrapper}>
+          <TempoControl disabled={playbackStatus === 'playing'} />
+        </div>
       </div>
       <ScoreViewer 
         layout={layout} 
@@ -297,5 +305,11 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: 'bold' as const,
     color: '#1976d2',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tempoControlWrapper: {
+    marginLeft: '1rem',
   },
 };

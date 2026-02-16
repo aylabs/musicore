@@ -62,6 +62,13 @@ export interface WasmImportResult {
   };
   warnings: ImportWarning[];
   partial_import: boolean;
+  /** Feature 022: Import metadata including title from MusicXML */
+  metadata: {
+    format: string;
+    file_name?: string;
+    work_title?: string;
+    composer?: string;
+  };
 }
 
 /**

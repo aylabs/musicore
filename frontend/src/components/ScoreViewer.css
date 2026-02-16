@@ -11,6 +11,25 @@
   border-bottom: 2px solid #e0e0e0;
 }
 
+/* Feature 022: Score title bar for stacked/layout views */
+.score-title-bar {
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.score-title-text {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+}
+
 .score-header h1 {
   margin: 0 0 10px 0;
   font-size: 2em;

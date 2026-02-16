@@ -147,6 +147,8 @@ impl MusicXMLImporter {
         score: Score,
         format: String,
         file_name: Option<String>,
+        work_title: Option<String>,
+        composer: Option<String>,
         warnings: Vec<ImportWarning>,
         skipped_element_count: usize,
     ) -> ImportResult {
@@ -190,8 +192,8 @@ impl MusicXMLImporter {
             metadata: ImportMetadata {
                 format,
                 file_name,
-                work_title: None, // TODO: Extract from MusicXML metadata
-                composer: None,   // TODO: Extract from MusicXML metadata
+                work_title, // Feature 022: Populated from MusicXML metadata
+                composer,   // Feature 022: Populated from MusicXML metadata
             },
             statistics: ImportStatistics {
                 instrument_count,
@@ -231,6 +233,10 @@ impl IMusicXMLImporter for MusicXMLImporter {
         // Store format for metadata
         let format = format!("MusicXML {}", doc.version);
 
+        // Feature 022: Extract title metadata before doc is consumed by convert()
+        let work_title = doc.work_title.clone().or(doc.movement_title.clone());
+        let composer = doc.composer.clone();
+
         // Convert to domain Score
         let score = MusicXMLConverter::convert(doc, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
@@ -244,6 +250,8 @@ impl IMusicXMLImporter for MusicXMLImporter {
             score,
             format,
             file_name,
+            work_title,
+            composer,
             warnings,
             skipped_element_count,
         ))
@@ -260,6 +268,10 @@ impl IMusicXMLImporter for MusicXMLImporter {
         // Store format for metadata
         let format = format!("MusicXML {}", doc.version);
 
+        // Feature 022: Extract title metadata before doc is consumed by convert()
+        let work_title = doc.work_title.clone().or(doc.movement_title.clone());
+        let composer = doc.composer.clone();
+
         // Convert to domain Score
         let score = MusicXMLConverter::convert(doc, &mut context)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
@@ -273,6 +285,8 @@ impl IMusicXMLImporter for MusicXMLImporter {
             score,
             format,
             None,
+            work_title,
+            composer,
             warnings,
             skipped_element_count,
         ))

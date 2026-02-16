@@ -50,6 +50,15 @@ pub struct MusicXMLDocument {
     /// Mapping of part ID to part name (e.g., "P1" -> "Violin")
     /// Populated during part-list parsing (T092 - User Story 3)
     pub part_names: HashMap<String, String>,
+
+    /// Feature 022: Title from <work>/<work-title> element
+    pub work_title: Option<String>,
+
+    /// Feature 022: Title from <movement-title> element
+    pub movement_title: Option<String>,
+
+    /// Feature 022: Composer from <identification>/<creator type="composer">
+    pub composer: Option<String>,
 }
 
 /// Metadata from <encoding> element
@@ -209,6 +218,9 @@ impl Default for MusicXMLDocument {
             parts: Vec::new(),
             default_tempo: 120.0,
             part_names: HashMap::new(),
+            work_title: None,
+            movement_title: None,
+            composer: None,
         }
     }
 }

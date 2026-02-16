@@ -11,6 +11,7 @@ import type { PlaybackStatus } from '../../types/playback';
 export interface PlaybackState {
   status: PlaybackStatus;
   currentTick: number;
+  totalDurationTicks: number; // Feature 022: Total score duration in ticks for timer display
   error: string | null; // US3 T052: Error message for autoplay policy failures
   play: () => Promise<void>;
   pause: () => void;
@@ -56,6 +57,12 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
   const pinnedStartTickRef = useRef<number | null>(null); // Feature 009: Pinned start position from selected note
   
+  // Feature 022: Calculate total duration from all notes
+  const totalDurationTicks = useMemo(() => {
+    if (notes.length === 0) return 0;
+    return Math.max(...notes.map(n => n.start_tick + n.duration_ticks));
+  }, [notes]);
+
   // Get ToneAdapter singleton
   const adapter = ToneAdapter.getInstance();
 
@@ -319,6 +326,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   return {
     status,
     currentTick,
+    totalDurationTicks, // Feature 022: Total score duration for timer
     error, // US3 T052: Expose error message for UI display
     play,
     pause,

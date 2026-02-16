@@ -1,6 +1,8 @@
 import React from 'react';
 import type { PlaybackStatus } from '../../types/playback';
 import TempoControl from './TempoControl';
+import { PlaybackTimer } from './PlaybackTimer';
+import { ticksToSeconds } from '../../services/playback/PlaybackScheduler';
 import './PlaybackControls.css';
 
 /**
@@ -23,6 +25,14 @@ export interface PlaybackControlsProps {
   compact?: boolean;
   /** Additional actions to render on the right side in compact mode (Feature 010) */
   rightActions?: React.ReactNode;
+  /** Feature 022: Current playback position in ticks */
+  currentTick?: number;
+  /** Feature 022: Total score duration in ticks */
+  totalDurationTicks?: number;
+  /** Feature 022: Base tempo in BPM */
+  tempo?: number;
+  /** Feature 022: Tempo multiplier from TempoControl */
+  tempoMultiplier?: number;
 }
 
 /**
@@ -61,11 +71,20 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onStop,
   compact = false, // Feature 010: Compact mode for stacked view
   rightActions = null, // Feature 010: Additional actions for right side
+  currentTick = 0, // Feature 022: Playback timer
+  totalDurationTicks = 0,
+  tempo = 120,
+  tempoMultiplier = 1.0,
 }) => {
   // US1 T027: Disable Play button if no notes
   const canPlay = status !== 'playing' && hasNotes;
   const canPause = status === 'playing';
   const canStop = status !== 'stopped';
+
+  // Feature 022: Compute elapsed and total seconds for timer display
+  const effectiveTempo = tempo * tempoMultiplier;
+  const elapsedSeconds = ticksToSeconds(currentTick, effectiveTempo);
+  const totalSeconds = ticksToSeconds(totalDurationTicks, effectiveTempo);
 
   /**
    * Map status to human-readable label for visual indicator
@@ -127,6 +146,11 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           ⏹ Stop
         </button>
       </div>
+
+      {/* Feature 022: Playback timer display (visible in all modes) */}
+      {hasNotes && totalDurationTicks > 0 && (
+        <PlaybackTimer elapsedSeconds={elapsedSeconds} totalSeconds={totalSeconds} />
+      )}
 
       {/* Feature 010: Right actions slot for compact mode */}
       {compact && rightActions && (

@@ -5,6 +5,7 @@ import { InstrumentList } from "./InstrumentList";
 import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
+import { useTempoState } from "../services/state/TempoStateContext";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
@@ -50,6 +51,7 @@ export function ScoreViewer({
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
+  const [scoreTitle, setScoreTitle] = useState<string | null>(null); // Feature 022: Score title from MusicXML metadata
   
   // Feature 010: View mode state for toggling between individual and stacked views
   // Use controlled mode if provided, otherwise internal state
@@ -73,6 +75,7 @@ export function ScoreViewer({
       if (indexedDBScore) {
         console.log(`[ScoreViewer] Loaded score from IndexedDB: ${id}`);
         setScore(indexedDBScore);
+        setScoreTitle(indexedDBScore.instruments[0]?.name ?? null); // Feature 022: Fallback to instrument name
         setIsFileSourced(false);
         return;
       }
@@ -81,6 +84,7 @@ export function ScoreViewer({
       console.log(`[ScoreViewer] Score not in IndexedDB, trying API: ${id}`);
       const loadedScore = await apiClient.getScore(id);
       setScore(loadedScore);
+      setScoreTitle(loadedScore.instruments[0]?.name ?? null); // Feature 022: Fallback to instrument name
       setIsFileSourced(false); // Backend is source of truth for API-loaded scores
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load score");
@@ -164,12 +168,13 @@ export function ScoreViewer({
       // Load the demo
       setScore(demoScore);
       setScoreId(demoScore.id);
+      setScoreTitle(demoScore.title ?? null); // Feature 022: Show demo title
       setIsFileSourced(false);
       setSkipNextLoad(true); // Skip the loadScore() useEffect since we already have the score
       resetFileState();
       
-      // Set view mode to stacked (better for demo)
-      setViewMode('stacked');
+      // Set view mode to layout (Play View — better for demo)
+      setViewMode('layout');
       
       // Set auto-play flag (will trigger in useEffect after score loads)
       setShouldAutoPlay(true);
@@ -270,6 +275,12 @@ export function ScoreViewer({
     setScoreId(result.score.id);
     setIsFileSourced(true); // Frontend is source of truth for WASM-imported scores (not in backend DB)
     resetFileState(); // Clear file state (this is a new score from import)
+    
+    // Feature 022: Set score title from metadata (work_title > filename fallback)
+    const fileName = result.metadata.file_name;
+    const strippedName = fileName ? fileName.replace(/\.[^.]+$/, '') : null;
+    setScoreTitle(result.metadata.work_title ?? strippedName ?? null);
+    
     setSuccessMessage(`Imported ${result.statistics.note_count} notes from ${result.metadata.file_name || 'MusicXML file'}`);
     setTimeout(() => setSuccessMessage(null), 5000);
   };
@@ -330,6 +341,9 @@ export function ScoreViewer({
    */
   const initialTempo = getInitialTempo();
   const playbackState = usePlayback(allNotes, initialTempo);
+
+  // Feature 022: Get tempo state for timer display
+  const { tempoState } = useTempoState();
 
   /**
    * Feature 019: Note highlighting during playback
@@ -446,11 +460,20 @@ export function ScoreViewer({
   // Render score
   return (
     <div className="score-viewer">
+      {/* Feature 022: Score title displayed in all view modes */}
+      {scoreTitle && viewMode !== 'individual' && (
+        <div className="score-title-bar">
+          <span className="score-title-text" title={scoreTitle}>{scoreTitle}</span>
+        </div>
+      )}
+
       {/* Feature 010: Hide header and file operations in stacked/layout view */}
       {viewMode === 'individual' && (
         <>
           <div className="score-header">
-            <h1>Score {fileState.isModified && <span className="unsaved-indicator">*</span>}</h1>
+            <h1 title={scoreTitle ?? undefined} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {scoreTitle ?? 'Score'} {fileState.isModified && <span className="unsaved-indicator">*</span>}
+            </h1>
             <div className="score-info">
               <span className="score-id">ID: {score.id}</span>
               <span className="tempo">Tempo: {getInitialTempo()} BPM</span>
@@ -489,6 +512,10 @@ export function ScoreViewer({
         onPause={playbackState.pause}
         onStop={playbackState.stop}
         compact={viewMode !== 'individual'}
+        currentTick={playbackState.currentTick}
+        totalDurationTicks={playbackState.totalDurationTicks}
+        tempo={initialTempo}
+        tempoMultiplier={tempoState.tempoMultiplier}
         rightActions={viewMode !== 'individual' && score && score.instruments.length > 0 ? (
           <button 
             className="view-mode-button" 
@@ -545,6 +572,7 @@ export function ScoreViewer({
           onTogglePlayback={togglePlayback}
           onNoteClick={handleNoteClick}
           selectedNoteId={selectedNoteId ?? undefined}
+          playbackStatus={playbackState.status}
         />
       )}
 
