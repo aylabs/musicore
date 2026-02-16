@@ -90,7 +90,7 @@ fn test_violin_fixture_contract() {
         .expect("staff should have staff_lines array");
     assert_eq!(staff_lines.len(), 5, "Staff should have exactly 5 lines");
 
-    // T013-T014: Verify staff line spacing is correct (40 units = 2 * units_per_space)
+    // T013-T014: Verify staff line spacing is correct (20 units = 1 * units_per_space)
     let y_positions: Vec<f32> = staff_lines
         .iter()
         .map(|line| line["y_position"].as_f64().unwrap() as f32)
@@ -99,8 +99,8 @@ fn test_violin_fixture_contract() {
     println!("Staff line y-positions: {:?}", y_positions);
     assert_eq!(
         y_positions,
-        vec![0.0, 40.0, 80.0, 120.0, 160.0],
-        "Staff lines should be at 0, 40, 80, 120, 160 (40-unit spacing)"
+        vec![0.0, 20.0, 40.0, 60.0, 80.0],
+        "Staff lines should be at 0, 20, 40, 60, 80 (20-unit spacing)"
     );
 
     // Verify glyph_runs exist (noteheads)
@@ -181,4 +181,87 @@ fn test_piano_fixture_contract() {
     );
 
     println!("✅ Piano contract test passed: Multi-staff structure correct");
+}
+
+/// T025: Contract test verifying StaffGroup serializes with instrument_name and name_label fields
+#[test]
+fn test_staff_group_instrument_name_and_name_label_contract() {
+    // Multi-instrument score to verify both fields are present
+    let test_input = serde_json::json!({
+        "instruments": [
+            {
+                "id": "violin-1",
+                "name": "Violin",
+                "staves": [{
+                    "clef": "Treble",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 67}
+                        ]
+                    }]
+                }]
+            },
+            {
+                "id": "cello-1",
+                "name": "Cello",
+                "staves": [{
+                    "clef": "Bass",
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 3840, "pitch": 48}
+                        ]
+                    }]
+                }]
+            }
+        ]
+    });
+
+    let config = musicore_backend::layout::LayoutConfig::default();
+    let actual_output = musicore_backend::layout::compute_layout(&test_input, &config);
+    let actual_json =
+        serde_json::to_value(&actual_output).expect("Failed to serialize layout output");
+
+    let systems = actual_json["systems"].as_array().unwrap();
+    assert!(!systems.is_empty());
+
+    let staff_groups = systems[0]["staff_groups"].as_array().unwrap();
+    assert_eq!(
+        staff_groups.len(),
+        2,
+        "Should have 2 staff groups for violin + cello"
+    );
+
+    // Verify violin staff group has instrument_name and name_label
+    let violin_sg = &staff_groups[0];
+    assert_eq!(
+        violin_sg["instrument_name"].as_str().unwrap(),
+        "Violin",
+        "instrument_name should be 'Violin'"
+    );
+    assert!(
+        violin_sg["name_label"].is_object(),
+        "name_label should be present as object"
+    );
+    let violin_label = &violin_sg["name_label"];
+    assert_eq!(violin_label["text"].as_str().unwrap(), "Violin");
+    assert!(violin_label["position"]["x"].is_number());
+    assert!(violin_label["position"]["y"].is_number());
+    assert!(violin_label["font_size"].is_number());
+    assert!(violin_label["font_family"].is_string());
+    assert!(violin_label["color"].is_object());
+
+    // Verify cello staff group
+    let cello_sg = &staff_groups[1];
+    assert_eq!(
+        cello_sg["instrument_name"].as_str().unwrap(),
+        "Cello",
+        "instrument_name should be 'Cello'"
+    );
+    assert!(
+        cello_sg["name_label"].is_object(),
+        "Cello name_label should be present"
+    );
+    assert_eq!(cello_sg["name_label"]["text"].as_str().unwrap(), "Cello");
+
+    println!("✅ Contract test passed: StaffGroup has instrument_name and name_label fields");
 }

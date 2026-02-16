@@ -18,9 +18,9 @@ pub struct SpacingConfig {
 impl Default for SpacingConfig {
     fn default() -> Self {
         Self {
-            base_spacing: 60.0,
-            duration_factor: 60.0,
-            minimum_spacing: 60.0,
+            base_spacing: 40.0,
+            duration_factor: 40.0,
+            minimum_spacing: 40.0,
         }
     }
 }
@@ -75,13 +75,13 @@ pub fn compute_measure_width(note_durations: &[u32], config: &SpacingConfig) -> 
         .filter(|&&duration| duration < 960) // Eighth notes and shorter have flags
         .count();
 
-    // Add extra measure width for flag clearance (10 units per flagged note)
+    // Add extra measure width for flag clearance (5 units per flagged note)
     // This expands the entire measure while preserving note spacing proportions
-    let flag_padding = (flagged_note_count as f32) * 10.0;
+    let flag_padding = (flagged_note_count as f32) * 5.0;
 
-    // Add padding for clef/key/time signatures at measure start (40 logical units)
+    // Add padding for clef/key/time signatures at measure start (20 logical units)
     // and end barline (10 logical units)
-    let structural_padding = 50.0;
+    let structural_padding = 30.0;
 
     total_note_spacing + flag_padding + structural_padding
 }

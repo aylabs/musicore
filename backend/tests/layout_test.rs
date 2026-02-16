@@ -367,7 +367,7 @@ mod spacing_tests {
         // Whole note (3840 ticks)
         let whole_spacing = compute_note_spacing(3840, &config);
         assert!(
-            whole_spacing >= 180.0,
+            whole_spacing >= 120.0,
             "Whole note should have wide spacing: {}",
             whole_spacing
         );
@@ -375,7 +375,7 @@ mod spacing_tests {
         // Half note (1920 ticks)
         let half_spacing = compute_note_spacing(1920, &config);
         assert!(
-            half_spacing > 90.0 && half_spacing < whole_spacing,
+            half_spacing > 80.0 && half_spacing < whole_spacing,
             "Half note spacing should be between quarter and whole: {}",
             half_spacing
         );
@@ -640,43 +640,43 @@ mod positioner_tests {
             f5_y
         );
 
-        // Test E5 (MIDI 76) = space between lines 1-2 (y = 5)
+        // Test E5 (MIDI 76) = space between lines 1-2 (y = 0)
         let e5_y = pitch_to_y(76, "Treble", units_per_space);
         assert!(
-            (e5_y - 5.0).abs() < 0.1,
-            "E5 should be in first space (y=5): {}",
+            (e5_y - 0.0).abs() < 0.1,
+            "E5 should be in first space (y=0): {}",
             e5_y
         );
 
-        // Test D5 (MIDI 74) = 2nd line (y = 15)
+        // Test D5 (MIDI 74) = 2nd line (y = 5)
         let d5_y = pitch_to_y(74, "Treble", units_per_space);
         assert!(
-            (d5_y - 15.0).abs() < 0.1,
-            "D5 should be on 2nd line (y=15): {}",
+            (d5_y - 5.0).abs() < 0.1,
+            "D5 should be on 2nd line (y=5): {}",
             d5_y
         );
 
-        // Test C5 (MIDI 72) = space between lines 2-3 (y = 25)
+        // Test C5 (MIDI 72) = space between lines 2-3 (y = 10)
         let c5_y = pitch_to_y(72, "Treble", units_per_space);
         assert!(
-            (c5_y - 25.0).abs() < 0.1,
-            "C5 should be in space (y=25): {}",
+            (c5_y - 10.0).abs() < 0.1,
+            "C5 should be in space (y=10): {}",
             c5_y
         );
 
-        // Test G4 (MIDI 67) = 4th line (y = 55)
+        // Test G4 (MIDI 67) = 4th line (y = 25)
         let g4_y = pitch_to_y(67, "Treble", units_per_space);
         assert!(
-            (g4_y - 55.0).abs() < 0.1,
-            "G4 should be on 4th line (y=55): {}",
+            (g4_y - 25.0).abs() < 0.1,
+            "G4 should be on 4th line (y=25): {}",
             g4_y
         );
 
-        // Test C4 (Middle C, MIDI 60) = ledger line below staff (y = 95 with offset)
+        // Test C4 (Middle C, MIDI 60) = ledger line below staff (y = 45 with offset)
         let c4_y = pitch_to_y(60, "Treble", units_per_space);
         assert!(
-            (c4_y - 95.0).abs() < 0.1,
-            "C4 should be below staff (y=95): {}",
+            (c4_y - 45.0).abs() < 0.1,
+            "C4 should be below staff (y=45): {}",
             c4_y
         );
 
@@ -1366,5 +1366,505 @@ mod measure_numbering_tests {
             "Single system should have measure_number == 1"
         );
         assert_eq!(mn.position.x, 60.0, "Position should be clef-aligned");
+    }
+}
+
+/// Feature 023: Multi-Instrument Play View tests
+#[cfg(test)]
+mod multi_instrument_tests {
+    use super::*;
+
+    /// Helper: create a 2-instrument score (violin + cello), each with 1 staff
+    fn violin_cello_score() -> Value {
+        serde_json::json!({
+            "instruments": [
+                {
+                    "id": "violin-1",
+                    "name": "Violin",
+                    "staves": [{
+                        "clef": "Treble",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 67},
+                                {"tick": 3840, "duration": 3840, "pitch": 69}
+                            ]
+                        }]
+                    }]
+                },
+                {
+                    "id": "cello-1",
+                    "name": "Cello",
+                    "staves": [{
+                        "clef": "Bass",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 48},
+                                {"tick": 3840, "duration": 3840, "pitch": 50}
+                            ]
+                        }]
+                    }]
+                }
+            ]
+        })
+    }
+
+    /// Helper: create a piano (2 staves) + violin (1 staff) score
+    fn piano_violin_score() -> Value {
+        serde_json::json!({
+            "instruments": [
+                {
+                    "id": "piano-1",
+                    "name": "Piano",
+                    "staves": [
+                        {
+                            "clef": "Treble",
+                            "voices": [{
+                                "notes": [
+                                    {"tick": 0, "duration": 3840, "pitch": 60},
+                                    {"tick": 3840, "duration": 3840, "pitch": 62}
+                                ]
+                            }]
+                        },
+                        {
+                            "clef": "Bass",
+                            "voices": [{
+                                "notes": [
+                                    {"tick": 0, "duration": 3840, "pitch": 40},
+                                    {"tick": 3840, "duration": 3840, "pitch": 42}
+                                ]
+                            }]
+                        }
+                    ]
+                },
+                {
+                    "id": "violin-1",
+                    "name": "Violin",
+                    "staves": [{
+                        "clef": "Treble",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 67},
+                                {"tick": 3840, "duration": 3840, "pitch": 69}
+                            ]
+                        }]
+                    }]
+                }
+            ]
+        })
+    }
+
+    /// Helper: create a string quartet (4 instruments, 1 staff each)
+    fn string_quartet_score() -> Value {
+        serde_json::json!({
+            "instruments": [
+                {
+                    "id": "violin1",
+                    "name": "Violin I",
+                    "staves": [{
+                        "clef": "Treble",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 76},
+                                {"tick": 3840, "duration": 3840, "pitch": 74}
+                            ]
+                        }]
+                    }]
+                },
+                {
+                    "id": "violin2",
+                    "name": "Violin II",
+                    "staves": [{
+                        "clef": "Treble",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 72},
+                                {"tick": 3840, "duration": 3840, "pitch": 71}
+                            ]
+                        }]
+                    }]
+                },
+                {
+                    "id": "viola-1",
+                    "name": "Viola",
+                    "staves": [{
+                        "clef": "Treble",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 60},
+                                {"tick": 3840, "duration": 3840, "pitch": 62}
+                            ]
+                        }]
+                    }]
+                },
+                {
+                    "id": "cello-1",
+                    "name": "Cello",
+                    "staves": [{
+                        "clef": "Bass",
+                        "voices": [{
+                            "notes": [
+                                {"tick": 0, "duration": 3840, "pitch": 48},
+                                {"tick": 3840, "duration": 3840, "pitch": 50}
+                            ]
+                        }]
+                    }]
+                }
+            ]
+        })
+    }
+
+    /// Helper: create a single-instrument score (piano, 2 staves)
+    fn single_instrument_score() -> Value {
+        serde_json::json!({
+            "instruments": [
+                {
+                    "id": "piano-1",
+                    "name": "Piano",
+                    "staves": [
+                        {
+                            "clef": "Treble",
+                            "voices": [{
+                                "notes": [
+                                    {"tick": 0, "duration": 3840, "pitch": 60},
+                                    {"tick": 3840, "duration": 3840, "pitch": 62}
+                                ]
+                            }]
+                        },
+                        {
+                            "clef": "Bass",
+                            "voices": [{
+                                "notes": [
+                                    {"tick": 0, "duration": 3840, "pitch": 40},
+                                    {"tick": 3840, "duration": 3840, "pitch": 42}
+                                ]
+                            }]
+                        }
+                    ]
+                }
+            ]
+        })
+    }
+
+    /// T008: 2-instrument score produces 2 StaffGroup entries per system
+    #[test]
+    fn test_two_instruments_produce_two_staff_groups_per_system() {
+        let score = violin_cello_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
+
+        for (idx, system) in layout.systems.iter().enumerate() {
+            assert_eq!(
+                system.staff_groups.len(),
+                2,
+                "System {} should have 2 staff groups (violin + cello)",
+                idx
+            );
+            assert_eq!(
+                system.staff_groups[0].instrument_id, "violin-1",
+                "First staff group should be violin"
+            );
+            assert_eq!(
+                system.staff_groups[1].instrument_id, "cello-1",
+                "Second staff group should be cello"
+            );
+        }
+    }
+
+    /// T009: Piano (2 staves) + violin (1 staff) has no Y-overlap between staff groups
+    #[test]
+    fn test_piano_violin_no_y_overlap_between_staff_groups() {
+        let score = piano_violin_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
+
+        for (sys_idx, system) in layout.systems.iter().enumerate() {
+            assert_eq!(
+                system.staff_groups.len(),
+                2,
+                "System {} should have 2 staff groups",
+                sys_idx
+            );
+
+            // Get the bottom Y of the last staff in the first staff group (piano)
+            let piano_group = &system.staff_groups[0];
+            let piano_last_staff = piano_group.staves.last().unwrap();
+            let piano_bottom_y = piano_last_staff.staff_lines[4].y_position; // Bottom line
+
+            // Get the top Y of the first staff in the second staff group (violin)
+            let violin_group = &system.staff_groups[1];
+            let violin_first_staff = &violin_group.staves[0];
+            let violin_top_y = violin_first_staff.staff_lines[0].y_position; // Top line
+
+            assert!(
+                violin_top_y > piano_bottom_y,
+                "System {}: Violin top Y ({}) should be below piano bottom Y ({}) — no overlap",
+                sys_idx,
+                violin_top_y,
+                piano_bottom_y
+            );
+        }
+    }
+
+    /// T010: Inter-instrument gap is larger than intra-instrument gap
+    #[test]
+    fn test_inter_instrument_gap_larger_than_intra() {
+        let score = piano_violin_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
+
+        let system = &layout.systems[0];
+        assert_eq!(system.staff_groups.len(), 2);
+
+        let piano_group = &system.staff_groups[0];
+        assert_eq!(piano_group.staves.len(), 2, "Piano should have 2 staves");
+
+        // Intra-instrument gap: distance from piano treble staff bottom to piano bass staff top
+        let piano_treble_bottom = piano_group.staves[0].staff_lines[4].y_position;
+        let piano_bass_top = piano_group.staves[1].staff_lines[0].y_position;
+        let intra_gap = piano_bass_top - piano_treble_bottom;
+
+        // Inter-instrument gap: distance from piano bass staff bottom to violin staff top
+        let piano_bass_bottom = piano_group.staves[1].staff_lines[4].y_position;
+        let violin_group = &system.staff_groups[1];
+        let violin_top = violin_group.staves[0].staff_lines[0].y_position;
+        let inter_gap = violin_top - piano_bass_bottom;
+
+        assert!(
+            inter_gap > intra_gap,
+            "Inter-instrument gap ({}) should be larger than intra-instrument gap ({})",
+            inter_gap,
+            intra_gap
+        );
+    }
+
+    /// T011: Single-instrument score still produces 1 StaffGroup per system (no regression)
+    #[test]
+    fn test_single_instrument_one_staff_group_per_system() {
+        let score = single_instrument_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
+
+        for (idx, system) in layout.systems.iter().enumerate() {
+            assert_eq!(
+                system.staff_groups.len(),
+                1,
+                "System {} should have exactly 1 staff group for single-instrument score",
+                idx
+            );
+            assert_eq!(
+                system.staff_groups[0].instrument_id, "piano-1",
+                "Staff group should be piano"
+            );
+        }
+    }
+
+    /// T012: System bounding_box.height grows with number of instruments
+    #[test]
+    fn test_system_height_grows_with_instruments() {
+        let single_score = single_instrument_score();
+        let duo_score = violin_cello_score();
+        let quartet_score = string_quartet_score();
+        let config = LayoutConfig::default();
+
+        let single_layout = compute_layout(&single_score, &config);
+        let duo_layout = compute_layout(&duo_score, &config);
+        let quartet_layout = compute_layout(&quartet_score, &config);
+
+        let single_height = single_layout.systems[0].bounding_box.height;
+        let duo_height = duo_layout.systems[0].bounding_box.height;
+        let quartet_height = quartet_layout.systems[0].bounding_box.height;
+
+        assert!(
+            duo_height > single_height,
+            "Duo height ({}) should be greater than single height ({})",
+            duo_height,
+            single_height
+        );
+
+        assert!(
+            quartet_height > duo_height,
+            "Quartet height ({}) should be greater than duo height ({})",
+            quartet_height,
+            duo_height
+        );
+    }
+
+    /// T013: 4-instrument score (string quartet) has 4 StaffGroup entries per system with no overlap
+    #[test]
+    fn test_string_quartet_four_staff_groups_no_overlap() {
+        let score = string_quartet_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        assert!(
+            !layout.systems.is_empty(),
+            "Should have at least one system"
+        );
+
+        for (sys_idx, system) in layout.systems.iter().enumerate() {
+            assert_eq!(
+                system.staff_groups.len(),
+                4,
+                "System {} should have 4 staff groups (string quartet)",
+                sys_idx
+            );
+
+            // Verify no overlap: each staff group's top Y should be below the previous group's bottom Y
+            for i in 1..system.staff_groups.len() {
+                let prev_group = &system.staff_groups[i - 1];
+                let curr_group = &system.staff_groups[i];
+
+                let prev_bottom = prev_group.staves.last().unwrap().staff_lines[4].y_position;
+                let curr_top = curr_group.staves[0].staff_lines[0].y_position;
+
+                assert!(
+                    curr_top > prev_bottom,
+                    "System {}: Staff group {} top Y ({}) should be below staff group {} bottom Y ({}) — no overlap",
+                    sys_idx,
+                    i,
+                    curr_top,
+                    i - 1,
+                    prev_bottom
+                );
+            }
+
+            // Verify instrument IDs are in order
+            let ids: Vec<&str> = system
+                .staff_groups
+                .iter()
+                .map(|sg| sg.instrument_id.as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                vec!["violin1", "violin2", "viola-1", "cello-1"],
+                "System {}: Staff groups should be in score order",
+                sys_idx
+            );
+        }
+    }
+
+    /// T018: StaffGroup.name_label is populated with correct text matching instrument_name
+    #[test]
+    fn test_name_label_text_matches_instrument_name() {
+        let score = violin_cello_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        for (sys_idx, system) in layout.systems.iter().enumerate() {
+            for sg in &system.staff_groups {
+                let name_label = sg.name_label.as_ref().unwrap_or_else(|| {
+                    panic!(
+                        "System {}: StaffGroup '{}' should have name_label",
+                        sys_idx, sg.instrument_id
+                    )
+                });
+                assert_eq!(
+                    name_label.text, sg.instrument_name,
+                    "System {}: name_label.text should match instrument_name for '{}'",
+                    sys_idx, sg.instrument_id
+                );
+            }
+        }
+    }
+
+    /// T019: name_label.position.x is less than bracket x position
+    #[test]
+    fn test_name_label_x_before_bracket() {
+        // Use piano (has bracket) to verify name is before bracket
+        let score = piano_violin_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let system = &layout.systems[0];
+        let piano_group = &system.staff_groups[0];
+
+        let name_label = piano_group
+            .name_label
+            .as_ref()
+            .expect("Piano should have name_label");
+        let bracket = piano_group
+            .bracket_glyph
+            .as_ref()
+            .expect("Piano should have bracket");
+
+        assert!(
+            name_label.position.x < bracket.x,
+            "name_label.x ({}) should be less than bracket.x ({})",
+            name_label.position.x,
+            bracket.x
+        );
+    }
+
+    /// T020: name_label.position.y is vertically centered within the staff group
+    #[test]
+    fn test_name_label_y_centered_in_staff_group() {
+        let score = piano_violin_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let system = &layout.systems[0];
+
+        for sg in &system.staff_groups {
+            let name_label = sg.name_label.as_ref().unwrap_or_else(|| {
+                panic!("StaffGroup '{}' should have name_label", sg.instrument_id)
+            });
+
+            // Calculate the vertical center of the staff group
+            let first_staff_top = sg.staves[0].staff_lines[0].y_position;
+            let last_staff_bottom = sg.staves.last().unwrap().staff_lines[4].y_position;
+            let center_y = (first_staff_top + last_staff_bottom) / 2.0;
+
+            // Allow small tolerance for rounding
+            let tolerance = 5.0;
+            assert!(
+                (name_label.position.y - center_y).abs() < tolerance,
+                "name_label.y ({}) should be near center ({}) for '{}' (tolerance: {})",
+                name_label.position.y,
+                center_y,
+                sg.instrument_id,
+                tolerance
+            );
+        }
+    }
+
+    /// T021: Single-instrument score still has name_label populated
+    #[test]
+    fn test_single_instrument_has_name_label() {
+        let score = single_instrument_score();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        for system in &layout.systems {
+            assert_eq!(system.staff_groups.len(), 1);
+            let sg = &system.staff_groups[0];
+            let name_label = sg
+                .name_label
+                .as_ref()
+                .expect("Single-instrument score should still have name_label");
+            assert_eq!(
+                name_label.text, "Piano",
+                "name_label.text should be 'Piano'"
+            );
+        }
     }
 }

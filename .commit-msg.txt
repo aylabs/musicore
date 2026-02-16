@@ -1,0 +1,19 @@
+feat(023): multi-instrument Play View with layout engraving improvements
+
+- Multi-instrument rendering: stacked staves with name labels, brackets,
+  and barlines spanning all staves per instrument group
+- Compact staff line spacing: reduced from 2x ups to 1x ups so noteheads
+  fill the gap between lines (standard engraving proportion)
+- Correct stem direction: notes on/above middle line get stems down,
+  notes below get stems up (keeps notes inside the staff)
+- Direction-aware note glyphs: unbeamed notes use Up/Down SMuFL variants
+  (U+E1D3-E1DA) based on pitch position relative to middle line
+- Tighter note spacing: SpacingConfig defaults reduced (base/factor/min=40,
+  flag_padding=5, structural_padding=30) for 3+ measures per system
+- Inter-staff gap: intra_staff_multiplier=14 prevents treble/bass overlap
+  with room for ledger lines
+- Ledger line width: reduced half-width from 1.25 to 0.7 ups (notehead-sized)
+- Dynamic bracket glyph: spans actual top-to-bottom staff lines
+- max_system_width=1600 for natural screen fit without horizontal scroll
+- Fixed beam slope clamp bug using dx.abs() to prevent negative clamp range
+- All 298 backend tests and 789 frontend tests pass

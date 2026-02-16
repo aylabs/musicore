@@ -52,12 +52,10 @@ interface LayoutViewProps {
 
 /**
  * Convert Score to format expected by computeLayout
- * Processes all staves from first instrument (needed for piano grand staff)
+ * Processes all instruments and their staves for multi-instrument layout
  */
 function convertScoreToLayoutFormat(score: Score): ConvertedScore {
-  // Start with first instrument
-  const firstInstrument = score.instruments[0];
-  if (!firstInstrument) {
+  if (score.instruments.length === 0) {
     throw new Error('No instruments in score');
   }
 
@@ -72,65 +70,70 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
     };
   }
 
-  // Process all staves from the instrument (piano has 2: treble + bass)
-  const convertedStaves = firstInstrument.staves.map(staff => {
-    // Get first voice from this staff
-    const firstVoice = staff.voices[0];
-    if (!firstVoice) {
-      throw new Error('No voices in staff');
-    }
+  // Process ALL instruments (not just the first)
+  const convertedInstruments = score.instruments.map(instrument => {
+    // Process all staves from this instrument
+    const convertedStaves = instrument.staves.map(staff => {
+      // Get first voice from this staff
+      const firstVoice = staff.voices[0];
+      if (!firstVoice) {
+        throw new Error('No voices in staff');
+      }
 
-    // Extract key signature from staff structural events (default to 0 = C major)
-    let keySharps = 0;
-    const firstKeySigEvent = staff.staff_structural_events.find((e: StaffStructuralEvent) => 'KeySignature' in e);
-    if (firstKeySigEvent && 'KeySignature' in firstKeySigEvent) {
-      const keySig = firstKeySigEvent.KeySignature.key;
-      // Map key signature enum to number of sharps/flats
-      const keyMap: { [key: string]: number } = {
-        'CMajor': 0, 'AMinor': 0,
-        'GMajor': 1, 'EMinor': 1,
-        'DMajor': 2, 'BMinor': 2,
-        'AMajor': 3, 'FSharpMinor': 3,
-        'EMajor': 4, 'CSharpMinor': 4,
-        'BMajor': 5, 'GSharpMinor': 5,
-        'FSharpMajor': 6, 'DSharpMinor': 6,
-        'CSharpMajor': 7, 'ASharpMinor': 7,
-        'FMajor': -1, 'DMinor': -1,
-        'BFlatMajor': -2, 'GMinor': -2,
-        'EFlatMajor': -3, 'CMinor': -3,
-        'AFlatMajor': -4, 'FMinor': -4,
-        'DFlatMajor': -5, 'BFlatMinor': -5,
-        'GFlatMajor': -6, 'EFlatMinor': -6,
-        'CFlatMajor': -7, 'AFlatMinor': -7,
+      // Extract key signature from staff structural events (default to 0 = C major)
+      let keySharps = 0;
+      const firstKeySigEvent = staff.staff_structural_events.find((e: StaffStructuralEvent) => 'KeySignature' in e);
+      if (firstKeySigEvent && 'KeySignature' in firstKeySigEvent) {
+        const keySig = firstKeySigEvent.KeySignature.key;
+        // Map key signature enum to number of sharps/flats
+        const keyMap: { [key: string]: number } = {
+          'CMajor': 0, 'AMinor': 0,
+          'GMajor': 1, 'EMinor': 1,
+          'DMajor': 2, 'BMinor': 2,
+          'AMajor': 3, 'FSharpMinor': 3,
+          'EMajor': 4, 'CSharpMinor': 4,
+          'BMajor': 5, 'GSharpMinor': 5,
+          'FSharpMajor': 6, 'DSharpMinor': 6,
+          'CSharpMajor': 7, 'ASharpMinor': 7,
+          'FMajor': -1, 'DMinor': -1,
+          'BFlatMajor': -2, 'GMinor': -2,
+          'EFlatMajor': -3, 'CMinor': -3,
+          'AFlatMajor': -4, 'FMinor': -4,
+          'DFlatMajor': -5, 'BFlatMinor': -5,
+          'GFlatMajor': -6, 'EFlatMinor': -6,
+          'CFlatMajor': -7, 'AFlatMinor': -7,
+        };
+        keySharps = keyMap[keySig] || 0;
+      }
+
+      return {
+        clef: staff.active_clef,
+        time_signature: timeSignature,
+        key_signature: { sharps: keySharps },
+        voices: [{
+          notes: firstVoice.interval_events.map((note: Note) => ({
+            tick: note.start_tick,
+            duration: note.duration_ticks,
+            pitch: note.pitch,
+            articulation: null,
+            spelling: note.spelling,
+            // Forward MusicXML beam annotations to layout engine
+            ...(note.beams && note.beams.length > 0 ? { beams: note.beams } : {}),
+          }))
+        }]
       };
-      keySharps = keyMap[keySig] || 0;
-    }
+    });
 
     return {
-      clef: staff.active_clef,
-      time_signature: timeSignature,
-      key_signature: { sharps: keySharps },
-      voices: [{
-        notes: firstVoice.interval_events.map((note: Note) => ({
-          tick: note.start_tick,
-          duration: note.duration_ticks,
-          pitch: note.pitch,
-          articulation: null,
-          spelling: note.spelling,
-          // Forward MusicXML beam annotations to layout engine
-          ...(note.beams && note.beams.length > 0 ? { beams: note.beams } : {}),
-        }))
-      }]
+      id: instrument.id,
+      name: instrument.name,
+      staves: convertedStaves,
     };
   });
 
   // Create score structure matching Rust WASM expectations
   return {
-    instruments: [{
-      id: firstInstrument.id,
-      name: firstInstrument.name,
-      staves: convertedStaves
-    }],
+    instruments: convertedInstruments,
     // Extract tempo and time signature from global_structural_events
     tempo_changes: score.global_structural_events
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -178,9 +181,9 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
         // Compute layout with complete config (now async)
         const result = await computeLayout(layoutInput, {
-          max_system_width: 2400,
+          max_system_width: 1600,
           system_height: 200,
-          system_spacing: 300,
+          system_spacing: 100,
           units_per_space: 20, // 20 logical units = 1 staff space
         });
 
@@ -243,7 +246,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
   return (
     <div style={styles.container}>
       <div style={styles.info}>
-        <span>🎵 Play View: First voice from {score.instruments[0]?.name || 'instrument'}</span>
+        <span>🎵 Play View: All instruments ({score.instruments.length})</span>
         {/* Feature 022: TempoControl in Play View */}
         <div style={styles.tempoControlWrapper}>
           <TempoControl disabled={playbackStatus === 'playing'} />

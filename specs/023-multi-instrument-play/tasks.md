@@ -1,0 +1,178 @@
+# Tasks: Multi-Instrument Play View
+
+**Input**: Design documents from `/specs/023-multi-instrument-play/`
+**Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/
+
+**Tests**: Tests are included as they are required by Principle V (Test-First Development) and the constitution.
+
+**Organization**: Tasks are grouped by user story. US1 (Display All Instruments) and US3 (Correct Vertical Spacing) are combined into Phase 3 since they are inseparable P1 requirements — you cannot display multiple instruments without correct vertical spacing.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
+- Include exact file paths in descriptions
+
+## Phase 1: Setup
+
+**Purpose**: Type definitions and shared infrastructure changes needed before any user story work
+
+- [X] T001 [P] Add `NameLabel` struct and `instrument_name` field to `StaffGroup` in `backend/src/layout/types.rs`
+- [X] T002 [P] Add `NameLabel` interface and `instrument_name` field to `StaffGroup` in `frontend/src/wasm/layout.ts`
+- [X] T003 Add `name` field to internal `InstrumentData` struct and update `extract_instruments()` to populate it from score JSON in `backend/src/layout/mod.rs`
+
+**Checkpoint**: Type definitions are in place across Rust and TypeScript. Layout engine can now be updated.
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core layout engine changes that MUST be complete before user story rendering works
+
+**⚠️ CRITICAL**: No user story rendering can work until vertical spacing and system height are fixed
+
+- [X] T004 Fix system height calculation to sum staves across ALL instruments plus inter-instrument gaps in `backend/src/layout/mod.rs`
+- [X] T005 Fix vertical offset accumulation to use cumulative `global_staff_offset` across instruments, adding inter-instrument gap between instrument boundaries in `backend/src/layout/mod.rs`
+- [X] T006 Update `create_staff_lines()` to use absolute staff offset (accounting for previous instruments' staves) in `backend/src/layout/mod.rs`
+- [X] T007 Populate `instrument_name` on `StaffGroup` from `InstrumentData.name` during staff group creation in `backend/src/layout/mod.rs`
+
+**Checkpoint**: Rust layout engine correctly positions all instruments vertically. WASM output has correct heights and no overlaps. Ready for frontend changes.
+
+---
+
+## Phase 3: User Story 1+3 - Display All Instruments with Correct Spacing (Priority: P1) 🎯 MVP
+
+**Goal**: Multi-instrument scores render all instruments in Play View with correct vertical spacing and no stave overlap. Single-instrument scores have no visual regression.
+
+**Independent Test**: Import a multi-instrument score (e.g., violin+cello), open Play View, verify all instruments appear in each system with correct spacing.
+
+### Tests for User Story 1+3
+
+- [X] T008 [P] [US1] Write Rust test: 2-instrument score (violin+cello) produces 2 `StaffGroup` entries per system in `backend/tests/layout_test.rs`
+- [X] T009 [P] [US1] Write Rust test: piano (2 staves) + violin (1 staff) score has no Y-overlap between staff groups in `backend/tests/layout_test.rs`
+- [X] T010 [P] [US3] Write Rust test: inter-instrument gap (between piano and violin) is larger than intra-instrument gap (between piano treble and bass) in `backend/tests/layout_test.rs`
+- [X] T011 [P] [US1] Write Rust test: single-instrument score still produces 1 `StaffGroup` per system (no regression) in `backend/tests/layout_test.rs`
+- [X] T012 [P] [US1] Write Rust test: system `bounding_box.height` grows with number of instruments in `backend/tests/layout_test.rs`
+- [X] T013 [P] [US3] Write Rust test: 4-instrument score (string quartet) has 4 `StaffGroup` entries per system with no overlap in `backend/tests/layout_test.rs`
+
+### Implementation for User Story 1+3
+
+- [X] T014 [US1] Update `convertScoreToLayoutFormat` to iterate ALL `score.instruments` instead of only `[0]` in `frontend/src/components/layout/LayoutView.tsx`
+- [X] T015 [US1] Update Play View info bar text from "First voice from {instrument}" to "All instruments" in `frontend/src/components/layout/LayoutView.tsx`
+- [X] T016 [US1] Verify playback highlighting works across all instruments — `buildSourceToNoteIdMap` already uses `instrument_id` in composite key in `frontend/src/services/highlight/sourceMapping.ts`
+- [X] T017 [US1] Build WASM and run Rust tests to verify multi-instrument layout output is correct via `cargo test` in `backend/`
+
+**Checkpoint**: Multi-instrument scores render all instruments in Play View. Vertical spacing is correct. Single-instrument scores unchanged. Playback highlighting works across instruments. SC-001, SC-003, SC-004, SC-005, SC-006 achievable.
+
+---
+
+## Phase 4: User Story 2 - Instrument Name Labels at System Start (Priority: P2)
+
+**Goal**: Each system displays the instrument name as a text label to the left of the bracket/brace, positioned by the layout engine (Principle VI).
+
+**Independent Test**: Import a multi-instrument score, open Play View, verify instrument names appear at the start of each system for all instruments.
+
+### Tests for User Story 2
+
+- [X] T018 [P] [US2] Write Rust test: `StaffGroup.name_label` is populated with correct text matching `instrument_name` in `backend/tests/layout_test.rs`
+- [X] T019 [P] [US2] Write Rust test: `name_label.position.x` is less than bracket x position (name before bracket) in `backend/tests/layout_test.rs`
+- [X] T020 [P] [US2] Write Rust test: `name_label.position.y` is vertically centered within the staff group's bounding box in `backend/tests/layout_test.rs`
+- [X] T021 [P] [US2] Write Rust test: single-instrument score still has `name_label` populated on its `StaffGroup` in `backend/tests/layout_test.rs`
+
+### Implementation for User Story 2
+
+- [X] T022 [US2] Compute `NameLabel` position (x before bracket, y centered on staff group) and set on `StaffGroup.name_label` in `backend/src/layout/mod.rs`
+- [X] T023 [US2] Render `name_label` as SVG `<text>` element in `renderStaffGroup()` method in `frontend/src/components/LayoutRenderer.tsx`
+- [X] T024 [US2] Build WASM and verify name labels appear for all instruments in browser in `backend/` and `frontend/`
+
+**Checkpoint**: Instrument names visible at the start of each system. SC-002 achieved. All success criteria now met.
+
+---
+
+## Phase 5: Polish & Cross-Cutting Concerns
+
+**Purpose**: Contract test validation, cleanup, and verification
+
+- [X] T025 [P] Write Rust contract test: `StaffGroup` serializes to JSON with `instrument_name` and `name_label` fields present in `backend/tests/contract_test.rs`
+- [X] T026 [P] Update existing multi-instrument layout tests (T012/T013 in `layout_integration_test.rs`) to also assert `instrument_name` field is correct in `backend/tests/layout_integration_test.rs`
+- [X] T027 Run all backend tests (`cargo test`) and all frontend tests (`npm test`) to verify no regressions
+- [X] T028 Run quickstart.md validation steps to verify end-to-end functionality
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: No dependencies — can start immediately
+- **Foundational (Phase 2)**: Depends on T001 and T003 (type definitions + `InstrumentData.name`)
+- **US1+US3 (Phase 3)**: Depends on Phase 2 completion (vertical spacing must work before rendering)
+- **US2 (Phase 4)**: Depends on Phase 2 (T007 — `instrument_name` on `StaffGroup`). Can run in parallel with Phase 3 tests/implementation if desired.
+- **Polish (Phase 5)**: Depends on Phases 3 and 4 completion
+
+### User Story Dependencies
+
+- **US1+US3 (P1)**: Core MVP. Can start after Phase 2. No dependency on US2.
+- **US2 (P2)**: Name labels. Can start after Phase 2. Independent of US1+US3 frontend work (different file: `LayoutRenderer.tsx` vs `LayoutView.tsx`), but logically tested after US1+US3.
+
+### Within Each User Story
+
+- Tests MUST be written and FAIL before implementation
+- Rust backend changes before frontend changes
+- Layout engine before renderer
+- WASM build before browser verification
+
+### Parallel Opportunities
+
+**Phase 1** (all three tasks touch different files):
+```
+T001 (types.rs) ‖ T002 (layout.ts) ‖ T003 (mod.rs)
+```
+
+**Phase 3 Tests** (all in same file but independent test functions):
+```
+T008 ‖ T009 ‖ T010 ‖ T011 ‖ T012 ‖ T013
+```
+
+**Phase 4 Tests** (independent test functions):
+```
+T018 ‖ T019 ‖ T020 ‖ T021
+```
+
+**Phase 3 Implementation** (different files):
+```
+T014 (LayoutView.tsx) ‖ T016 (sourceMapping.ts verification)
+```
+
+**Phase 5** (different test files):
+```
+T025 (contract_test.rs) ‖ T026 (layout_integration_test.rs)
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1+3 Only)
+
+1. Complete Phase 1: Setup (type definitions)
+2. Complete Phase 2: Foundational (vertical spacing + system height)
+3. Complete Phase 3: User Story 1+3 (all instruments render correctly)
+4. **STOP and VALIDATE**: Import multi-instrument MusicXML, verify in Play View
+5. Deploy/demo if ready — names can come later
+
+### Incremental Delivery
+
+1. Setup + Foundational → Type + layout engine ready
+2. Add US1+US3 → All instruments visible, correct spacing → **MVP!**
+3. Add US2 → Instrument name labels visible → **Full feature**
+4. Polish → Contract tests, regression checks → **Production ready**
+
+---
+
+## Notes
+
+- US1 and US3 are combined because vertical spacing (US3) is a prerequisite for displaying multiple instruments (US1) — they cannot be tested independently
+- The WASM binding (`compute_layout_wasm`) is a pass-through and needs no task — it automatically picks up the new struct fields via serde
+- Playback highlighting (FR-011) requires no code changes — the existing `sourceMapping.ts` already uses `instrument_id` in composite keys. Only verification (T016) is needed.
+- `convertScoreToLayoutFormat` (T014) is the single frontend change that unblocks multi-instrument rendering

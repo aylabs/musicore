@@ -92,13 +92,13 @@ fn test_single_staff_layout_structure() {
             .map(|line| line["y_position"].as_f64().unwrap() as f32)
             .collect();
 
-        // Staff lines should be 40 units apart (2 * units_per_space)
+        // Staff lines should be 20 units apart (1 * units_per_space)
         for i in 0..4 {
             let spacing = y_positions[i + 1] - y_positions[i];
             assert_eq!(
                 spacing,
-                40.0,
-                "Staff lines {} and {} should be 40 units apart",
+                20.0,
+                "Staff lines {} and {} should be 20 units apart",
                 i,
                 i + 1
             );
@@ -187,12 +187,12 @@ fn test_multi_staff_layout_structure() {
     let staff_0_top = staff_0_lines[0]["y_position"].as_f64().unwrap() as f32;
     let staff_1_top = staff_1_lines[0]["y_position"].as_f64().unwrap() as f32;
 
-    // Staves should be separated by 20 staff spaces (400 units with units_per_space=20)
-    // This provides clear vertical separation for piano grand staff
+    // Staves should be separated by 14 staff spaces (280 units with units_per_space=20)
+    // This provides ample room for ledger lines and bracket between piano grand staff staves
     let staff_separation = staff_1_top - staff_0_top;
     assert_eq!(
-        staff_separation, 400.0,
-        "Piano staves should be separated by 400 units (20 staff spaces)"
+        staff_separation, 280.0,
+        "Piano staves should be separated by 280 units (14 staff spaces)"
     );
 
     println!("✅ Multi-staff layout structure test passed");
@@ -276,6 +276,20 @@ fn test_measure_number_single_per_multi_instrument_system() {
                 "measure_number should NOT appear on staff_group level"
             );
         }
+
+        // T026: Verify instrument_name field is correct on each staff group
+        assert_eq!(
+            staff_groups[0]["instrument_name"].as_str().unwrap(),
+            "Violin",
+            "First staff group instrument_name should be 'Violin' in system {}",
+            idx
+        );
+        assert_eq!(
+            staff_groups[1]["instrument_name"].as_str().unwrap(),
+            "Cello",
+            "Second staff group instrument_name should be 'Cello' in system {}",
+            idx
+        );
     }
 
     println!("✅ Multi-instrument measure number single-per-system test passed");
@@ -335,6 +349,17 @@ fn test_measure_number_above_topmost_staff_multi_instrument() {
         "Measure number y ({}) should be above topmost staff line y ({}) in multi-instrument layout",
         mn_y,
         first_staff_line_y
+    );
+
+    // T026: Verify instrument_name on staff groups
+    let staff_groups = system["staff_groups"].as_array().unwrap();
+    assert_eq!(
+        staff_groups[0]["instrument_name"].as_str().unwrap(),
+        "Violin"
+    );
+    assert_eq!(
+        staff_groups[1]["instrument_name"].as_str().unwrap(),
+        "Cello"
     );
 
     println!("✅ Multi-instrument measure number position test passed");

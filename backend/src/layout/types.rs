@@ -69,12 +69,32 @@ pub struct MeasureNumber {
 pub struct StaffGroup {
     /// Links to CompiledScore.Instrument.id
     pub instrument_id: String,
+    /// Human-readable instrument name (FR-009)
+    pub instrument_name: String,
     /// 1-2 staves per group (MVP limit)
     pub staves: Vec<Staff>,
     /// Visual grouping indicator
     pub bracket_type: BracketType,
     /// Bracket/brace glyph with positioning and scale (calculated by layout engine)
     pub bracket_glyph: Option<BracketGlyph>,
+    /// Positioned instrument name label for rendering (FR-003)
+    pub name_label: Option<NameLabel>,
+}
+
+/// Positioned text label for instrument name at system start
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NameLabel {
+    /// The instrument name text to render
+    pub text: String,
+    /// Absolute (x, y) coordinates for rendering
+    pub position: Point,
+    /// Font size in logical units
+    #[serde(serialize_with = "round_f32")]
+    pub font_size: f32,
+    /// Font family (e.g., "serif")
+    pub font_family: String,
+    /// RGBA text color
+    pub color: Color,
 }
 
 /// Bracket/brace glyph with vertical scaling information
