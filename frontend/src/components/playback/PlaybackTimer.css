@@ -1,0 +1,39 @@
+/**
+ * PlaybackTimer component styles
+ *
+ * Feature 022 - Display Improvements: User Story 1 (Playback Timer)
+ */
+
+.playback-timer {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  padding: 4px 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.playback-timer-elapsed {
+  color: #1976d2;
+}
+
+.playback-timer-separator {
+  color: #999;
+  margin: 0 1px;
+}
+
+.playback-timer-total {
+  color: #666;
+}
+
+/* Compact mode adjustments (inherited from parent .compact context) */
+.compact .playback-timer {
+  font-size: 13px;
+  padding: 3px 8px;
+}

@@ -14,6 +14,7 @@ describe('ViewModeSelector', () => {
 
     expect(screen.getByText('Instruments View')).toBeDefined();
     expect(screen.getByText('Play View')).toBeDefined();
+    expect(screen.getByText('Play Legacy View')).toBeDefined();
   });
 
   it('should highlight the active button', () => {
@@ -23,19 +24,19 @@ describe('ViewModeSelector', () => {
     const individualButton = screen.getByText('Instruments View');
     expect(individualButton.classList.contains('active')).toBe(true);
 
-    rerender(<ViewModeSelector currentMode="stacked" onChange={onChange} />);
-    const stackedButton = screen.getByText('Play View');
-    expect(stackedButton.classList.contains('active')).toBe(true);
+    rerender(<ViewModeSelector currentMode="layout" onChange={onChange} />);
+    const layoutButton = screen.getByText('Play View');
+    expect(layoutButton.classList.contains('active')).toBe(true);
   });
 
   it('should call onChange when clicking a button', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    const stackedButton = screen.getByText('Play View');
-    fireEvent.click(stackedButton);
+    const playButton = screen.getByText('Play View');
+    fireEvent.click(playButton);
 
-    expect(onChange).toHaveBeenCalledWith('stacked');
+    expect(onChange).toHaveBeenCalledWith('layout');
   });
 
   it('should not call onChange when clicking the active button', () => {

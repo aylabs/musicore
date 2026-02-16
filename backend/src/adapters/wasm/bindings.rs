@@ -48,6 +48,10 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
     // Store format for metadata
     let format = format!("MusicXML {}", doc.version);
 
+    // Feature 022: Extract title metadata before doc is consumed by convert()
+    let work_title = doc.work_title.clone().or(doc.movement_title.clone());
+    let composer = doc.composer.clone();
+
     // Convert MusicXMLDocument to domain Score
     let score = MusicXMLConverter::convert(doc, &mut context).map_err(import_error_to_js)?;
 
@@ -100,8 +104,8 @@ pub fn parse_musicxml(xml_content: &str) -> Result<JsValue, JsValue> {
         metadata: ImportMetadata {
             format,
             file_name: None,
-            work_title: None,
-            composer: None,
+            work_title, // Feature 022: Populated from MusicXML metadata
+            composer,   // Feature 022: Populated from MusicXML metadata
         },
         statistics: ImportStatistics {
             instrument_count,

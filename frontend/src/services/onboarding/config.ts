@@ -14,9 +14,9 @@ import type { OnboardingConfig } from './types';
 export const ONBOARDING_CONFIG: OnboardingConfig = {
   /**
    * Default view mode for first run
-   * Always "stacked" per spec.md requirement FR-003
+   * Layout mode is the primary Play View
    */
-  defaultViewMode: 'stacked',
+  defaultViewMode: 'layout',
   
   /**
    * Path to bundled demo MusicXML file

@@ -16,6 +16,7 @@
 import JSZip from 'jszip';
 import type { Score } from "../../types/score";
 import { parseMusicXML } from "../wasm/music-engine";
+import type { WasmImportResult } from "../wasm/music-engine";
 import { WasmEngineError } from "../../types/wasm-error";
 import type { ImportWarning } from "../../types/import-warning";
 
@@ -150,7 +151,7 @@ export class MusicXMLImportService {
       // Build import result using WASM-provided data
       const result: ImportResult = {
         score: wasmResult.score,
-        metadata: this.buildMetadata(file),
+        metadata: this.buildMetadata(file, wasmResult),
         statistics: wasmResult.statistics,
         warnings: wasmResult.warnings,
         partial_import: wasmResult.partial_import,
@@ -231,18 +232,15 @@ export class MusicXMLImportService {
   }
 
   /**
-   * Build import metadata from file and score
-   * @param file - Original file object
-   * @returns Import metadata
+   * Build import metadata from the original file and WASM result
+   * Feature 022: Now consumes work_title and composer from WASM metadata
    */
-  private buildMetadata(file: File): ImportMetadata {
-    // Score doesn't have metadata fields directly
-    // In the future, we could extract title/composer from MusicXML work-title/creator elements
+  private buildMetadata(file: File, wasmResult?: WasmImportResult): ImportMetadata {
     return {
-      format: 'MusicXML', // WASM parser doesn't track version yet
+      format: wasmResult?.metadata?.format || 'MusicXML',
       file_name: file.name,
-      // Title and composer would need to be extracted during parsing
-      // For now, we don't have access to them after parsing
+      work_title: wasmResult?.metadata?.work_title,
+      composer: wasmResult?.metadata?.composer,
     };
   }
 

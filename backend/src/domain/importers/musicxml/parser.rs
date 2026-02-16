@@ -66,6 +66,21 @@ impl MusicXMLParser {
                     b"part-list" => {
                         Self::parse_part_list(reader, doc)?;
                     }
+                    // Feature 022: Extract title metadata
+                    b"work" => {
+                        Self::parse_work(reader, doc)?;
+                    }
+                    b"movement-title" => {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            let title = text.unescape().unwrap_or_default().trim().to_string();
+                            if !title.is_empty() {
+                                doc.movement_title = Some(title);
+                            }
+                        }
+                    }
+                    b"identification" => {
+                        Self::parse_identification(reader, doc)?;
+                    }
                     b"part" => {
                         // Extract part id
                         for attr in e.attributes().flatten() {
@@ -162,6 +177,105 @@ impl MusicXMLParser {
                         line: reader.buffer_position(),
                         column: 0,
                         message: format!("XML parse error in part-list: {}", e),
+                    });
+                }
+                _ => {}
+            }
+            buf.clear();
+        }
+
+        Ok(())
+    }
+
+    /// Feature 022: Parses <work> element to extract work-title
+    ///
+    /// Structure:
+    /// ```xml
+    /// <work>
+    ///   <work-title>My Score Title</work-title>
+    /// </work>
+    /// ```
+    fn parse_work<B: BufRead>(
+        reader: &mut Reader<B>,
+        doc: &mut MusicXMLDocument,
+    ) -> Result<(), ImportError> {
+        let mut buf = Vec::new();
+
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(e)) => {
+                    if e.name().as_ref() == b"work-title" {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            let title = text.unescape().unwrap_or_default().trim().to_string();
+                            if !title.is_empty() {
+                                doc.work_title = Some(title);
+                            }
+                        }
+                    }
+                }
+                Ok(Event::End(e)) if e.name().as_ref() == b"work" => {
+                    break;
+                }
+                Ok(Event::Eof) => break,
+                Err(e) => {
+                    return Err(ImportError::ParseError {
+                        line: reader.buffer_position(),
+                        column: 0,
+                        message: format!("XML parse error in work: {}", e),
+                    });
+                }
+                _ => {}
+            }
+            buf.clear();
+        }
+
+        Ok(())
+    }
+
+    /// Feature 022: Parses <identification> element to extract composer
+    ///
+    /// Structure:
+    /// ```xml
+    /// <identification>
+    ///   <creator type="composer">J.S. Bach</creator>
+    /// </identification>
+    /// ```
+    fn parse_identification<B: BufRead>(
+        reader: &mut Reader<B>,
+        doc: &mut MusicXMLDocument,
+    ) -> Result<(), ImportError> {
+        let mut buf = Vec::new();
+
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(e)) => {
+                    if e.name().as_ref() == b"creator" {
+                        let mut is_composer = false;
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == b"type" && attr.value.as_ref() == b"composer" {
+                                is_composer = true;
+                            }
+                        }
+                        if is_composer {
+                            if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                                let composer =
+                                    text.unescape().unwrap_or_default().trim().to_string();
+                                if !composer.is_empty() {
+                                    doc.composer = Some(composer);
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(Event::End(e)) if e.name().as_ref() == b"identification" => {
+                    break;
+                }
+                Ok(Event::Eof) => break,
+                Err(e) => {
+                    return Err(ImportError::ParseError {
+                        line: reader.buffer_position(),
+                        column: 0,
+                        message: format!("XML parse error in identification: {}", e),
                     });
                 }
                 _ => {}

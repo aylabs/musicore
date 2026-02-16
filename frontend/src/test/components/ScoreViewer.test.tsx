@@ -118,7 +118,8 @@ describe("ScoreViewer - Editing UI Removal", () => {
 
     // Wait for score to load
     await waitFor(() => {
-      expect(screen.queryByText("Piano")).toBeInTheDocument();
+      const pianoElements = screen.queryAllByText("Piano");
+      expect(pianoElements.length).toBeGreaterThan(0);
     });
 
     // Query for Save button

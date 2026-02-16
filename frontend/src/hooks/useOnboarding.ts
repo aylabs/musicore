@@ -30,7 +30,7 @@ import { demoLoaderService } from '../services/onboarding/demoLoader';
 export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult {
   // Initialize view mode from localStorage (lazy initializer for SSR safety)
   const [viewMode, setViewModeState] = useState<ViewMode>(() => {
-    return viewModeStorage.getViewMode(); // Defaults to "stacked" if not set
+    return viewModeStorage.getViewMode(); // Defaults to "layout" (Play View) if not set
   });
 
   // Track first-run status
@@ -77,7 +77,7 @@ export function useOnboarding(wasmReady: boolean = false): OnboardingHookResult 
           // Update first-run status
           setIsFirstRun(false);
           
-          // Update view mode from storage (should be "stacked" after first-run)
+          // Update view mode from storage (should be "layout" after first-run)
           const updatedMode = viewModeStorage.getViewMode();
           setViewModeState(updatedMode);
           

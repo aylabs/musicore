@@ -1050,3 +1050,200 @@ fn test_two_measures_piano_whole_notes() {
         }
     }
 }
+
+// ============================================================================
+// Feature 022: Title Extraction Tests
+// ============================================================================
+
+#[test]
+fn test_parse_work_title() {
+    // Feature 022: Parse <work>/<work-title> element
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <work>
+    <work-title>Symphony No. 5</work-title>
+  </work>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc =
+        MusicXMLParser::parse(xml, &mut context).expect("Failed to parse XML with work-title");
+
+    assert_eq!(doc.work_title, Some("Symphony No. 5".to_string()));
+    assert_eq!(doc.movement_title, None);
+}
+
+#[test]
+fn test_parse_movement_title() {
+    // Feature 022: Parse <movement-title> element
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <movement-title>Allegro con brio</movement-title>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc =
+        MusicXMLParser::parse(xml, &mut context).expect("Failed to parse XML with movement-title");
+
+    assert_eq!(doc.work_title, None);
+    assert_eq!(doc.movement_title, Some("Allegro con brio".to_string()));
+}
+
+#[test]
+fn test_parse_composer() {
+    // Feature 022: Parse <identification>/<creator type="composer"> element
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <identification>
+    <creator type="composer">Ludwig van Beethoven</creator>
+  </identification>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse XML with composer");
+
+    assert_eq!(doc.composer, Some("Ludwig van Beethoven".to_string()));
+}
+
+#[test]
+fn test_work_title_preferred_over_movement_title() {
+    // Feature 022: work_title takes precedence over movement_title in metadata resolution
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <work>
+    <work-title>Symphony No. 5</work-title>
+  </work>
+  <movement-title>I. Allegro con brio</movement-title>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc =
+        MusicXMLParser::parse(xml, &mut context).expect("Failed to parse XML with both titles");
+
+    assert_eq!(doc.work_title, Some("Symphony No. 5".to_string()));
+    assert_eq!(doc.movement_title, Some("I. Allegro con brio".to_string()));
+
+    // Resolution rule: work_title.or(movement_title) = "Symphony No. 5"
+    let resolved_title = doc.work_title.clone().or(doc.movement_title.clone());
+    assert_eq!(resolved_title, Some("Symphony No. 5".to_string()));
+}
+
+#[test]
+fn test_no_title_metadata() {
+    // Feature 022: Files without title metadata should have None values
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let mut context = ImportContext::new();
+    let doc = MusicXMLParser::parse(xml, &mut context).expect("Failed to parse XML without title");
+
+    assert_eq!(doc.work_title, None);
+    assert_eq!(doc.movement_title, None);
+    assert_eq!(doc.composer, None);
+}
