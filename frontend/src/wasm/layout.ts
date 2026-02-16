@@ -65,12 +65,32 @@ export interface MeasureNumber {
 export interface StaffGroup {
   /** Links to CompiledScore.Instrument.id */
   instrument_id: string;
+  /** Human-readable instrument name (FR-009) */
+  instrument_name: string;
   /** 1-2 staves per group (MVP limit) */
   staves: Staff[];
   /** Visual grouping indicator */
   bracket_type: BracketType;
   /** Bracket/brace glyph with positioning and scale (calculated by Rust layout engine) */
   bracket_glyph?: BracketGlyph;
+  /** Positioned instrument name label for rendering (FR-003) */
+  name_label?: NameLabel;
+}
+
+/**
+ * Positioned text label for instrument name at system start
+ */
+export interface NameLabel {
+  /** The instrument name text to render */
+  text: string;
+  /** Absolute (x, y) coordinates for rendering */
+  position: Point;
+  /** Font size in logical units */
+  font_size: number;
+  /** Font family (e.g., "serif") */
+  font_family: string;
+  /** RGBA text color */
+  color: Color;
 }
 
 /**

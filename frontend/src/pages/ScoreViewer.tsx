@@ -104,7 +104,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       viewport: {
         x: 0,
         y: 0,
-        width: 2400,
+        width: 1600,
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: props.initialZoom || 1.0,
@@ -222,21 +222,23 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Use extra padding to show more systems and avoid sudden pop-in
     const viewportPadding = 150; // Extra space top/bottom for smooth scrolling
     
-    // When at top of page (not scrolled), use full layout height to show all systems
-    // Otherwise use small viewport for efficient virtualized rendering
-    const viewportHeight = scrollTop === 0 
-      ? this.props.layout.total_height + viewportPadding
-      : (clientHeight / zoom) + viewportPadding;
+    // Use container's visible height to determine viewport (enables virtualization).
+    // Fall back to total layout height only if clientHeight is not yet available.
+    const viewportHeight = clientHeight > 0
+      ? (clientHeight / zoom) + viewportPadding
+      : this.props.layout.total_height + viewportPadding;
     
     // Allow negative Y to show glyphs above first system (e.g., clef at y=-10)
     const viewportY = (scrollTop / zoom) - (viewportPadding / 2);
     const viewportWidth = this.props.layout.total_width;
 
+    // Expand viewport leftward to show instrument name labels (Feature 023)
+    const labelMargin = 200;
     this.setState({
       viewport: {
-        x: 0,
+        x: -labelMargin,
         y: viewportY,
-        width: viewportWidth,
+        width: viewportWidth + labelMargin,
         height: viewportHeight,
       },
       scrollTop,
@@ -370,8 +372,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
 
     // Calculate scroll container dimensions based on layout and zoom
+    // Include label margin in width so SVG viewBox and element aspect ratios match
+    const labelMargin = 200; // Must match value in updateViewport
     const totalHeight = layout.total_height * zoom;
-    const totalWidth = layout.total_width * zoom;
+    const totalWidth = (layout.total_width + labelMargin) * zoom;
 
     return (
       <div ref={this.wrapperRef} style={styles.wrapper}>
@@ -467,8 +471,8 @@ const styles = {
   },
   container: {
     flex: 1,
-    overflowX: 'auto' as const, // Container handles horizontal scrolling (accessible without scrolling down)
-    overflowY: 'hidden' as const, // Prevent vertical scrolling in container - page handles it
+    overflowX: 'auto' as const, // Allow horizontal scroll if needed
+    overflowY: 'auto' as const, // Enable vertical scrolling within container
     position: 'relative' as const,
   },
   message: {

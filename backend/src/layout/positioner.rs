@@ -147,12 +147,14 @@ pub fn pitch_to_y_with_spelling(
     };
 
     // Staff spaces from reference pitch (down = positive)
-    // Each diatonic step = 1 staff space
+    // Each diatonic step = 0.5 staff spaces (half a line gap)
+    // Adjacent staff lines are 2 diatonic steps = 1 staff space apart
     let staff_spaces_from_reference = reference_diatonic - diatonic_steps_from_c_minus1;
 
-    // Convert to logical units, offset by -0.5 spaces to center noteheads on staff lines
-    // This compensates for SMuFL glyph baseline positioning
-    (staff_spaces_from_reference - 0.5) * units_per_space
+    // Convert to logical units:
+    // - Multiply by 0.5 to convert diatonic steps to half-spaces (line gap = 1 ups, 2 steps per gap)
+    // - Subtract 0.5 staff spaces to compensate for SMuFL glyph baseline positioning
+    (staff_spaces_from_reference * 0.5 - 0.5) * units_per_space
 }
 
 /// Compute glyph bounding box using SMuFL metrics
@@ -230,18 +232,39 @@ pub fn position_noteheads(
             // For beamed notes (in beamed_note_indices), use bare noteheadBlack (U+E0A4)
             // instead of combined head+stem+flag glyphs
             let is_beamed = beamed_note_indices.contains(&i) && *duration < 960;
+
+            // Determine stem direction based on note position relative to staff middle line.
+            // Middle line (3rd line, 0-indexed 2) is at staff_vertical_offset + 2.0*ups, but
+            // pitch_to_y includes a -0.5*ups offset, so threshold is staff_vertical_offset + 1.5*ups.
+            let stem_middle_y = staff_vertical_offset + 1.5 * units_per_space;
+            let stem_down = y <= stem_middle_y;
+
             let (codepoint, glyph_name) = if is_beamed {
                 ('\u{E0A4}', "noteheadBlack")
             } else if *duration >= 3840 {
                 ('\u{E0A2}', "noteheadWhole")
             } else if *duration >= 1920 {
-                ('\u{E1D3}', "noteheadHalfWithStem")
+                if stem_down {
+                    ('\u{E1D4}', "noteHalfDown")
+                } else {
+                    ('\u{E1D3}', "noteHalfUp")
+                }
             } else if *duration >= 960 {
-                ('\u{E1D5}', "noteheadBlackWithStem")
+                if stem_down {
+                    ('\u{E1D6}', "noteQuarterDown")
+                } else {
+                    ('\u{E1D5}', "noteQuarterUp")
+                }
             } else if *duration >= 480 {
-                ('\u{E1D7}', "noteEighthUp")
+                if stem_down {
+                    ('\u{E1D8}', "note8thDown")
+                } else {
+                    ('\u{E1D7}', "note8thUp")
+                }
+            } else if stem_down {
+                ('\u{E1DA}', "note16thDown")
             } else {
-                ('\u{E1D9}', "noteSixteenthUp")
+                ('\u{E1D9}', "note16thUp")
             };
 
             let bounding_box = compute_glyph_bounding_box(
@@ -287,28 +310,24 @@ pub fn position_clef(
     // SMuFL codepoints for clefs
     let (codepoint, y_position) = match clef_type {
         "Treble" => {
-            // G clef centered on 2nd line (G4 line at y=120)
-            // With -0.5 offset: y=110
-            ('\u{E050}', 110.0)
+            // G clef centered on line 3 (G4), y from pitch_to_y
+            ('\u{E050}', 50.0)
         }
         "Bass" => {
-            // F clef centered on 4th line (F3 line at y=120)
-            // With -0.5 offset: y=110
-            ('\u{E062}', 110.0)
+            // F clef centered on line 1 (F3), y from pitch_to_y
+            ('\u{E062}', 10.0)
         }
         "Alto" => {
-            // C clef centered on 3rd line (C4, middle line at y=80)
-            // With -0.5 offset: y=70
-            ('\u{E05C}', 70.0)
+            // C clef centered on middle line (C4), y from pitch_to_y
+            ('\u{E05C}', 30.0)
         }
         "Tenor" => {
-            // C clef centered on 4th line (A3 line at y=120)
-            // With -0.5 offset: y=110
-            ('\u{E05D}', 110.0)
+            // C clef on 4th line (C4), y from pitch_to_y
+            ('\u{E05D}', 10.0)
         }
         _ => {
             // Default to treble clef
-            ('\u{E050}', 110.0)
+            ('\u{E050}', 50.0)
         }
     };
 
@@ -363,10 +382,10 @@ pub fn position_time_signature(
     let numerator_codepoint = char::from_u32(0xE080 + numerator as u32).unwrap_or('?');
     let denominator_codepoint = char::from_u32(0xE080 + denominator as u32).unwrap_or('?');
 
-    // Numerator above middle line (y=30, which is 1.5 staff spaces above middle)
+    // Numerator in upper half of staff (between lines 0-2, centered at y=10)
     let numerator_pos = Point {
         x: x_position,
-        y: 30.0 + staff_vertical_offset,
+        y: 10.0 + staff_vertical_offset,
     };
 
     let numerator_bbox =
@@ -384,10 +403,10 @@ pub fn position_time_signature(
         },
     });
 
-    // Denominator below middle line (y=110, which is 1.5 staff spaces below middle)
+    // Denominator in lower half of staff (between lines 2-4, centered at y=50)
     let denominator_pos = Point {
         x: x_position,
-        y: 110.0 + staff_vertical_offset,
+        y: 50.0 + staff_vertical_offset,
     };
 
     let denominator_bbox =
@@ -441,13 +460,11 @@ pub fn position_key_signature(
         '\u{E260}' // accidentalFlat
     };
 
-    // Treble clef sharp positions (F C G D A E B)
-    // F5 (top line), C5 (space), G5 (above staff), D5 (2nd line), A4 (space), E5 (space), B4 (middle)
-    let treble_sharp_positions = vec![-10.0, 50.0, -30.0, 30.0, 90.0, 10.0, 70.0];
+    // Treble clef sharp positions (F C G D A E B) — pitch_to_y values
+    let treble_sharp_positions = vec![-10.0, 20.0, -20.0, 10.0, 40.0, 0.0, 30.0];
 
-    // Treble clef flat positions (B E A D G C F)
-    // B4 (middle line), E5 (space), A4 (space), D5 (2nd line), G4 (4th line), C5 (space), F4 (space)
-    let treble_flat_positions = vec![70.0, 10.0, 90.0, 30.0, 110.0, 50.0, 130.0];
+    // Treble clef flat positions (B E A D G C F) — pitch_to_y values
+    let treble_flat_positions = vec![30.0, 0.0, 40.0, 10.0, 50.0, 20.0, 60.0];
 
     // Select positions based on sharps/flats and clef type
     let positions = if sharps > 0 {
@@ -777,9 +794,9 @@ pub fn position_note_accidentals(
 /// between the staff boundary and the note position, for notes outside the
 /// standard 5-line range.
 ///
-/// Staff lines span y=0 (top) to y=4*2*units_per_space = 160 (bottom) relative
+/// Staff lines span y=0 (top) to y=4*units_per_space = 80 (bottom) relative
 /// to the staff's vertical offset. Notes above the top line (y < 0) or below
-/// the bottom line (y > 160) need ledger lines.
+/// the bottom line (y > 80) need ledger lines.
 ///
 /// # Arguments
 /// * `notes` - Note events (pitch, start_tick, duration)
@@ -801,12 +818,13 @@ pub fn position_ledger_lines(
 
     // Staff line positions relative to staff_vertical_offset:
     // Top line: y = staff_vertical_offset + 0
-    // Bottom line: y = staff_vertical_offset + 8 * units_per_space (= 160 at ups=20)
+    // Bottom line: y = staff_vertical_offset + 4 * units_per_space (= 80 at ups=20)
     let top_line_y = staff_vertical_offset;
-    let bottom_line_y = staff_vertical_offset + 8.0 * units_per_space;
+    let bottom_line_y = staff_vertical_offset + 4.0 * units_per_space;
 
-    // Ledger line width: ~2.5 staff spaces, centered on note x
-    let ledger_half_width = 1.25 * units_per_space;
+    // Ledger line width: ~1.4 staff spaces (notehead width ~1.18 + small overhang),
+    // centered on note x. This matches engraving convention.
+    let ledger_half_width = 0.7 * units_per_space;
 
     // Use a set to deduplicate ledger lines at the same (x, y) position
     // (multiple notes at the same tick/pitch shouldn't duplicate ledger lines)
@@ -819,10 +837,9 @@ pub fn position_ledger_lines(
             + staff_vertical_offset;
 
         if note_y < top_line_y {
-            // Note is above the staff — draw ledger lines from (top_line - 2*ups) up to note
-            // Ledger lines at every 2*units_per_space interval above top line
-            let mut y = top_line_y - 2.0 * units_per_space;
-            while y >= note_y - units_per_space * 0.5 {
+            // Note is above the staff — draw ledger lines at every 1*units_per_space above top line
+            let mut y = top_line_y - units_per_space;
+            while y >= note_y - units_per_space * 0.25 {
                 let key = (notehead_x as i32, (y * 10.0) as i32);
                 if seen.insert(key) {
                     ledger_lines.push(LedgerLine {
@@ -831,12 +848,12 @@ pub fn position_ledger_lines(
                         end_x: notehead_x + ledger_half_width,
                     });
                 }
-                y -= 2.0 * units_per_space;
+                y -= units_per_space;
             }
         } else if note_y > bottom_line_y {
-            // Note is below the staff — draw ledger lines from (bottom_line + 2*ups) down to note
-            let mut y = bottom_line_y + 2.0 * units_per_space;
-            while y <= note_y + units_per_space * 0.5 {
+            // Note is below the staff — draw ledger lines at every 1*units_per_space below bottom line
+            let mut y = bottom_line_y + units_per_space;
+            while y <= note_y + units_per_space * 0.25 {
                 let key = (notehead_x as i32, (y * 10.0) as i32);
                 if seen.insert(key) {
                     ledger_lines.push(LedgerLine {
@@ -845,7 +862,7 @@ pub fn position_ledger_lines(
                         end_x: notehead_x + ledger_half_width,
                     });
                 }
-                y += 2.0 * units_per_space;
+                y += units_per_space;
             }
         }
     }
@@ -878,53 +895,53 @@ mod tests {
             "F5 should be on top line (y=-10)"
         );
 
-        // D5 (MIDI 74) = 2nd line at y=30
+        // D5 (MIDI 74) = 2nd line at y=10
         assert_eq!(
             pitch_to_y(74, "Treble", units_per_space),
-            30.0,
-            "D5 should be on 2nd line (y=30)"
+            10.0,
+            "D5 should be on 2nd line (y=10)"
         );
 
-        // B4 (MIDI 71) = 3rd line at y=70
+        // B4 (MIDI 71) = 3rd line at y=30
         assert_eq!(
             pitch_to_y(71, "Treble", units_per_space),
-            70.0,
-            "B4 should be on 3rd line (y=70)"
+            30.0,
+            "B4 should be on 3rd line (y=30)"
         );
 
-        // G4 (MIDI 67) = 4th line at y=110
+        // G4 (MIDI 67) = 4th line at y=50
         assert_eq!(
             pitch_to_y(67, "Treble", units_per_space),
-            110.0,
-            "G4 should be on 4th line (y=110)"
+            50.0,
+            "G4 should be on 4th line (y=50)"
         );
 
-        // E4 (MIDI 64) = bottom line at y=150
+        // E4 (MIDI 64) = bottom line at y=70
         assert_eq!(
             pitch_to_y(64, "Treble", units_per_space),
-            150.0,
-            "E4 should be on bottom line (y=150)"
+            70.0,
+            "E4 should be on bottom line (y=70)"
         );
 
-        // C5 (MIDI 72) = space between 2nd and 3rd lines at y=50
+        // C5 (MIDI 72) = space between 2nd and 3rd lines at y=20
         assert_eq!(
             pitch_to_y(72, "Treble", units_per_space),
-            50.0,
-            "C5 should be in space (y=50)"
+            20.0,
+            "C5 should be in space (y=20)"
         );
 
-        // Middle C4 (MIDI 60) = ledger line below staff at y=190
+        // Middle C4 (MIDI 60) = ledger line below staff at y=90
         assert_eq!(
             pitch_to_y(60, "Treble", units_per_space),
-            190.0,
-            "Middle C should be below staff (y=190)"
+            90.0,
+            "Middle C should be below staff (y=90)"
         );
 
-        // G5 (MIDI 79) = space above top line at y=-30
+        // G5 (MIDI 79) = space above top line at y=-20
         assert_eq!(
             pitch_to_y(79, "Treble", units_per_space),
-            -30.0,
-            "G5 should be above staff (y=-30)"
+            -20.0,
+            "G5 should be above staff (y=-20)"
         );
     }
 
@@ -933,14 +950,14 @@ mod tests {
     fn test_pitch_to_y_scale_independence() {
         let pitch = 60; // Middle C4 (ledger line below treble staff)
 
-        // With units_per_space = 20, C4 should be 9.5 spaces below F5 = 190 units
-        assert_eq!(pitch_to_y(pitch, "Treble", 20.0), 190.0);
+        // With units_per_space = 20, C4 should be 4.5 half-spaces below F5 = 90 units
+        assert_eq!(pitch_to_y(pitch, "Treble", 20.0), 90.0);
 
-        // With units_per_space = 10, C4 should be 9.5 spaces below F5 = 95 units
-        assert_eq!(pitch_to_y(pitch, "Treble", 10.0), 95.0);
+        // With units_per_space = 10, C4 should be 4.5 half-spaces below F5 = 45 units
+        assert_eq!(pitch_to_y(pitch, "Treble", 10.0), 45.0);
 
-        // With units_per_space = 25, C4 should be 9.5 spaces below F5 = 237.5 units
-        assert_eq!(pitch_to_y(pitch, "Treble", 25.0), 237.5);
+        // With units_per_space = 25, C4 should be 4.5 half-spaces below F5 = 112.5 units
+        assert_eq!(pitch_to_y(pitch, "Treble", 25.0), 112.5);
     }
 
     /// T018: Unit test for notehead codepoint selection based on duration
@@ -1004,26 +1021,26 @@ mod tests {
         assert_eq!(glyphs.len(), 3, "Should produce 3 noteheads");
 
         // Verify first notehead (Middle C4 at x=0)
-        // C4 = ledger line below staff, 9.5 staff spaces below F5
+        // C4 = ledger line below staff, 4.5 half-spaces below F5
         assert_eq!(glyphs[0].position.x, 0.0, "First note x-position");
-        assert_eq!(glyphs[0].position.y, 190.0, "Middle C4 should be at y=190");
+        assert_eq!(glyphs[0].position.y, 90.0, "Middle C4 should be at y=90");
         assert_eq!(
             glyphs[0].codepoint,
             String::from('\u{E1D5}'),
-            "Quarter note uses black notehead with stem"
+            "Quarter note uses black notehead with stem up (below middle)"
         );
 
         // Verify second notehead (D4 at x=100)
-        // D4 = 8.5 staff spaces below F5
+        // D4 = 4.0 half-spaces below F5
         assert_eq!(glyphs[1].position.x, 100.0, "Second note x-position");
-        assert_eq!(glyphs[1].position.y, 170.0, "D4 should be at y=170");
+        assert_eq!(glyphs[1].position.y, 80.0, "D4 should be at y=80");
 
         // Verify third notehead (E4 at x=200)
-        // E4 = bottom line, 7.5 staff spaces below F5
+        // E4 = bottom line, 3.5 half-spaces below F5
         assert_eq!(glyphs[2].position.x, 200.0, "Third note x-position");
         assert_eq!(
-            glyphs[2].position.y, 150.0,
-            "E4 should be on bottom line (y=150)"
+            glyphs[2].position.y, 70.0,
+            "E4 should be on bottom line (y=70)"
         );
     }
 
@@ -1036,10 +1053,10 @@ mod tests {
         let glyph = position_clef("Treble", x_position, units_per_space, 0.0);
 
         // Treble clef should be on 2nd line (G4 line)
-        // 2nd line is at y=40 (with -0.5 offset: 30)
+        // 2nd line is at y=60 (with -0.5 offset: 50)
         assert_eq!(glyph.position.x, 20.0, "Treble clef x-position");
         assert_eq!(
-            glyph.position.y, 110.0,
+            glyph.position.y, 50.0,
             "Treble clef centered on 2nd line (G4)"
         );
         assert_eq!(
@@ -1057,10 +1074,10 @@ mod tests {
         let glyph = position_clef("Bass", x_position, units_per_space, 0.0);
 
         // Bass clef should be on 4th line (F3 line)
-        // 4th line is at y=120 (with -0.5 offset: 110)
+        // 4th line is at y=20 (with -0.5 offset: 10)
         assert_eq!(glyph.position.x, 20.0, "Bass clef x-position");
         assert_eq!(
-            glyph.position.y, 110.0,
+            glyph.position.y, 10.0,
             "Bass clef centered on 4th line (F3)"
         );
         assert_eq!(
@@ -1078,10 +1095,10 @@ mod tests {
         let glyph = position_clef("Alto", x_position, units_per_space, 0.0);
 
         // Alto clef should be centered on middle line (C4)
-        // Middle line is at y=80 (with -0.5 offset: 70)
+        // Middle line is at y=40 (with -0.5 offset: 30)
         assert_eq!(glyph.position.x, 20.0, "Alto clef x-position");
         assert_eq!(
-            glyph.position.y, 70.0,
+            glyph.position.y, 30.0,
             "Alto clef centered on middle line (C4)"
         );
         assert_eq!(
@@ -1099,10 +1116,10 @@ mod tests {
         let glyph = position_clef("Tenor", x_position, units_per_space, 0.0);
 
         // Tenor clef should be centered on 4th line (A3)
-        // 4th line is at y=120 (with -0.5 offset: 110)
+        // 4th line is at y=20 (with -0.5 offset: 10)
         assert_eq!(glyph.position.x, 20.0, "Tenor clef x-position");
         assert_eq!(
-            glyph.position.y, 110.0,
+            glyph.position.y, 10.0,
             "Tenor clef centered on 4th line (A3)"
         );
         assert_eq!(
@@ -1129,7 +1146,7 @@ mod tests {
 
         // Numerator (4) above middle line
         assert_eq!(glyphs[0].position.x, 100.0, "Numerator x-position");
-        assert_eq!(glyphs[0].position.y, 30.0, "Numerator above middle line");
+        assert_eq!(glyphs[0].position.y, 10.0, "Numerator above middle line");
         assert_eq!(
             glyphs[0].codepoint,
             String::from('\u{E084}'),
@@ -1138,7 +1155,7 @@ mod tests {
 
         // Denominator (4) below middle line
         assert_eq!(glyphs[1].position.x, 100.0, "Denominator x-position");
-        assert_eq!(glyphs[1].position.y, 110.0, "Denominator below middle line");
+        assert_eq!(glyphs[1].position.y, 50.0, "Denominator below middle line");
         assert_eq!(
             glyphs[1].codepoint,
             String::from('\u{E084}'),
@@ -1237,7 +1254,7 @@ mod tests {
         assert_eq!(glyphs[0].position.x, 150.0, "Flat x-position");
         // Bb in treble clef is on middle line
         assert_eq!(
-            glyphs[0].position.y, 70.0,
+            glyphs[0].position.y, 30.0,
             "Bb on middle line in treble clef"
         );
     }
@@ -1315,11 +1332,11 @@ mod tests {
         );
 
         assert_eq!(glyphs.len(), 1);
-        // Unbeamed eighth → combined noteEighthUp U+E1D7
+        // Unbeamed eighth → combined note8thUp U+E1D7 (C4 below middle → stem up)
         assert_eq!(
             glyphs[0].codepoint,
             String::from('\u{E1D7}'),
-            "Unbeamed eighth should use combined glyph with flag"
+            "Unbeamed eighth below middle should use stem-up combined glyph"
         );
     }
 
@@ -1347,11 +1364,11 @@ mod tests {
         );
 
         assert_eq!(glyphs.len(), 1);
-        // Quarter note → combined noteheadBlackWithStem U+E1D5 regardless of beam set
+        // Quarter note → combined noteQuarterUp U+E1D5 (C4 below middle → stem up)
         assert_eq!(
             glyphs[0].codepoint,
             String::from('\u{E1D5}'),
-            "Quarter note should always use combined glyph regardless of beam set"
+            "Quarter note should use stem-up combined glyph when below middle"
         );
     }
 }

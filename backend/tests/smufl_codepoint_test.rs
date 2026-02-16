@@ -14,18 +14,14 @@ fn get_all_smufl_codepoints() -> Vec<(&'static str, char, &'static str)> {
     vec![
         // Noteheads (positioner.rs)
         ("noteheadWhole", '\u{E0A2}', "whole note notehead"),
-        ("noteheadHalfWithStem", '\u{E1D3}', "half note with stem"),
-        (
-            "noteheadBlackWithStem",
-            '\u{E1D5}',
-            "quarter note with stem",
-        ),
-        ("noteEighthUp", '\u{E1D7}', "eighth note with flag up"),
-        (
-            "noteSixteenthUp",
-            '\u{E1D9}',
-            "sixteenth note with flags up",
-        ),
+        ("noteHalfUp", '\u{E1D3}', "half note with stem up"),
+        ("noteHalfDown", '\u{E1D4}', "half note with stem down"),
+        ("noteQuarterUp", '\u{E1D5}', "quarter note with stem up"),
+        ("noteQuarterDown", '\u{E1D6}', "quarter note with stem down"),
+        ("note8thUp", '\u{E1D7}', "eighth note with flag up"),
+        ("note8thDown", '\u{E1D8}', "eighth note with flag down"),
+        ("note16thUp", '\u{E1D9}', "sixteenth note with flags up"),
+        ("note16thDown", '\u{E1DA}', "sixteenth note with flags down"),
         // Legacy notehead  (batcher.rs - should be removed later)
         ("noteheadBlack", '\u{E0A4}', "filled notehead (legacy)"),
         // Clefs (positioner.rs)

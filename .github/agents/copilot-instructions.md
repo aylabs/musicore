@@ -42,6 +42,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (in-memory layout computation; scores loaded from MusicXML files) (021-note-beaming)
 - Rust (stable), TypeScript 5.x, React 18+ + React, Tone.js (playback), wasm-pack/wasm-bindgen (WASM bindings), Vite (022-display-improvements)
 - N/A (all state is in-memory React state/context) (022-display-improvements)
+- Rust (latest stable) + TypeScript 5.x / React 18+ + wasm-pack, wasm-bindgen, serde, serde_json (backend); Vite, Tone.js (frontend) (023-multi-instrument-play)
+- IndexedDB (offline-first PWA, no changes needed for this feature) (023-multi-instrument-play)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -62,9 +64,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 023-multi-instrument-play: Added Rust (latest stable) + TypeScript 5.x / React 18+ + wasm-pack, wasm-bindgen, serde, serde_json (backend); Vite, Tone.js (frontend)
 - 022-display-improvements: Added Rust (stable), TypeScript 5.x, React 18+ + React, Tone.js (playback), wasm-pack/wasm-bindgen (WASM bindings), Vite
 - 021-note-beaming: Added Rust (latest stable) for backend/layout engine; TypeScript + React 18 for frontend + `quick-xml` (MusicXML parsing), `wasm-bindgen`/`wasm-pack` (WASM bridge), `serde`/`serde_json` (serialization), Bravura SMuFL font (glyph rendering)
-- 020-measure-numbering: Added Rust (latest stable) for backend layout engine; TypeScript + React for frontend renderer + serde/serde_json (Rust serialization), wasm-bindgen/wasm-pack (WASM compilation), React 18+ (frontend)
 
 
 <!-- MANUAL ADDITIONS START -->

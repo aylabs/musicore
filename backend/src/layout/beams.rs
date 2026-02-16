@@ -291,7 +291,7 @@ pub fn compute_beam_slope(notes: &[BeamableNote], units_per_space: f32) -> f32 {
 
     // Clamp slope to ±0.5 staff spaces per note
     let max_slope_units = Beam::MAX_SLOPE * units_per_space; // 0.5 * 20 = 10 units
-    let max_slope_per_unit = max_slope_units / dx;
+    let max_slope_per_unit = max_slope_units / dx.abs();
 
     natural_slope.clamp(-max_slope_per_unit, max_slope_per_unit)
 }
@@ -1255,7 +1255,7 @@ mod tests {
     #[test]
     fn test_group_stem_direction_all_above() {
         let staff_middle_y = 80.0;
-        // All notes at y < 80 (above middle — higher pitch)
+        // All notes at y < 80 (above middle — higher pitch) → stem down
         let notes = vec![
             BeamableNote {
                 x: 100.0,
@@ -1280,8 +1280,8 @@ mod tests {
         let dir = compute_group_stem_direction(&notes, staff_middle_y);
         assert_eq!(
             dir,
-            crate::layout::stems::StemDirection::Up,
-            "All notes above middle → Up (below middle_y value in coordinate system)"
+            crate::layout::stems::StemDirection::Down,
+            "All notes above middle → Down (y < middle_y in screen coords)"
         );
     }
 
@@ -1289,7 +1289,7 @@ mod tests {
     #[test]
     fn test_group_stem_direction_all_below() {
         let staff_middle_y = 80.0;
-        // All notes at y >= 80 (on or below middle line)
+        // All notes at y > 80 (below middle line) → stem up
         let notes = vec![
             BeamableNote {
                 x: 100.0,
@@ -1314,12 +1314,12 @@ mod tests {
         let dir = compute_group_stem_direction(&notes, staff_middle_y);
         assert_eq!(
             dir,
-            crate::layout::stems::StemDirection::Down,
-            "All notes on/below middle → Down"
+            crate::layout::stems::StemDirection::Up,
+            "All notes below middle → Up (y > middle_y in screen coords)"
         );
     }
 
-    /// T032: Mixed with majority above → Up (stems up since below middle_y)
+    /// T032: Mixed with majority above → Down (stems down since above middle_y)
     #[test]
     fn test_group_stem_direction_majority_above() {
         let staff_middle_y = 80.0;
@@ -1354,11 +1354,11 @@ mod tests {
         ];
 
         let dir = compute_group_stem_direction(&notes, staff_middle_y);
-        // 2 notes above (y<80), 1 below → majority above → Up
+        // 2 notes above (y<80) → Down, 1 below → Up; majority above → Down
         assert_eq!(
             dir,
-            crate::layout::stems::StemDirection::Up,
-            "Majority above middle → Up"
+            crate::layout::stems::StemDirection::Down,
+            "Majority above middle → Down"
         );
     }
 

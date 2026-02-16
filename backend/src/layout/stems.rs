@@ -66,13 +66,17 @@ impl Stem {
 /// StemDirection::Up if note below middle, StemDirection::Down if on or above middle
 ///
 /// # Rules (SMuFL standard)
-/// - Middle line or above → stem down (to left side of notehead)
-/// - Below middle line → stem up (to right side of notehead)
+/// - Middle line or above (smaller or equal y in screen coords) → stem down
+/// - Below middle line (larger y in screen coords) → stem up
+///
+/// In positive-Y-down screen coordinates:
+/// - Smaller y = visually higher on the staff = above middle → stem down
+/// - Larger y = visually lower on the staff = below middle → stem up
 pub fn compute_stem_direction(notehead_y: f32, staff_middle_y: f32) -> StemDirection {
-    if notehead_y >= staff_middle_y {
-        StemDirection::Down
+    if notehead_y <= staff_middle_y {
+        StemDirection::Down // on or above middle line → stem down (toward center)
     } else {
-        StemDirection::Up
+        StemDirection::Up // below middle line → stem up (toward center)
     }
 }
 
@@ -129,15 +133,15 @@ mod tests {
 
     /// T041: Unit test for compute_stem_direction() based on pitch relative to middle line
     #[test]
-    fn test_compute_stem_direction_below_middle() {
-        let staff_middle_y = 80.0; // Middle line of staff (assuming 0=top, 160=bottom)
+    fn test_compute_stem_direction_above_middle() {
+        let staff_middle_y = 80.0; // Middle line of staff
 
-        // Note below middle line (e.g., A4) should have stem up
+        // Note above middle line (y=60 < 80 in screen coords) → stem down
         let notehead_y = 60.0;
         assert_eq!(
             compute_stem_direction(notehead_y, staff_middle_y),
-            StemDirection::Up,
-            "Notes below middle line should have stem up"
+            StemDirection::Down,
+            "Notes above middle line should have stem down"
         );
     }
 
@@ -155,15 +159,15 @@ mod tests {
     }
 
     #[test]
-    fn test_compute_stem_direction_above_middle() {
+    fn test_compute_stem_direction_below_middle() {
         let staff_middle_y = 80.0;
 
-        // Note above middle line (e.g., C5) should have stem down
+        // Note below middle line (y=90 > 80 in screen coords) → stem up
         let notehead_y = 90.0;
         assert_eq!(
             compute_stem_direction(notehead_y, staff_middle_y),
-            StemDirection::Down,
-            "Notes above middle line should have stem down"
+            StemDirection::Up,
+            "Notes below middle line should have stem up"
         );
     }
 

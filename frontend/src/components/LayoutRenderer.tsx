@@ -235,6 +235,25 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       systemGroup.appendChild(staffGroupElement);
     }
 
+    // Feature 023: System bracket — thin vertical line connecting all staves
+    // when there are multiple instruments (orchestral convention)
+    if (system.staff_groups.length > 1) {
+      const firstGroup = system.staff_groups[0];
+      const lastGroup = system.staff_groups[system.staff_groups.length - 1];
+      const topY = firstGroup.staves[0].staff_lines[0].y_position;
+      const bottomY = lastGroup.staves[lastGroup.staves.length - 1].staff_lines[4].y_position;
+
+      const bracketLine = createSVGElement('line');
+      bracketLine.setAttribute('x1', '0');
+      bracketLine.setAttribute('y1', topY.toString());
+      bracketLine.setAttribute('x2', '0');
+      bracketLine.setAttribute('y2', bottomY.toString());
+      bracketLine.setAttribute('stroke', this.props.config.staffLineColor);
+      bracketLine.setAttribute('stroke-width', '3');
+      bracketLine.setAttribute('data-system-bracket', 'true');
+      systemGroup.appendChild(bracketLine);
+    }
+
     return systemGroup;
   }
 
@@ -262,6 +281,22 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       if (bracketElement) {
         staffGroupElement.appendChild(bracketElement);
       }
+    }
+
+    // Feature 023: Render instrument name label (US2)
+    if (staffGroup.name_label) {
+      const { name_label } = staffGroup;
+      const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      textElement.setAttribute('x', String(name_label.position.x));
+      textElement.setAttribute('y', String(name_label.position.y));
+      textElement.setAttribute('font-size', String(name_label.font_size));
+      textElement.setAttribute('font-family', name_label.font_family);
+      textElement.setAttribute('fill', `rgba(${name_label.color.r},${name_label.color.g},${name_label.color.b},${name_label.color.a / 255})`);
+      textElement.setAttribute('text-anchor', 'end');
+      textElement.setAttribute('dominant-baseline', 'central');
+      textElement.setAttribute('data-instrument-name', 'true');
+      textElement.textContent = name_label.text;
+      staffGroupElement.appendChild(textElement);
     }
 
     return staffGroupElement;
@@ -623,6 +658,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
         ref={this.svgRef}
         className={className}
         xmlns={svgNS}
+        preserveAspectRatio="xMinYMin meet"
         style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
       />
     );
