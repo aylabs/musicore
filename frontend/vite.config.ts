@@ -9,6 +9,12 @@ export default defineConfig({
   // For project pages: base: '/repository-name/'
   base: process.env.VITE_BASE || '/',
   
+  // Dev server configuration - listen on all interfaces for mobile testing
+  server: {
+    host: '0.0.0.0',  // Listen on all network interfaces
+    port: 5173,       // Default Vite port
+  },
+  
   plugins: [
     react(),
     // PWA plugin configuration
