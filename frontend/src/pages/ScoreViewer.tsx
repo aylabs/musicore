@@ -481,8 +481,7 @@ const styles = {
   },
   container: {
     flex: 1,
-    overflowX: 'auto' as const, // Allow horizontal scroll if needed
-    overflowY: 'visible' as const, // Use global browser scrollbar instead
+    overflow: 'visible' as const, // Use global browser scrollbar for both axes
     position: 'relative' as const,
   },
   message: {

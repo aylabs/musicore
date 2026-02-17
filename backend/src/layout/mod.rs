@@ -43,7 +43,7 @@ pub struct LayoutConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            max_system_width: 1600.0, // Fits most screens without horizontal scroll
+            max_system_width: 2400.0, // Wide enough for 3+ measures per system
             units_per_space: 20.0,    // SMuFL: font_size 80 = 4 spaces, so 1 space = 20 units
             system_spacing: 100.0,    // Spacing between systems (gap after system_height)
             system_height: 200.0,     // Base height for a single staff system
