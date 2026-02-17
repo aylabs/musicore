@@ -53,7 +53,7 @@ export function OfflineBanner() {
           <line x1="12" y1="20" x2="12.01" y2="20" />
         </svg>
         <span className="offline-message">
-          You're offline. Changes will be saved locally.
+          You're offline — all features work normally
         </span>
       </div>
     </div>

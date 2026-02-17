@@ -57,11 +57,34 @@ export class DemoLoaderService implements IDemoLoaderService {
 
   /**
    * Load bundled Canon D demo into music library
+   * 
+   * Feature 025 (Offline Mode): Fast path optimization
+   * - Checks IndexedDB first (fast path) - returns immediately if demo cached
+   * - Falls back to service worker cache + parse (slow path) if not in IndexedDB
+   * - Service worker ensures demo assets precached after first online visit
    */
   async loadBundledDemo(): Promise<DemoScoreMetadata> {
     try {
       console.log('========================================');
       console.log('[DemoLoader] START: Loading bundled demo');
+
+      // ===== FAST PATH: Check IndexedDB first (Feature 025-offline-mode) =====
+      console.log('[DemoLoader] Checking IndexedDB for existing demo (fast path)...');
+      const cachedDemo = await this.getDemoScore();
+      
+      if (cachedDemo) {
+        console.log('[DemoLoader] ✓ FAST PATH: Demo found in IndexedDB');
+        console.log(`[DemoLoader] Demo ID: ${cachedDemo.id}`);
+        console.log(`[DemoLoader] Schema Version: ${cachedDemo.schemaVersion ?? 1}`);
+        console.log('[DemoLoader] Skipping fetch and parse - returning cached demo');
+        console.log('[DemoLoader] COMPLETE: Demo loaded successfully (IndexedDB fast path)');
+        console.log('========================================');
+        return cachedDemo;
+      }
+
+      console.log('[DemoLoader] ✗ No demo in IndexedDB - proceeding to slow path (fetch + parse)');
+      
+      // ===== SLOW PATH: Fetch from cache/network + parse (original behavior) =====
       console.log(`[DemoLoader] Demo path configured as: ${this.demoBundlePath}`);
       console.log(`[DemoLoader] import.meta.env.BASE_URL = "${import.meta.env.BASE_URL}"`);
       console.log(`[DemoLoader] window.location.origin = "${window.location.origin}"`);
@@ -71,7 +94,7 @@ export class DemoLoaderService implements IDemoLoaderService {
       console.log(`[DemoLoader] Resolved full URL: ${fullUrl.href}`);
       console.log(`[DemoLoader] Fetching demo from: ${this.demoBundlePath}`);
 
-      // 1. Fetch bundled MusicXML
+      // 1. Fetch bundled MusicXML (from service worker cache or network)
       const response = await fetch(this.demoBundlePath);
       console.log(`[DemoLoader] Fetch response status: ${response.status} ${response.statusText}`);
       console.log(`[DemoLoader] Fetch response URL: ${response.url}`);
@@ -79,10 +102,16 @@ export class DemoLoaderService implements IDemoLoaderService {
       
       if (!response.ok) {
         console.error(`[DemoLoader] ERROR: Fetch failed with status ${response.status}`);
-        throw this.createError(
-          'fetch_failed',
-          `Failed to fetch demo: HTTP ${response.status} ${response.statusText}`
-        );
+        
+        // Feature 025: Provide clear error message for offline scenarios
+        let errorMessage = `Failed to fetch demo: HTTP ${response.status} ${response.statusText}`;
+        
+        // Help users understand service worker cache requirements
+        if (response.status === 404 || response.status === 503) {
+          errorMessage += '\n\nℹ️ This may occur on first offline visit. The demo requires one prior online visit to cache properly.';
+        }
+        
+        throw this.createError('fetch_failed', errorMessage);
       }
 
       const musicXML = await response.text();
@@ -126,7 +155,7 @@ export class DemoLoaderService implements IDemoLoaderService {
       console.log('[DemoLoader] Saving to IndexedDB...');
       await saveScoreToIndexedDB(demoScore);
       console.log(`[DemoLoader] SUCCESS: Demo score stored with ID: ${demoScore.id}`);
-      console.log('[DemoLoader] COMPLETE: Demo loaded successfully');
+      console.log('[DemoLoader] COMPLETE: Demo loaded successfully (slow path - fetched + parsed + cached)');
       console.log('========================================');
 
       return demoScore;

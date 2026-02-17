@@ -48,7 +48,8 @@ export default defineConfig({
       },
       workbox: {
         // Precache all static assets (T008)
-        globPatterns: ['**/*.{js,css,html,wasm,png,svg,ico,musicxml}'],
+        // Feature 025: Added woff2 for Bravura fonts, mp3 for audio samples
+        globPatterns: ['**/*.{js,css,html,wasm,png,svg,ico,musicxml,woff2,mp3}'],
         
         // Runtime caching strategies (T007)
         runtimeCaching: [

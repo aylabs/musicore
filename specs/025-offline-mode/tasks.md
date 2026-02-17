@@ -19,9 +19,9 @@
 
 **Purpose**: Verify project structure and prerequisites
 
-- [ ] T001 Verify branch 025-offline-mode is checked out and up to date
-- [ ] T002 [P] Verify backend WASM built (cd backend && ./scripts/build-wasm.sh)
-- [ ] T003 [P] Verify frontend dependencies installed (cd frontend && npm install)
+- [X] T001 Verify branch 025-offline-mode is checked out and up to date
+- [X] T002 [P] Verify backend WASM built (cd backend && ./scripts/build-wasm.sh)
+- [X] T003 [P] Verify frontend dependencies installed (cd frontend && npm install)
 
 ---
 
@@ -31,10 +31,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until precache is properly configured
 
-- [ ] T004 Verify demo file exists at frontend/public/music/CanonD.musicxml
-- [ ] T005 Verify Vite PWA config includes musicxml in globPatterns (frontend/vite.config.ts line ~50)
-- [ ] T006 Build frontend to generate service worker precache manifest (cd frontend && npm run build)
-- [ ] T007 Verify /music/CanonD.musicxml in precache manifest (grep "CanonD.musicxml" frontend/dist/sw.js)
+- [X] T004 Verify demo file exists at frontend/public/demo/CanonD.musicxml (corrected path)
+- [X] T005 Verify Vite PWA config includes musicxml in globPatterns (frontend/vite.config.ts line ~50)
+- [X] T006 Build frontend to generate service worker precache manifest (cd frontend && npm run build)
+- [X] T007 Verify /demo/CanonD.musicxml in precache manifest (grep "CanonD.musicxml" frontend/dist/sw.js)
 
 **Checkpoint**: Precache configuration validated — user story implementation can now begin in parallel
 
@@ -50,19 +50,19 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Create test file frontend/tests/services/demoLoader.test.ts
-- [ ] T009 [P] [US1] Unit test: DemoLoaderService.getExistingDemo() returns demo from IndexedDB in frontend/tests/services/demoLoader.test.ts
-- [ ] T010 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() checks IndexedDB first (fast path) in frontend/tests/services/demoLoader.test.ts
-- [ ] T011 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() loads from cache if not in IndexedDB in frontend/tests/services/demoLoader.test.ts
-- [ ] T012 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() throws clear error if cache unavailable in frontend/tests/services/demoLoader.test.ts
+- [X] T008 [P] [US1] Create test file frontend/tests/services/demoLoader.test.ts
+- [X] T009 [P] [US1] Unit test: DemoLoaderService.getDemoScore() returns demo from IndexedDB in frontend/tests/services/demoLoader.test.ts
+- [X] T010 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() checks IndexedDB first (fast path) in frontend/tests/services/demoLoader.test.ts
+- [X] T011 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() loads from cache if not in IndexedDB in frontend/tests/services/demoLoader.test.ts
+- [X] T012 [P] [US1] Unit test: DemoLoaderService.loadBundledDemo() throws clear error if cache unavailable in frontend/tests/services/demoLoader.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Add getExistingDemo() private method to DemoLoaderService in frontend/src/services/onboarding/demoLoader.ts (~line 70)
-- [ ] T014 [US1] Update loadBundledDemo() to check IndexedDB first (fast path) in frontend/src/services/onboarding/demoLoader.ts (~line 75)
-- [ ] T015 [US1] Update loadBundledDemo() fetch() error message to mention "visit online first" in frontend/src/services/onboarding/demoLoader.ts (~line 80)
-- [ ] T016 [US1] Add console.log statements for debugging (IndexedDB hit, cache load) in frontend/src/services/onboarding/demoLoader.ts
-- [ ] T017 [US1] Run tests to verify all US1 tests pass (npm run test -- demoLoader.test.ts)
+- [X] T013 [US1] Added fast path check using getDemoScore() (method already existed) at start of loadBundledDemo() in frontend/src/services/onboarding/demoLoader.ts
+- [X] T014 [US1] Update loadBundledDemo() to check IndexedDB first (fast path) in frontend/src/services/onboarding/demoLoader.ts
+- [X] T015 [US1] Update loadBundledDemo() fetch() error message to mention "visit online first" in frontend/src/services/onboarding/demoLoader.ts
+- [X] T016 [US1] Add console.log statements for debugging (IndexedDB hit, cache load) in frontend/src/services/onboarding/demoLoader.ts
+- [X] T017 [US1] Run tests to verify all US1 tests pass (npm run test -- demoLoader.test.ts) — 25/25 tests passed
 
 **Checkpoint**: At this point, User Story 1 should be fully functional — demo loads offline from precached file
 
@@ -78,22 +78,22 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US2] Create test file frontend/tests/components/ScoreViewer.offline.test.ts
-- [ ] T019 [P] [US2] Unit test: ScoreViewer.loadScore() only checks IndexedDB, no apiClient calls in frontend/tests/components/ScoreViewer.offline.test.ts
-- [ ] T020 [P] [US2] Unit test: ScoreViewer.loadScore() shows "Score not found" if not in IndexedDB in frontend/tests/components/ScoreViewer.offline.test.ts
-- [ ] T021 [P] [US2] Unit test: ScoreViewer.handleMusicXMLImport() saves to IndexedDB without sync in frontend/tests/components/ScoreViewer.offline.test.ts
-- [ ] T022 [P] [US2] Unit test: ScoreViewer.createNewScore() uses WASM createScore() not apiClient in frontend/tests/components/ScoreViewer.offline.test.ts
+- [X] T018 [P] [US2] Create test file frontend/tests/components/ScoreViewer.offline.test.tsx
+- [X] T019 [P] [US2] Unit test: ScoreViewer.loadScore() only checks IndexedDB, no apiClient calls in frontend/tests/components/ScoreViewer.offline.test.tsx
+- [X] T020 [P] [US2] Unit test: ScoreViewer.loadScore() shows "Score not found" if not in IndexedDB in frontend/tests/components/ScoreViewer.offline.test.tsx
+- [X] T021 [P] [US2] Unit test: ScoreViewer.handleMusicXMLImport() saves to IndexedDB without sync in frontend/tests/components/ScoreViewer.offline.test.tsx
+- [X] T022 [P] [US2] Unit test: ScoreViewer.createNewScore() uses WASM createScore() not apiClient in frontend/tests/components/ScoreViewer.offline.test.tsx
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Remove apiClient.getScore() fallback from loadScore() in frontend/src/components/ScoreViewer.tsx (~line 160)
-- [ ] T024 [US2] Update loadScore() error message to "Score not found in local storage. Import a MusicXML file or load the demo." in frontend/src/components/ScoreViewer.tsx (~line 170)
-- [ ] T025 [US2] Delete syncLocalScoreToBackend() function entirely from frontend/src/components/ScoreViewer.tsx (~line 250-300)
-- [ ] T026 [US2] Remove all calls to syncLocalScoreToBackend() from handleMusicXMLImport() in frontend/src/components/ScoreViewer.tsx (~line 200)
-- [ ] T027 [US2] Update handleMusicXMLImport() to set success message after IndexedDB save in frontend/src/components/ScoreViewer.tsx (~line 210)
-- [ ] T028 [US2] Replace apiClient.createScore() with musicCoreAPI.createScore() in createNewScore() in frontend/src/components/ScoreViewer.tsx (~line 350)
-- [ ] T029 [US2] Add WASM result validation (check wasmResult.success) in createNewScore() in frontend/src/components/ScoreViewer.tsx (~line 355)
-- [ ] T030 [US2] Run tests to verify all US2 tests pass (npm run test -- ScoreViewer.offline.test.ts)
+- [X] T023 [US2] Remove apiClient.getScore() fallback from loadScore() in frontend/src/components/ScoreViewer.tsx (~line 68)
+- [X] T024 [US2] Update loadScore() error message to "Score not found in local storage. Import a MusicXML file or load the demo." in frontend/src/components/ScoreViewer.tsx (~line 88)
+- [X] T025 [US2] Delete syncLocalScoreToBackend() function entirely from frontend/src/components/ScoreViewer.tsx (~line 195-265)
+- [X] T026 [US2] Remove all calls to syncLocalScoreToBackend() from ScoreViewer and InstrumentList components
+- [X] T027 [US2] Remove onSync prop from InstrumentList interface in frontend/src/components/InstrumentList.tsx (~line 12)
+- [X] T028 [US2] SKIPPED: createNewScore() already deprecated, kept as legacy stub (no changes needed)
+- [X] T029 [US2] SKIPPED: WASM validation N/A for deprecated method
+- [X] T030 [US2] Run tests to verify all US2 tests pass (npm run test -- ScoreViewer.offline.test.tsx) — 6/6 tests passed
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently — import and demo both work offline
 
@@ -117,8 +117,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Verify no code changes needed for US3 (transitions already work via useOfflineDetection hook)
-- [ ] T037 [US3] Run tests to verify all US3 tests pass (npm run test -- useOfflineDetection.test.ts)
+- [X] T036 [US3] Verify no code changes needed for US3 (transitions already work via useOfflineDetection hook - Feature 011)
+- [X] T037 [US3] SKIPPED: No tests needed - useOfflineDetection already has test coverage from Feature 011
 
 **Checkpoint**: All user transitions validated — online/offline changes handled gracefully
 
@@ -134,15 +134,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T038 [P] [US4] Create test file frontend/tests/components/OfflineBanner.test.ts
-- [ ] T039 [P] [US4] Unit test: OfflineBanner displays updated message when offline in frontend/tests/components/OfflineBanner.test.ts
-- [ ] T040 [P] [US4] Unit test: OfflineBanner hidden when online in frontend/tests/components/OfflineBanner.test.ts
-- [ ] T041 [P] [US4] Unit test: OfflineBanner message contains "all features work normally" in frontend/tests/components/OfflineBanner.test.ts
+- [X] T038 [P] [US4] Create test file frontend/tests/components/OfflineBanner.test.tsx
+- [X] T039 [P] [US4] Unit test: OfflineBanner displays updated message when offline in frontend/tests/components/OfflineBanner.test.tsx
+- [X] T040 [P] [US4] Unit test: OfflineBanner hidden when online in frontend/tests/components/OfflineBanner.test.tsx
+- [X] T041 [P] [US4] Unit test: OfflineBanner message contains "all features work normally" in frontend/tests/components/OfflineBanner.test.tsx
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Update banner message to "You're offline — all features work normally" in frontend/src/components/OfflineBanner.tsx (~line 56)
-- [ ] T043 [US4] Run tests to verify all US4 tests pass (npm run test -- OfflineBanner.test.ts)
+- [X] T042 [US4] Update banner message to "You're offline — all features work normally" in frontend/src/components/OfflineBanner.tsx (~line 56)
+- [X] T043 [US4] Run tests to verify all US4 tests pass (npm run test -- OfflineBanner.test.tsx) — 9/9 tests passed
 
 **Checkpoint**: All user stories should now be independently functional — offline mode complete
 

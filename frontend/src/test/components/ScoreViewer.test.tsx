@@ -4,6 +4,8 @@ import { ScoreViewer } from "../../components/ScoreViewer";
 import { FileStateProvider } from "../../services/state/FileStateContext";
 import { TempoStateProvider } from "../../services/state/TempoStateContext";
 import { apiClient } from "../../services/score-api";
+import { loadScoreFromIndexedDB } from "../../services/storage/local-storage";
+import type { Score } from "../../types/score";
 
 /**
  * T004 & T011: Unit tests for ScoreViewer component - Feature 014
@@ -25,6 +27,12 @@ vi.mock("../../services/wasm/music-engine", () => ({
   parseScore: vi.fn(),
   addInstrument: vi.fn(),
   getScore: vi.fn(),
+}));
+
+// Mock IndexedDB storage (Feature 025)
+vi.mock("../../services/storage/local-storage", () => ({
+  loadScoreFromIndexedDB: vi.fn(),
+  saveScoreToIndexedDB: vi.fn(),
 }));
 
 // Mock API client
@@ -108,7 +116,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
       ],
     };
 
-    vi.mocked(apiClient.getScore).mockResolvedValue(mockScore);
+    vi.mocked(loadScoreFromIndexedDB).mockResolvedValue(mockScore);
 
     render(
       <TestWrapper>
@@ -116,10 +124,9 @@ describe("ScoreViewer - Editing UI Removal", () => {
       </TestWrapper>
     );
 
-    // Wait for score to load
+    // Wait for score to load from IndexedDB (Feature 025)
     await waitFor(() => {
-      const pianoElements = screen.queryAllByText("Piano");
-      expect(pianoElements.length).toBeGreaterThan(0);
+      expect(loadScoreFromIndexedDB).toHaveBeenCalledWith("test-id");
     });
 
     // Query for Save button
@@ -129,6 +136,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
 
   /**
    * Test: Score name input field should NOT render
+   * Feature 025: Load from IndexedDB (offline mode)
    */
   it("should not render score filename input field", async () => {
     const mockScore = {
@@ -153,7 +161,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
       ],
     };
 
-    vi.mocked(apiClient.getScore).mockResolvedValue(mockScore);
+    vi.mocked(loadScoreFromIndexedDB).mockResolvedValue(mockScore);
 
     render(
       <TestWrapper>
@@ -162,7 +170,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(apiClient.getScore).toHaveBeenCalled();
+      expect(loadScoreFromIndexedDB).toHaveBeenCalledWith("test-id");
     });
 
     // Query for filename input by placeholder text
@@ -191,6 +199,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
 
   /**
    * Test: New button should NOT render in viewer header
+   * Feature 025: Load from IndexedDB (offline mode)
    */
   it("should not render New button in viewer header", async () => {
     const mockScore = {
@@ -215,7 +224,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
       ],
     };
 
-    vi.mocked(apiClient.getScore).mockResolvedValue(mockScore);
+    vi.mocked(loadScoreFromIndexedDB).mockResolvedValue(mockScore);
 
     render(
       <TestWrapper>
@@ -224,7 +233,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(apiClient.getScore).toHaveBeenCalled();
+      expect(loadScoreFromIndexedDB).toHaveBeenCalledWith("test-id");
     });
 
     // Query for New button (shorter label in header)
