@@ -1,5 +1,5 @@
-/* ViewModeSelector - Toggle between Individual and Stacked views */
-/* Feature 010: Stacked Staves View - User Story 1 */
+/* ViewModeSelector - Toggle button to switch between Individual and Play views */
+/* Updated to show only one button at a time */
 
 .view-mode-selector {
   display: flex;
@@ -18,15 +18,9 @@
   font-weight: 500;
 }
 
-.view-mode-button:hover:not(.active) {
+.view-mode-button:hover {
   background: #e8e8e8;
   border-color: #ccc;
-}
-
-.view-mode-button.active {
-  background: #4CAF50;
-  color: white;
-  border-color: #4CAF50;
 }
 
 .view-mode-button:focus {
