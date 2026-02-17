@@ -230,3 +230,62 @@ Performance targets (glitch-free audio, correct tempo, smooth highlights) are gu
 - All existing scroll tests (auto-scroll, manual override, scroll resume) must pass.
 - New performance benchmarks must be added as CI checks to prevent future regressions.
 - Visual snapshot tests should confirm highlight appearance is unchanged.
+
+---
+
+## Post-Implementation Fixes
+
+The following issues were discovered and resolved during integration testing after the core optimization was implemented. They are documented here for architectural context.
+
+### Fix 1: ESLint react-hooks/refs Violations (bc381bd)
+
+**Problem**: The `react-hooks/refs` ESLint rule flagged the new `tickSourceRef` pattern in `MusicTimeline.ts` as a violation — reading `.current` during render and passing refs as dependencies.
+
+**Resolution**: Added targeted `/* eslint-disable react-hooks/refs */` directives around the intentional ref access patterns. These are architectural choices (bypassing React state for performance), not bugs.
+
+### Fix 2: Mobile Jitter — Synchronous Tick Status (0cd1ff7)
+
+**Problem**: After the two-tier rendering refactor, mobile playback exhibited timing jitter. The `tickSource.status` was being synchronized via `useEffect` (async, batched by React) instead of during render, causing a 1-frame lag between status changes and the rAF loop reading the status.
+
+**Resolution**: Moved `tickSourceRef.current = { ...tickSourceRef.current, status }` from `useEffect` to synchronous render-time assignment in `MusicTimeline.ts`. Added `server.host: '0.0.0.0'` to `vite.config.ts` for mobile device testing over LAN.
+
+### Fix 3: Vertical Auto-Scroll for Multi-Instrument Playback (d52293d)
+
+**Problem**: Play View did not scroll vertically to follow the current measure during playback of multi-instrument scores. The `ScoreViewer` (pages) component used container-based scroll listeners, but Play View renders in the main window scroll context.
+
+**Resolution**: Updated `pages/ScoreViewer.tsx` to use `window.addEventListener('scroll', ...)` and `window.scrollY` instead of container-based scroll detection. Added viewport-based system visibility calculation using `window.innerHeight`.
+
+### Fix 4: Auto-Scroll Losing Track of Current Measure (9ba84ea)
+
+**Problem**: After scrolling past approximately measure 50, auto-scroll would lose track of the current playback position and stop following the highlighted notes.
+
+**Resolution**: Fixed the scroll tracking logic in `pages/ScoreViewer.tsx` to correctly compute system positions relative to the document rather than the viewport.
+
+### Fix 5: Stale Highlights Persisting After Scroll (003888e, 5795d8c)
+
+**Problem**: Note highlights would persist (remain blue) on notes that were no longer playing after the user scrolled or the viewport changed. The root cause was twofold:
+
+1. **Frozen props**: `shouldComponentUpdate` in `LayoutRenderer` blocked `tickSource` prop updates (by design, to prevent re-renders). But the rAF highlight loop was reading `this.props.tickSource`, which was frozen at the time of the last structural render.
+2. **Missing prop chain**: `ScoreViewer` (component) was not passing `tickSourceRef` through `LayoutView` to `LayoutRenderer` at all.
+
+**Resolution**: Exposed `tickSourceRef` (a live `useRef<ITickSource>`) from `MusicTimeline.ts` alongside the snapshot `tickSource`. Threaded it through the component chain: `ScoreViewer` → `LayoutView` → `LayoutRenderer`. The rAF loop now reads `this.props.tickSourceRef?.current` instead of `this.props.tickSource`, getting live tick data regardless of `shouldComponentUpdate` gating.
+
+**Files modified**: `MusicTimeline.ts`, `LayoutView.tsx`, `LayoutRenderer.tsx`, `ScoreViewer.tsx` (component).
+
+### Fix 6: Dual-Highlight Conflict — Inline SVG vs CSS Classes (22677be)
+
+**Problem**: After Fix 5 resolved the stale data issue, highlights still appeared incorrect. `renderGlyphRun` was baking highlight colors into SVG `fill` attributes (e.g., `fill="#4A90E2"`) during structural renders, while the rAF loop only toggled CSS `.highlighted` classes. The inline `fill` attribute has higher specificity than CSS classes, so the rAF loop's class removal had no visible effect — notes stayed blue.
+
+**Resolution**: Removed all inline highlight color logic from `renderGlyph()`. The `_isHighlighted` parameter was eliminated. CSS `.highlighted` class with `!important` (applied by the rAF loop) became the sole highlight mechanism. Added `polygon.highlighted` CSS rule for beam elements.
+
+**Files modified**: `LayoutRenderer.tsx`, `LayoutRenderer.css`.
+
+### Fix 7: Scroll Fight Loop at Measure ~50 (941443a → 23d95af)
+
+**Problem**: At approximately measure 50, a scroll fight loop occurred: `scrollToHighlightedSystem` was called every ~100ms (on each `highlightedNoteIds` change via React state), and each call cancelled the previous 400ms ease-out animation and restarted it. This caused visible jittering and oscillation at system boundaries.
+
+**First attempt (941443a)**: Added an `isAutoScrolling` flag to suppress `updateViewport()` during auto-scroll. This fixed the fight but introduced a regression — `isAutoScrolling` was effectively always `true` during playback (every ~100ms call restarts the 400ms animation), preventing viewport updates entirely. Systems beyond the initial view were never rendered, breaking highlights in imported scores.
+
+**Final resolution (23d95af)**: Replaced `isAutoScrolling` with `autoScrollTargetSystem` tracking. Animation is only restarted when the target system changes. Viewport updates are never suppressed. Increased `SCROLL_THRESHOLD` from 4 to 20 pixels to reduce viewport update frequency during scroll.
+
+**Files modified**: `pages/ScoreViewer.tsx`.
