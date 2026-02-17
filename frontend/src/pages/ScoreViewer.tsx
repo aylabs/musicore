@@ -147,23 +147,18 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
   /**
    * Setup scroll event listener
+   * Uses window scroll since container has overflow:visible (page scrollbar)
    */
   componentDidMount(): void {
-    const container = this.containerRef.current;
-    if (container) {
-      container.addEventListener('scroll', this.handleScroll);
-      this.updateViewport();
-    }
+    window.addEventListener('scroll', this.handleScroll, { passive: true });
+    this.updateViewport();
   }
 
   /**
    * Cleanup scroll event listener
    */
   componentWillUnmount(): void {
-    const container = this.containerRef.current;
-    if (container) {
-      container.removeEventListener('scroll', this.handleScroll);
-    }
+    window.removeEventListener('scroll', this.handleScroll);
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
     }
@@ -230,7 +225,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   };
 
   /**
-   * Update viewport based on scroll position (T066)
+   * Update viewport based on page scroll position (T066)
+   * Since the container has overflow:visible, scrolling is handled by the
+   * browser page scrollbar. We compute the effective "scrollTop" by measuring
+   * how far the container's top has scrolled above the viewport.
    * Feature 024 (T027): Skips setState when scroll delta is below threshold
    * to reduce React re-renders during playback auto-scroll.
    */
@@ -242,7 +240,11 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     const { zoom } = this.state;
     const renderScale = zoom * BASE_SCALE;
-    const scrollTop = container.scrollTop;
+
+    // Compute effective scroll offset: how many pixels of the container
+    // are above the viewport. containerRect.top is negative when scrolled past.
+    const containerRect = container.getBoundingClientRect();
+    const scrollTop = Math.max(0, -containerRect.top);
 
     // Feature 024 (T027): Skip viewport update if scroll delta is negligible
     if (Math.abs(scrollTop - this.lastAppliedScrollTop) < ScoreViewer.SCROLL_THRESHOLD) {
@@ -250,7 +252,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
     this.lastAppliedScrollTop = scrollTop;
 
-    const clientHeight = container.clientHeight;
+    const clientHeight = window.innerHeight;
 
     // Calculate viewport in logical units
     // renderScale affects the visible area: higher scale = smaller viewport
@@ -258,11 +260,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Use extra padding to show more systems and avoid sudden pop-in
     const viewportPadding = 150; // Extra space top/bottom for smooth scrolling
     
-    // Use container's visible height to determine viewport (enables virtualization).
-    // Fall back to total layout height only if clientHeight is not yet available.
-    const viewportHeight = clientHeight > 0
-      ? (clientHeight / renderScale) + viewportPadding
-      : this.props.layout.total_height + viewportPadding;
+    // Use window innerHeight as the visible viewport height
+    const viewportHeight = (clientHeight / renderScale) + viewportPadding;
     
     // Allow negative Y to show glyphs above first system (e.g., clef at y=-10)
     const viewportY = (scrollTop / renderScale) - (viewportPadding / 2);
@@ -285,6 +284,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Auto-scroll to keep the system containing highlighted notes visible.
    * Uses requestAnimationFrame with ease-out interpolation for smooth scrolling
    * that doesn't jump abruptly between systems.
+   * 
+   * Checks visibility: even if the same system index, re-scroll if it has
+   * drifted out of the visible viewport area.
    */
   private scrollToHighlightedSystem(): void {
     const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
@@ -304,11 +306,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       if (targetSystemIndex >= 0) break;
     }
 
-    if (targetSystemIndex < 0 || targetSystemIndex === this.lastAutoScrollSystemIndex) {
+    if (targetSystemIndex < 0) {
       return;
     }
-
-    this.lastAutoScrollSystemIndex = targetSystemIndex;
 
     const targetSystem = layout.systems[targetSystemIndex];
     if (!targetSystem) return;
@@ -316,16 +316,35 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const { zoom } = this.state;
     const renderScale = zoom * BASE_SCALE;
     const systemTopPx = targetSystem.bounding_box.y * renderScale;
+    const systemHeight = (targetSystem.bounding_box.height || 200) * renderScale;
 
-    const wrapper = this.wrapperRef.current;
-    if (!wrapper) return;
+    const container = this.containerRef.current;
+    if (!container) return;
 
-    const wrapperRect = wrapper.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate where the system currently is relative to the viewport
+    const systemViewportTop = containerRect.top + systemTopPx;
+    const systemViewportBottom = systemViewportTop + systemHeight;
+    const viewportHeight = window.innerHeight;
+
+    // Check if system is already well-visible (within 15%-85% of viewport)
+    const topThreshold = viewportHeight * 0.15;
+    const bottomThreshold = viewportHeight * 0.85;
+    
+    const isVisible = systemViewportTop >= topThreshold && systemViewportBottom <= bottomThreshold;
+
+    // Skip if same system and still visible
+    if (targetSystemIndex === this.lastAutoScrollSystemIndex && isVisible) {
+      return;
+    }
+
+    this.lastAutoScrollSystemIndex = targetSystemIndex;
+
+    // Calculate target page scroll: position system ~20% from viewport top
     const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
-    const wrapperTopInPage = wrapperRect.top + currentPageScroll;
-
-    // Target: position system ~60px from the top of the viewport
-    const targetScroll = Math.max(0, wrapperTopInPage + systemTopPx - 60);
+    const containerTopInPage = containerRect.top + currentPageScroll;
+    const targetScroll = Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2);
 
     // Cancel any in-progress animation
     if (this.autoScrollAnimationId !== null) {
@@ -333,14 +352,14 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       this.autoScrollAnimationId = null;
     }
 
-    // Animate scroll with ease-out curve over 600ms for smooth feel
+    // Animate scroll with ease-out curve over 400ms for smooth feel
     const startScroll = window.scrollY;
     const distance = targetScroll - startScroll;
 
     // Skip if distance is negligible
     if (Math.abs(distance) < 2) return;
 
-    const duration = 600; // ms
+    const duration = 400; // ms — shorter for tighter tracking
     const startTime = performance.now();
 
     const animateScroll = (now: number) => {
