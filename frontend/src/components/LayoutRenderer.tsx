@@ -47,8 +47,10 @@ export interface LayoutRendererProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note (for visual feedback) */
   selectedNoteId?: string;
-  /** Feature 024: Tick source for rAF-driven highlight updates */
-  tickSource?: ITickSource;
+  /** Feature 024: Tick source ref for rAF-driven highlight updates.
+   * Must be a ref object (not a value) so the rAF loop reads live tick data
+   * even when shouldComponentUpdate blocks React re-renders. */
+  tickSourceRef?: { current: ITickSource };
   /** Feature 024: Notes array for building HighlightIndex */
   notes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
@@ -228,7 +230,9 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Never triggers React re-renders.
    */
   private updateHighlights(): void {
-    const { tickSource, highlightedNoteIds } = this.props;
+    // Read live tick data from ref (bypasses shouldComponentUpdate freezing)
+    const tickSource = this.props.tickSourceRef?.current;
+    const { highlightedNoteIds } = this.props;
 
     // Determine current playing notes
     let currentIds: string[];
@@ -275,7 +279,9 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     if (!svg) return;
 
     // Recompute current highlights from tick source (not from stale prevHighlightedIds)
-    const { tickSource, highlightedNoteIds } = this.props;
+    // Read live tick data from ref (bypasses shouldComponentUpdate freezing)
+    const tickSource = this.props.tickSourceRef?.current;
+    const { highlightedNoteIds } = this.props;
     let currentIds: string[];
 
     if (this.highlightIndex && tickSource && tickSource.status === 'playing') {

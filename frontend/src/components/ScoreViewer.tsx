@@ -562,6 +562,8 @@ export function ScoreViewer({
           onNoteClick={handleNoteClick}
           selectedNoteId={selectedNoteId ?? undefined}
           playbackStatus={playbackState.status}
+          tickSourceRef={playbackState.tickSourceRef}
+          allNotes={allNotes}
         />
       )}
 

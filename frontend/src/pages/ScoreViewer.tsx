@@ -36,8 +36,10 @@ export interface ScoreViewerProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note */
   selectedNoteId?: string;
-  /** Feature 024: Tick source for rAF-driven highlights */
-  tickSource?: ITickSource;
+  /** Feature 024: Tick source ref for rAF-driven highlights.
+   * Must be a ref object so the rAF loop reads live tick data
+   * even when shouldComponentUpdate blocks React re-renders. */
+  tickSourceRef?: { current: ITickSource };
   /** Feature 024: Notes array for building HighlightIndex */
   notes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
@@ -482,7 +484,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 sourceToNoteIdMap={this.props.sourceToNoteIdMap}
                 onNoteClick={this.props.onNoteClick}
                 selectedNoteId={this.props.selectedNoteId}
-                tickSource={this.props.tickSource}
+                tickSourceRef={this.props.tickSourceRef}
                 notes={this.props.notes}
               />
             </div>

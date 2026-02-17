@@ -48,8 +48,10 @@ interface LayoutViewProps {
   selectedNoteId?: string;
   /** Feature 022: Playback status for disabling TempoControl during playback */
   playbackStatus?: PlaybackStatus;
-  /** Feature 024: Tick source for rAF-driven highlights in LayoutRenderer */
-  tickSource?: ITickSource;
+  /** Feature 024: Tick source ref for rAF-driven highlights in LayoutRenderer.
+   * Must be a ref object (not a value) so the rAF loop reads live tick data
+   * even when shouldComponentUpdate blocks React re-renders. */
+  tickSourceRef?: { current: ITickSource };
   /** Feature 024: All notes for building HighlightIndex in LayoutRenderer */
   allNotes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
@@ -152,7 +154,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus, tickSource, allNotes }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus, tickSourceRef, allNotes }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -263,7 +265,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
         onTogglePlayback={onTogglePlayback}
         onNoteClick={onNoteClick}
         selectedNoteId={selectedNoteId}
-        tickSource={tickSource}
+        tickSourceRef={tickSourceRef}
         notes={allNotes}
       />
     </div>
