@@ -33,13 +33,19 @@ Iterative visual fixes discovered during manual testing:
 - Container overflow: visible (browser scrollbar instead of inner scrollbar)
 - Label margin reduced 200 to 80, ledger line width 1.25 to 0.7 ups
 
+### Legacy Code Cleanup (T067)
+- Removed the legacy "Play Legacy View" (Feature 010 stacked mode)
+- Now only two view modes: Instruments View and Play View
+- **709 lines of code deleted**: StackedStaffView, MultiVoiceStaff, StaffGroup components
+- ViewMode type simplified: `'individual' | 'layout'` (removed `'stacked'`)
+
 ## Test Results
 - **302 Rust backend tests** - all passing
-- **789 frontend tests** - all passing
+- **777 frontend tests** - all passing (down from 789, removed 12 stacked view tests)
 - **WASM build** - 416K module, compiles successfully
 
 ## Success Criteria Met
 SC-001 through SC-014 (see spec.md for details)
 
 ## Tasks
-66 tasks completed (T001-T066), organized in 6 phases. See specs/023-multi-instrument-play/tasks.md
+67 tasks completed (T001-T066 + legacy cleanup), organized in 6 phases + cleanup. See specs/023-multi-instrument-play/tasks.md
