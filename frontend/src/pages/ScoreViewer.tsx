@@ -105,6 +105,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Active auto-scroll animation frame ID */
   private autoScrollAnimationId: number | null = null;
 
+  /** True while auto-scroll animation is in progress — suppresses viewport updates */
+  private isAutoScrolling = false;
+
   /** Feature 024 (T026): rAF-based scroll throttle ID */
   private scrollRafId: number = 0;
 
@@ -240,6 +243,13 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       return;
     }
 
+    // Skip viewport updates during auto-scroll animation to prevent
+    // scroll fight loop: scrollTo → scroll event → setState({viewport}) →
+    // LayoutRenderer re-render → SVG rebuild → layout shift → more scrolling
+    if (this.isAutoScrolling) {
+      return;
+    }
+
     const { zoom } = this.state;
     const renderScale = zoom * BASE_SCALE;
 
@@ -352,6 +362,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     if (this.autoScrollAnimationId !== null) {
       cancelAnimationFrame(this.autoScrollAnimationId);
       this.autoScrollAnimationId = null;
+      this.isAutoScrolling = false;
     }
 
     // Animate scroll with ease-out curve over 400ms for smooth feel
@@ -377,9 +388,13 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
       } else {
         this.autoScrollAnimationId = null;
+        this.isAutoScrolling = false;
+        // Catch-up: single viewport update after animation completes
+        this.updateViewport();
       }
     };
 
+    this.isAutoScrolling = true;
     this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
   }
 
