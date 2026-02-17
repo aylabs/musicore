@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import type { Instrument } from "../types/score";
 import type { PlaybackStatus } from "../types/playback";
 import { NoteDisplay } from "./NoteDisplay";
@@ -39,112 +39,6 @@ interface InstrumentListProps {
  */
 export function InstrumentList({ instruments, currentTick, playbackStatus, onSeekToTick, onUnpinStartTick }: InstrumentListProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<number>>(new Set());
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
-  const lastAutoScrollTimeRef = useRef<number>(0);
-  
-  // Map of staff IDs to their DOM element refs for vertical auto-scroll
-  const staffRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
-
-  /**
-   * Register a staff element ref for vertical auto-scroll
-   */
-  const registerStaffRef = (staffId: string, element: HTMLDivElement | null) => {
-    if (element) {
-      staffRefsMap.current.set(staffId, element);
-    } else {
-      staffRefsMap.current.delete(staffId);
-    }
-  };
-
-  /**
-   * Auto-scroll vertically to keep currently playing staff in view
-   */
-  useEffect(() => {
-    if (playbackStatus !== 'playing' || !autoScrollEnabled) {
-      return;
-    }
-
-    /**
-     * Find which staff is currently playing based on currentTick
-     */
-    const getCurrentlyPlayingStaffId = (): string | null => {
-      if (typeof currentTick !== 'number') return null;
-
-      for (const instrument of instruments) {
-        for (const staff of instrument.staves) {
-          // Check if any voice in this staff has notes at currentTick
-          for (const voice of staff.voices) {
-            for (const note of voice.interval_events) {
-              if (note.start_tick <= currentTick && (note.start_tick + note.duration_ticks) > currentTick) {
-                return staff.id;
-              }
-            }
-          }
-        }
-      }
-      return null;
-    };
-
-    const playingStaffId = getCurrentlyPlayingStaffId();
-    if (!playingStaffId) {
-      return;
-    }
-
-    const staffElement = staffRefsMap.current.get(playingStaffId);
-    if (!staffElement) {
-      return;
-    }
-
-    // Check if staff is already reasonably visible
-    const rect = staffElement.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    
-    // If staff is in the middle 60% of viewport, don't scroll (avoid jitter)
-    const topThreshold = viewportHeight * 0.2;
-    const bottomThreshold = viewportHeight * 0.8;
-    
-    if (rect.top >= topThreshold && rect.bottom <= bottomThreshold) {
-      return; // Already well positioned
-    }
-
-    // Scroll staff into view with 30% from top positioning
-    const scrollOptions: ScrollIntoViewOptions = {
-      behavior: 'smooth',
-      block: 'start',
-    };
-
-    staffElement.scrollIntoView(scrollOptions);
-    // eslint-disable-next-line react-hooks/purity
-    lastAutoScrollTimeRef.current = Date.now();
-  }, [currentTick, playbackStatus, autoScrollEnabled, instruments]);
-
-  /**
-   * Detect manual scroll and disable auto-scroll
-   */
-  useEffect(() => {
-    const handleScroll = () => {
-      if (playbackStatus === 'playing' && autoScrollEnabled) {
-        // eslint-disable-next-line react-hooks/purity
-        const timeSinceLastAuto = Date.now() - lastAutoScrollTimeRef.current;
-        if (timeSinceLastAuto > 200) {
-          // User scrolled manually during playback
-          setAutoScrollEnabled(false);
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [playbackStatus, autoScrollEnabled]);
-
-  /**
-   * Re-enable auto-scroll when playback stops
-   */
-  useEffect(() => {
-    if (playbackStatus === 'stopped') {
-      setAutoScrollEnabled(true);
-    }
-  }, [playbackStatus]);
 
   /**
    * Toggle instrument expansion by index (preserves state across ID changes)
@@ -213,11 +107,7 @@ export function InstrumentList({ instruments, currentTick, playbackStatus, onSee
           {expandedInstruments.has(instIdx) && (
             <div className="instrument-body">
               {instrument.staves.map((staff, staffIdx) => (
-                <div 
-                  key={staff.id} 
-                  className="staff-section"
-                  ref={(el) => registerStaffRef(staff.id, el)}
-                >
+                <div key={staff.id} className="staff-section">
                   <div className="staff-header">
                     <h4>Staff {staffIdx + 1}</h4>
                     <div className="staff-info">

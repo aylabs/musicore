@@ -266,14 +266,32 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Feature 024 (T024): Re-apply current highlight state after structural render.
    * Called after renderSVG() rebuilds SVG, since all data-note-id elements
    * were recreated and lost their CSS classes.
+   * 
+   * Recomputes highlights from the current tick source to avoid stale state —
+   * prevHighlightedIds may reference notes that are no longer playing.
    */
   private reapplyHighlights(): void {
-    if (this.prevHighlightedIds.size === 0) return;
-
     const svg = this.svgRef.current;
     if (!svg) return;
 
-    for (const id of this.prevHighlightedIds) {
+    // Recompute current highlights from tick source (not from stale prevHighlightedIds)
+    const { tickSource, highlightedNoteIds } = this.props;
+    let currentIds: string[];
+
+    if (this.highlightIndex && tickSource && tickSource.status === 'playing') {
+      currentIds = this.highlightIndex.findPlayingNoteIds(tickSource.currentTick);
+    } else if (highlightedNoteIds && highlightedNoteIds.size > 0) {
+      currentIds = Array.from(highlightedNoteIds);
+    } else {
+      currentIds = [];
+    }
+
+    // Update prevHighlightedIds to match what we're applying
+    this.prevHighlightedIds = new Set(currentIds);
+
+    if (currentIds.length === 0) return;
+
+    for (const id of currentIds) {
       const el = svg.querySelector(`[data-note-id="${id}"]`);
       el?.classList.add('highlighted');
     }
