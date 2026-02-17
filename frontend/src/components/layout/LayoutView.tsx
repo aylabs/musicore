@@ -254,7 +254,6 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
       </div>
       <ScoreViewer 
         layout={layout} 
-        initialZoom={0.5}
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
         onTogglePlayback={onTogglePlayback}

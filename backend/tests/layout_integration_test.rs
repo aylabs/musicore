@@ -187,12 +187,12 @@ fn test_multi_staff_layout_structure() {
     let staff_0_top = staff_0_lines[0]["y_position"].as_f64().unwrap() as f32;
     let staff_1_top = staff_1_lines[0]["y_position"].as_f64().unwrap() as f32;
 
-    // Staves should be separated by 14 staff spaces (280 units with units_per_space=20)
-    // This provides ample room for ledger lines and bracket between piano grand staff staves
+    // Staves should be separated by 8 staff spaces (160 units with units_per_space=20)
+    // This provides room for ledger lines between piano grand staff staves
     let staff_separation = staff_1_top - staff_0_top;
     assert_eq!(
-        staff_separation, 280.0,
-        "Piano staves should be separated by 280 units (14 staff spaces)"
+        staff_separation, 160.0,
+        "Piano staves should be separated by 160 units (8 staff spaces)"
     );
 
     println!("✅ Multi-staff layout structure test passed");

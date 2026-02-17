@@ -93,8 +93,8 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     let num_instruments = instruments.len();
 
     // Spacing multipliers (in staff-space units)
-    let intra_staff_multiplier = 14.0_f32; // Between staves of the same instrument (gives room for ledger lines and bracket)
-    let inter_instrument_multiplier = 8.0_f32; // Extra gap between different instruments
+    let intra_staff_multiplier = 8.0_f32; // Between staves of the same instrument (compact with room for ledger lines)
+    let inter_instrument_multiplier = 5.0_f32; // Extra gap between different instruments
 
     // Inter-instrument gap: extra spacing between different instruments
     let inter_instrument_gap = if num_instruments > 1 {
@@ -1571,12 +1571,12 @@ mod tests {
         let treble_top = treble_staff.staff_lines[0].y_position;
         let bass_top = bass_staff.staff_lines[0].y_position;
 
-        // Vertical spacing should be 5 staff spaces (100 units at default units_per_space=20)
-        let expected_spacing = 14.0 * config.units_per_space; // 280 units
+        // Vertical spacing should be 8 staff spaces (160 units at default units_per_space=20)
+        let expected_spacing = 8.0 * config.units_per_space; // 160 units
         assert_eq!(
             bass_top - treble_top,
             expected_spacing,
-            "Staff vertical spacing should be 5 staff spaces (100 units)"
+            "Staff vertical spacing should be 8 staff spaces (160 units)"
         );
 
         // Verify bracket type is Brace for piano
