@@ -85,3 +85,17 @@ pub fn compute_measure_width(note_durations: &[u32], config: &SpacingConfig) -> 
 
     total_note_spacing + flag_padding + structural_padding
 }
+
+/// Compute rightmost content position for a system
+///
+/// Finds the maximum x position among all barlines to determine
+/// where staff lines should end.
+pub fn compute_system_content_width(measure_widths: &[f32], left_margin: f32) -> f32 {
+    if measure_widths.is_empty() {
+        return left_margin + 100.0;
+    }
+
+    // Sum all measure widths to get rightmost position
+    let total_width: f32 = measure_widths.iter().sum();
+    left_margin + total_width
+}

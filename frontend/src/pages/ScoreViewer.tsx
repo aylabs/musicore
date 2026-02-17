@@ -76,6 +76,12 @@ interface ScoreViewerState {
  * }
  * ```
  */
+/**
+ * Base scale factor: the layout coordinate system is authored at 2x visual size,
+ * so a user-facing zoom of 100% actually renders at 0.5× layout units.
+ */
+const BASE_SCALE = 0.5;
+
 export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
   private containerRef: RefObject<HTMLDivElement | null>;
@@ -104,10 +110,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       viewport: {
         x: 0,
         y: 0,
-        width: 1600,
+        width: 2400,
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
-      zoom: props.initialZoom || 1.0,
+      zoom: 1.0,
       scrollTop: 0,
       config,
     };
@@ -213,11 +219,12 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
 
     const { zoom } = this.state;
+    const renderScale = zoom * BASE_SCALE;
     const scrollTop = container.scrollTop;
     const clientHeight = container.clientHeight;
 
     // Calculate viewport in logical units
-    // Zoom affects the visible area: higher zoom = smaller viewport
+    // renderScale affects the visible area: higher scale = smaller viewport
     // Add padding to viewport to show glyphs that extend beyond system bounds
     // Use extra padding to show more systems and avoid sudden pop-in
     const viewportPadding = 150; // Extra space top/bottom for smooth scrolling
@@ -225,15 +232,15 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Use container's visible height to determine viewport (enables virtualization).
     // Fall back to total layout height only if clientHeight is not yet available.
     const viewportHeight = clientHeight > 0
-      ? (clientHeight / zoom) + viewportPadding
+      ? (clientHeight / renderScale) + viewportPadding
       : this.props.layout.total_height + viewportPadding;
     
     // Allow negative Y to show glyphs above first system (e.g., clef at y=-10)
-    const viewportY = (scrollTop / zoom) - (viewportPadding / 2);
+    const viewportY = (scrollTop / renderScale) - (viewportPadding / 2);
     const viewportWidth = this.props.layout.total_width;
 
     // Expand viewport leftward to show instrument name labels (Feature 023)
-    const labelMargin = 200;
+    const labelMargin = 80;
     this.setState({
       viewport: {
         x: -labelMargin,
@@ -278,7 +285,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     if (!targetSystem) return;
 
     const { zoom } = this.state;
-    const systemTopPx = targetSystem.bounding_box.y * zoom;
+    const renderScale = zoom * BASE_SCALE;
+    const systemTopPx = targetSystem.bounding_box.y * renderScale;
 
     const wrapper = this.wrapperRef.current;
     if (!wrapper) return;
@@ -371,11 +379,12 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       );
     }
 
-    // Calculate scroll container dimensions based on layout and zoom
+    // Calculate scroll container dimensions based on layout and renderScale
     // Include label margin in width so SVG viewBox and element aspect ratios match
-    const labelMargin = 200; // Must match value in updateViewport
-    const totalHeight = layout.total_height * zoom;
-    const totalWidth = (layout.total_width + labelMargin) * zoom;
+    const labelMargin = 80; // Must match value in updateViewport
+    const renderScale = zoom * BASE_SCALE;
+    const totalHeight = layout.total_height * renderScale;
+    const totalWidth = (layout.total_width + labelMargin) * renderScale;
 
     return (
       <div ref={this.wrapperRef} style={styles.wrapper}>
@@ -414,7 +423,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
               top: `${scrollTop}px`,
               left: 0,
               width: `${totalWidth}px`,
-              height: `${viewport.height * zoom}px`,
+              height: `${viewport.height * renderScale}px`,
               pointerEvents: 'none',
             }}>
               <LayoutRenderer 
@@ -468,11 +477,11 @@ const styles = {
     fontWeight: 'bold' as const,
     minWidth: '50px',
     textAlign: 'center' as const,
+    color: '#000000',
   },
   container: {
     flex: 1,
-    overflowX: 'auto' as const, // Allow horizontal scroll if needed
-    overflowY: 'auto' as const, // Enable vertical scrolling within container
+    overflow: 'visible' as const, // Use global browser scrollbar for both axes
     position: 'relative' as const,
   },
   message: {

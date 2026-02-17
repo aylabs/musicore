@@ -182,7 +182,7 @@ export class RendererDemo extends Component<Record<string, never>, RendererDemoS
         {/* Score Viewer */}
         <div style={styles.viewerContainer}>
           <ErrorBoundary>
-            <ScoreViewer layout={layout} darkMode={darkMode} initialZoom={0.5} />
+            <ScoreViewer layout={layout} darkMode={darkMode} />
           </ErrorBoundary>
         </div>
 

@@ -97,6 +97,14 @@ When multiple instruments are displayed in a system, each instrument's staves mu
 - **SC-004**: Playback highlighting correctly highlights notes across all instruments during playback.
 - **SC-005**: The user can zoom in/out and scroll through a multi-instrument score without rendering issues.
 - **SC-006**: A piano (2-staff) + violin (1-staff) score displays with correct intra-instrument and inter-instrument spacing.
+- **SC-007**: Staff line spacing uses standard 1×ups proportion so noteheads naturally fill the gap between lines.
+- **SC-008**: Stem direction follows standard engraving rules — notes on/above the middle line get stems down, notes below get stems up.
+- **SC-009**: Note glyphs use direction-aware SMuFL codepoints (Up/Down variants for half, quarter, eighth, sixteenth notes).
+- **SC-010**: Systems fit within the viewport width (1600px) without requiring horizontal scrolling.
+- **SC-011**: Ledger lines are proportional to notehead width (0.7 ups half-width).
+- **SC-012**: All 298 backend tests and 789 frontend tests pass after engraving improvements.
+- **SC-013**: Zoom 100% displays the score at natural reading size (BASE_SCALE=0.5 applied internally); no need to manually zoom out on load.
+- **SC-014**: When notes from one staff extend into the region of an adjacent staff (e.g., low treble notes approaching the bass staff), the inter-staff spacing for that system is automatically increased to avoid overlap while preserving the default compact spacing for systems without collisions.
 
 ## Assumptions
 

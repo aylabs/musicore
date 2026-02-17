@@ -181,7 +181,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
         // Compute layout with complete config (now async)
         const result = await computeLayout(layoutInput, {
-          max_system_width: 1600,
+          max_system_width: 2400,
           system_height: 200,
           system_spacing: 100,
           units_per_space: 20, // 20 logical units = 1 staff space
@@ -254,7 +254,6 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
       </div>
       <ScoreViewer 
         layout={layout} 
-        initialZoom={0.5}
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
         onTogglePlayback={onTogglePlayback}
