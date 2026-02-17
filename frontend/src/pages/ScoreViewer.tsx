@@ -477,6 +477,7 @@ const styles = {
     fontWeight: 'bold' as const,
     minWidth: '50px',
     textAlign: 'center' as const,
+    color: '#000000',
   },
   container: {
     flex: 1,

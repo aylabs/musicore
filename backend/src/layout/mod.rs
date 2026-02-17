@@ -372,9 +372,13 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     }
 
     // Compute GlobalLayout dimensions
-    // Use max_system_width to ensure consistent horizontal scrolling behavior
-    // (systems may be narrower if they don't fill the available width)
-    let total_width = config.max_system_width;
+    // Use the maximum actual system width plus small right margin (50 units)
+    let max_system_width = systems
+        .iter()
+        .map(|s| s.bounding_box.width)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or(config.max_system_width);
+    let total_width = max_system_width + 50.0;
 
     let total_height = if systems.is_empty() {
         0.0
