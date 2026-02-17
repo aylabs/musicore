@@ -105,6 +105,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Active auto-scroll animation frame ID */
   private autoScrollAnimationId: number | null = null;
 
+  /** System index that the current auto-scroll animation is targeting */
+  private autoScrollTargetSystemIndex: number = -1;
+
   /** Feature 024 (T026): rAF-based scroll throttle ID */
   private scrollRafId: number = 0;
 
@@ -341,14 +344,23 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       return;
     }
 
+    // Skip if an animation is already running to the same target system.
+    // This prevents the scroll fight: each ~100ms highlight change was
+    // cancelling and restarting the 400ms animation, causing constant
+    // viewport re-renders and visual jitter.
+    if (this.autoScrollAnimationId !== null && targetSystemIndex === this.autoScrollTargetSystemIndex) {
+      return;
+    }
+
     this.lastAutoScrollSystemIndex = targetSystemIndex;
+    this.autoScrollTargetSystemIndex = targetSystemIndex;
 
     // Calculate target page scroll: position system ~20% from viewport top
     const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
     const containerTopInPage = containerRect.top + currentPageScroll;
     const targetScroll = Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2);
 
-    // Cancel any in-progress animation
+    // Cancel any in-progress animation (different target system)
     if (this.autoScrollAnimationId !== null) {
       cancelAnimationFrame(this.autoScrollAnimationId);
       this.autoScrollAnimationId = null;
@@ -377,6 +389,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
       } else {
         this.autoScrollAnimationId = null;
+        this.autoScrollTargetSystemIndex = -1;
       }
     };
 
