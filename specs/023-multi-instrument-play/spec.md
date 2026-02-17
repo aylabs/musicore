@@ -104,6 +104,7 @@ When multiple instruments are displayed in a system, each instrument's staves mu
 - **SC-011**: Ledger lines are proportional to notehead width (0.7 ups half-width).
 - **SC-012**: All 298 backend tests and 789 frontend tests pass after engraving improvements.
 - **SC-013**: Zoom 100% displays the score at natural reading size (BASE_SCALE=0.5 applied internally); no need to manually zoom out on load.
+- **SC-014**: When notes from one staff extend into the region of an adjacent staff (e.g., low treble notes approaching the bass staff), the inter-staff spacing for that system is automatically increased to avoid overlap while preserving the default compact spacing for systems without collisions.
 
 ## Assumptions
 

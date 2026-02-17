@@ -183,6 +183,17 @@
 - [X] T060 Reduce `labelMargin` from 200 to 80 in `ScoreViewer.tsx` to trim excess left/right whitespace around staves
 - [X] T061 Update test assertions for new staff separation (280→160 units) in `layout_integration_test.rs` and `mod.rs` unit tests
 
+### System Width & Padding Fixes
+
+- [X] T062 Increase `max_system_width` from 1600 to 2400 in Rust default (`backend/src/layout/mod.rs`) and remove excess right padding — staff lines end exactly at rightmost barline, notes use natural (compress-only) spacing in `backend/src/layout/mod.rs`
+- [X] T063 Fix hardcoded `max_system_width: 1600` override in `frontend/src/components/layout/LayoutView.tsx` — change to 2400 to match Rust default
+- [X] T064 Update initial viewport width from 1600 to 2400 in `frontend/src/pages/ScoreViewer.tsx` and set container `overflow: 'visible'` to delegate scrolling to the browser
+
+### Dynamic Collision-Aware Staff Spacing
+
+- [X] T065 Add `compute_staff_note_extents()` helper to scan note Y positions per staff per system; pre-scan all staves before positioning to compute cumulative collision-avoidance offset; increase spacing between adjacent staves when notes from one staff extend toward another (1 staff-space minimum clearance); update `system.bounding_box.height` and running y position to account for per-system extra spacing in `backend/src/layout/mod.rs`
+- [X] T066 Add 4 unit tests for collision-aware spacing: note extent within staff, note extent below staff, collision increases gap, default spacing preserved when no collision in `backend/src/layout/mod.rs`
+
 ---
 
 ## Dependencies & Execution Order
