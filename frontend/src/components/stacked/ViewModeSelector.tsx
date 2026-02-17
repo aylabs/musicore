@@ -1,11 +1,11 @@
 /**
  * ViewModeSelector - Toggle between Instruments and Play view modes
- * Feature 010: Stacked Staves View - User Story 1
+ * Updated: Removed legacy stacked view, keeping only individual and layout modes
  */
 
 import './ViewModeSelector.css';
 
-export type ViewMode = 'individual' | 'stacked' | 'layout';
+export type ViewMode = 'individual' | 'layout';
 
 interface ViewModeSelectorProps {
   currentMode: ViewMode;
@@ -15,27 +15,23 @@ interface ViewModeSelectorProps {
 export function ViewModeSelector({ currentMode, onChange }: ViewModeSelectorProps) {
   return (
     <div className="view-mode-selector">
-      <button 
-        className={`view-mode-button ${currentMode === 'individual' ? 'active' : ''}`}
-        onClick={() => onChange('individual')}
-        aria-label="Switch to instruments view"
-      >
-        Instruments View
-      </button>
-      <button 
-        className={`view-mode-button ${currentMode === 'layout' ? 'active' : ''}`}
-        onClick={() => onChange('layout')}
-        aria-label="Switch to play view"
-      >
-        Play View
-      </button>
-      <button 
-        className={`view-mode-button ${currentMode === 'stacked' ? 'active' : ''}`}
-        onClick={() => onChange('stacked')}
-        aria-label="Switch to play legacy view"
-      >
-        Play Legacy View
-      </button>
+      {currentMode === 'individual' ? (
+        <button 
+          className="view-mode-button"
+          onClick={() => onChange('layout')}
+          aria-label="Switch to play view"
+        >
+          Play View
+        </button>
+      ) : (
+        <button 
+          className="view-mode-button"
+          onClick={() => onChange('individual')}
+          aria-label="Switch to instruments view"
+        >
+          Instruments
+        </button>
+      )}
     </div>
   );
 }

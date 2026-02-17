@@ -109,7 +109,7 @@ export class OnboardingService implements IOnboardingService {
       console.log(`[Onboarding] Demo loaded: ${demoScore.title} by ${demoScore.composer}`);
     }
 
-    // Set default view mode to "stacked" (FR-003)
+    // Set default view mode to "layout" (FR-003)
     viewModeStorage.setViewMode(this.config.defaultViewMode, 'onboarding');
     console.log(`[Onboarding] Default view mode set to "${this.config.defaultViewMode}"`);
   }

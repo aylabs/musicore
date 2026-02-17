@@ -1,6 +1,6 @@
 /**
  * Tests for ViewModeSelector component
- * Feature 010: Stacked Staves View - User Story 1
+ * Updated: Removed legacy stacked view
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -8,28 +8,25 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ViewModeSelector } from './ViewModeSelector';
 
 describe('ViewModeSelector', () => {
-  it('should render both view mode buttons', () => {
+  it('should show only Play View button when in individual mode', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
-    expect(screen.getByText('Instruments View')).toBeDefined();
     expect(screen.getByText('Play View')).toBeDefined();
-    expect(screen.getByText('Play Legacy View')).toBeDefined();
+    expect(screen.queryByText('Instruments View')).toBeNull();
+    expect(screen.queryByText('Instruments')).toBeNull();
   });
 
-  it('should highlight the active button', () => {
+  it('should show only Instruments button when in layout mode', () => {
     const onChange = vi.fn();
-    const { rerender } = render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
+    render(<ViewModeSelector currentMode="layout" onChange={onChange} />);
 
-    const individualButton = screen.getByText('Instruments View');
-    expect(individualButton.classList.contains('active')).toBe(true);
-
-    rerender(<ViewModeSelector currentMode="layout" onChange={onChange} />);
-    const layoutButton = screen.getByText('Play View');
-    expect(layoutButton.classList.contains('active')).toBe(true);
+    expect(screen.getByText('Instruments')).toBeDefined();
+    expect(screen.queryByText('Play View')).toBeNull();
+    expect(screen.queryByText('Instruments View')).toBeNull();
   });
 
-  it('should call onChange when clicking a button', () => {
+  it('should call onChange with layout when clicking Play View button', () => {
     const onChange = vi.fn();
     render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
 
@@ -39,12 +36,12 @@ describe('ViewModeSelector', () => {
     expect(onChange).toHaveBeenCalledWith('layout');
   });
 
-  it('should not call onChange when clicking the active button', () => {
+  it('should call onChange with individual when clicking Instruments button', () => {
     const onChange = vi.fn();
-    render(<ViewModeSelector currentMode="individual" onChange={onChange} />);
+    render(<ViewModeSelector currentMode="layout" onChange={onChange} />);
 
-    const individualButton = screen.getByText('Instruments View');
-    fireEvent.click(individualButton);
+    const instrumentsButton = screen.getByText('Instruments');
+    fireEvent.click(instrumentsButton);
 
     expect(onChange).toHaveBeenCalledWith('individual');
   });
