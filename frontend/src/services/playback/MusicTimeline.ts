@@ -13,8 +13,10 @@ export interface PlaybackState {
   currentTick: number;
   totalDurationTicks: number; // Feature 022: Total score duration in ticks for timer display
   error: string | null; // US3 T052: Error message for autoplay policy failures
-  /** Feature 024: ITickSource for rAF-driven consumers (avoids React re-renders) */
+  /** Feature 024: ITickSource snapshot for React consumers */
   tickSource: ITickSource;
+  /** Feature 024: Live ref for rAF consumers (bypasses shouldComponentUpdate freezing) */
+  tickSourceRef: { current: ITickSource };
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
@@ -69,7 +71,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   });
 
   // Keep tick source status in sync (must happen during render for immediate sync)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/refs
   tickSourceRef.current = { ...tickSourceRef.current, status };
   
   // Feature 022: Calculate total duration from all notes
@@ -360,18 +362,21 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     }
   }, [status]);
 
+  /* eslint-disable react-hooks/refs -- intentional: tickSourceRef exposes a live ref for rAF consumers */
   return {
     status,
     currentTick,
     totalDurationTicks, // Feature 022: Total score duration for timer
     error, // US3 T052: Expose error message for UI display
-    // Feature 024: ITickSource for rAF consumers (must access ref to return current value)
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // Feature 024: ITickSource snapshot for React consumers
     tickSource: tickSourceRef.current,
+    // Feature 024: Live ref for rAF consumers (bypasses shouldComponentUpdate freezing)
+    tickSourceRef,
     play,
     pause,
     stop,
     seekToTick,
     unpinStartTick,
   };
+  /* eslint-enable react-hooks/refs */
 }
