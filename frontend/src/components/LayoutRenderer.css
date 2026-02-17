@@ -25,6 +25,10 @@ rect.highlighted {
   fill: #4A90E2 !important;  /* Blue fill for highlighted beams */
 }
 
+polygon.highlighted {
+  fill: #4A90E2 !important;  /* Blue fill for highlighted beam polygons */
+}
+
 /* Optional: Smooth transition for highlight appearance */
 .glyph-run text,
 .glyph-run line,

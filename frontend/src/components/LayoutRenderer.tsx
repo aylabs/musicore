@@ -653,13 +653,15 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const color = run.color ? `rgb(${run.color.r}, ${run.color.g}, ${run.color.b})` : '#000000';
 
     // Render each glyph in the run (Task T020)
-    // Feature 019: Check each glyph individually for highlighting
-    const { highlightedNoteIds, sourceToNoteIdMap } = this.props;
+    // Feature 024: Do NOT bake highlight colors into SVG attributes.
+    // The rAF highlight loop manages CSS classes (`.highlighted`) which
+    // override fill/stroke via !important. Inline blue fills would persist
+    // when the CSS class is removed, causing stale highlights.
+    const { sourceToNoteIdMap } = this.props;
     
     for (const glyph of run.glyphs) {
       // Resolve noteId from source reference
       let noteId: string | undefined;
-      let isHighlighted = false;
       let isSelected = false;
       if (sourceToNoteIdMap && glyph.source_reference) {
         const sourceKey = createSourceKey({
@@ -669,16 +671,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
         noteId = sourceToNoteIdMap.get(sourceKey);
         
         if (noteId) {
-          if (highlightedNoteIds && highlightedNoteIds.has(noteId)) {
-            isHighlighted = true;
-          }
           if (this.props.selectedNoteId === noteId) {
             isSelected = true;
           }
         }
       }
       
-      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isHighlighted, isSelected);
+      // Never pass isHighlighted=true here; highlighting is CSS-class only (Feature 024)
+      const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isSelected);
       // Add data-note-id for click detection and highlight targeting (Feature 019, 024)
       if (noteId) {
         (glyphElement as SVGElement).dataset.noteId = noteId;
@@ -699,17 +699,17 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param fontFamily - Font family (e.g., 'Bravura')
    * @param fontSize - Font size in logical units
    * @param color - Fill color
-   * @param isHighlighted - Whether this glyph should be highlighted (Feature 019)
    * @param isSelected - Whether this glyph belongs to the selected note
    * @returns SVG element (text for SMuFL, line for stem, rect for beam)
    */
-  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isHighlighted = false, isSelected = false): SVGElement {
+  private renderGlyph(glyph: Glyph, fontFamily: string, fontSize: number, color: string, isSelected = false): SVGElement {
     // Check for special glyphs (stems and beams)
     const codepoint = glyph.codepoint;
     
-    // Determine colors: highlighted (blue) > selected (orange) > normal
-    const fillColor = isHighlighted ? '#4A90E2' : isSelected ? '#FF6B00' : color;
-    const strokeColor = isHighlighted ? '#2E5C8A' : isSelected ? '#CC5500' : color;
+    // Determine colors: selected (orange) > normal (never inline-set highlight colors;
+    // highlighting is CSS-class-only via rAF loop, Feature 024)
+    const fillColor = isSelected ? '#FF6B00' : color;
+    const strokeColor = isSelected ? '#CC5500' : color;
     
     // U+0000: Stem (vertical line)
     if (codepoint === '\u{0000}' || codepoint === '\0') {
@@ -719,11 +719,9 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       line.setAttribute('x2', glyph.position.x.toString());
       line.setAttribute('y2', (glyph.position.y + glyph.bounding_box.height).toString());
       line.setAttribute('stroke', strokeColor);
-      line.setAttribute('stroke-width', isHighlighted ? '2' : glyph.bounding_box.width.toString());
+      line.setAttribute('stroke-width', glyph.bounding_box.width.toString());
       line.setAttribute('stroke-linecap', 'butt');
-      if (isHighlighted) {
-        line.setAttribute('class', 'highlighted');
-      } else if (isSelected) {
+      if (isSelected) {
         line.setAttribute('class', 'selected');
       }
       return line;
@@ -748,9 +746,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       const points = `${x1},${y1Top} ${x2},${y2Top} ${x2},${y2Top + thickness} ${x1},${y1Top + thickness}`;
       polygon.setAttribute('points', points);
       polygon.setAttribute('fill', fillColor);
-      if (isHighlighted) {
-        polygon.setAttribute('class', 'highlighted');
-      } else if (isSelected) {
+      if (isSelected) {
         polygon.setAttribute('class', 'selected');
       }
       return polygon;
@@ -773,9 +769,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     text.setAttribute('font-family', fontFamily);
     text.setAttribute('font-size', fontSize.toString());
     text.setAttribute('fill', fillColor);
-    if (isHighlighted) {
-      text.setAttribute('class', 'highlighted');
-    } else if (isSelected) {
+    if (isSelected) {
       text.setAttribute('class', 'selected');
     }
     
