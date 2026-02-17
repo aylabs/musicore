@@ -359,19 +359,30 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
 
         system.staff_groups = staff_groups;
 
-        // Trim staff lines to actual content width (rightmost barline + margin)
-        // This removes excess white space to the right of the last barline
+        // Find the rightmost barline x position across all staves.
+        // This is the end-of-system barline (every system must end with one).
         let max_barline_x = system
             .staff_groups
             .iter()
             .flat_map(|sg| sg.staves.iter())
             .flat_map(|s| s.bar_lines.iter())
-            .map(|bl| bl.segments.first().map(|seg| seg.x_position).unwrap_or(0.0))
+            .map(|bl| {
+                bl.segments
+                    .iter()
+                    .map(|seg| seg.x_position)
+                    .fold(0.0_f32, f32::max)
+            })
             .fold(0.0_f32, f32::max);
 
-        let content_width = max_barline_x + 40.0; // Small right margin after last barline
+        // Staff lines end exactly at the rightmost barline — no extra margin.
+        let content_width = if max_barline_x > 0.0 {
+            max_barline_x
+        } else {
+            // Fallback: use original system width if no barlines were generated
+            system.bounding_box.width
+        };
 
-        // Update all staff lines to use the trimmed width
+        // Update all staff lines to end at the final barline
         for staff_group in &mut system.staff_groups {
             for staff in &mut staff_group.staves {
                 for line in &mut staff.staff_lines {
@@ -396,13 +407,12 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     }
 
     // Compute GlobalLayout dimensions
-    // Use the maximum actual system width plus small right margin (20 units)
-    let max_system_width = systems
+    // Use the maximum actual system width (already trimmed to content)
+    let total_width = systems
         .iter()
         .map(|s| s.bounding_box.width)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or(config.max_system_width);
-    let total_width = max_system_width + 20.0;
 
     let total_height = if systems.is_empty() {
         0.0
