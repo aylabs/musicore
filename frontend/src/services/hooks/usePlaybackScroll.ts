@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ScrollController } from '../playback/ScrollController';
-import { NoteHighlightService } from '../playback/NoteHighlightService';
+import { HighlightIndex } from '../highlight/HighlightIndex';
 import type { ScrollConfig } from '../../types/playback';
 import type { PlaybackStatus } from '../../types/playback';
 import type { Note } from '../../types/score';
@@ -100,7 +100,6 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   // Auto re-enable scroll when playback stops and restarts
   useEffect(() => {
     if (playbackStatus === 'stopped') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAutoScrollEnabled(true);
     }
   }, [playbackStatus]);
@@ -121,12 +120,27 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   // Extract target scroll position
   const targetScrollX = scrollCalculation.scrollX;
   
-  // Calculate highlighted notes using NoteHighlightService (User Story 2)
+  // Feature 024 (T023): Use HighlightIndex for O(log n) highlight computation
+  // Performance optimization: build index during render for immediate availability
+  const highlightIndexRef = useRef<HighlightIndex | null>(null);
+  const cachedNotesRef = useRef<Note[] | null>(null);
+
+  // Calculate highlighted notes using HighlightIndex (consolidated, User Story 2)
   const highlightedNoteIds = useMemo(() => {
     if (!notes || notes.length === 0) {
       return [];
     }
-    return NoteHighlightService.getPlayingNoteIds(notes, currentTick);
+    // Rebuild index only when notes array changes (intentional ref access during render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (notes !== cachedNotesRef.current) {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      if (!highlightIndexRef.current) {
+        highlightIndexRef.current = new HighlightIndex(); // eslint-disable-line react-hooks/exhaustive-deps
+      }
+      highlightIndexRef.current.build(notes); // eslint-disable-line react-hooks/exhaustive-deps
+      cachedNotesRef.current = notes; // eslint-disable-line react-hooks/exhaustive-deps
+    }
+    return highlightIndexRef.current!.findPlayingNoteIds(currentTick); // eslint-disable-line react-hooks/exhaustive-deps
   }, [notes, currentTick]);
   
   return {

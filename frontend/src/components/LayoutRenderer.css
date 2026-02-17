@@ -28,6 +28,18 @@ rect.highlighted {
 /* Optional: Smooth transition for highlight appearance */
 .glyph-run text,
 .glyph-run line,
-.glyph-run rect {
+.glyph-run rect,
+.glyph-run polygon {
+  transition: fill 50ms ease-out, stroke 50ms ease-out;
+}
+
+/**
+ * Feature 024: Generalized highlight class for CSS-class-based toggling.
+ * Used by updateHighlights() rAF loop — avoids inline style manipulation.
+ * Applied to any SVG element with data-note-id attribute.
+ */
+.layout-glyph.highlighted {
+  fill: #4A90E2 !important;
+  stroke: #4A90E2 !important;
   transition: fill 50ms ease-out, stroke 50ms ease-out;
 }

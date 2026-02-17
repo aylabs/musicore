@@ -2,13 +2,24 @@
  * Playback Types
  * 
  * Type definitions for music playback state and scheduling.
- * Feature: 003-music-playback
+ * Feature: 003-music-playback, 024-playback-performance
  */
 
 /**
  * Playback status indicating the current state of audio playback
  */
 export type PlaybackStatus = 'stopped' | 'playing' | 'paused';
+
+/**
+ * Feature 024: Non-React mechanism for reading the current playback tick.
+ * Used by the rAF highlight loop to avoid React state subscriptions.
+ */
+export interface ITickSource {
+  /** Current playback position in ticks. Updated by the playback engine. */
+  readonly currentTick: number;
+  /** Current playback status */
+  readonly status: PlaybackStatus;
+}
 
 /**
  * Complete playback state tracking position and status

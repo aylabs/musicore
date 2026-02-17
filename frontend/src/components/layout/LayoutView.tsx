@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Score, GlobalStructuralEvent, StaffStructuralEvent, Note } from '../../types/score';
-import type { PlaybackStatus } from '../../types/playback';
+import type { PlaybackStatus, ITickSource } from '../../types/playback';
 import { ScoreViewer } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
@@ -48,6 +48,10 @@ interface LayoutViewProps {
   selectedNoteId?: string;
   /** Feature 022: Playback status for disabling TempoControl during playback */
   playbackStatus?: PlaybackStatus;
+  /** Feature 024: Tick source for rAF-driven highlights in LayoutRenderer */
+  tickSource?: ITickSource;
+  /** Feature 024: All notes for building HighlightIndex in LayoutRenderer */
+  allNotes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
 
 /**
@@ -148,7 +152,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus, tickSource, allNotes }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -259,6 +263,8 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
         onTogglePlayback={onTogglePlayback}
         onNoteClick={onNoteClick}
         selectedNoteId={selectedNoteId}
+        tickSource={tickSource}
+        notes={allNotes}
       />
     </div>
   );
