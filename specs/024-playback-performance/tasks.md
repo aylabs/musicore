@@ -285,6 +285,69 @@
 
 ---
 
+## Phase 8: Post-Implementation Fixes
+
+**Purpose**: Integration testing revealed several issues in the two-tier rendering architecture that required iterative fixes. These tasks document the bugs discovered and their resolutions.
+
+### ESLint & Build Fixes
+
+- [X] T035 Fix ESLint react-hooks/refs violations in MusicTimeline.ts (bc381bd)
+  - **Problem**: `react-hooks/refs` rule flagged intentional `tickSourceRef.current` access during render and ref dependencies
+  - **Resolution**: Added targeted `/* eslint-disable react-hooks/refs */` directives around architectural ref patterns
+  - **File**: frontend/src/services/playback/MusicTimeline.ts
+
+### Playback Stability Fixes
+
+- [X] T036 Fix mobile jitter caused by async tick status sync (0cd1ff7)
+  - **Problem**: `tickSource.status` synchronized via `useEffect` (async/batched) instead of during render, causing 1-frame lag
+  - **Resolution**: Moved `tickSourceRef.current` status sync to synchronous render-time assignment in MusicTimeline.ts
+  - **Files**: frontend/src/services/playback/MusicTimeline.ts, frontend/vite.config.ts (added `server.host: '0.0.0.0'` for mobile testing)
+
+### Scroll & Viewport Fixes
+
+- [X] T037 Add vertical auto-scroll for multi-instrument playback (d52293d)
+  - **Problem**: Play View did not scroll vertically to follow current measure; used container-based scroll listeners but Play View renders in window scroll context
+  - **Resolution**: Updated pages/ScoreViewer.tsx to use `window.addEventListener('scroll', ...)` and `window.scrollY` with `window.innerHeight` for viewport-based visibility
+  - **File**: frontend/src/pages/ScoreViewer.tsx
+
+- [X] T038 Fix auto-scroll losing track of current measure at ~measure 50 (9ba84ea)
+  - **Problem**: Auto-scroll lost playback position after ~50 measures due to incorrect system position computation (relative to viewport instead of document)
+  - **Resolution**: Fixed scroll tracking logic to compute system positions relative to the document
+  - **File**: frontend/src/pages/ScoreViewer.tsx
+
+### Highlight Rendering Fixes
+
+- [X] T039 Fix stale highlights persisting after scroll — initial cleanup (003888e)
+  - **Problem**: Highlights remained on notes no longer playing after scrolling; InstrumentList had unnecessary vertical scroll code
+  - **Resolution**: Fixed highlight cleanup on scroll, reverted InstrumentList vertical scroll code
+  - **Files**: frontend/src/pages/ScoreViewer.tsx, frontend/src/components/ScoreViewer.tsx
+
+- [X] T040 Fix stale highlights via tickSourceRef live ref (5795d8c)
+  - **Problem**: `shouldComponentUpdate` blocked `tickSource` prop updates (by design), so rAF loop read frozen `this.props.tickSource`. Additionally `ScoreViewer` component was not passing tickSourceRef through the chain.
+  - **Resolution**: Exposed `tickSourceRef` (live `useRef<ITickSource>`) from MusicTimeline.ts. Threaded through: ScoreViewer → LayoutView → LayoutRenderer. rAF loop reads `tickSourceRef.current` instead of frozen props.
+  - **Files**: frontend/src/services/playback/MusicTimeline.ts, frontend/src/components/layout/LayoutView.tsx, frontend/src/components/LayoutRenderer.tsx, frontend/src/components/ScoreViewer.tsx
+
+- [X] T041 Remove inline highlight colors from renderGlyph — dual-highlight conflict (22677be)
+  - **Problem**: `renderGlyphRun` baked highlight colors into SVG `fill` attributes during structural renders; rAF loop only toggled CSS `.highlighted` classes. Inline `fill` has higher specificity than CSS, so class removal had no visible effect.
+  - **Resolution**: Removed all inline highlight color logic from `renderGlyph()`. CSS `.highlighted` class with `!important` became sole mechanism. Added `polygon.highlighted` for beams.
+  - **Files**: frontend/src/components/LayoutRenderer.tsx, frontend/src/components/LayoutRenderer.css
+
+### Scroll Fight Loop Fix
+
+- [X] T042 Fix scroll fight loop at system boundaries — isAutoScrolling approach (941443a)
+  - **Problem**: `scrollToHighlightedSystem` called every ~100ms, each call cancelling and restarting the 400ms ease-out animation, causing jittering at system boundaries
+  - **Resolution (reverted)**: Added `isAutoScrolling` flag to suppress `updateViewport()` during animation. Caused regression: flag always true → viewport never updates → highlights broken in imported scores.
+  - **File**: frontend/src/pages/ScoreViewer.tsx
+
+- [X] T043 Fix scroll fight loop — animation dedup approach (23d95af)
+  - **Problem**: T042's `isAutoScrolling` was always true during playback, preventing viewport updates and breaking highlights beyond initial view
+  - **Resolution**: Replaced `isAutoScrolling` with `autoScrollTargetSystem` tracking. Animation only restarted when target system changes. Viewport updates never suppressed. Increased `SCROLL_THRESHOLD` from 4px to 20px.
+  - **File**: frontend/src/pages/ScoreViewer.tsx
+
+**Checkpoint**: All post-implementation issues resolved. 812 tests passing. Highlights work correctly in both demo and imported scores. Auto-scroll follows playback without fight loops.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
