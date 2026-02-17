@@ -100,6 +100,83 @@
 
 ---
 
+## Phase 6: Visual Bug Fixes & Engraving Improvements (Post-Implementation)
+
+**Purpose**: Iterative visual fixes discovered during manual testing of the multi-instrument Play View. These tasks address engraving quality, spacing, and correctness issues that were not anticipated in the original spec.
+
+### Bug Fix: Missing Name Labels & Brackets
+
+- [X] T029 Fix missing instrument name labels and bracket glyphs not rendering for multi-instrument scores — bracket span and label positioning were not accounting for multi-staff instrument groups
+
+### Bug Fix: Blank Multi-Instrument View
+
+- [X] T030 Fix blank multi-instrument view — `convertScoreToLayoutFormat` was not iterating all instruments correctly, causing empty layout output
+
+### Bug Fix: Systems Only Visible After Scrolling
+
+- [X] T031 Fix systems only appearing after scrolling — initial render was not triggering layout computation at correct viewport offset
+
+### Bug Fix: Excessive Vertical Spacing
+
+- [X] T032 Reduce excessive vertical spacing between systems by tuning `intra_staff_multiplier` from 5.0 to 10.0 (then later to 12.0, then 14.0) to prevent staff overlap while keeping staves compact
+
+### Bug Fix: Measure Misalignment Across Instruments
+
+- [X] T033 Fix measure misalignment across instruments — barlines and notes were not horizontally aligned between different instrument staff groups within the same system
+
+### Compact Note Spacing
+
+- [X] T034 Reduce `SpacingConfig` defaults (base/factor/minimum from 60 to 40, flag_padding from 10 to 5, structural_padding from 50 to 30) for 3+ measures per system in `backend/src/layout/spacer.rs`
+- [X] T035 Increase `max_system_width` from 2400 to 3200 (later reverted to 1600) for more horizontal room in `backend/src/layout/mod.rs`
+
+### Bug Fix: Beam Slope Clamp
+
+- [X] T036 Fix beam slope clamp bug — `compute_beam_slope` used `dx` instead of `dx.abs()` for `max_slope_per_unit`, causing negative clamp range when dx was negative in `backend/src/layout/beams.rs`
+
+### Piano Staff Overlap Fix
+
+- [X] T037 Fix piano treble/bass staff overlap — `intra_staff_multiplier` was 5.0 giving 100 units between staff tops, but each staff spans 160 units (8×ups). Changed to 10.0(200 units), then 12.0 (240 units), then 14.0 (280 units) in `backend/src/layout/mod.rs`
+
+### Ledger Line Width & Inter-Staff Gap
+
+- [X] T038 Reduce ledger line half-width from 1.25 to 0.7 ups (notehead-sized) in `backend/src/layout/mod.rs`
+- [X] T039 Increase `intra_staff_multiplier` from 12.0 to 14.0 (280 units, 80-unit gap for ledger lines) in `backend/src/layout/mod.rs`
+
+### Horizontal Scroll & Screen Fit
+
+- [X] T040 Reduce `max_system_width` from 3200 to 1600 for natural screen fit without horizontal scroll in `backend/src/layout/mod.rs` and `frontend/src/components/layout/LayoutView.tsx`
+- [X] T041 Revert 100% width + overflow:hidden approach that broke zoom — use explicit pixel widths with `overflowX: auto` instead in `frontend/src/pages/ScoreViewer.tsx`
+
+### Staff Line Spacing Reduction (Engraving Proportion Fix)
+
+- [X] T042 Change staff line spacing from 2×ups to 1×ups so noteheads fill the gap between lines (standard engraving proportion) in `backend/src/layout/mod.rs` `create_staff_lines()`
+- [X] T043 Update pitch-to-y formula: change diatonic step from `(diff - 0.5) * ups` to `(diff * 0.5 - 0.5) * ups` in `backend/src/layout/positioner.rs`
+- [X] T044 Update all hardcoded Y positions: staff height refs (8→4 ups), barline y_end, staff_middle_y (4→2 ups) in `backend/src/layout/mod.rs`
+- [X] T045 Update clef positions: Treble 110→50, Bass 110→10, Alto 70→30, Tenor 110→10 in `backend/src/layout/positioner.rs`
+- [X] T046 Update time signature positions: numerator y 30→10, denominator y 110→50 in `backend/src/layout/positioner.rs`
+- [X] T047 Update key signature sharp positions [-10,20,-20,10,40,0,30] and flat positions [30,0,40,10,50,20,60] in `backend/src/layout/positioner.rs`
+- [X] T048 Update ledger line bounds: bottom_line 8→4 ups, step 2→1 ups, threshold 0.5→0.25 in `backend/src/layout/positioner.rs`
+- [X] T049 Make bracket glyph dynamic — span from top of first staff to bottom of last staff instead of hardcoded extension in `backend/src/layout/mod.rs`
+- [X] T050 Update all test assertions across `positioner.rs`, `mod.rs`, `contract_test.rs`, `layout_integration_test.rs`, `layout_test.rs` for new staff line spacing values
+
+### Stem Direction Fix (Engraving Rule Correction)
+
+- [X] T051 Fix `compute_stem_direction()` — swap Up/Down so notes on/above middle line get stems down, notes below get stems up (standard music engraving rule) in `backend/src/layout/stems.rs`
+- [X] T052 Adjust `staff_middle_y` from `2.0 * ups` to `1.5 * ups` in `backend/src/layout/mod.rs` to account for the -0.5*ups glyph-centering offset in pitch_to_y
+
+### Direction-Aware Note Glyphs
+
+- [X] T053 Add per-note stem direction computation in `position_noteheads()` — use direction-aware SMuFL codepoints for unbeamed notes in `backend/src/layout/positioner.rs`:
+  - Half: U+E1D3 (up) / U+E1D4 (down)
+  - Quarter: U+E1D5 (up) / U+E1D6 (down)
+  - Eighth: U+E1D7 (up) / U+E1D8 (down)
+  - Sixteenth: U+E1D9 (up) / U+E1DA (down)
+- [X] T054 Update beam group direction tests (3 tests with backwards assertions) in `backend/src/layout/beams.rs`
+- [X] T055 Add down-variant codepoints to SMuFL validation registry in `backend/tests/smufl_codepoint_test.rs`
+- [X] T056 Update all affected mod.rs integration tests to check for both Up/Down glyph variants
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
