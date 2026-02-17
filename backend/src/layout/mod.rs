@@ -767,9 +767,10 @@ fn compute_unified_note_positions(
         spacing_config.minimum_spacing + end_clearance
     };
 
-    // Scale positions to fit available width
+    // Scale positions to fit available width — but only compress if content
+    // exceeds the system width. Never stretch notes to fill extra space.
     let available_width = system_width - left_margin;
-    let scale_factor = if total_natural_width > 0.0 {
+    let scale_factor = if total_natural_width > available_width {
         available_width / total_natural_width
     } else {
         1.0
