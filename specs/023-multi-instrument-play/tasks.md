@@ -175,6 +175,14 @@
 - [X] T055 Add down-variant codepoints to SMuFL validation registry in `backend/tests/smufl_codepoint_test.rs`
 - [X] T056 Update all affected mod.rs integration tests to check for both Up/Down glyph variants
 
+### Zoom Rescaling & Compact Layout
+
+- [X] T057 Introduce `BASE_SCALE = 0.5` in `ScoreViewer.tsx` so zoom 100% renders at the natural visual size (previously shown at 50%). Replace all internal `zoom` calculations with `renderScale = zoom * BASE_SCALE`. Remove `initialZoom={0.5}` from `LayoutView.tsx` and `RendererDemo.tsx`.
+- [X] T058 Reduce `intra_staff_multiplier` from 14.0 to 8.0 (160-unit separation between staves of the same instrument) in `backend/src/layout/mod.rs`
+- [X] T059 Reduce `inter_instrument_multiplier` from 8.0 to 5.0 (100-unit gap between different instruments) in `backend/src/layout/mod.rs`
+- [X] T060 Reduce `labelMargin` from 200 to 80 in `ScoreViewer.tsx` to trim excess left/right whitespace around staves
+- [X] T061 Update test assertions for new staff separation (280→160 units) in `layout_integration_test.rs` and `mod.rs` unit tests
+
 ---
 
 ## Dependencies & Execution Order

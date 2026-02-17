@@ -103,6 +103,7 @@ When multiple instruments are displayed in a system, each instrument's staves mu
 - **SC-010**: Systems fit within the viewport width (1600px) without requiring horizontal scrolling.
 - **SC-011**: Ledger lines are proportional to notehead width (0.7 ups half-width).
 - **SC-012**: All 298 backend tests and 789 frontend tests pass after engraving improvements.
+- **SC-013**: Zoom 100% displays the score at natural reading size (BASE_SCALE=0.5 applied internally); no need to manually zoom out on load.
 
 ## Assumptions
 
