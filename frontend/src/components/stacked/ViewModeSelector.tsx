@@ -1,11 +1,11 @@
 /**
  * ViewModeSelector - Toggle between Instruments and Play view modes
- * Feature 010: Stacked Staves View - User Story 1
+ * Updated: Removed legacy stacked view, keeping only individual and layout modes
  */
 
 import './ViewModeSelector.css';
 
-export type ViewMode = 'individual' | 'stacked' | 'layout';
+export type ViewMode = 'individual' | 'layout';
 
 interface ViewModeSelectorProps {
   currentMode: ViewMode;
@@ -28,13 +28,6 @@ export function ViewModeSelector({ currentMode, onChange }: ViewModeSelectorProp
         aria-label="Switch to play view"
       >
         Play View
-      </button>
-      <button 
-        className={`view-mode-button ${currentMode === 'stacked' ? 'active' : ''}`}
-        onClick={() => onChange('stacked')}
-        aria-label="Switch to play legacy view"
-      >
-        Play Legacy View
       </button>
     </div>
   );

@@ -36,7 +36,7 @@ export interface FirstRunState {
 /**
  * Valid view mode values
  */
-export type ViewMode = 'stacked' | 'individual' | 'layout';
+export type ViewMode = 'individual' | 'layout';
 
 /**
  * Source of view mode preference (for analytics)
@@ -103,7 +103,7 @@ export interface DemoScoreMetadata extends Score {
  * Not persisted - defined as code constants
  */
 export interface OnboardingConfig {
-  /** Default view mode for first run (always "stacked" per spec) */
+  /** Default view mode for first run (always "layout" per spec) */
   defaultViewMode: ViewMode;
   
   /** Path to bundled demo MusicXML file */
@@ -207,13 +207,13 @@ export interface IFirstRunStorage {
 export interface IViewModePreferenceStorage {
   /**
    * Get current view mode preference
-   * @returns ViewModePreference or null if not set (defaults to "stacked")
+   * @returns ViewModePreference or null if not set (defaults to "layout")
    */
   getViewModePreference(): ViewModePreference | null;
   
   /**
    * Get current view mode (convenience method)
-   * @returns ViewMode, defaults to "stacked" if not set
+   * @returns ViewMode, defaults to "layout" if not set
    */
   getViewMode(): ViewMode;
   

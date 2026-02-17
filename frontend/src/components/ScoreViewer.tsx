@@ -9,7 +9,6 @@ import { useTempoState } from "../services/state/TempoStateContext";
 import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
-import { StackedStaffView } from "./stacked/StackedStaffView";
 import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { demoLoaderService } from "../services/onboarding/demoLoader";
@@ -53,7 +52,7 @@ export function ScoreViewer({
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
   const [scoreTitle, setScoreTitle] = useState<string | null>(null); // Feature 022: Score title from MusicXML metadata
   
-  // Feature 010: View mode state for toggling between individual and stacked views
+  // View mode state for toggling between individual and layout views
   // Use controlled mode if provided, otherwise internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>('individual');
   const viewMode = controlledViewMode ?? internalViewMode;
@@ -145,7 +144,7 @@ export function ScoreViewer({
 
   /**
    * Load demo score from IndexedDB (Feature 013)
-   * Sets stacked view and auto-plays the demo
+   * Sets layout view and auto-plays the demo
    */
   const handleLoadDemoButtonClick = async () => {
     setLoading(true);
@@ -179,7 +178,7 @@ export function ScoreViewer({
       // Set auto-play flag (will trigger in useEffect after score loads)
       setShouldAutoPlay(true);
       
-      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}, switching to stacked view and auto-playing`);
+      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}, switching to layout view and auto-playing`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load demo");
     } finally {
@@ -362,7 +361,7 @@ export function ScoreViewer({
   
   /**
    * Toggle playback between play and pause
-   * Used for tablet: tapping outside staff regions in stacked view
+   * Used for tablet: tapping outside staff regions in layout view
    */
   const togglePlayback = useCallback(() => {
     if (playbackState.status === 'playing') {
@@ -467,7 +466,7 @@ export function ScoreViewer({
         </div>
       )}
 
-      {/* Feature 010: Hide header and file operations in stacked/layout view */}
+      {/* Hide header and file operations in layout view */}
       {viewMode === 'individual' && (
         <>
           <div className="score-header">
@@ -503,7 +502,7 @@ export function ScoreViewer({
       )}
 
       {/* Feature 003 - Music Playback: US1 T025 - Playback Controls */}
-      {/* Feature 010: Compact mode in stacked/layout view, full mode in individual view */}
+      {/* Compact mode in layout view, full mode in individual view */}
       <PlaybackControls
         status={playbackState.status}
         hasNotes={allNotes.length > 0}
@@ -553,16 +552,6 @@ export function ScoreViewer({
           playbackStatus={playbackState.status}
           onSeekToTick={playbackState.seekToTick}
           onUnpinStartTick={playbackState.unpinStartTick}
-        />
-      ) : viewMode === 'stacked' ? (
-        /* Feature 010: Stacked Staves View */
-        <StackedStaffView
-          score={score}
-          currentTick={playbackState.currentTick}
-          playbackStatus={playbackState.status}
-          onSeekToTick={playbackState.seekToTick}
-          onUnpinStartTick={playbackState.unpinStartTick}
-          onTogglePlayback={togglePlayback}
         />
       ) : (
         /* Feature 017: Layout View */

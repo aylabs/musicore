@@ -1,6 +1,6 @@
 /**
  * Tests for ViewModeSelector component
- * Feature 010: Stacked Staves View - User Story 1
+ * Updated: Removed legacy stacked view
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -14,7 +14,6 @@ describe('ViewModeSelector', () => {
 
     expect(screen.getByText('Instruments View')).toBeDefined();
     expect(screen.getByText('Play View')).toBeDefined();
-    expect(screen.getByText('Play Legacy View')).toBeDefined();
   });
 
   it('should highlight the active button', () => {
