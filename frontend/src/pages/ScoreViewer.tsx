@@ -482,7 +482,7 @@ const styles = {
   container: {
     flex: 1,
     overflowX: 'auto' as const, // Allow horizontal scroll if needed
-    overflowY: 'auto' as const, // Enable vertical scrolling within container
+    overflowY: 'visible' as const, // Use global browser scrollbar instead
     position: 'relative' as const,
   },
   message: {
