@@ -68,10 +68,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     status: 'stopped' as PlaybackStatus,
   });
 
-  // Keep tick source status in sync (after render)
-  useEffect(() => {
-    tickSourceRef.current = { ...tickSourceRef.current, status };
-  }, [status]);
+  // Keep tick source status in sync (must happen during render for immediate sync)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  tickSourceRef.current = { ...tickSourceRef.current, status };
   
   // Feature 022: Calculate total duration from all notes
   const totalDurationTicks = useMemo(() => {
