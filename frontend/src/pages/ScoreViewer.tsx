@@ -110,7 +110,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       viewport: {
         x: 0,
         y: 0,
-        width: 1600,
+        width: 2400,
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: 1.0,
