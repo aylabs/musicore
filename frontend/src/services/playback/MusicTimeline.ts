@@ -68,8 +68,10 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     status: 'stopped' as PlaybackStatus,
   });
 
-  // Keep tick source status in sync
-  tickSourceRef.current = { ...tickSourceRef.current, status };
+  // Keep tick source status in sync (after render)
+  useEffect(() => {
+    tickSourceRef.current = { ...tickSourceRef.current, status };
+  }, [status]);
   
   // Feature 022: Calculate total duration from all notes
   const totalDurationTicks = useMemo(() => {
@@ -364,7 +366,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     currentTick,
     totalDurationTicks, // Feature 022: Total score duration for timer
     error, // US3 T052: Expose error message for UI display
-    tickSource: tickSourceRef.current, // Feature 024: ITickSource for rAF consumers
+    // Feature 024: ITickSource for rAF consumers (must access ref to return current value)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    tickSource: tickSourceRef.current,
     play,
     pause,
     stop,

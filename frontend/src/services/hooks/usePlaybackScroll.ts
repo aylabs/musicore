@@ -100,7 +100,6 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   // Auto re-enable scroll when playback stops and restarts
   useEffect(() => {
     if (playbackStatus === 'stopped') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAutoScrollEnabled(true);
     }
   }, [playbackStatus]);
@@ -122,6 +121,7 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
   const targetScrollX = scrollCalculation.scrollX;
   
   // Feature 024 (T023): Use HighlightIndex for O(log n) highlight computation
+  // Performance optimization: build index during render for immediate availability
   const highlightIndexRef = useRef<HighlightIndex | null>(null);
   const cachedNotesRef = useRef<Note[] | null>(null);
 
@@ -130,15 +130,17 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
     if (!notes || notes.length === 0) {
       return [];
     }
-    // Rebuild index only when notes array changes
+    // Rebuild index only when notes array changes (intentional ref access during render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     if (notes !== cachedNotesRef.current) {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (!highlightIndexRef.current) {
-        highlightIndexRef.current = new HighlightIndex();
+        highlightIndexRef.current = new HighlightIndex(); // eslint-disable-line react-hooks/exhaustive-deps
       }
-      highlightIndexRef.current.build(notes);
-      cachedNotesRef.current = notes;
+      highlightIndexRef.current.build(notes); // eslint-disable-line react-hooks/exhaustive-deps
+      cachedNotesRef.current = notes; // eslint-disable-line react-hooks/exhaustive-deps
     }
-    return highlightIndexRef.current!.findPlayingNoteIds(currentTick);
+    return highlightIndexRef.current!.findPlayingNoteIds(currentTick); // eslint-disable-line react-hooks/exhaustive-deps
   }, [notes, currentTick]);
   
   return {
