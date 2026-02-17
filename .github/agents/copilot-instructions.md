@@ -46,6 +46,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - IndexedDB (offline-first PWA, no changes needed for this feature) (023-multi-instrument-play)
 - TypeScript 5.x (frontend), React 18+ (UI framework) + Tone.js (audio engine), React (rendering), SMuFL/Bravura (music font), WASM layout engine (Rust backend) (024-playback-performance)
 - N/A (no persistence changes) (024-playback-performance)
+- TypeScript 5.x (frontend), Rust 1.75+ (backend WASM module, no changes expected) + React 18+, vite-plugin-pwa, Workbox (service worker), IndexedDB (via custom wrapper), WASM music engine (already compiled), Tone.js (audio playback) (025-offline-mode)
+- IndexedDB for score persistence, Service Worker cache for assets (app shell, WASM module, demo MusicXML), network-first with fallback for score data (currently unused) (025-offline-mode)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -66,9 +68,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 025-offline-mode: Added TypeScript 5.x (frontend), Rust 1.75+ (backend WASM module, no changes expected) + React 18+, vite-plugin-pwa, Workbox (service worker), IndexedDB (via custom wrapper), WASM music engine (already compiled), Tone.js (audio playback)
 - 024-playback-performance: Added TypeScript 5.x (frontend), React 18+ (UI framework) + Tone.js (audio engine), React (rendering), SMuFL/Bravura (music font), WASM layout engine (Rust backend)
 - 023-multi-instrument-play: Added Rust (latest stable) + TypeScript 5.x / React 18+ + wasm-pack, wasm-bindgen, serde, serde_json (backend); Vite, Tone.js (frontend)
-- 022-display-improvements: Added Rust (stable), TypeScript 5.x, React 18+ + React, Tone.js (playback), wasm-pack/wasm-bindgen (WASM bindings), Vite
 
 
 <!-- MANUAL ADDITIONS START -->

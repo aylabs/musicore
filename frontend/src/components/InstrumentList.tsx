@@ -9,7 +9,7 @@ interface InstrumentListProps {
   scoreId: string | undefined;
   onUpdate: (scoreId?: string) => void;
   onScoreCreated?: (scoreId: string) => void;
-  onSync?: () => Promise<string>; // Sync local score to backend
+  // Feature 025: onSync removed (offline mode - no REST API sync needed)
   // Feature 009: Playback state for auto-scroll
   currentTick?: number;
   playbackStatus?: PlaybackStatus;

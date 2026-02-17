@@ -64,12 +64,13 @@ export function ScoreViewer({
   /**
    * Load a score by ID
    * Feature 013: Try IndexedDB first (for demo scores), then fall back to API
+   * Feature 025: Offline Mode - IndexedDB only (no REST API fallback)
    */
   const loadScore = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      // Try IndexedDB first (for demo scores and imported scores)
+      // Feature 025: IndexedDB only (offline parity)
       const indexedDBScore = await loadScoreFromIndexedDB(id);
       if (indexedDBScore) {
         console.log(`[ScoreViewer] Loaded score from IndexedDB: ${id}`);
@@ -79,12 +80,9 @@ export function ScoreViewer({
         return;
       }
 
-      // Fall back to API if not in IndexedDB
-      console.log(`[ScoreViewer] Score not in IndexedDB, trying API: ${id}`);
-      const loadedScore = await apiClient.getScore(id);
-      setScore(loadedScore);
-      setScoreTitle(loadedScore.instruments[0]?.name ?? null); // Feature 022: Fallback to instrument name
-      setIsFileSourced(false); // Backend is source of truth for API-loaded scores
+      // Feature 025: No REST API fallback - show helpful error message
+      console.log(`[ScoreViewer] Score not found in IndexedDB: ${id}`);
+      throw new Error("Score not found in local storage. Import a MusicXML file or load the demo.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load score");
       setScore(null);
@@ -187,77 +185,10 @@ export function ScoreViewer({
   };
 
   /**
-   * Sync a local score to the backend by recreating its entire structure
-   * Used when a file-loaded score needs to be modified via backend APIs
-   * After syncing, reloads the score from backend to get correct IDs
-   * @returns The backend score ID
+   * Delete removed: syncLocalScoreToBackend()
+   * Feature 025: Offline Mode - No REST API sync needed
+   * All scores stored in IndexedDB only, identified by score.id
    */
-  const syncLocalScoreToBackend = async (): Promise<string> => {
-    if (!score) throw new Error("No score to sync");
-    if (scoreId) return scoreId; // Already synced
-
-    // Create empty backend score
-    const backendScore = await apiClient.createScore({ title: "Imported Score" });
-    const newScoreId = backendScore.id;
-
-    // Recreate each instrument with its full structure
-    for (const instrument of score.instruments) {
-      await apiClient.addInstrument(newScoreId, { name: instrument.name });
-      const backendScoreWithInst = await apiClient.getScore(newScoreId);
-      const backendInstrument = backendScoreWithInst.instruments.find(i => i.name === instrument.name);
-      if (!backendInstrument) continue;
-
-      // Add staves
-      for (let staffIdx = 0; staffIdx < instrument.staves.length; staffIdx++) {
-        if (staffIdx > 0) await apiClient.addStaff(newScoreId, backendInstrument.id);
-      }
-
-      // Reload to get staff IDs
-      const scoreWithStaves = await apiClient.getScore(newScoreId);
-      const instWithStaves = scoreWithStaves.instruments.find(i => i.name === instrument.name);
-      if (!instWithStaves) continue;
-
-      // Add voices and notes for each staff
-      for (let staffIdx = 0; staffIdx < instrument.staves.length; staffIdx++) {
-        const originalStaff = instrument.staves[staffIdx];
-        const backendStaff = instWithStaves.staves[staffIdx];
-        if (!backendStaff) continue;
-
-        // Add voices
-        for (let voiceIdx = 0; voiceIdx < originalStaff.voices.length; voiceIdx++) {
-          if (voiceIdx > 0) await apiClient.addVoice(newScoreId, instWithStaves.id, backendStaff.id);
-        }
-
-        // Reload to get voice IDs
-        const scoreWithVoices = await apiClient.getScore(newScoreId);
-        const instWithVoices = scoreWithVoices.instruments.find(i => i.name === instrument.name);
-        if (!instWithVoices) continue;
-        const staffWithVoices = instWithVoices.staves[staffIdx];
-        if (!staffWithVoices) continue;
-
-        // Add notes for each voice
-        for (let voiceIdx = 0; voiceIdx < originalStaff.voices.length; voiceIdx++) {
-          const originalVoice = originalStaff.voices[voiceIdx];
-          const backendVoice = staffWithVoices.voices[voiceIdx];
-          if (!backendVoice) continue;
-
-          for (const note of originalVoice.interval_events) {
-            await apiClient.addNote(newScoreId, instWithVoices.id, staffWithVoices.id, backendVoice.id, {
-              start_tick: note.start_tick,
-              duration_ticks: note.duration_ticks,
-              pitch: note.pitch,
-            });
-          }
-        }
-      }
-    }
-
-    // Mark score as backend-sourced now that we've synced
-    // The score will be reloaded by onUpdate after the operation completes
-    setIsFileSourced(false);
-
-    return newScoreId;
-  };
 
   /**
    * Load button and file selection handlers removed - Feature 014:
@@ -547,7 +478,6 @@ export function ScoreViewer({
             setSkipNextLoad(true); // Prevent reload on scoreId change (onUpdate will handle reload)
             setScoreId(id);
           }}
-          onSync={syncLocalScoreToBackend}
           currentTick={playbackState.currentTick}
           playbackStatus={playbackState.status}
           onSeekToTick={playbackState.seekToTick}
