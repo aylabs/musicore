@@ -12,6 +12,7 @@ import { createDefaultConfig } from '../utils/renderUtils';
 import type { GlobalLayout } from '../wasm/layout';
 import type { RenderConfig } from '../types/RenderConfig';
 import type { Viewport } from '../types/Viewport';
+import type { ITickSource } from '../types/playback';
 
 /**
  * Props for ScoreViewer component
@@ -35,6 +36,10 @@ export interface ScoreViewerProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note */
   selectedNoteId?: string;
+  /** Feature 024: Tick source for rAF-driven highlights */
+  tickSource?: ITickSource;
+  /** Feature 024: Notes array for building HighlightIndex */
+  notes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
 
 /**
@@ -98,6 +103,15 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Active auto-scroll animation frame ID */
   private autoScrollAnimationId: number | null = null;
 
+  /** Feature 024 (T026): rAF-based scroll throttle ID */
+  private scrollRafId: number = 0;
+
+  /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState) */
+  private lastAppliedScrollTop: number = 0;
+
+  /** Feature 024 (T027): Minimum scroll delta before updating viewport state (pixels) */
+  private static readonly SCROLL_THRESHOLD = 4;
+
   constructor(props: ScoreViewerProps) {
     super(props);
     this.containerRef = createRef();
@@ -156,6 +170,11 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     if (this.autoScrollAnimationId !== null) {
       cancelAnimationFrame(this.autoScrollAnimationId);
     }
+    // Feature 024 (T026): Cancel pending scroll rAF
+    if (this.scrollRafId !== 0) {
+      cancelAnimationFrame(this.scrollRafId);
+      this.scrollRafId = 0;
+    }
   }
 
   /**
@@ -196,21 +215,24 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
-   * Handle scroll events with debouncing (T066)
+   * Handle scroll events with rAF-based throttling (T066, T026)
+   * Feature 024 (T026): Replaced setTimeout debounce with rAF for
+   * efficient scroll handling that aligns with display refresh rate.
    */
   private handleScroll = (): void => {
-    if (this.scrollTimer) {
-      clearTimeout(this.scrollTimer);
+    // rAF-based throttle: coalesce all scroll events within one frame
+    if (this.scrollRafId === 0) {
+      this.scrollRafId = requestAnimationFrame(() => {
+        this.scrollRafId = 0;
+        this.updateViewport();
+      });
     }
-
-    // Debounce scroll updates (16ms = 60fps)
-    this.scrollTimer = setTimeout(() => {
-      this.updateViewport();
-    }, 16);
   };
 
   /**
    * Update viewport based on scroll position (T066)
+   * Feature 024 (T027): Skips setState when scroll delta is below threshold
+   * to reduce React re-renders during playback auto-scroll.
    */
   private updateViewport(): void {
     const container = this.containerRef.current;
@@ -221,6 +243,13 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const { zoom } = this.state;
     const renderScale = zoom * BASE_SCALE;
     const scrollTop = container.scrollTop;
+
+    // Feature 024 (T027): Skip viewport update if scroll delta is negligible
+    if (Math.abs(scrollTop - this.lastAppliedScrollTop) < ScoreViewer.SCROLL_THRESHOLD) {
+      return;
+    }
+    this.lastAppliedScrollTop = scrollTop;
+
     const clientHeight = container.clientHeight;
 
     // Calculate viewport in logical units
@@ -434,6 +463,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 sourceToNoteIdMap={this.props.sourceToNoteIdMap}
                 onNoteClick={this.props.onNoteClick}
                 selectedNoteId={this.props.selectedNoteId}
+                tickSource={this.props.tickSource}
+                notes={this.props.notes}
               />
             </div>
           </div>

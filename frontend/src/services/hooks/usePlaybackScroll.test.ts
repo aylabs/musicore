@@ -362,7 +362,7 @@ describe('usePlaybackScroll', () => {
         })
       );
 
-      expect(result.current.highlightedNoteIds).toEqual(['note1', 'note2', 'note3']);
+      expect([...result.current.highlightedNoteIds].sort()).toEqual(['note1', 'note2', 'note3']);
     });
 
     it('should update highlights when currentTick changes', () => {

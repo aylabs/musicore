@@ -20,6 +20,11 @@ import {
   svgNS,
 } from '../utils/renderUtils';
 import { createSourceKey } from '../services/highlight/sourceMapping';
+import { HighlightIndex } from '../services/highlight/HighlightIndex';
+import { computeHighlightPatch } from '../services/highlight/computeHighlightPatch';
+import { FrameBudgetMonitor } from '../services/highlight/FrameBudgetMonitor';
+import { detectDeviceProfile } from '../utils/deviceDetection';
+import type { ITickSource } from '../types/playback';
 import './LayoutRenderer.css';
 
 /**
@@ -42,6 +47,10 @@ export interface LayoutRendererProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note (for visual feedback) */
   selectedNoteId?: string;
+  /** Feature 024: Tick source for rAF-driven highlight updates */
+  tickSource?: ITickSource;
+  /** Feature 024: Notes array for building HighlightIndex */
+  notes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
 }
 
 /**
@@ -65,6 +74,20 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   /** Reference to SVG element for direct DOM manipulation */
   private svgRef: RefObject<SVGSVGElement | null>;
 
+  // Feature 024: Two-tier render model instance fields
+  /** rAF handle for highlight loop cleanup */
+  private rafId = 0;
+  /** Timestamp of last processed highlight frame */
+  private lastFrameTime = 0;
+  /** Previous frame's highlighted note IDs for diff computation */
+  private prevHighlightedIds = new Set<string>();
+  /** Target interval between highlight frames (33ms mobile / 16ms desktop) */
+  private frameInterval = 16;
+  /** Pre-sorted note index for O(log n) highlight queries */
+  private highlightIndex: HighlightIndex | null = null;
+  /** Frame budget tracker for audio-first degradation */
+  private frameBudgetMonitor: FrameBudgetMonitor;
+
   constructor(props: LayoutRendererProps) {
     super(props);
     this.svgRef = createRef();
@@ -72,6 +95,17 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Validate config on construction
     validateRenderConfig(props.config);
     validateViewport(props.viewport);
+
+    // Feature 024 (T017): Detect device profile for frame rate selection
+    const profile = detectDeviceProfile();
+    this.frameInterval = profile.targetFrameIntervalMs;
+    this.frameBudgetMonitor = new FrameBudgetMonitor(profile.frameBudgetMs);
+
+    // Feature 024: Build highlight index if notes provided
+    if (props.notes && props.notes.length > 0) {
+      this.highlightIndex = new HighlightIndex();
+      this.highlightIndex.build(props.notes);
+    }
   }
 
   /**
@@ -96,34 +130,152 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   };
 
   /**
-   * Render SVG after component mounts
+   * Feature 024 (T013): Only re-render SVG for structural changes.
+   * Returns false for highlight-only and selection-only changes —
+   * those are handled by the rAF-driven updateHighlights() loop.
+   */
+  shouldComponentUpdate(nextProps: LayoutRendererProps): boolean {
+    return (
+      nextProps.layout !== this.props.layout ||
+      nextProps.config !== this.props.config ||
+      nextProps.viewport !== this.props.viewport ||
+      nextProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
+    );
+  }
+
+  /**
+   * Render SVG after component mounts and start highlight loop
    */
   componentDidMount(): void {
     this.renderSVG();
     this.svgRef.current?.addEventListener('click', this.handleSVGClick);
+    this.startHighlightLoop();
   }
 
   /**
-   * Cleanup event listener
+   * Cleanup event listener and stop highlight loop
    */
   componentWillUnmount(): void {
+    this.stopHighlightLoop();
     this.svgRef.current?.removeEventListener('click', this.handleSVGClick);
+    this.highlightIndex?.clear();
+    this.frameBudgetMonitor.reset();
   }
 
   /**
-   * Re-render SVG when props change
+   * Re-render SVG for structural changes only.
+   * Feature 024: After structural render, re-apply current highlight state
+   * since all data-note-id elements were recreated.
    */
   componentDidUpdate(prevProps: LayoutRendererProps): void {
-    // Re-render if layout, config, viewport, or highlighting/selection state changed
+    // Structural changes only (shouldComponentUpdate gates highlight-only changes)
     if (
       prevProps.layout !== this.props.layout ||
       prevProps.config !== this.props.config ||
       prevProps.viewport !== this.props.viewport ||
-      prevProps.highlightedNoteIds !== this.props.highlightedNoteIds ||
-      prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap ||
-      prevProps.selectedNoteId !== this.props.selectedNoteId
+      prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
     ) {
       this.renderSVG();
+      // Re-apply highlights after structural render (T024)
+      this.reapplyHighlights();
+    }
+
+    // Rebuild highlight index when notes change
+    if (prevProps.notes !== this.props.notes && this.props.notes) {
+      if (!this.highlightIndex) {
+        this.highlightIndex = new HighlightIndex();
+      }
+      this.highlightIndex.build(this.props.notes);
+    }
+  }
+
+  // ─── Feature 024: rAF Highlight Loop (T014-T017) ──────────────────
+
+  /**
+   * Feature 024 (T015): Start the rAF self-scheduling highlight loop.
+   * Runs independently of React rendering at device-adaptive frame rate.
+   */
+  private startHighlightLoop(): void {
+    const loop = (timestamp: number): void => {
+      this.rafId = requestAnimationFrame(loop);
+
+      // Frame-skip: only process if enough time has passed (T017)
+      if (timestamp - this.lastFrameTime < this.frameInterval) return;
+      this.lastFrameTime = timestamp;
+
+      // Feature 024 (T016): Check frame budget — skip visual updates if degraded
+      if (this.frameBudgetMonitor.shouldSkipFrame()) return;
+
+      const startTime = this.frameBudgetMonitor.startFrame();
+      this.updateHighlights();
+      this.frameBudgetMonitor.endFrame(startTime);
+    };
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  /**
+   * Feature 024 (T015): Stop the rAF highlight loop.
+   */
+  private stopHighlightLoop(): void {
+    cancelAnimationFrame(this.rafId);
+    this.rafId = 0;
+  }
+
+  /**
+   * Feature 024 (T014): Diff-based CSS class toggling for highlights.
+   * Reads current tick from tickSource (ref), computes playing notes via
+   * HighlightIndex, diffs against previous frame, toggles CSS classes.
+   * Never triggers React re-renders.
+   */
+  private updateHighlights(): void {
+    const { tickSource, highlightedNoteIds } = this.props;
+
+    // Determine current playing notes
+    let currentIds: string[];
+    if (this.highlightIndex && tickSource && tickSource.status === 'playing') {
+      // Feature 024 path: O(log n) binary search via HighlightIndex
+      currentIds = this.highlightIndex.findPlayingNoteIds(tickSource.currentTick);
+    } else if (highlightedNoteIds && highlightedNoteIds.size > 0) {
+      // Legacy path: use prop-based highlighted note IDs
+      currentIds = Array.from(highlightedNoteIds);
+    } else {
+      // Nothing playing — clear all highlights
+      if (this.prevHighlightedIds.size === 0) return;
+      currentIds = [];
+    }
+
+    const patch = computeHighlightPatch(this.prevHighlightedIds, currentIds);
+    if (patch.unchanged) return;
+
+    const svg = this.svgRef.current;
+    if (!svg) return;
+
+    for (const id of patch.removed) {
+      const el = svg.querySelector(`[data-note-id="${id}"]`);
+      el?.classList.remove('highlighted');
+    }
+    for (const id of patch.added) {
+      const el = svg.querySelector(`[data-note-id="${id}"]`);
+      el?.classList.add('highlighted');
+    }
+
+    this.prevHighlightedIds = new Set(currentIds);
+  }
+
+  /**
+   * Feature 024 (T024): Re-apply current highlight state after structural render.
+   * Called after renderSVG() rebuilds SVG, since all data-note-id elements
+   * were recreated and lost their CSS classes.
+   */
+  private reapplyHighlights(): void {
+    if (this.prevHighlightedIds.size === 0) return;
+
+    const svg = this.svgRef.current;
+    if (!svg) return;
+
+    for (const id of this.prevHighlightedIds) {
+      const el = svg.querySelector(`[data-note-id="${id}"]`);
+      el?.classList.add('highlighted');
     }
   }
 
@@ -503,9 +655,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       }
       
       const glyphElement = this.renderGlyph(glyph, fontFamily, fontSize, color, isHighlighted, isSelected);
-      // Add data-note-id for click detection
+      // Add data-note-id for click detection and highlight targeting (Feature 019, 024)
       if (noteId) {
         (glyphElement as SVGElement).dataset.noteId = noteId;
+        glyphElement.classList.add('layout-glyph');
         glyphElement.style.cursor = 'pointer';
       }
       glyphRunGroup.appendChild(glyphElement);

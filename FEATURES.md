@@ -32,6 +32,11 @@ A tablet-native app for interactive scores, designed for practice and performanc
 - **Note highlighting** - Visual feedback showing current position
 - **Tempo control** - Adjust playback speed for practice
 - **Repeat/navigation** - Jump to any point in the score
+- **Optimized playback rendering** - Zero audio glitches on mobile devices
+  - **Incremental highlight updates** - CSS class toggling via rAF, no SVG DOM rebuild
+  - **O(log n) note lookup** - Binary search index for real-time highlight computation
+  - **Device-adaptive frame rate** - 30 Hz mobile / 60 Hz desktop with frame budget monitoring
+  - **Efficient tick broadcasting** - Ref-based tick source, minimal React re-renders
 
 ### 📱 Tablet-Optimized PWA
 - **Offline-first** - Works without internet connection

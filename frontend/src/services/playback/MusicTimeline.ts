@@ -3,7 +3,7 @@ import { ToneAdapter } from './ToneAdapter';
 import { PlaybackScheduler, secondsToTicks, ticksToSeconds } from './PlaybackScheduler';
 import { useTempoState } from '../state/TempoStateContext';
 import type { Note } from '../../types/score';
-import type { PlaybackStatus } from '../../types/playback';
+import type { PlaybackStatus, ITickSource } from '../../types/playback';
 
 /**
  * PlaybackState interface for usePlayback hook return value
@@ -13,6 +13,8 @@ export interface PlaybackState {
   currentTick: number;
   totalDurationTicks: number; // Feature 022: Total score duration in ticks for timer display
   error: string | null; // US3 T052: Error message for autoplay policy failures
+  /** Feature 024: ITickSource for rAF-driven consumers (avoids React re-renders) */
+  tickSource: ITickSource;
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
@@ -56,6 +58,18 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const playbackStartTickRef = useRef<number>(0); // Feature 009: Track tick position when playback started
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
   const pinnedStartTickRef = useRef<number | null>(null); // Feature 009: Pinned start position from selected note
+  const rafIdRef = useRef<number>(0); // Feature 024: rAF handle for tick broadcast
+  const lastReactTickRef = useRef<number>(0); // Feature 024: Last tick value pushed to React state
+
+  // Feature 024 (T018): Mutable tick source for rAF-driven consumers
+  // This avoids React re-renders for every tick update.
+  const tickSourceRef = useRef<ITickSource>({
+    currentTick: 0,
+    status: 'stopped' as PlaybackStatus,
+  });
+
+  // Keep tick source status in sync
+  tickSourceRef.current = { ...tickSourceRef.current, status };
   
   // Feature 022: Calculate total duration from all notes
   const totalDurationTicks = useMemo(() => {
@@ -69,14 +83,18 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   // US2 T037: Create PlaybackScheduler instance (memoized to persist across renders)
   const scheduler = useMemo(() => new PlaybackScheduler(adapter), [adapter]);
 
-  // Feature 009 - Playback Scroll and Highlight: T006
-  // Broadcast currentTick updates at 60 Hz during playback for smooth scroll/highlight
+  // Feature 009 & 024 - Playback Scroll and Highlight: T006, T018
+  // Feature 024 (T018): Use rAF + ref instead of setInterval + setState.
+  // Update tickSourceRef every rAF frame; only push to React state when
+  // the tick has changed significantly (avoids 60Hz React re-renders).
   useEffect(() => {
     if (status !== 'playing') {
       return undefined;
     }
 
-    const intervalId = setInterval(() => {
+    const REACT_UPDATE_INTERVAL = 100; // ms — only update React state every ~100ms
+
+    const tick = (): void => {
       const currentTime = adapter.getCurrentTime();
       const elapsedTime = currentTime - startTimeRef.current;
       
@@ -86,10 +104,24 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Calculate absolute position: starting tick + elapsed ticks
       const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
       
-      setCurrentTick(newCurrentTick);
-    }, 16); // 60 Hz = ~16ms interval (matches 60 FPS target)
+      // Feature 024: Always update the mutable tick source (no React re-render)
+      tickSourceRef.current = { currentTick: newCurrentTick, status: 'playing' };
+      
+      // Feature 024: Only update React state periodically for components that
+      // need it (e.g., timer display, position indicator). This dramatically
+      // reduces React re-renders from ~60/sec to ~10/sec.
+      const tickDelta = Math.abs(newCurrentTick - lastReactTickRef.current);
+      if (tickDelta >= secondsToTicks(REACT_UPDATE_INTERVAL / 1000, tempo)) {
+        lastReactTickRef.current = newCurrentTick;
+        setCurrentTick(newCurrentTick);
+      }
+      
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+    
+    rafIdRef.current = requestAnimationFrame(tick);
 
-    return () => clearInterval(intervalId);
+    return () => cancelAnimationFrame(rafIdRef.current);
   }, [status, adapter, tempo, tempoState.tempoMultiplier]);
 
   /**
@@ -262,6 +294,8 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     // Feature 009: Reset currentTick to pinned position if set, otherwise 0
     const resetTick = pinnedStartTickRef.current !== null ? pinnedStartTickRef.current : 0;
     setCurrentTick(resetTick);
+    lastReactTickRef.current = resetTick;
+    tickSourceRef.current = { currentTick: resetTick, status: 'stopped' };
 
     // US1 T023: Transition to 'stopped'
     setStatus('stopped');
@@ -299,6 +333,8 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
 
     // Set the tick position and pin it
     setCurrentTick(tick);
+    lastReactTickRef.current = tick;
+    tickSourceRef.current = { currentTick: tick, status: tickSourceRef.current.status };
     pinnedStartTickRef.current = tick;
 
     // If currently playing, transition to paused so user can resume
@@ -328,6 +364,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     currentTick,
     totalDurationTicks, // Feature 022: Total score duration for timer
     error, // US3 T052: Expose error message for UI display
+    tickSource: tickSourceRef.current, // Feature 024: ITickSource for rAF consumers
     play,
     pause,
     stop,
