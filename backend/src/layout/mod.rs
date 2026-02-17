@@ -129,7 +129,11 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     );
 
     // Populate staff_groups for each system with positioned and batched glyphs
+    let mut running_y: f32 = 0.0; // Track cumulative y position across systems (collision-aware)
     for system in &mut systems {
+        // Update system y to account for collision-adjusted heights of previous systems
+        system.bounding_box.y = running_y;
+
         let mut staff_groups = Vec::new();
         // Track cumulative vertical offset across instruments within this system
         let mut global_staff_offset: usize = 0;
@@ -163,6 +167,44 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             &spacing_config,
         );
 
+        // --- Collision-aware spacing pre-scan ---
+        // Compute note Y extents for each staff (relative to staff origin) to detect
+        // collisions between adjacent staves. If notes from one staff extend into
+        // another staff's region, we increase the spacing for THIS system only.
+        let staff_extents: Vec<(f32, f32)> = instruments
+            .iter()
+            .flat_map(|inst| inst.staves.iter())
+            .map(|sd| compute_staff_note_extents(sd, &system.tick_range, config.units_per_space))
+            .collect();
+
+        // For each staff, record whether an inter-instrument gap precedes it
+        let mut has_inter_gap_before: Vec<bool> = Vec::new();
+        for (inst_idx, inst) in instruments.iter().enumerate() {
+            for (staff_idx, _) in inst.staves.iter().enumerate() {
+                has_inter_gap_before.push(inst_idx > 0 && staff_idx == 0);
+            }
+        }
+
+        // Compute cumulative collision-avoidance extra per staff
+        let min_clearance = 1.0 * config.units_per_space; // 1 staff-space clearance
+        let mut cumulative_collision_extra: Vec<f32> = vec![0.0; staff_extents.len()];
+        for i in 0..staff_extents.len().saturating_sub(1) {
+            let (_, max_y_upper) = staff_extents[i]; // bottom extent of upper staff
+            let (min_y_lower, _) = staff_extents[i + 1]; // top extent of lower staff
+
+            // Default spacing between origins of staff i and staff i+1
+            let mut pair_spacing = intra_staff_multiplier * config.units_per_space;
+            if has_inter_gap_before[i + 1] {
+                pair_spacing += inter_instrument_multiplier * config.units_per_space;
+            }
+
+            // Needed spacing so bottom of upper staff is min_clearance above top of lower
+            let needed = max_y_upper - min_y_lower + min_clearance;
+            let extra = (needed - pair_spacing).max(0.0);
+            cumulative_collision_extra[i + 1] = cumulative_collision_extra[i] + extra;
+        }
+        let total_collision_extra = cumulative_collision_extra.last().copied().unwrap_or(0.0);
+
         for (instrument_index, instrument) in instruments.iter().enumerate() {
             let mut staves = Vec::new();
 
@@ -174,12 +216,14 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             for (staff_index, staff_data) in instrument.staves.iter().enumerate() {
                 // Calculate vertical offset using global_staff_offset (accounts for all previous instruments' staves)
                 // plus inter-instrument gap accumulated from previous instruments
+                // plus collision-avoidance extra for this system
                 let absolute_staff_index = global_staff_offset + staff_index;
                 let staff_vertical_offset = system.bounding_box.y
                     + (absolute_staff_index as f32
                         * intra_staff_multiplier
                         * config.units_per_space)
-                    + cumulative_inter_gap;
+                    + cumulative_inter_gap
+                    + cumulative_collision_extra[absolute_staff_index];
 
                 // Position glyphs for this staff using unified note positions
                 let glyphs = position_glyphs_for_staff(
@@ -394,6 +438,9 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         // Update system bounding box width to match actual content
         system.bounding_box.width = content_width;
 
+        // Update system height to include collision-avoidance extra spacing
+        system.bounding_box.height += total_collision_extra;
+
         // T010: Compute measure number for this system
         // Derive measure number from the system's start tick (3840 ticks per measure in 4/4)
         let measure_num = (system.tick_range.start_tick / 3840) + 1;
@@ -404,6 +451,9 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 y: system.bounding_box.y - 30.0, // Above topmost staff line
             },
         });
+
+        // Advance running_y for the next system
+        running_y = system.bounding_box.y + system.bounding_box.height + config.system_spacing;
     }
 
     // Compute GlobalLayout dimensions
@@ -1203,6 +1253,42 @@ fn position_glyphs_for_staff(
     }
 
     all_glyphs
+}
+
+/// Compute the vertical extent of notes in a staff for a given tick range.
+///
+/// Returns (min_y, max_y) relative to the staff origin (top line = 0).
+/// min_y ≤ 0 means notes extend above the staff; max_y ≥ 4*ups means notes
+/// extend below the staff. The baseline extent is always [0, 4*ups] (the
+/// five staff lines themselves).
+fn compute_staff_note_extents(
+    staff_data: &StaffData,
+    tick_range: &TickRange,
+    units_per_space: f32,
+) -> (f32, f32) {
+    let mut min_y = 0.0_f32; // top staff line
+    let mut max_y = 4.0 * units_per_space; // bottom staff line
+
+    for voice in &staff_data.voices {
+        for note in &voice.notes {
+            if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick {
+                let y = positioner::pitch_to_y_with_spelling(
+                    note.pitch,
+                    &staff_data.clef,
+                    units_per_space,
+                    note.spelling,
+                );
+                if y < min_y {
+                    min_y = y;
+                }
+                if y > max_y {
+                    max_y = y;
+                }
+            }
+        }
+    }
+
+    (min_y, max_y)
 }
 
 /// Create staff lines for a single staff
@@ -2389,6 +2475,178 @@ mod tests {
         assert_eq!(
             beams, 2,
             "Should produce 2 beams (broken by rest gap between beats)"
+        );
+    }
+
+    /// Test compute_staff_note_extents returns staff-line bounds when no notes extend beyond
+    #[test]
+    fn test_compute_staff_note_extents_within_staff() {
+        let ups = 20.0;
+        let staff_data = StaffData {
+            clef: "Treble".to_string(),
+            time_numerator: 4,
+            time_denominator: 4,
+            key_sharps: 0,
+            voices: vec![VoiceData {
+                notes: vec![NoteEvent {
+                    pitch: 67, // G4 — on the second line of treble staff
+                    start_tick: 0,
+                    duration_ticks: 960,
+                    spelling: None,
+                    beam_info: vec![],
+                }],
+            }],
+        };
+        let tick_range = TickRange {
+            start_tick: 0,
+            end_tick: 3840,
+        };
+        let (min_y, max_y) = compute_staff_note_extents(&staff_data, &tick_range, ups);
+        // G4 is within treble staff, so extents should be [0, 4*ups]
+        assert!(
+            min_y >= -0.1 && min_y <= 0.1,
+            "min_y should be ~0 for in-staff note, got {}",
+            min_y
+        );
+        assert!(
+            (max_y - 4.0 * ups).abs() < 0.1,
+            "max_y should be ~4*ups for in-staff note, got {}",
+            max_y
+        );
+    }
+
+    /// Test compute_staff_note_extents extends downward for low notes
+    #[test]
+    fn test_compute_staff_note_extents_below_staff() {
+        let ups = 20.0;
+        let staff_data = StaffData {
+            clef: "Treble".to_string(),
+            time_numerator: 4,
+            time_denominator: 4,
+            key_sharps: 0,
+            voices: vec![VoiceData {
+                notes: vec![NoteEvent {
+                    pitch: 60, // C4 (middle C) — below treble staff, needs ledger line
+                    start_tick: 0,
+                    duration_ticks: 960,
+                    spelling: None,
+                    beam_info: vec![],
+                }],
+            }],
+        };
+        let tick_range = TickRange {
+            start_tick: 0,
+            end_tick: 3840,
+        };
+        let (_min_y, max_y) = compute_staff_note_extents(&staff_data, &tick_range, ups);
+        // C4 in treble clef is below the staff (y > 4*ups)
+        assert!(
+            max_y > 4.0 * ups,
+            "max_y should extend below staff for C4 in treble, got {}",
+            max_y
+        );
+    }
+
+    /// Test collision-aware spacing: piano with low treble notes gets wider gap
+    #[test]
+    fn test_collision_aware_spacing_increases_gap() {
+        // Piano score where treble staff has very low notes (extending toward bass staff)
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "name": "Piano",
+                "staves": [
+                    {
+                        "clef": "Treble",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 48, "tick": 0, "duration": 960 },
+                                { "pitch": 45, "tick": 960, "duration": 960 }
+                            ]
+                        }]
+                    },
+                    {
+                        "clef": "Bass",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 36, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+        let system = &layout.systems[0];
+        let sg = &system.staff_groups[0];
+
+        let treble_top = sg.staves[0].staff_lines[0].y_position;
+        let bass_top = sg.staves[1].staff_lines[0].y_position;
+        let spacing = bass_top - treble_top;
+
+        let default_spacing = 8.0 * config.units_per_space; // 160 units
+        // With very low notes in treble staff, spacing should be > default
+        assert!(
+            spacing > default_spacing,
+            "Spacing should increase when treble notes extend below staff: got {} (default {})",
+            spacing,
+            default_spacing
+        );
+    }
+
+    /// Test that default spacing is preserved when no collision occurs
+    #[test]
+    fn test_default_spacing_preserved_no_collision() {
+        // Piano score with notes comfortably within their respective staves
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "name": "Piano",
+                "staves": [
+                    {
+                        "clef": "Treble",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 72, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    },
+                    {
+                        "clef": "Bass",
+                        "time_signature": { "numerator": 4, "denominator": 4 },
+                        "key_signature": { "sharps": 0 },
+                        "voices": [{
+                            "notes": [
+                                { "pitch": 48, "tick": 0, "duration": 960 }
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+        let system = &layout.systems[0];
+        let sg = &system.staff_groups[0];
+
+        let treble_top = sg.staves[0].staff_lines[0].y_position;
+        let bass_top = sg.staves[1].staff_lines[0].y_position;
+        let spacing = bass_top - treble_top;
+
+        let default_spacing = 8.0 * config.units_per_space; // 160 units
+        assert_eq!(
+            spacing, default_spacing,
+            "Spacing should remain at default when no collision: got {} (expected {})",
+            spacing, default_spacing
         );
     }
 }
