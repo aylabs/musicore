@@ -134,6 +134,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **SC-004**: After removing the zoom control and blue bar, the Play screen shows at least 15% more vertical space dedicated to the score.
 - **SC-005**: The current-beat indicator is identified as "clearly visible" by at least 90% of observers viewing the screen from 60 cm.
 - **SC-006**: Pause/resume toggles in response to an empty-area tap within 150 ms of touch release.
+- **SC-007**: Seek-on-tap (note tap → playback position change) completes within 300 ms of touch release, including scheduler reset and audible output from the new position.
 
 ## Clarifications
 
@@ -141,4 +142,5 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 
 - Q: What mechanism should "full-screen mode" use — browser Fullscreen API, PWA standalone chrome removal, or both? → A: Invoke the browser Fullscreen API (`requestFullscreen`) on entry to the Play screen; degrade gracefully (hide app-level chrome) on browsers where the API is unsupported or denied (e.g., iOS Safari).
 - Q: Is the vertical beat-position bar mandatory or optional — and how does that reconcile the contradiction between US4 ("optional") and FR-012 ("MUST span all staves")? → A: Enhanced highlight (colour/size/opacity) is mandatory for this feature. The vertical spanning bar is deferred: add it as a follow-up task only if the enhanced highlight does not satisfy SC-005 during testing.
+- Q: What is the acceptable latency for seek-on-tap (note tap → jump to position)? → A: ≤300 ms from tap release to audible output from the new position (scheduler reset included).
 
