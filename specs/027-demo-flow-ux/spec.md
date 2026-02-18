@@ -57,7 +57,7 @@ A user operating the playback controls on a tablet wants a clean, uncluttered to
 2. **Given** the Play screen is open, **When** the user views the playback toolbar, **Then** the score title is displayed to the left of the play/pause/stop buttons.
 3. **Given** the Play screen is open, **When** the user views the playback toolbar, **Then** the tempo control (BPM) is displayed to the right of the playback timer.
 4. **Given** the Play screen is open, **When** the user views the playback toolbar, **Then** no zoom control (buttons or slider) is present in the UI.
-5. **Given** the score title is long, **When** the playback toolbar is rendered on a 10-inch tablet in portrait orientation, **Then** all remaining controls remain visible without truncation or overflow.
+5. **Given** the score title is long, **When** the playback toolbar is rendered on a 10-inch tablet in portrait orientation, **Then** the title is truncated with an ellipsis and all playback controls and the tempo display remain fully visible without truncation or overflow.
 
 ---
 
@@ -94,7 +94,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 
 ### Edge Cases
 
-- What happens when the score title is very long (>40 characters) and must share the toolbar row with playback buttons and tempo?
+- What happens when the score title is very long (>40 characters) and must share the toolbar row with playback buttons and tempo? → Title is truncated with ellipsis (`…`); controls always take priority.
 - How should seek-on-tap behave if the user taps a rest rather than a note?
 - What happens if the user performs a back gesture during active playback — should playback stop automatically on return to Instruments?
 - On devices that do not support pinch-to-zoom (e.g., desktop browsers in the demo), is there any fallback for zoom since the zoom control is removed?
@@ -112,7 +112,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **FR-006**: The tap hitbox for each note MUST match the visible bounds of the note head so that deliberate taps on visible notes register correctly.
 - **FR-007**: Tapping an empty area of the score (not on any note) MUST toggle playback between playing and paused states.
 - **FR-008**: The blue instrument-count bar MUST be removed from the Play screen.
-- **FR-009**: The score title MUST be displayed to the left of the playback control buttons (play, pause, stop) within the playback strip.
+- **FR-009**: The score title MUST be displayed to the left of the playback control buttons (play, pause, stop) within the playback strip. When the title exceeds the available width, it MUST be truncated with an ellipsis (`…`); playback controls and the tempo display MUST never be displaced or hidden by a long title.
 - **FR-010**: The tempo control MUST be displayed to the right of the playback timer within the playback strip.
 - **FR-011**: The zoom control (buttons or slider) MUST be removed from the Play screen UI entirely.
 - **FR-012**: The current-beat position MUST be indicated by an enhanced note highlight (increased colour contrast, size, or opacity relative to the current style). A full-height vertical bar spanning all staves is explicitly out of scope for this feature unless SC-005 is not met by the enhanced highlight alone, in which case it is added as a separate follow-up task.
@@ -145,4 +145,5 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - Q: Is the vertical beat-position bar mandatory or optional — and how does that reconcile the contradiction between US4 ("optional") and FR-012 ("MUST span all staves")? → A: Enhanced highlight (colour/size/opacity) is mandatory for this feature. The vertical spanning bar is deferred: add it as a follow-up task only if the enhanced highlight does not satisfy SC-005 during testing.
 - Q: What is the acceptable latency for seek-on-tap (note tap → jump to position)? → A: ≤300 ms from tap release to audible output from the new position (scheduler reset included).
 - Q: When the user navigates back to Instruments during playback, should the app stop (reset position) or pause (preserve position)? → A: Pause and preserve position. Playback does not resume automatically when the user returns to the Play screen.
+- Q: What should the toolbar do when the score title is too long to fit alongside playback controls and tempo? → A: Truncate the title with an ellipsis (`…`) at a fixed max width; playback controls and tempo display are never displaced by a long title.
 
