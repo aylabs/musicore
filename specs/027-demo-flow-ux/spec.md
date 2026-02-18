@@ -17,7 +17,7 @@ A user navigating from the Instruments screen to the Play screen wants the score
 
 **Acceptance Scenarios**:
 
-1. **Given** the user is on the Instruments screen, **When** they tap Play, **Then** the Play screen opens in full-screen mode with no browser chrome or navigation bars obscuring the score area.
+1. **Given** the user is on the Instruments screen, **When** they tap Play, **Then** the app invokes the browser Fullscreen API (`requestFullscreen`) and the Play screen occupies the full display with OS chrome and browser navigation hidden. On browsers where the Fullscreen API is unsupported, the app falls back to hiding all app-level UI chrome instead.
 2. **Given** the user is on the full-screen Play screen, **When** they tap the return arrow, **Then** the app navigates back to the Instruments screen.
 3. **Given** the user is on the full-screen Play screen, **When** they perform the device back gesture, **Then** the app navigates back to the Instruments screen.
 4. **Given** an "Instruments View" button previously existed on the Play screen, **When** the user views the updated Play screen, **Then** that button is replaced by a return arrow icon in a consistent position.
@@ -103,7 +103,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 
 ### Functional Requirements
 
-- **FR-001**: The Play screen MUST occupy the full display area, with no persistent browser navigation bars or app headers visible during playback.
+- **FR-001**: When the user enters the Play screen, the app MUST invoke the browser Fullscreen API (`requestFullscreen`) to hide OS-level chrome and browser navigation. On browsers where the Fullscreen API is unsupported or denied, the app MUST fall back to hiding all app-level UI chrome (headers, nav bars) so the score occupies the maximum available area.
 - **FR-002**: The Play screen MUST display a return arrow that navigates back to the Instruments screen when tapped.
 - **FR-003**: The device back gesture MUST navigate from the Play screen to the Instruments screen.
 - **FR-004**: Any "Instruments View" button that previously appeared on the Play screen MUST be removed and replaced by the return arrow (FR-002).
@@ -119,6 +119,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 ### Assumptions
 
 - Tablet users are expected to use native pinch-to-zoom for score magnification; therefore removing the zoom control is safe for the target device (tablet in demo context).
+- The primary target platform for the demo is Android tablet; the Fullscreen API behaves reliably there. iOS Safari has partial `requestFullscreen` support — the fallback (hide app-level chrome) is the expected behaviour on iOS.
 - "Empty area" means any touch target that does not resolve to a note head hitbox. Rests are treated as empty areas for pause/resume purposes.
 - The return arrow replaces the "Instruments View" button and occupies a consistent position (e.g., top-left of the Play screen).
 - If playback is active when the user navigates back via the return arrow or back gesture, playback stops automatically.
@@ -133,4 +134,10 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **SC-004**: After removing the zoom control and blue bar, the Play screen shows at least 15% more vertical space dedicated to the score.
 - **SC-005**: The current-beat indicator is identified as "clearly visible" by at least 90% of observers viewing the screen from 60 cm.
 - **SC-006**: Pause/resume toggles in response to an empty-area tap within 150 ms of touch release.
+
+## Clarifications
+
+### Session 2026-02-18
+
+- Q: What mechanism should "full-screen mode" use — browser Fullscreen API, PWA standalone chrome removal, or both? → A: Invoke the browser Fullscreen API (`requestFullscreen`) on entry to the Play screen; degrade gracefully (hide app-level chrome) on browsers where the API is unsupported or denied (e.g., iOS Safari).
 
