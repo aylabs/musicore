@@ -334,11 +334,9 @@ describe('Viewport Utilities', () => {
       expect(() => validateViewport(viewport)).not.toThrow();
     });
 
-    it('should throw if x is negative', () => {
+    it('should allow negative x (for instrument name labels to the left of x=0)', () => {
       const viewport: Viewport = { x: -10, y: 0, width: 800, height: 600 };
-      expect(() => validateViewport(viewport)).toThrow(
-        'Viewport.x must be >= 0'
-      );
+      expect(() => validateViewport(viewport)).not.toThrow();
     });
 
     it('should allow negative y (for glyphs above first system)', () => {

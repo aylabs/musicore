@@ -339,14 +339,18 @@ export function ScoreViewer({
   }, [playbackState]);
 
   /**
-   * Feature 026 (US4): Auto-scroll to top when natural playback ends.
-   * Detects the transition 'playing' → 'stopped' and resets scroll position,
-   * preventing the inner div from visually overflowing the outer container.
+   * Feature 026 (US4): Track playback end so the Return to Start button
+   * appears at the end of the score where the user is.
+   * Does NOT auto-scroll — the user decides when to return.
    */
   const prevStatusRef = useRef<string>('stopped');
+  const [showReturnToStart, setShowReturnToStart] = useState(false);
   useEffect(() => {
     if (prevStatusRef.current === 'playing' && playbackState.status === 'stopped') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setShowReturnToStart(true);
+    }
+    if (playbackState.status === 'playing') {
+      setShowReturnToStart(false);
     }
     prevStatusRef.current = playbackState.status;
   }, [playbackState.status]);
@@ -464,7 +468,6 @@ export function ScoreViewer({
         onPlay={playbackState.play}
         onPause={playbackState.pause}
         onStop={playbackState.stop}
-        onReturnToStart={handleReturnToStart}
         compact={viewMode !== 'individual'}
         currentTick={playbackState.currentTick}
         totalDurationTicks={playbackState.totalDurationTicks}
@@ -509,16 +512,30 @@ export function ScoreViewer({
         />
       ) : (
         /* Feature 017: Layout View */
-        <LayoutView 
-          score={score} 
-          highlightedNoteIds={highlightedNoteIds}
-          onTogglePlayback={togglePlayback}
-          onNoteClick={handleNoteClick}
-          selectedNoteId={selectedNoteId ?? undefined}
-          playbackStatus={playbackState.status}
-          tickSourceRef={playbackState.tickSourceRef}
-          allNotes={allNotes}
-        />
+        <>
+          <LayoutView 
+            score={score} 
+            highlightedNoteIds={highlightedNoteIds}
+            onTogglePlayback={togglePlayback}
+            onNoteClick={handleNoteClick}
+            selectedNoteId={selectedNoteId ?? undefined}
+            playbackStatus={playbackState.status}
+            tickSourceRef={playbackState.tickSourceRef}
+            allNotes={allNotes}
+          />
+          {/* Return to Start button — placed at end of score so user sees it after playback ends */}
+          {showReturnToStart && playbackState.status === 'stopped' && (
+            <div className="return-to-start-container">
+              <button
+                className="return-to-start-end-button"
+                onClick={handleReturnToStart}
+                aria-label="Return to Start"
+              >
+                ⏮ Return to Start
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {loading && <div className="loading-overlay">Updating...</div>}

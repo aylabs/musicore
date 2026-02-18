@@ -118,8 +118,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Feature 024 (T026): rAF-based scroll throttle ID */
   private scrollRafId: number = 0;
 
-  /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState) */
-  private lastAppliedScrollTop: number = 0;
+  /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState)
+   * Initialize to -Infinity so the first updateViewport() call always runs. */
+  private lastAppliedScrollTop: number = -Infinity;
 
   /** Feature 024 (T027): Minimum scroll delta before updating viewport state (pixels) */
   private static readonly SCROLL_THRESHOLD = 4;
@@ -134,9 +135,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     this.state = {
       viewport: {
-        x: 0,
+        x: -LABEL_MARGIN, // Start with label margin to prevent clef cutoff on first render
         y: 0,
-        width: 2400,
+        width: 2400 + LABEL_MARGIN, // Include label margin in width
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: 1.0,
@@ -486,6 +487,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
             height: `${totalHeight}px`,
             width: `${totalWidth}px`,
             position: 'relative',
+            overflow: 'hidden', // Clip SVG so it cannot extend beyond totalHeight (prevents extra scroll space)
           }}>
             {/* SVG container positioned at scroll position (not viewport.y which includes padding) */}
             <div style={{

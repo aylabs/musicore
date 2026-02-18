@@ -248,3 +248,34 @@
 .filename-input::placeholder {
   color: #999;
 }
+
+/* Return to Start button at end of score (after playback finishes) */
+.return-to-start-container {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 48px;
+}
+
+.return-to-start-end-button {
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #607d8b;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.return-to-start-end-button:hover {
+  background-color: #546e7a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.return-to-start-end-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}

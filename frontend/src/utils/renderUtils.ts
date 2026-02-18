@@ -224,7 +224,6 @@ export function getViewportArea(viewport: Viewport): number {
  * 
  * @param viewport - Viewport to validate
  * 
- * @throws Error if x or y is negative
  * @throws Error if width or height is <= 0
  * 
  * @example
@@ -235,18 +234,19 @@ export function getViewportArea(viewport: Viewport): number {
  * const viewport2: Viewport = { x: 0, y: -75, width: 800, height: 600 };
  * validateViewport(viewport2); // OK - negative Y allows showing glyphs above first system
  * 
- * const invalid: Viewport = { x: -10, y: 0, width: 0, height: 600 };
+ * const viewport3: Viewport = { x: -150, y: 0, width: 800, height: 600 };
+ * validateViewport(viewport3); // OK - negative X allows showing instrument labels to the left
+ * 
+ * const invalid: Viewport = { x: 0, y: 0, width: 0, height: 600 };
  * validateViewport(invalid); // Throws Error
  * ```
  */
 export function validateViewport(viewport: Viewport): void {
-  if (viewport.x < 0) {
-    throw new Error(`Viewport.x must be >= 0, got ${viewport.x}`);
-  }
-
+  // Note: viewport.x CAN be negative to show instrument name labels that
+  // extend to the left of x=0 (e.g., with LABEL_MARGIN offset)
   // Note: viewport.y CAN be negative to show glyphs above the first system
   // (e.g., clefs, structural elements positioned above staff)
-  
+
   if (viewport.width <= 0) {
     throw new Error(`Viewport.width must be > 0, got ${viewport.width}`);
   }
