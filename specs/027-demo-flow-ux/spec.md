@@ -2,7 +2,7 @@
 
 **Feature Branch**: `027-demo-flow-ux`  
 **Created**: 2026-02-18  
-**Status**: Draft  
+**Status**: Completed (2026-02-18 — all 35 tasks T001–T035 implemented; T036 e2e smoke test written)  
 **Input**: User description: "Demo user flow — full-screen play view, return arrow navigation, remove blue instrument-count bar, move tempo control to right of timer, remove zoom control (tablet users use pinch-to-zoom), move title to left of playback buttons, improve pitch-to-play (note tap = seek only, no auto-start, use proper hitbox), improve pause/resume on touch (tap empty area), center bracket between clefs, improve note highlight visibility (possibly vertical slicing bar), change Instrument View button to return arrow"
 
 ## User Scenarios & Testing *(mandatory)*

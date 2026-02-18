@@ -431,37 +431,6 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   }
 
   /**
-   * Handle zoom in (T067)
-   */
-  private handleZoomIn = (): void => {
-    this.setState(
-      (prevState) => ({
-        zoom: Math.min(prevState.zoom * 1.2, 4.0), // Max 400%
-      }),
-      () => this.updateViewport()
-    );
-  };
-
-  /**
-   * Handle zoom out (T067)
-   */
-  private handleZoomOut = (): void => {
-    this.setState(
-      (prevState) => ({
-        zoom: Math.max(prevState.zoom / 1.2, 0.25), // Min 25%
-      }),
-      () => this.updateViewport()
-    );
-  };
-
-  /**
-   * Reset zoom to 100% (T067)
-   */
-  private handleZoomReset = (): void => {
-    this.setState({ zoom: 1.0 }, () => this.updateViewport());
-  };
-
-  /**
    * Render ScoreViewer UI
    */
   render() {
@@ -485,19 +454,8 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     return (
       <div ref={this.wrapperRef} style={styles.wrapper}>
-        {/* Zoom Controls (T067) */}
-        <div style={styles.controls}>
-          <button onClick={this.handleZoomOut} style={styles.button} title="Zoom Out">
-            -
-          </button>
-          <span style={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
-          <button onClick={this.handleZoomIn} style={styles.button} title="Zoom In">
-            +
-          </button>
-          <button onClick={this.handleZoomReset} style={styles.button} title="Reset Zoom">
-            Reset
-          </button>
-        </div>
+        {/* Feature 027 (T028): Removed zoom controls (handleZoomIn/Out/Reset).
+            Zoom handled by pinch gesture / browser native zoom on tablets. */}
 
         {/* Scroll Container (T066) */}
         <div

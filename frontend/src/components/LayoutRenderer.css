@@ -1,6 +1,7 @@
 /**
  * LayoutRenderer CSS
  * Feature 019 - Playback Note Highlighting
+ * Feature 027 (T030/T031) - Orange highlight with glow for maximum contrast
  * 
  * Styles for music notation rendering and note highlighting during playback.
  */
@@ -10,23 +11,24 @@
   /* Default styling for glyph groups */
 }
 
-/* Highlighted glyph styling - Feature 019 */
+/* Highlighted glyph styling - Feature 019, Feature 027 */
+/* T030: Changed from blue #4A90E2 to orange #FF8C00 (FR-012, SC-005) */
 /* Applied to individual glyphs (text, line, rect elements) */
 text.highlighted {
-  fill: #4A90E2 !important;  /* Blue fill for highlighted noteheads */
+  fill: #FF8C00 !important;  /* Orange fill for highlighted noteheads */
 }
 
 line.highlighted {
-  stroke: #2E5C8A !important;  /* Darker blue stroke for highlighted stems */
+  stroke: #CC6600 !important;  /* Dark orange stroke for highlighted stems */
   stroke-width: 2 !important;
 }
 
 rect.highlighted {
-  fill: #4A90E2 !important;  /* Blue fill for highlighted beams */
+  fill: #FF8C00 !important;  /* Orange fill for highlighted beams */
 }
 
 polygon.highlighted {
-  fill: #4A90E2 !important;  /* Blue fill for highlighted beam polygons */
+  fill: #FF8C00 !important;  /* Orange fill for highlighted beam polygons */
 }
 
 /* Optional: Smooth transition for highlight appearance */
@@ -39,11 +41,14 @@ polygon.highlighted {
 
 /**
  * Feature 024: Generalized highlight class for CSS-class-based toggling.
+ * Feature 027 (T030/T031): Orange #FF8C00 with drop-shadow glow for
+ * maximum contrast against black notation at tablet viewing distance (SC-005).
  * Used by updateHighlights() rAF loop — avoids inline style manipulation.
  * Applied to any SVG element with data-note-id attribute.
  */
 .layout-glyph.highlighted {
-  fill: #4A90E2 !important;
-  stroke: #4A90E2 !important;
+  fill: #FF8C00 !important;
+  stroke: #FF8C00 !important;
+  filter: drop-shadow(0 0 3px rgba(255, 100, 0, 0.8));
   transition: fill 50ms ease-out, stroke 50ms ease-out;
 }

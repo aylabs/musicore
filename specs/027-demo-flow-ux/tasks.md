@@ -18,7 +18,7 @@
 
 **Purpose**: Establish a green baseline before any changes
 
-- [ ] T001 Run full test suite and confirm baseline green: `cd backend && cargo test` + `cd frontend && npm test` — record pass count as baseline
+- [X] T001 Run full test suite and confirm baseline green: `cd backend && cargo test` + `cd frontend && npm test` — record pass count as baseline
 
 ---
 
@@ -28,8 +28,8 @@
 
 **⚠️ Constitution V**: Write the failing test first (T002), verify it fails, then fix (T003).
 
-- [ ] T002 [BUG] Write failing Vitest test verifying that changing `selectedNoteId` prop alone triggers `LayoutRenderer` re-render in `frontend/src/components/LayoutRenderer.test.tsx` — test MUST fail before T003
-- [ ] T003 [BUG] Fix `shouldComponentUpdate` in `frontend/src/components/LayoutRenderer.tsx` to include `prevProps.selectedNoteId !== this.props.selectedNoteId` in the comparison — T002 test must now pass
+- [X] T002 [BUG] Write failing Vitest test verifying that changing `selectedNoteId` prop alone triggers `LayoutRenderer` re-render in `frontend/src/components/LayoutRenderer.test.tsx` — test MUST fail before T003
+- [X] T003 [BUG] Fix `shouldComponentUpdate` in `frontend/src/components/LayoutRenderer.tsx` to include `prevProps.selectedNoteId !== this.props.selectedNoteId` in the comparison — T002 test must now pass
 
 **Checkpoint**: `selectedNoteId` changes now trigger re-renders. US1 and US2 can begin.
 
@@ -45,17 +45,17 @@
 
 ### Tests for User Story 1 ⚠️ Write first, verify fail before implementation
 
-- [ ] T004 [P] [US1] Write failing Vitest test: entering layout viewMode calls `document.documentElement.requestFullscreen` (mocked) in `frontend/src/components/ScoreViewer.test.tsx`
-- [ ] T005 [P] [US1] Write failing Vitest test: tapping return arrow calls `document.exitFullscreen` and pauses playback (status stays `'paused'`, tick preserved) in `frontend/src/components/ScoreViewer.test.tsx`
-- [ ] T006 [P] [US1] Write failing Vitest test: `popstate` event fires → viewMode switches to `'individual'` and `exitFullscreen` called in `frontend/src/components/ScoreViewer.test.tsx`
+- [X] T004 [P] [US1] Write failing Vitest test: entering layout viewMode calls `document.documentElement.requestFullscreen` (mocked) in `frontend/src/components/ScoreViewer.test.tsx`
+- [X] T005 [P] [US1] Write failing Vitest test: tapping return arrow calls `document.exitFullscreen` and pauses playback (status stays `'paused'`, tick preserved) in `frontend/src/components/ScoreViewer.test.tsx`
+- [X] T006 [P] [US1] Write failing Vitest test: `popstate` event fires → viewMode switches to `'individual'` and `exitFullscreen` called in `frontend/src/components/ScoreViewer.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add `useEffect` watching `viewMode` in `frontend/src/components/ScoreViewer.tsx`: call `document.documentElement.requestFullscreen()` when entering `'layout'`, call `document.exitFullscreen()` when leaving — wrap in `try/catch` for iOS fallback (hide app-level chrome via CSS class `fullscreen-play` on `document.body`)
-- [ ] T008 [US1] Add `history.pushState({view:'layout'}, '')` when entering layout view and `window.addEventListener('popstate', handleBackGesture)` in `frontend/src/components/ScoreViewer.tsx` — `handleBackGesture` must call `exitFullscreen`, `playbackState.pause()`, `setViewMode('individual')`, and return event listener cleanup in `useEffect`
-- [ ] T009 [US1] Replace `rightActions` "Instruments View" button with `onReturnToView` callback pattern in `frontend/src/components/ScoreViewer.tsx`: pass `onReturnToView` prop to `PlaybackControls` that calls `exitFullscreen` + `playbackState.pause()` + `setViewMode('individual')`
-- [ ] T010 [US1] Hide `<header className="app-header">` in `frontend/src/App.tsx` when `viewMode === 'layout'` — receive `viewMode` via existing `onViewModeChange` prop and lift state or use CSS class `fullscreen-play` toggled on `<body>` to hide the header via `App.css`
-- [ ] T011 [US1] Add CSS rule in `frontend/src/App.css`: `body.fullscreen-play .app-header { display: none; }` to support iOS fallback and ensure header hidden during layout view
+- [X] T007 [US1] Add `useEffect` watching `viewMode` in `frontend/src/components/ScoreViewer.tsx`: call `document.documentElement.requestFullscreen()` when entering `'layout'`, call `document.exitFullscreen()` when leaving — wrap in `try/catch` for iOS fallback (hide app-level chrome via CSS class `fullscreen-play` on `document.body`)
+- [X] T008 [US1] Add `history.pushState({view:'layout'}, '')` when entering layout view and `window.addEventListener('popstate', handleBackGesture)` in `frontend/src/components/ScoreViewer.tsx` — `handleBackGesture` must call `exitFullscreen`, `playbackState.pause()`, `setViewMode('individual')`, and return event listener cleanup in `useEffect`
+- [X] T009 [US1] Replace `rightActions` "Instruments View" button with `onReturnToView` callback pattern in `frontend/src/components/ScoreViewer.tsx`: pass `onReturnToView` prop to `PlaybackControls` that calls `exitFullscreen` + `playbackState.pause()` + `setViewMode('individual')`
+- [X] T010 [US1] Hide `<header className="app-header">` in `frontend/src/App.tsx` when `viewMode === 'layout'` — receive `viewMode` via existing `onViewModeChange` prop and lift state or use CSS class `fullscreen-play` toggled on `<body>` to hide the header via `App.css`
+- [X] T011 [US1] Add CSS rule in `frontend/src/App.css`: `body.fullscreen-play .app-header { display: none; }` to support iOS fallback and ensure header hidden during layout view
 
 **Checkpoint**: US1 fully functional. Navigate Instruments → Play → full-screen → return arrow → Instruments. Playback position preserved.
 
@@ -71,15 +71,15 @@
 
 ### Tests for User Story 2 ⚠️ Write first, verify fail before implementation
 
-- [ ] T012 [P] [US2] Write failing Vitest test: calling `handleNoteClick` when `status === 'stopped'` seeks to tick without calling `play` in `frontend/src/components/ScoreViewer.test.tsx`
-- [ ] T013 [P] [US2] Write failing Vitest test: `LayoutRenderer.renderGlyphRun` emits a transparent `<rect>` sibling with `data-note-id`, `x/y/width/height` from `bounding_box`, and `fill="transparent"` in `frontend/src/components/LayoutRenderer.test.tsx`
-- [ ] T014 [P] [US2] Write failing Vitest test: `<rect>` hit overlay width and height are at least `MIN_TOUCH_PX / renderScale` (clamped) in `frontend/src/components/LayoutRenderer.test.tsx`
+- [X] T012 [P] [US2] Write failing Vitest test: calling `handleNoteClick` when `status === 'stopped'` seeks to tick without calling `play` in `frontend/src/components/ScoreViewer.test.tsx`
+- [X] T013 [P] [US2] Write failing Vitest test: `LayoutRenderer.renderGlyphRun` emits a transparent `<rect>` sibling with `data-note-id`, `x/y/width/height` from `bounding_box`, and `fill="transparent"` in `frontend/src/components/LayoutRenderer.test.tsx`
+- [X] T014 [P] [US2] Write failing Vitest test: `<rect>` hit overlay width and height are at least `MIN_TOUCH_PX / renderScale` (clamped) in `frontend/src/components/LayoutRenderer.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Remove `playbackState.play()` call from `handleNoteClick` in `frontend/src/components/ScoreViewer.tsx` (seek-only — T012 test must now pass)
-- [ ] T016 [US2] Add transparent `<rect>` hit overlay per notehead in `renderGlyphRun` in `frontend/src/components/LayoutRenderer.tsx`: use `glyph.bounding_box.{x,y,width,height}` from layout engine; clamp `width` and `height` to `Math.max(value, MIN_TOUCH_PX / renderScale)` where `MIN_TOUCH_PX = 44`; set `data-note-id={noteId}`, `fill="transparent"`, `pointerEvents="all"`, `cursor="pointer"` — T013 and T014 tests must now pass
-- [ ] T017 [US2] Verify `pages/ScoreViewer.tsx` scroll container `onClick={onTogglePlayback}` already handles empty-area tap correctly (the existing delegation in `handleSVGClick` calls `stopPropagation` only on note hits) — add inline comment confirming the invariant; run T014 suite
+- [X] T015 [US2] Remove `playbackState.play()` call from `handleNoteClick` in `frontend/src/components/ScoreViewer.tsx` (seek-only — T012 test must now pass)
+- [X] T016 [US2] Add transparent `<rect>` hit overlay per notehead in `renderGlyphRun` in `frontend/src/components/LayoutRenderer.tsx`: use `glyph.bounding_box.{x,y,width,height}` from layout engine; clamp `width` and `height` to `Math.max(value, MIN_TOUCH_PX / renderScale)` where `MIN_TOUCH_PX = 44`; set `data-note-id={noteId}`, `fill="transparent"`, `pointerEvents="all"`, `cursor="pointer"` — T013 and T014 tests must now pass
+- [X] T017 [US2] Verify `pages/ScoreViewer.tsx` scroll container `onClick={onTogglePlayback}` already handles empty-area tap correctly (the existing delegation in `handleSVGClick` calls `stopPropagation` only on note hits) — add inline comment confirming the invariant; run T014 suite
 
 **Checkpoint**: US2 fully functional. Note tap seeks; empty-area tap toggles; hit targets ≥44 px.
 
@@ -95,20 +95,20 @@
 
 ### Tests for User Story 3 ⚠️ Write first, verify fail before implementation
 
-- [ ] T018 [P] [US3] Write failing Vitest test: `LayoutView` does not render the `styles.info` div (blue bar) — no element with text matching "Play View:" in `frontend/src/components/layout/LayoutView.test.tsx`
-- [ ] T019 [P] [US3] Write failing Vitest test: `PlaybackControls` with `title="My Score"` and `compact={true}` renders title text left of play button in `frontend/src/components/playback/PlaybackControls.test.tsx`
-- [ ] T020 [P] [US3] Write failing Vitest test: `PlaybackControls` renders `TempoControl` in compact mode (previously hidden) in `frontend/src/components/playback/PlaybackControls.test.tsx`
-- [ ] T021 [P] [US3] Write failing Vitest test: title `"AVeryLongScoreTitleThatExceedsFortyCharactersDefinitely"` renders with CSS `text-overflow: ellipsis` class/style applied in `frontend/src/components/playback/PlaybackControls.test.tsx`
+- [X] T018 [P] [US3] Write failing Vitest test: `LayoutView` does not render the `styles.info` div (blue bar) — no element with text matching "Play View:" in `frontend/src/components/layout/LayoutView.test.tsx`
+- [X] T019 [P] [US3] Write failing Vitest test: `PlaybackControls` with `title="My Score"` and `compact={true}` renders title text left of play button in `frontend/src/components/playback/PlaybackControls.test.tsx`
+- [X] T020 [P] [US3] Write failing Vitest test: `PlaybackControls` renders `TempoControl` in compact mode (previously hidden) in `frontend/src/components/playback/PlaybackControls.test.tsx`
+- [X] T021 [P] [US3] Write failing Vitest test: title `"AVeryLongScoreTitleThatExceedsFortyCharactersDefinitely"` renders with CSS `text-overflow: ellipsis` class/style applied in `frontend/src/components/playback/PlaybackControls.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Remove the `styles.info` div (blue bar: `backgroundColor: '#e3f2fd'`, "Play View: All instruments" text, and `TempoControl` wrapper inside it) from `frontend/src/components/layout/LayoutView.tsx` — T018 test must now pass
-- [ ] T023 [US3] Add `title?: string` prop to `PlaybackControlsProps` in `frontend/src/components/playback/PlaybackControls.tsx` and render truncated title `<span>` left of `.playback-buttons` div when `compact={true}` and `title` is provided — T019 and T021 tests must now pass
-- [ ] T024 [P] [US3] Add title truncation CSS in `frontend/src/components/playback/PlaybackControls.css`: `.playback-title { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }`
-- [ ] T025 [US3] Remove `!compact` guard from `TempoControl` in `frontend/src/components/playback/PlaybackControls.tsx` so it shows in compact mode right of `PlaybackTimer` — T020 test must now pass; update any existing tests that asserted TempoControl absent in compact mode
-- [ ] T026 [US3] Add `onReturnToView?: () => void` prop to `PlaybackControlsProps` in `frontend/src/components/playback/PlaybackControls.tsx` and render `←` return arrow button when prop provided (replaces `rightActions` usage for Play screen)
-- [ ] T027 [US3] Pass `title={scoreTitle ?? undefined}` and `onReturnToView={...}` from `frontend/src/components/ScoreViewer.tsx` to `<PlaybackControls>` — remove `rightActions` usage for the layout view path
-- [ ] T028 [P] [US3] Remove the `styles.controls` div containing zoom +/− buttons from `frontend/src/pages/ScoreViewer.tsx` render method (`handleZoomIn`, `handleZoomOut`, `handleZoomReset` buttons and zoom label)
+- [X] T022 [US3] Remove the `styles.info` div (blue bar: `backgroundColor: '#e3f2fd'`, "Play View: All instruments" text, and `TempoControl` wrapper inside it) from `frontend/src/components/layout/LayoutView.tsx` — T018 test must now pass
+- [X] T023 [US3] Add `title?: string` prop to `PlaybackControlsProps` in `frontend/src/components/playback/PlaybackControls.tsx` and render truncated title `<span>` left of `.playback-buttons` div when `compact={true}` and `title` is provided — T019 and T021 tests must now pass
+- [X] T024 [P] [US3] Add title truncation CSS in `frontend/src/components/playback/PlaybackControls.css`: `.playback-title { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }`
+- [X] T025 [US3] Remove `!compact` guard from `TempoControl` in `frontend/src/components/playback/PlaybackControls.tsx` so it shows in compact mode right of `PlaybackTimer` — T020 test must now pass; update any existing tests that asserted TempoControl absent in compact mode
+- [X] T026 [US3] Add `onReturnToView?: () => void` prop to `PlaybackControlsProps` in `frontend/src/components/playback/PlaybackControls.tsx` and render `←` return arrow button when prop provided (replaces `rightActions` usage for Play screen)
+- [X] T027 [US3] Pass `title={scoreTitle ?? undefined}` and `onReturnToView={...}` from `frontend/src/components/ScoreViewer.tsx` to `<PlaybackControls>` — remove `rightActions` usage for the layout view path
+- [X] T028 [P] [US3] Remove the `styles.controls` div containing zoom +/− buttons from `frontend/src/pages/ScoreViewer.tsx` render method (`handleZoomIn`, `handleZoomOut`, `handleZoomReset` buttons and zoom label)
 
 **Checkpoint**: US3 fully functional. Playback strip: `← Title | ▶ ⏸ ⏹ | 0:00 / 3:24 | 120 BPM`. No blue bar. No zoom buttons.
 
@@ -124,12 +124,12 @@
 
 ### Tests for User Story 4 ⚠️ Write first, verify fail before implementation
 
-- [ ] T029 [P] [US4] Write failing Vitest test (or CSS snapshot): `.layout-glyph.highlighted` rule has `fill: #FF8C00` (not `#4A90E2`) in `frontend/src/components/LayoutRenderer.test.tsx` or CSS snapshot
+- [X] T029 [P] [US4] Write failing Vitest test (or CSS snapshot): `.layout-glyph.highlighted` rule has `fill: #FF8C00` (not `#4A90E2`) in `frontend/src/components/LayoutRenderer.test.tsx` or CSS snapshot
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] Change `.highlighted` fill color from `#4A90E2` → `#FF8C00` for all highlighted SVG element selectors (`text.highlighted`, `line.highlighted`, `rect.highlighted`, `polygon.highlighted`, `.layout-glyph.highlighted`) in `frontend/src/components/LayoutRenderer.css` — T029 test must now pass
-- [ ] T031 [US4] Add `filter: drop-shadow(0 0 3px rgba(255, 100, 0, 0.8))` to `.layout-glyph.highlighted` rule in `frontend/src/components/LayoutRenderer.css` for glow effect visible at distance
+- [X] T030 [US4] Change `.highlighted` fill color from `#4A90E2` → `#FF8C00` for all highlighted SVG element selectors (`text.highlighted`, `line.highlighted`, `rect.highlighted`, `polygon.highlighted`, `.layout-glyph.highlighted`) in `frontend/src/components/LayoutRenderer.css` — T029 test must now pass
+- [X] T031 [US4] Add `filter: drop-shadow(0 0 3px rgba(255, 100, 0, 0.8))` to `.layout-glyph.highlighted` rule in `frontend/src/components/LayoutRenderer.css` for glow effect visible at distance
 
 **Checkpoint**: US4 functional. Playing note highlighted in bright orange with glow. Manually verify SC-005 at 60 cm.
 
@@ -145,13 +145,13 @@
 
 ### Tests for User Story 5 ⚠️ Write first, verify fail before implementation
 
-- [ ] T032 [P] [US5] Write failing Rust test in `backend/tests/layout_test.rs`: assert `bracket_glyph.y == staves[0].staff_lines[0].y_position` for a two-staff instrument layout — test MUST fail with current `center_y` value
-- [ ] T033 [P] [US5] Write failing Vitest test in `frontend/src/components/LayoutRenderer.test.tsx`: bracket glyph `<text>` element has attribute `dominant-baseline="hanging"` — test MUST fail with current `"middle"` value
+- [X] T032 [P] [US5] Write failing Rust test in `backend/tests/layout_test.rs`: assert `bracket_glyph.y == staves[0].staff_lines[0].y_position` for a two-staff instrument layout — test MUST fail with current `center_y` value
+- [X] T033 [P] [US5] Write failing Vitest test in `frontend/src/components/LayoutRenderer.test.tsx`: bracket glyph `<text>` element has attribute `dominant-baseline="hanging"` — test MUST fail with current `"middle"` value
 
 ### Implementation for User Story 5
 
-- [ ] T034 [US5] Change `BracketGlyph.y` assignment in `create_bracket_glyph` in `backend/src/layout/mod.rs`: replace `y: (top_y + bottom_y) / 2.0` with `y: top_y` (top anchor) — T032 Rust test must now pass; run `cargo test`
-- [ ] T035 [US5] Change bracket `<text>` rendering in `frontend/src/components/LayoutRenderer.tsx`: replace `dominantBaseline="middle"` with `dominantBaseline="hanging"` on the bracket glyph text element — T033 TS test must now pass
+- [X] T034 [US5] Change `BracketGlyph.y` assignment in `create_bracket_glyph` in `backend/src/layout/mod.rs`: replace `y: (top_y + bottom_y) / 2.0` with `y: top_y` (top anchor) — T032 Rust test must now pass; run `cargo test`
+- [X] T035 [US5] Change bracket `<text>` rendering in `frontend/src/components/LayoutRenderer.tsx`: replace `dominantBaseline="middle"` with `dominantBaseline="hanging"` on the bracket glyph text element — T033 TS test must now pass
 
 **Checkpoint**: US5 functional. Bracket visually centred on piano scores. Run `cargo test` + `npm test` — all tests green.
 
@@ -161,9 +161,9 @@
 
 **Purpose**: End-to-end validation and spec finalisation
 
-- [ ] T036 [P] Write Playwright e2e smoke test covering full demo flow: Instruments → tap Play → verify fullscreen → tap note → assert position changed, status `'stopped'` → tap empty area → assert `'playing'` → tap return arrow → assert Instruments view visible in `frontend/tests/demo-flow.spec.ts`
+- [X] T036 [P] Write Playwright e2e smoke test covering full demo flow: Instruments → tap Play → verify fullscreen → tap note → assert position changed, status `'stopped'` → tap empty area → assert `'playing'` → tap return arrow → assert Instruments view visible in `frontend/tests/demo-flow.spec.ts`
 - [ ] T037 [P] Run `quickstart.md` all five feature-specific test scenarios manually on target device (Android tablet or desktop Chrome) — document results in a brief comment in `specs/027-demo-flow-ux/quickstart.md`
-- [ ] T038 Update `specs/027-demo-flow-ux/spec.md` Status from `Draft` → `Completed` and add Phase 8 to `specs/027-demo-flow-ux/tasks.md` summary
+- [X] T038 Update `specs/027-demo-flow-ux/spec.md` Status from `Draft` → `Completed` and add Phase 8 to `specs/027-demo-flow-ux/tasks.md` summary
 
 ---
 

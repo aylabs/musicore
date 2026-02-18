@@ -65,14 +65,17 @@ export function useNoteHighlight(
 ): Set<string> {
   // Feature 024 (T020): Performance optimization - stable Set reference pattern
   // Using ref for caching during render is intentional to avoid per-frame allocations
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+   
   const prevSetRef = useRef<Set<string>>(EMPTY_SET);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
+  // eslint-disable-next-line react-hooks/refs -- intentional: prevSetRef used for
+  // stable reference memoization (not for rendering); mutating in useMemo is safe here.
   return useMemo(() => {
     // Return empty set when playback is stopped
     if (status === 'stopped') {
-      prevSetRef.current = EMPTY_SET; // eslint-disable-line react-hooks/exhaustive-deps
+      /* eslint-disable react-hooks/refs */
+      prevSetRef.current = EMPTY_SET;
       return EMPTY_SET;
     }
 
@@ -81,11 +84,12 @@ export function useNoteHighlight(
 
     // Feature 024 (T020): Stable Set reference — only return new Set
     // when contents actually change. Prevents downstream React re-renders.
-    if (setsEqual(prevSetRef.current, newSet)) { // eslint-disable-line react-hooks/exhaustive-deps
-      return prevSetRef.current; // eslint-disable-line react-hooks/exhaustive-deps
+    if (setsEqual(prevSetRef.current, newSet)) {
+      return prevSetRef.current;
     }
 
-    prevSetRef.current = newSet; // eslint-disable-line react-hooks/exhaustive-deps
+    prevSetRef.current = newSet;
+    /* eslint-enable react-hooks/refs */
     return newSet;
   }, [notes, currentTick, status]);
 }

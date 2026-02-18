@@ -55,3 +55,47 @@ main {
 .note-head.highlighted {
   animation: note-highlight-pulse 1s ease-in-out infinite;
 }
+
+/* Feature 027 (T011): Hide app header in full-screen play mode.
+   Applied by ScoreViewer via document.body.classList.add('fullscreen-play')
+   when entering layout view. Also covers iOS Safari CSS fallback. */
+body.fullscreen-play .app-header {
+  display: none;
+}
+
+/* Feature 027: In fullscreen play mode, use the full tablet width.
+   Remove max-width cap and main padding so score occupies the entire screen. */
+body.fullscreen-play main {
+  padding: 0;
+}
+
+body.fullscreen-play .score-viewer {
+  max-width: 100%;
+  padding: 0;
+}
+
+/* Feature 027: Allow pinch-to-zoom on the score in fullscreen.
+   body overflow-x: hidden (from index.css) blocks touch-zoom on tablets;
+   restore overflow and ensure touch-action allows scale gestures at every level.
+   Override body flex centering (place-items from index.css) so .app stretches
+   to the full screen width instead of being centered with dark gaps. */
+body.fullscreen-play {
+  overflow: visible;
+  touch-action: pan-x pan-y pinch-zoom;
+  place-items: stretch;
+  background-color: #ffffff;
+}
+
+body.fullscreen-play .app {
+  width: 100%;
+  background: #ffffff;
+}
+
+body.fullscreen-play main {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+body.fullscreen-play .score-viewer,
+body.fullscreen-play svg {
+  touch-action: pan-x pan-y pinch-zoom;
+}

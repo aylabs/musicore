@@ -166,8 +166,9 @@
   flex-direction: row;
   padding: 10px;
   margin-bottom: 10px;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 12px;
 }
 
 .playback-controls.compact .playback-buttons {
@@ -207,4 +208,48 @@
 .playback-right-actions .view-mode-button:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Feature 027 (T009/T024): Return-to-Instruments arrow button — large touch target */
+.return-to-view-button {
+  font-size: 36px;
+  padding: 8px 22px;
+  min-width: 64px;
+  min-height: 52px;
+  background: #607d8b;
+  border: 1px solid #546e7a;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.return-to-view-button:hover {
+  background: #546e7a;
+}
+
+/* Override compact .playback-button rule (higher specificity wins there) */
+.playback-controls.compact .return-to-view-button {
+  font-size: 13px;
+  padding: 8px 16px;
+  min-width: 85px;
+  min-height: auto;
+  line-height: 1;
+}
+
+/* Feature 027 (T023/T024): Score title in compact strip — visible, dark text */
+.playback-title {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
 }

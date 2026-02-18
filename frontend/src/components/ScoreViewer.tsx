@@ -62,6 +62,67 @@ export function ScoreViewer({
   const { fileState, resetFileState } = useFileState();
 
   /**
+   * Feature 027 (T009): Return to Instruments view.
+   * Called by the ← arrow in PlaybackControls and the popstate listener.
+   * Directly exits full-screen and removes the body class so the iOS CSS
+   * fallback also works immediately (no dependency on a React re-render).
+   * Uses a ref so the popstate listener always accesses the live callback.
+   */
+  const handleReturnToView = useCallback(() => {
+    document.exitFullscreen?.().catch(() => {
+      // iOS Safari does not support exitFullscreen — CSS fallback handles it
+    });
+    document.body.classList.remove('fullscreen-play');
+    setViewMode('individual');
+  }, [setViewMode]);
+
+  // Keep a ref so the popstate listener always has the latest callback
+  const handleReturnToViewRef = useRef(handleReturnToView);
+  useEffect(() => {
+    handleReturnToViewRef.current = handleReturnToView;
+  });
+
+  /**
+   * Feature 027 (T007/T008): Full-screen + back-gesture lifecycle.
+   * - Entering layout mode: add fullscreen body class, push history state, add popstate listener.
+   *   requestFullscreen() is NOT called here — it must be called from the user-gesture handler
+   *   (onClick) because useEffect runs after paint and browsers block it outside a user gesture.
+   * - Leaving layout mode: exit full-screen, remove body class.
+   * - Cleanup is conditional: only undo what this branch actually set up, so entering layout
+   *   mode does NOT accidentally trigger exitFullscreen via the previous cleanup.
+   */
+  useEffect(() => {
+    const handlePopState = () => {
+      handleReturnToViewRef.current();
+    };
+
+    if (viewMode === 'layout') {
+      // T010: Body class hides the app header via CSS (App.css rule)
+      document.body.classList.add('fullscreen-play');
+      // T008: Push state so browser back button / swipe fires popstate
+      history.pushState({ view: 'layout' }, '', window.location.href);
+      window.addEventListener('popstate', handlePopState);
+
+      // Cleanup: undo only what the layout branch set up
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        document.body.classList.remove('fullscreen-play');
+        document.exitFullscreen?.().catch(() => {});
+      };
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      document.body.classList.remove('fullscreen-play');
+
+      // Cleanup: just remove the listener (body class already removed above)
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [viewMode]);
+
+
+
+  /**
    * Load a score by ID
    * Feature 013: Try IndexedDB first (for demo scores), then fall back to API
    * Feature 025: Offline Mode - IndexedDB only (no REST API fallback)
@@ -145,6 +206,13 @@ export function ScoreViewer({
    * Sets layout view and auto-plays the demo
    */
   const handleLoadDemoButtonClick = async () => {
+    // T007: Request full-screen NOW — we are still inside the synchronous part of the
+    // click-event handler, so the browser grants the user-gesture privilege.
+    // All subsequent awaits run outside the user-gesture context, so this is the
+    // only safe place to call requestFullscreen for the demo flow.
+    document.documentElement.requestFullscreen?.().catch(() => {
+      // iOS Safari does not support requestFullscreen — body class provides the CSS fallback
+    });
     setLoading(true);
     setError(null);
     try {
@@ -303,11 +371,26 @@ export function ScoreViewer({
   }, [playbackState]);
 
   /**
+   * Feature 027 (T009/T005): Return arrow handler passed to PlaybackControls.
+   * Pauses playback to preserve position, then delegates to handleReturnToView
+   * which triggers the viewMode useEffect (exitFullscreen + body class removal).
+   */
+  const handleReturnToViewWithPause = useCallback(() => {
+    playbackState.pause();
+    handleReturnToView();
+  }, [playbackState, handleReturnToView]);
+
+  /**
    * Handle note click: select the note, seek to its position, and start playback.
    * Clicking a note in the rendered score will:
    * 1. Visually select it (orange highlight)
    * 2. Seek playback to the note's start tick
    * 3. Start playing from that position
+   */
+  /**
+   * Handle note click: select the note and seek to its position.
+   * Feature 027 (T015): Does NOT auto-play — US2 spec requires note tap = seek only.
+   * Empty-area tap = toggle play/pause (handled by onTogglePlayback on the container).
    */
   const handleNoteClick = useCallback((noteId: string) => {
     const note = allNotes.find(n => n.id === noteId);
@@ -315,10 +398,7 @@ export function ScoreViewer({
 
     setSelectedNoteId(noteId);
     playbackState.seekToTick(note.start_tick);
-    // Brief delay to allow React state update from seekToTick before playing
-    setTimeout(() => {
-      playbackState.play();
-    }, 50);
+    // T015: Removed play() call — note tap seeks without auto-play per FR-005
   }, [allNotes, playbackState]);
 
   // Clear selected note when playback stops
@@ -417,12 +497,8 @@ export function ScoreViewer({
   // Render score
   return (
     <div className="score-viewer">
-      {/* Feature 022: Score title displayed in all view modes */}
-      {scoreTitle && viewMode !== 'individual' && (
-        <div className="score-title-bar">
-          <span className="score-title-text" title={scoreTitle}>{scoreTitle}</span>
-        </div>
-      )}
+      {/* Feature 022: In layout/play view the compact PlaybackControls strip shows the title.
+          The separate score-title-bar is not needed since ViewMode is 'individual' | 'layout'. */}
 
       {/* Hide header and file operations in layout view */}
       {viewMode === 'individual' && (
@@ -448,7 +524,19 @@ export function ScoreViewer({
             </div>
             <div className="toolbar-right">
               {score && score.instruments.length > 0 && (
-                <ViewModeSelector currentMode={viewMode} onChange={setViewMode} />
+                <ViewModeSelector
+                  currentMode={viewMode}
+                  onChange={(mode) => {
+                    // T007: requestFullscreen must be in the user-gesture (onClick) context.
+                    // Calling it from the ViewModeSelector click keeps it synchronous with the event.
+                    if (mode === 'layout') {
+                      document.documentElement.requestFullscreen?.().catch(() => {
+                        // iOS Safari fallback — body class handles it via CSS
+                      });
+                    }
+                    setViewMode(mode);
+                  }}
+                />
               )}
             </div>
           </div>
@@ -473,15 +561,8 @@ export function ScoreViewer({
         totalDurationTicks={playbackState.totalDurationTicks}
         tempo={initialTempo}
         tempoMultiplier={tempoState.tempoMultiplier}
-        rightActions={viewMode !== 'individual' && score && score.instruments.length > 0 ? (
-          <button 
-            className="view-mode-button" 
-            onClick={() => setViewMode('individual')}
-            aria-label="Switch to instruments view"
-          >
-            Instruments View
-          </button>
-        ) : undefined}
+        title={viewMode !== 'individual' ? (scoreTitle ?? undefined) : undefined}
+        onReturnToView={viewMode !== 'individual' ? handleReturnToViewWithPause : undefined}
       />
 
       {score.instruments.length === 0 ? (

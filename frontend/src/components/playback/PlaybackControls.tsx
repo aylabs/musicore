@@ -35,6 +35,10 @@ export interface PlaybackControlsProps {
   tempoMultiplier?: number;
   /** Feature 026 (US3): Handler for Return to Start button — scrolls view to measure 1 */
   onReturnToStart?: () => void;
+  /** Feature 027 (US1): Return to Instruments view — back navigation from full-screen Play view */
+  onReturnToView?: () => void;
+  /** Feature 027 (US3): Score title shown left of playback buttons in compact mode */
+  title?: string;
 }
 
 /**
@@ -74,6 +78,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   compact = false, // Feature 010: Compact mode for stacked view
   rightActions = null, // Feature 010: Additional actions for right side
   onReturnToStart, // Feature 026 (US3): Return to Start handler
+  onReturnToView, // Feature 027 (US1): Return to Instruments from full-screen
+  title, // Feature 027 (US3): Score title in compact strip
   currentTick = 0, // Feature 022: Playback timer
   totalDurationTicks = 0,
   tempo = 120,
@@ -109,6 +115,23 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
   return (
     <div className={`playback-controls ${compact ? 'compact' : ''}`}>
+      {/* Feature 027 (US1 T009): Return-to-Instruments arrow — only in compact/play mode */}
+      {compact && onReturnToView && (
+        <button
+          className="playback-button return-to-view-button"
+          onClick={onReturnToView}
+          aria-label="Return to instruments view"
+          title="Back to Instruments"
+        >
+          ←
+        </button>
+      )}
+
+      {/* Feature 027 (US3 T023): Score title truncated, left of buttons in compact mode */}
+      {compact && title && (
+        <span className="playback-title" title={title}>{title}</span>
+      )}
+
       {/* US1 T026: Visual playback state indicator (hidden in compact mode) */}
       {!compact && (
         <div className={`playback-status ${statusClass[status]}`}>
@@ -175,9 +198,10 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         </div>
       )}
 
-      {/* Feature 008 - Tempo Change: T014 Inline tempo display with controls (hidden in compact mode) */}
+      {/* Feature 008 - Tempo Change: T014 Inline tempo display with controls */}
+      {/* Feature 027 (T025): Show TempoControl in compact mode too (moved from LayoutView info bar) */}
       {/* Disable tempo changes during playback to avoid reschedule delays */}
-      {!compact && <TempoControl disabled={status === 'playing'} />}
+      <TempoControl disabled={status === 'playing'} />
 
       {/* US1 T027: Show message when no notes available */}
       {!hasNotes && (

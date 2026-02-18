@@ -188,3 +188,105 @@ describe('PlaybackControls', () => {
     expect(screen.getByText(/no notes to play/i)).toBeInTheDocument();
   });
 });
+
+// ============================================================================
+// T019 [US3]: PlaybackControls with title renders title left of play button in compact mode
+// T020 [US3]: PlaybackControls renders TempoControl in compact mode
+// T021 [US3]: Long title gets text-overflow ellipsis class/style
+//
+// Root cause:
+//   T019: title already renders (implemented in T023/previous session) — verify position
+//   T020: TempoControl hidden behind !compact guard — must show in compact mode after T025 fix
+//   T021: playback-title span must have CSS truncation styling
+//
+// T019 PASSES if title renders (already implemented).
+// T020 FAILS before T025 (TempoControl absent in compact mode).
+// T021 PASSES if playback-title class present (CSS applied by PlaybackControls.css).
+// ============================================================================
+
+describe('[T019] US3: PlaybackControls renders score title in compact mode', () => {
+  it('renders title text left of playback buttons when compact=true and title provided', () => {
+    const mockHandlers = {
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onStop: vi.fn(),
+    };
+
+    render(
+      <TempoStateProvider>
+        <PlaybackControls status="stopped" compact={true} title="My Score" {...mockHandlers} />
+      </TempoStateProvider>
+    );
+
+    // After T023 (already implemented): title appears in compact mode
+    const titleEl = screen.getByText('My Score');
+    expect(titleEl).toBeInTheDocument();
+    // Title element must have playback-title class (T021 CSS)
+    expect(titleEl.className).toContain('playback-title');
+  });
+
+  it('does not render title when compact=false', () => {
+    const mockHandlers = {
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onStop: vi.fn(),
+    };
+
+    render(
+      <TempoStateProvider>
+        <PlaybackControls status="stopped" compact={false} title="Hidden Score" {...mockHandlers} />
+      </TempoStateProvider>
+    );
+
+    // Title must not render in non-compact mode
+    const titleEl = screen.queryByText('Hidden Score');
+    expect(titleEl).toBeNull();
+  });
+});
+
+describe('[T020] BUG: PlaybackControls must render TempoControl in compact mode', () => {
+  it('renders TempoControl when compact=true (after T025 fix)', () => {
+    const mockHandlers = {
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onStop: vi.fn(),
+    };
+
+    const { container } = render(
+      <TempoStateProvider>
+        <PlaybackControls status="stopped" compact={true} {...mockHandlers} />
+      </TempoStateProvider>
+    );
+
+    // Before T025: TempoControl rendered with {!compact && <TempoControl/>}
+    // so it is ABSENT in compact=true mode. This test fails before T025.
+    // After T025: TempoControl always visible.
+    // TempoControl renders a tempo input or BPM display — find by role or test-id.
+    // TempoControl renders a select or number input for BPM.
+    const tempoInput = container.querySelector('.tempo-control, [data-testid="tempo-control"], input[type="number"], select');
+    expect(tempoInput).not.toBeNull();
+  });
+});
+
+describe('[T021] US3: Long score title renders with text-overflow ellipsis class', () => {
+  it('playback-title span has CSS class for ellipsis truncation', () => {
+    const mockHandlers = {
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onStop: vi.fn(),
+    };
+
+    const longTitle = 'AVeryLongScoreTitleThatExceedsFortyCharactersDefinitely';
+    render(
+      <TempoStateProvider>
+        <PlaybackControls status="stopped" compact={true} title={longTitle} {...mockHandlers} />
+      </TempoStateProvider>
+    );
+
+    const titleEl = screen.getByText(longTitle);
+    // Must have playback-title class (CSS applies text-overflow: ellipsis via PlaybackControls.css)
+    expect(titleEl.className).toContain('playback-title');
+    // title attribute shows full text on hover (accessibility)
+    expect(titleEl.getAttribute('title')).toBe(longTitle);
+  });
+});
