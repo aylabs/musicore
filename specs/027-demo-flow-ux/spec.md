@@ -62,17 +62,17 @@ A user operating the playback controls on a tablet wants a clean, uncluttered to
 
 ### User Story 4 — Improved Note Highlight Visibility (Priority: P3)
 
-A user watching a score during playback wants to instantly know which note or beat is currently playing. The current highlight can be missed on complex scores with many notes. An optional vertical bar spanning the full height of the staff at the current beat position would make it unambiguous.
+A user watching a score during playback wants to instantly know which note or beat is currently playing. The current highlight colour and size can be missed on complex scores with many notes. The mandatory improvement is to make the existing note highlight significantly more visible (stronger colour, larger indicator, or increased opacity). A full-height vertical bar at the current beat position is a stretch goal, deferred unless the enhanced highlight alone fails SC-005.
 
 **Why this priority**: Enhances the demo experience visually but does not affect interaction. Lower priority than functional correctness (US1, US2) and layout cleanup (US3).
 
-**Independent Test**: Start playback on a multi-staff score and verify the currently playing note is unambiguously highlighted at a glance from 60 cm away.
+**Independent Test**: Start playback on a multi-staff score and verify the currently playing note highlight is identifiable at a glance from 60 cm away without a vertical bar present.
 
 **Acceptance Scenarios**:
 
-1. **Given** playback is active, **When** a note is being played, **Then** a visual indicator clearly marks the current beat position across all staves.
-2. **Given** a dense passage with many simultaneous notes, **When** playback is active, **Then** the current-beat indicator remains distinguishable from surrounding notes.
-3. **Given** a multi-staff instrument, **When** playback is active, **Then** the current-beat indicator spans all staves vertically so the position is unambiguous.
+1. **Given** playback is active, **When** a note is being played, **Then** the note highlight is rendered with clearly increased visibility compared to the previous style (stronger colour, larger indicator, or higher opacity).
+2. **Given** a dense passage with many simultaneous notes, **When** playback is active, **Then** the highlighted note remains distinguishable from surrounding unhighlighted notes.
+3. **Given** the enhanced highlight does not satisfy SC-005 after testing, **When** the team reviews results, **Then** a vertical beat-position bar spanning all staves is added as a follow-up task.
 
 ---
 
@@ -114,7 +114,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **FR-009**: The score title MUST be displayed to the left of the playback control buttons (play, pause, stop) within the playback strip.
 - **FR-010**: The tempo control MUST be displayed to the right of the playback timer within the playback strip.
 - **FR-011**: The zoom control (buttons or slider) MUST be removed from the Play screen UI entirely.
-- **FR-012**: The current-beat position MUST be indicated by a visible highlight or marker that spans all staves vertically at the playing position.
+- **FR-012**: The current-beat position MUST be indicated by an enhanced note highlight (increased colour contrast, size, or opacity relative to the current style). A full-height vertical bar spanning all staves is explicitly out of scope for this feature unless SC-005 is not met by the enhanced highlight alone, in which case it is added as a separate follow-up task.
 
 ### Assumptions
 
@@ -140,4 +140,5 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 ### Session 2026-02-18
 
 - Q: What mechanism should "full-screen mode" use — browser Fullscreen API, PWA standalone chrome removal, or both? → A: Invoke the browser Fullscreen API (`requestFullscreen`) on entry to the Play screen; degrade gracefully (hide app-level chrome) on browsers where the API is unsupported or denied (e.g., iOS Safari).
+- Q: Is the vertical beat-position bar mandatory or optional — and how does that reconcile the contradiction between US4 ("optional") and FR-012 ("MUST span all staves")? → A: Enhanced highlight (colour/size/opacity) is mandatory for this feature. The vertical spanning bar is deferred: add it as a follow-up task only if the enhanced highlight does not satisfy SC-005 during testing.
 
