@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
 import { OfflineBanner } from './components/OfflineBanner'
-import { ReloadGuard } from './components/ReloadGuard'
 import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
@@ -214,7 +213,6 @@ function App() {
       <FileStateProvider>
         <div className="app">
           <OfflineBanner />
-          <ReloadGuard />
           {/* Feature 013: Demo loading error notification (T019) */}
           {demoError && (
             <div style={{
