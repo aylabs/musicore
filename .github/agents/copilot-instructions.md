@@ -50,6 +50,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - IndexedDB for score persistence, Service Worker cache for assets (app shell, WASM module, demo MusicXML), network-first with fallback for score data (currently unused) (025-offline-mode)
 - TypeScript 5.x strict mode + React 18+, Vite 7.3.1, Tone.js, Vitest 4.0.18 (026-playback-ui-fixes)
 - N/A (no storage changes — all in-memory/UI state) (026-playback-ui-fixes)
+- TypeScript (React 18 + Hooks), Rust stable ≥1.79 + React, Vite, Vitest, Playwright, Tone.js, wasm-bindgen, History API, Fullscreen API (027-demo-flow-ux)
+- N/A — no new or changed storage (027-demo-flow-ux)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -70,9 +72,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 027-demo-flow-ux: Added TypeScript (React 18 + Hooks), Rust stable ≥1.79 + React, Vite, Vitest, Playwright, Tone.js, wasm-bindgen, History API, Fullscreen API
 - 026-playback-ui-fixes: Added TypeScript 5.x strict mode + React 18+, Vite 7.3.1, Tone.js, Vitest 4.0.18
 - 025-offline-mode: Added TypeScript 5.x (frontend), Rust 1.75+ (backend WASM module, no changes expected) + React 18+, vite-plugin-pwa, Workbox (service worker), IndexedDB (via custom wrapper), WASM music engine (already compiled), Tone.js (audio playback)
-- 024-playback-performance: Added TypeScript 5.x (frontend), React 18+ (UI framework) + Tone.js (audio engine), React (rendering), SMuFL/Bravura (music font), WASM layout engine (Rust backend)
 
 
 <!-- MANUAL ADDITIONS START -->
