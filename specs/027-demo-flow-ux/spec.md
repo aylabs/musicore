@@ -21,6 +21,7 @@ A user navigating from the Instruments screen to the Play screen wants the score
 2. **Given** the user is on the full-screen Play screen, **When** they tap the return arrow, **Then** the app navigates back to the Instruments screen.
 3. **Given** the user is on the full-screen Play screen, **When** they perform the device back gesture, **Then** the app navigates back to the Instruments screen.
 4. **Given** an "Instruments View" button previously existed on the Play screen, **When** the user views the updated Play screen, **Then** that button is replaced by a return arrow icon in a consistent position.
+5. **Given** playback is active, **When** the user taps the return arrow or performs the back gesture, **Then** playback pauses, the current position is preserved, and the app navigates to the Instruments screen without resetting the score position.
 
 ---
 
@@ -122,7 +123,7 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - The primary target platform for the demo is Android tablet; the Fullscreen API behaves reliably there. iOS Safari has partial `requestFullscreen` support — the fallback (hide app-level chrome) is the expected behaviour on iOS.
 - "Empty area" means any touch target that does not resolve to a note head hitbox. Rests are treated as empty areas for pause/resume purposes.
 - The return arrow replaces the "Instruments View" button and occupies a consistent position (e.g., top-left of the Play screen).
-- If playback is active when the user navigates back via the return arrow or back gesture, playback stops automatically.
+- If playback is active when the user navigates back via the return arrow or back gesture, playback PAUSES and the current position is preserved. Playback does not resume automatically when the user returns to the Play screen.
 
 ## Success Criteria *(mandatory)*
 
@@ -143,4 +144,5 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - Q: What mechanism should "full-screen mode" use — browser Fullscreen API, PWA standalone chrome removal, or both? → A: Invoke the browser Fullscreen API (`requestFullscreen`) on entry to the Play screen; degrade gracefully (hide app-level chrome) on browsers where the API is unsupported or denied (e.g., iOS Safari).
 - Q: Is the vertical beat-position bar mandatory or optional — and how does that reconcile the contradiction between US4 ("optional") and FR-012 ("MUST span all staves")? → A: Enhanced highlight (colour/size/opacity) is mandatory for this feature. The vertical spanning bar is deferred: add it as a follow-up task only if the enhanced highlight does not satisfy SC-005 during testing.
 - Q: What is the acceptable latency for seek-on-tap (note tap → jump to position)? → A: ≤300 ms from tap release to audible output from the new position (scheduler reset included).
+- Q: When the user navigates back to Instruments during playback, should the app stop (reset position) or pause (preserve position)? → A: Pause and preserve position. Playback does not resume automatically when the user returns to the Play screen.
 
