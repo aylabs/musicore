@@ -269,6 +269,40 @@ export class ToneAdapter {
   }
 
   /**
+   * Get the current Transport position in seconds.
+   * Used by PlaybackScheduler to determine the lookahead window boundary.
+   * 
+   * @returns Transport time in seconds (0 at playback start)
+   */
+  public getTransportSeconds(): number {
+    return Tone.Transport.seconds;
+  }
+
+  /**
+   * Schedule a repeating callback on the Transport timeline.
+   * Used by PlaybackScheduler's windowed scheduling to refill the note window.
+   * 
+   * @param callback - Function to invoke on each repeat
+   * @param intervalSeconds - Repeat interval in seconds
+   * @returns Event ID that can be used with clearTransportEvent()
+   */
+  public scheduleRepeat(callback: () => void, intervalSeconds: number): number {
+    return Tone.Transport.scheduleRepeat(
+      () => callback(),
+      intervalSeconds
+    );
+  }
+
+  /**
+   * Cancel a single Transport event by ID.
+   * 
+   * @param eventId - The event ID returned by scheduleRepeat or Transport.schedule
+   */
+  public clearTransportEvent(eventId: number): void {
+    Tone.Transport.clear(eventId);
+  }
+
+  /**
    * Check if the audio context is initialized
    * 
    * @returns True if init() has been called successfully

@@ -104,12 +104,14 @@ export function secondsToTicks(seconds: number, tempo: number): number {
  * PlaybackScheduler - Manages note scheduling and timing
  * 
  * Feature 003 - Music Playback: US2 T032
+ * Feature 024 - Performance: Windowed scheduling for large scores
  * 
  * Coordinates with ToneAdapter to schedule notes at precise times.
  * Handles tick-to-time conversion, duration calculation, and playback offset.
  * 
- * Performance: Synchronous scheduling is fast enough even for large scores
- * (4000+ notes schedule in < 20ms).
+ * Uses a lookahead window to limit the number of simultaneously scheduled
+ * Tone.js Transport events. This prevents Tone.js from degrading on mobile
+ * when processing thousands of scheduled events in its internal timeline.
  * 
  * @example
  * ```typescript
@@ -126,8 +128,23 @@ export function secondsToTicks(seconds: number, tempo: number): number {
  * scheduler.clearSchedule();
  * ```
  */
+
+/** Lookahead window in seconds: schedule this far ahead of current Transport time */
+const LOOKAHEAD_SECONDS = 10;
+
+/** How often (in seconds) the refill callback checks for new notes to schedule */
+const REFILL_INTERVAL_SECONDS = 4;
+
 export class PlaybackScheduler {
   private toneAdapter: ToneAdapter;
+
+  // Windowed scheduling state
+  private pendingNotes: Note[] = [];
+  private pendingIndex = 0;
+  private scheduleTempo = DEFAULT_TEMPO;
+  private scheduleTempoMultiplier = 1.0;
+  private scheduleStartTick = 0;
+  private refillEventId: number | null = null;
 
   /**
    * Create a new PlaybackScheduler
@@ -139,30 +156,72 @@ export class PlaybackScheduler {
   }
 
   /**
+   * Convert tick offset (relative to playback start) to Transport-relative seconds.
+   */
+  private tickOffsetToSeconds(ticksFromStart: number): number {
+    let seconds = ticksToSeconds(ticksFromStart, this.scheduleTempo);
+    if (this.scheduleTempoMultiplier !== 1.0) {
+      seconds = seconds / this.scheduleTempoMultiplier;
+    }
+    return seconds;
+  }
+
+  /**
+   * Schedule notes within the lookahead window starting from pendingIndex.
+   * Advances pendingIndex past all notes that were scheduled.
+   * Returns true if there are more notes remaining.
+   */
+  private scheduleWindow(): boolean {
+    const notes = this.pendingNotes;
+    const len = notes.length;
+    if (this.pendingIndex >= len) return false;
+
+    // Determine the Transport time ceiling for this window
+    const transportNow = this.toneAdapter.getTransportSeconds();
+    const windowEnd = transportNow + LOOKAHEAD_SECONDS;
+
+    while (this.pendingIndex < len) {
+      const note = notes[this.pendingIndex];
+      const ticksFromStart = note.start_tick - this.scheduleStartTick;
+      const transportTime = this.tickOffsetToSeconds(ticksFromStart);
+
+      // Stop if this note is beyond the lookahead window
+      if (transportTime > windowEnd) break;
+
+      // Calculate note duration
+      let durationSeconds = ticksToSeconds(note.duration_ticks, this.scheduleTempo);
+      if (this.scheduleTempoMultiplier !== 1.0) {
+        durationSeconds = durationSeconds / this.scheduleTempoMultiplier;
+      }
+      if (durationSeconds < MIN_NOTE_DURATION) {
+        durationSeconds = MIN_NOTE_DURATION;
+      }
+
+      this.toneAdapter.playNote(note.pitch, durationSeconds, transportTime);
+      this.pendingIndex++;
+    }
+
+    return this.pendingIndex < len;
+  }
+
+  /**
    * Schedule notes for playback with accurate timing
    * 
    * Feature 003 - Music Playback: US2 T035
    * Feature 008 - Tempo Change: T013 Added tempo multiplier support
+   * Feature 024 - Performance: Windowed scheduling
    * 
-   * Converts each note's tick-based timing to real-time seconds and schedules
-   * playback through ToneAdapter. Handles currentTick offset for pause/resume.
+   * Only schedules notes within a lookahead window of LOOKAHEAD_SECONDS.
+   * A Transport-level repeating event refills the window as playback progresses.
+   * This keeps the number of live Transport events small (~200-400 at any time),
+   * preventing Tone.js timeline degradation on mobile with large scores.
    * 
-   * Performance: Synchronous scheduling is fast (< 20ms for 4000 notes) and
-   * provides instant playback start without complex background scheduling.
-   * 
-   * @param notes - Array of notes to schedule
+   * @param notes - Array of notes to schedule (must be pre-sorted by start_tick)
    * @param tempo - Tempo in beats per minute (BPM)
    * @param currentTick - Current playback position in ticks (for resume from pause)
    * @param tempoMultiplier - Tempo multiplier (0.5 to 2.0, default 1.0)
-   *                          2.0 = twice as fast, 0.5 = half as fast
    * 
-   * Edge cases handled:
-   * - US2 T040: Notes with duration < 50ms extended to MIN_NOTE_DURATION
-   * - US2 T041: Simultaneous notes (same start_tick) all schedule at same time
-   * - US2 T042: Invalid tempo defaults to 120 BPM
-   * - T013: Tempo multiplier scales timing (default 1.0 for backward compatibility)
-   * 
-   * @returns Promise that resolves when all notes are scheduled
+   * @returns Promise that resolves when the initial window is scheduled
    */
   public async scheduleNotes(
     notes: Note[],
@@ -171,45 +230,47 @@ export class PlaybackScheduler {
     tempoMultiplier: number = 1.0
   ): Promise<void> {
     // US2 T042: Apply tempo fallback
-    const validTempo = tempo > 0 && tempo <= 400 ? tempo : DEFAULT_TEMPO;
+    this.scheduleTempo = tempo > 0 && tempo <= 400 ? tempo : DEFAULT_TEMPO;
+    this.scheduleTempoMultiplier = tempoMultiplier;
+    this.scheduleStartTick = currentTick;
 
-    // Use Transport-relative timing (Transport starts at 0 when startTransport() is called)
-    // No need to get audio context time - Transport.schedule() uses Transport time
-    
-    // Simple synchronous scheduling - fast enough even for 4000+ notes (< 20ms)
-    for (const note of notes) {
-      // Skip notes that are already past
-      if (note.start_tick < currentTick) {
-        continue;
+    // Filter out notes already past, then sort by start_tick
+    this.pendingNotes = notes
+      .filter(note => note.start_tick >= currentTick)
+      .sort((a, b) => a.start_tick - b.start_tick);
+    this.pendingIndex = 0;
+
+    // Schedule first window immediately
+    const hasMore = this.scheduleWindow();
+
+    // If there are more notes beyond the window, set up a refill loop
+    if (hasMore) {
+      this.startRefillLoop();
+    }
+  }
+
+  /**
+   * Start a Transport-level repeating event that refills the scheduling window.
+   */
+  private startRefillLoop(): void {
+    // Cancel any existing refill loop
+    this.stopRefillLoop();
+
+    this.refillEventId = this.toneAdapter.scheduleRepeat(() => {
+      const hasMore = this.scheduleWindow();
+      if (!hasMore) {
+        this.stopRefillLoop();
       }
-      
-      // Calculate start time relative to currentTick
-      const ticksFromCurrent = note.start_tick - currentTick;
-      let startTimeSeconds = ticksToSeconds(ticksFromCurrent, validTempo);
-      
-      // Apply tempo multiplier if changed
-      if (tempoMultiplier !== 1.0) {
-        startTimeSeconds = startTimeSeconds / tempoMultiplier;
-      }
-      
-      // Use Transport-relative time (no need to add getCurrentTime())
-      const transportTime = startTimeSeconds;
-      
-      // Calculate note duration
-      let durationSeconds = ticksToSeconds(note.duration_ticks, validTempo);
-      
-      // Apply tempo multiplier to duration
-      if (tempoMultiplier !== 1.0) {
-        durationSeconds = durationSeconds / tempoMultiplier;
-      }
-      
-      // Enforce minimum duration for very short notes
-      if (durationSeconds < MIN_NOTE_DURATION) {
-        durationSeconds = MIN_NOTE_DURATION;
-      }
-      
-      // Schedule note playback with Transport-relative time
-      this.toneAdapter.playNote(note.pitch, durationSeconds, transportTime);
+    }, REFILL_INTERVAL_SECONDS);
+  }
+
+  /**
+   * Stop the refill loop.
+   */
+  private stopRefillLoop(): void {
+    if (this.refillEventId !== null) {
+      this.toneAdapter.clearTransportEvent(this.refillEventId);
+      this.refillEventId = null;
     }
   }
 
@@ -219,9 +280,12 @@ export class PlaybackScheduler {
    * Feature 003 - Music Playback: US2 T036
    * 
    * Stops all currently playing notes and cancels any scheduled future notes.
-   * Used when pausing or stopping playback.
+   * Also stops the refill loop and clears pending notes.
    */
   public clearSchedule(): void {
+    this.stopRefillLoop();
+    this.pendingNotes = [];
+    this.pendingIndex = 0;
     // US2 T036: Stop all audio and clear transport schedule
     this.toneAdapter.stopAll();
   }

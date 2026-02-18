@@ -205,6 +205,14 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
           const timeoutMs = (playbackDurationSeconds + 0.1) * 1000;
           
           playbackEndTimeoutRef.current = window.setTimeout(() => {
+            // Feature 026 (Fix P1): Clean up audio state on natural playback end.
+            // Without this, Tone.js Transport stays active and replay overlaps.
+            scheduler.clearSchedule();
+            adapter.stopAll();
+            pinnedStartTickRef.current = null;
+            lastReactTickRef.current = 0;
+            tickSourceRef.current = { currentTick: 0, status: 'stopped' };
+            // Update React state
             setStatus('stopped');
             setCurrentTick(0);
             playbackEndTimeoutRef.current = null;

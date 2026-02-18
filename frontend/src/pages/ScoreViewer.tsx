@@ -89,6 +89,13 @@ interface ScoreViewerState {
  */
 const BASE_SCALE = 0.5;
 
+/**
+ * Label margin: extra space on the left of each system for instrument name labels.
+ * Feature 026 (Fix P2): Increased from 80 → 150 layout units to prevent clipping
+ * of multi-instrument names at typical render scales.
+ */
+export const LABEL_MARGIN = 150;
+
 export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
   private containerRef: RefObject<HTMLDivElement | null>;
@@ -111,8 +118,17 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Feature 024 (T026): rAF-based scroll throttle ID */
   private scrollRafId: number = 0;
 
-  /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState) */
-  private lastAppliedScrollTop: number = 0;
+  /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState)
+   * Initialize to -Infinity so the first updateViewport() call always runs. */
+  private lastAppliedScrollTop: number = -Infinity;
+
+  /** Reverse index: noteId → systemIndex. Built once when sourceToNoteIdMap changes.
+   * Replaces the O(systems × notes) nested scan in scrollToHighlightedSystem
+   * with an O(k) lookup where k = number of highlighted notes. */
+  private noteIdToSystemIndex: Map<string, number> = new Map();
+
+  /** The sourceToNoteIdMap instance used to build noteIdToSystemIndex */
+  private cachedSourceMap: Map<string, string> | null = null;
 
   /** Feature 024 (T027): Minimum scroll delta before updating viewport state (pixels) */
   private static readonly SCROLL_THRESHOLD = 4;
@@ -127,9 +143,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     this.state = {
       viewport: {
-        x: 0,
+        x: -LABEL_MARGIN, // Start with label margin to prevent clef cutoff on first render
         y: 0,
-        width: 2400,
+        width: 2400 + LABEL_MARGIN, // Include label margin in width
         height: 10000, // Large initial height to show all systems until updateViewport adjusts it
       },
       zoom: 1.0,
@@ -273,7 +289,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const viewportWidth = this.props.layout.total_width;
 
     // Expand viewport leftward to show instrument name labels (Feature 023)
-    const labelMargin = 80;
+    const labelMargin = LABEL_MARGIN;
     this.setState({
       viewport: {
         x: -labelMargin,
@@ -293,22 +309,40 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Checks visibility: even if the same system index, re-scroll if it has
    * drifted out of the visible viewport area.
    */
+  /**
+   * Build the reverse index noteId → systemIndex from sourceToNoteIdMap.
+   * Called lazily before the first scroll lookup and whenever the map changes.
+   * O(N) — runs once per score/layout change, not during playback.
+   */
+  private ensureNoteIdIndex(): void {
+    const { sourceToNoteIdMap } = this.props;
+    if (!sourceToNoteIdMap || sourceToNoteIdMap === this.cachedSourceMap) return;
+    this.cachedSourceMap = sourceToNoteIdMap;
+    this.noteIdToSystemIndex.clear();
+    for (const [key, noteId] of sourceToNoteIdMap.entries()) {
+      const systemIndex = parseInt(key.split('/')[0], 10);
+      // Keep the lowest system index for each noteId (first occurrence)
+      if (!this.noteIdToSystemIndex.has(noteId)) {
+        this.noteIdToSystemIndex.set(noteId, systemIndex);
+      }
+    }
+  }
+
   private scrollToHighlightedSystem(): void {
     const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
     if (!layout || !highlightedNoteIds || !sourceToNoteIdMap) return;
 
-    // Find the system index containing highlighted notes
-    let targetSystemIndex = -1;
+    // Ensure reverse index is up-to-date (O(N) once, then cached)
+    this.ensureNoteIdIndex();
 
-    for (const system of layout.systems) {
-      for (const [key, noteId] of sourceToNoteIdMap.entries()) {
-        const keySystemIndex = parseInt(key.split('/')[0], 10);
-        if (keySystemIndex === system.index && highlightedNoteIds.has(noteId)) {
-          targetSystemIndex = system.index;
-          break;
-        }
+    // O(k) lookup: find system index for any highlighted note
+    let targetSystemIndex = -1;
+    for (const noteId of highlightedNoteIds) {
+      const systemIndex = this.noteIdToSystemIndex.get(noteId);
+      if (systemIndex !== undefined) {
+        targetSystemIndex = systemIndex;
+        break;
       }
-      if (targetSystemIndex >= 0) break;
     }
 
     if (targetSystemIndex < 0) {
@@ -444,7 +478,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     // Calculate scroll container dimensions based on layout and renderScale
     // Include label margin in width so SVG viewBox and element aspect ratios match
-    const labelMargin = 80; // Must match value in updateViewport
+    const labelMargin = LABEL_MARGIN; // Must match value in updateViewport
     const renderScale = zoom * BASE_SCALE;
     const totalHeight = layout.total_height * renderScale;
     const totalWidth = (layout.total_width + labelMargin) * renderScale;
@@ -479,6 +513,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
             height: `${totalHeight}px`,
             width: `${totalWidth}px`,
             position: 'relative',
+            overflow: 'hidden', // Clip SVG so it cannot extend beyond totalHeight (prevents extra scroll space)
           }}>
             {/* SVG container positioned at scroll position (not viewport.y which includes padding) */}
             <div style={{

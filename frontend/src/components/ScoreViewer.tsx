@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
 import { InstrumentList } from "./InstrumentList";
@@ -329,6 +329,33 @@ export function ScoreViewer({
   }, [playbackState.status]);
 
   /**
+   * Feature 026 (US3): Return to Start
+   * Stop playback and scroll the page back to measure 1.
+   * Also provides the scroll-reset mechanism reused by the US4 auto-end effect.
+   */
+  const handleReturnToStart = useCallback(() => {
+    playbackState.stop();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [playbackState]);
+
+  /**
+   * Feature 026 (US4): Track playback end so the Return to Start button
+   * appears at the end of the score where the user is.
+   * Does NOT auto-scroll — the user decides when to return.
+   */
+  const prevStatusRef = useRef<string>('stopped');
+  const [showReturnToStart, setShowReturnToStart] = useState(false);
+  useEffect(() => {
+    if (prevStatusRef.current === 'playing' && playbackState.status === 'stopped') {
+      setShowReturnToStart(true);
+    }
+    if (playbackState.status === 'playing') {
+      setShowReturnToStart(false);
+    }
+    prevStatusRef.current = playbackState.status;
+  }, [playbackState.status]);
+
+  /**
    * Auto-play demo when loaded (Feature 013)
    */
   useEffect(() => {
@@ -485,16 +512,30 @@ export function ScoreViewer({
         />
       ) : (
         /* Feature 017: Layout View */
-        <LayoutView 
-          score={score} 
-          highlightedNoteIds={highlightedNoteIds}
-          onTogglePlayback={togglePlayback}
-          onNoteClick={handleNoteClick}
-          selectedNoteId={selectedNoteId ?? undefined}
-          playbackStatus={playbackState.status}
-          tickSourceRef={playbackState.tickSourceRef}
-          allNotes={allNotes}
-        />
+        <>
+          <LayoutView 
+            score={score} 
+            highlightedNoteIds={highlightedNoteIds}
+            onTogglePlayback={togglePlayback}
+            onNoteClick={handleNoteClick}
+            selectedNoteId={selectedNoteId ?? undefined}
+            playbackStatus={playbackState.status}
+            tickSourceRef={playbackState.tickSourceRef}
+            allNotes={allNotes}
+          />
+          {/* Return to Start button — placed at end of score so user sees it after playback ends */}
+          {showReturnToStart && playbackState.status === 'stopped' && (
+            <div className="return-to-start-container">
+              <button
+                className="return-to-start-end-button"
+                onClick={handleReturnToStart}
+                aria-label="Return to Start"
+              >
+                ⏮ Return to Start
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {loading && <div className="loading-overlay">Updating...</div>}

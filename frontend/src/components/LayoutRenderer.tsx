@@ -149,6 +149,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Render SVG after component mounts and start highlight loop
    */
   componentDidMount(): void {
+    // React StrictMode in dev unmounts+remounts every component once.
+    // componentWillUnmount calls highlightIndex.clear(), so by the time the
+    // second componentDidMount runs the index is empty. Rebuild it here if needed.
+    if (this.props.notes && this.props.notes.length > 0 &&
+        (!this.highlightIndex || this.highlightIndex.noteCount === 0)) {
+      if (!this.highlightIndex) this.highlightIndex = new HighlightIndex();
+      this.highlightIndex.build(this.props.notes);
+    }
     this.renderSVG();
     this.svgRef.current?.addEventListener('click', this.handleSVGClick);
     this.startHighlightLoop();
@@ -170,25 +178,72 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * since all data-note-id elements were recreated.
    */
   componentDidUpdate(prevProps: LayoutRendererProps): void {
-    // Structural changes only (shouldComponentUpdate gates highlight-only changes)
+    // Full structural changes: layout, config, or source map
     if (
       prevProps.layout !== this.props.layout ||
       prevProps.config !== this.props.config ||
-      prevProps.viewport !== this.props.viewport ||
       prevProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
     ) {
       this.renderSVG();
       // Re-apply highlights after structural render (T024)
       this.reapplyHighlights();
+    } else if (prevProps.viewport !== this.props.viewport) {
+      // Viewport-only change (scroll/zoom): always update viewBox (cheap)
+      this.updateViewBox();
+      // Only do full SVG rebuild if the set of visible systems changed.
+      // During playback auto-scroll, the same systems are typically visible
+      // across ~12 animation frames — this avoids ~12 expensive rebuilds
+      // per system transition (each 30ms+ on tablet).
+      if (this.visibleSystemsChanged(prevProps.viewport)) {
+        this.renderSVG();
+        this.reapplyHighlights();
+      }
     }
 
     // Rebuild highlight index when notes change
-    if (prevProps.notes !== this.props.notes && this.props.notes) {
-      if (!this.highlightIndex) {
-        this.highlightIndex = new HighlightIndex();
+    if (prevProps.notes !== this.props.notes) {
+      const newNotes = this.props.notes;
+      if (newNotes && newNotes.length > 0) {
+        if (!this.highlightIndex) {
+          this.highlightIndex = new HighlightIndex();
+        }
+        this.highlightIndex.build(newNotes);
       }
-      this.highlightIndex.build(this.props.notes);
+      // If notes becomes empty, preserve existing index (transient state during score transitions)
     }
+  }
+
+  // ─── Viewport helpers ─────────────────────────────────────────────
+
+  /**
+   * Update just the SVG viewBox attribute — a single DOM call.
+   * Called on viewport-only changes (scroll) to keep the SVG coordinate
+   * system aligned with the scroll position without rebuilding content.
+   */
+  private updateViewBox(): void {
+    const svg = this.svgRef.current;
+    if (!svg || !this.props.layout) return;
+    const { viewport } = this.props;
+    svg.setAttribute(
+      'viewBox',
+      `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`
+    );
+  }
+
+  /**
+   * Check whether the set of visible systems changed between the previous
+   * viewport and the current viewport. Uses system indices for comparison.
+   */
+  private visibleSystemsChanged(prevViewport: Viewport): boolean {
+    const layout = this.props.layout;
+    if (!layout) return false;
+    const prevSystems = getVisibleSystems(layout.systems, prevViewport);
+    const nextSystems = getVisibleSystems(layout.systems, this.props.viewport);
+    if (prevSystems.length !== nextSystems.length) return true;
+    for (let i = 0; i < prevSystems.length; i++) {
+      if (prevSystems[i].index !== nextSystems[i].index) return true;
+    }
+    return false;
   }
 
   // ─── Feature 024: rAF Highlight Loop (T014-T017) ──────────────────
@@ -355,11 +410,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Append all systems at once
     svg.appendChild(fragment);
 
-    // Performance monitoring (T060): Warn if render exceeds 16ms (60fps budget)
+    // Performance monitoring (T060): Warn if render exceeds frame budget
+    // Use device-adaptive threshold (33ms for mobile/tablet, 16ms for desktop)
     const renderTime = performance.now() - startTime;
-    if (renderTime > 16) {
+    if (renderTime > this.frameInterval) {
       console.warn(
-        `LayoutRenderer: Slow frame detected - ${renderTime.toFixed(2)}ms (threshold: 16ms for 60fps)`,
+        `LayoutRenderer: Slow frame detected - ${renderTime.toFixed(2)}ms (threshold: ${this.frameInterval}ms)`,
         {
           viewport,
           systemCount: layout.systems.length,
@@ -658,7 +714,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // override fill/stroke via !important. Inline blue fills would persist
     // when the CSS class is removed, causing stale highlights.
     const { sourceToNoteIdMap } = this.props;
-    
+
     for (const glyph of run.glyphs) {
       // Resolve noteId from source reference
       let noteId: string | undefined;
