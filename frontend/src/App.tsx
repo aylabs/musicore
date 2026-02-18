@@ -136,12 +136,24 @@ function App() {
           padding: '2rem'
         }}>
           <div style={{ fontSize: '2rem', color: '#f44336' }}>⚠️</div>
-          <h2>Failed to Initialize Music Engine</h2>
-          <p style={{ maxWidth: '600px', textAlign: 'center' }}>
-            Your browser may not support WebAssembly, or there was an error loading the music engine.
+          <h2 style={{ color: '#333' }}>Failed to Initialize Music Engine</h2>
+          <p style={{ maxWidth: '600px', textAlign: 'center', color: '#333' }}>
+            {wasmError?.includes('fetch') ? (
+              <>
+                <strong>Offline First Launch Detected</strong>
+                <br /><br />
+                This app requires <strong>one online visit</strong> to download the music engine before offline mode works.
+                <br /><br />
+                Please connect to the internet and reload the page.
+              </>
+            ) : (
+              <>
+                Your browser may not support WebAssembly, or there was an error loading the music engine.
+              </>
+            )}
           </p>
           <details style={{ maxWidth: '600px', marginTop: '1rem' }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Error Details</summary>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#333' }}>Error Details</summary>
             <pre style={{ 
               marginTop: '1rem', 
               padding: '1rem', 
@@ -149,13 +161,17 @@ function App() {
               borderRadius: '4px',
               overflow: 'auto',
               fontSize: '0.875rem',
-              textAlign: 'left'
+              textAlign: 'left',
+              color: '#333'
             }}>
               {wasmError}
             </pre>
           </details>
           <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#666' }}>
-            Try using a modern browser like Chrome, Firefox, Safari, or Edge.
+            {wasmError?.includes('fetch') 
+              ? 'After one online visit, all features work offline.' 
+              : 'Try using a modern browser like Chrome, Firefox, Safari, or Edge.'
+            }
           </p>
         </main>
       </div>
