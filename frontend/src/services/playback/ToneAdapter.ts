@@ -74,7 +74,8 @@ export class ToneAdapter {
 
       if (this.useSampler) {
         // US3: Use Salamander Grand Piano samples for realistic sound
-        // Feature 025: Gracefully fall back to PolySynth if samples fail to load (offline mode)
+        // Feature 025: Samples are bundled locally (public/audio/salamander/) for full offline support.
+        // Gracefully fall back to PolySynth if samples fail to load.
         try {
           this.sampler = new Tone.Sampler({
             urls: {
@@ -110,7 +111,7 @@ export class ToneAdapter {
               C8: "C8.mp3"
             },
             release: 1,
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
+            baseUrl: `${import.meta.env.BASE_URL}audio/salamander/`,
             volume: -5,
           }).toDestination();
 
@@ -121,9 +122,9 @@ export class ToneAdapter {
             new Promise((_, reject) => setTimeout(() => reject(new Error('Sample load timeout')), 5000))
           ]);
           
-          console.log('[ToneAdapter] Piano samples loaded successfully');
+          console.log('[ToneAdapter] Piano samples loaded successfully (local/offline-ready)');
         } catch (sampleError) {
-          console.warn('[ToneAdapter] Failed to load piano samples (offline mode?), falling back to PolySynth:', sampleError);
+          console.warn('[ToneAdapter] Failed to load local piano samples, falling back to PolySynth:', sampleError);
           this.sampler = null;
           this.useSampler = false;
         }

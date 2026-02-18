@@ -1,0 +1,11 @@
+Salamander Grand Piano
+======================
+Recorded by Alexander Holm
+License: Creative Commons Attribution 3.0 (CC-BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+
+Source: https://sfzinstruments.github.io/pianos/salamander
+Distributed via: https://tonejs.github.io/audio/salamander/
+
+These samples are used in MusiCore for offline piano playback.
+Attribution: "Salamander Grand Piano" by Alexander Holm (CC-BY 3.0)
