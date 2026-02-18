@@ -9,10 +9,15 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: #f8f9fa;
-  border-radius: 4px;
-  font-family: system-ui, -apple-system, sans-serif;
+  padding: 4px 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
   user-select: none;
 }
 

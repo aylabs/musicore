@@ -130,17 +130,17 @@ export function usePlaybackScroll(config: UsePlaybackScrollConfig): PlaybackScro
     if (!notes || notes.length === 0) {
       return [];
     }
-    // Rebuild index only when notes array changes (intentional ref access during render)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional ref access in useMemo for HighlightIndex caching — not for render output.
+    /* eslint-disable react-hooks/refs */
     if (notes !== cachedNotesRef.current) {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (!highlightIndexRef.current) {
-        highlightIndexRef.current = new HighlightIndex(); // eslint-disable-line react-hooks/exhaustive-deps
+        highlightIndexRef.current = new HighlightIndex();
       }
-      highlightIndexRef.current.build(notes); // eslint-disable-line react-hooks/exhaustive-deps
-      cachedNotesRef.current = notes; // eslint-disable-line react-hooks/exhaustive-deps
+      highlightIndexRef.current.build(notes);
+      cachedNotesRef.current = notes;
     }
-    return highlightIndexRef.current!.findPlayingNoteIds(currentTick); // eslint-disable-line react-hooks/exhaustive-deps
+    return highlightIndexRef.current!.findPlayingNoteIds(currentTick);
+    /* eslint-enable react-hooks/refs */
   }, [notes, currentTick]);
   
   return {

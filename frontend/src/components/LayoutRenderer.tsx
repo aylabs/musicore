@@ -133,15 +133,21 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
   /**
    * Feature 024 (T013): Only re-render SVG for structural changes.
-   * Returns false for highlight-only and selection-only changes —
-   * those are handled by the rAF-driven updateHighlights() loop.
+   * Returns false for highlight-only changes — those are handled by the
+   * rAF-driven updateHighlights() loop.
+   *
+   * Feature 027 (T003): selectedNoteId triggers a structural re-render so
+   * the orange selection fill is applied to the correct glyph elements.
+   * Bug: omitting selectedNoteId meant tapping a note never showed the
+   * orange highlight because shouldComponentUpdate returned false.
    */
   shouldComponentUpdate(nextProps: LayoutRendererProps): boolean {
     return (
       nextProps.layout !== this.props.layout ||
       nextProps.config !== this.props.config ||
       nextProps.viewport !== this.props.viewport ||
-      nextProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap
+      nextProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap ||
+      nextProps.selectedNoteId !== this.props.selectedNoteId
     );
   }
 
@@ -582,6 +588,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       'transform',
       `translate(${bracket_glyph.x}, ${bracket_glyph.y}) scale(1, ${bracket_glyph.scale_y.toFixed(3)})`
     );
+    // Feature 027 (T035): Bracket uses top-anchor semantics — override renderGlyph's
+    // default 'middle' dominant-baseline. With Rust fix (T034, y=top_y), 'hanging'
+    // aligns the glyph's visual top with the top staff line coordinate.
+    bracketGlyphElement.setAttribute('dominant-baseline', 'hanging');
     // Use lowercase for data attribute value
     bracketGlyphElement.setAttribute(
       'data-bracket-type', 
@@ -742,6 +752,31 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
         glyphElement.style.cursor = 'pointer';
       }
       glyphRunGroup.appendChild(glyphElement);
+
+      // Feature 027 (T016): Transparent hit-rect overlay per notehead (FR-006, SC-006).
+      // Minimum 44px touch target per WCAG (Constitution VI: use Rust bounding_box geometry).
+      // renderScale defaults to 1 when not provided (layout coords ≈ CSS pixels).
+      if (noteId) {
+        const MIN_TOUCH_PX = 44;
+        const renderScale = 1; // layout units are in CSS-pixel equivalents at scale=1
+        const bb = glyph.bounding_box;
+        const hitW = Math.max(bb.width, MIN_TOUCH_PX / renderScale);
+        const hitH = Math.max(bb.height, MIN_TOUCH_PX / renderScale);
+        // Center the enlarged hit rect over the glyph bounding box
+        const hitX = bb.x - (hitW - bb.width) / 2;
+        const hitY = bb.y - (hitH - bb.height) / 2;
+
+        const hitRect = createSVGElement('rect') as SVGRectElement;
+        hitRect.setAttribute('x', hitX.toString());
+        hitRect.setAttribute('y', hitY.toString());
+        hitRect.setAttribute('width', hitW.toString());
+        hitRect.setAttribute('height', hitH.toString());
+        hitRect.setAttribute('fill', 'transparent');
+        hitRect.setAttribute('pointer-events', 'all');
+        hitRect.setAttribute('cursor', 'pointer');
+        (hitRect as SVGElement).dataset.noteId = noteId;
+        glyphRunGroup.appendChild(hitRect);
+      }
     }
 
     return glyphRunGroup;

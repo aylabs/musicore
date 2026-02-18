@@ -1465,7 +1465,7 @@ fn create_bracket_glyph(
     let top_y = first_staff.staff_lines[0].y_position;
     let bottom_y = last_staff.staff_lines[4].y_position;
     let height = bottom_y - top_y;
-    let center_y = (top_y + bottom_y) / 2.0;
+    let _center_y = (top_y + bottom_y) / 2.0;
 
     // Scale glyph to match actual bracket height
     const BRACE_NATURAL_HEIGHT: f32 = 320.0; // SMuFL brace U+E000 at fontSize 80
@@ -1482,7 +1482,11 @@ fn create_bracket_glyph(
     BracketGlyph {
         codepoint,
         x: x_position,
-        y: center_y,
+        // Feature 027 (T034): Use top_y (top anchor) instead of center_y.
+        // SMuFL brace U+E000 is rendered with dominant-baseline="hanging" in the
+        // frontend, anchoring the glyph top to this y coordinate. Using center_y
+        // caused the brace to appear shifted down by half its height.
+        y: top_y,
         scale_y,
         bounding_box: BoundingBox {
             x: x_position - 5.0,

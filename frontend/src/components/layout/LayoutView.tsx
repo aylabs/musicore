@@ -4,14 +4,21 @@
  * Converts Score data to layout format and displays using LayoutRenderer
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Score, GlobalStructuralEvent, StaffStructuralEvent, Note } from '../../types/score';
 import type { PlaybackStatus, ITickSource } from '../../types/playback';
-import { ScoreViewer } from '../../pages/ScoreViewer';
+import { ScoreViewer, LABEL_MARGIN } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
 import { buildSourceToNoteIdMap } from '../../services/highlight/sourceMapping';
-import TempoControl from '../playback/TempoControl';
+
+/**
+ * BASE_SCALE mirrors the constant in pages/ScoreViewer: each layout unit = 0.5 CSS px.
+ * max_system_width (layout units) = containerWidth (CSS px) / BASE_SCALE - LABEL_MARGIN
+ */
+const BASE_SCALE = 0.5;
+/** Fallback width used only until the container is measured */
+const DEFAULT_SYSTEM_WIDTH = 2400;
 
 interface ConvertedScore {
   instruments: Array<{
@@ -154,10 +161,57 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, playbackStatus, tickSourceRef, allNotes }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, tickSourceRef, allNotes }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * Responsive system width: measure the container's CSS pixel width and convert
+   * to layout units so the layout engine always fills the available horizontal space.
+   * Formula: max_system_width = containerWidth / BASE_SCALE - LABEL_MARGIN
+   * This ensures ≥4 measures per system on a 10" tablet in landscape (≈1366px wide).
+   */
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    // Use viewport width directly — DOM elements (self or parent) can be wider
+    // than the viewport if they contain a previously-rendered wide score, creating
+    // a feedback loop. window.innerWidth is always the true available CSS width.
+    const measure = () => {
+      const width = document.documentElement.clientWidth;
+      console.log('[LayoutView] viewport clientWidth:', width, 'window.innerWidth:', window.innerWidth);
+      setContainerWidth(width);
+    };
+
+    measure(); // initial read
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(measure, 100);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      clearTimeout(debounceTimer);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  /**
+   * Layout units available for note content (adapts to container width).
+   * Uses the measured width when available; falls back to DEFAULT_SYSTEM_WIDTH
+   * before the first measurement.
+   *
+   * Clamped between 800 (narrow phones) and MAX_SYSTEM_WIDTH (prevents
+   * ultra-wide monitors from stretching measures across too few systems).
+   * MAX_SYSTEM_WIDTH 3000 ≈ 1575 CSS px — generous for tablets/laptops.
+   */
+  const MAX_SYSTEM_WIDTH = 3000;
+  const maxSystemWidth = containerWidth > 0
+    ? Math.min(MAX_SYSTEM_WIDTH, Math.max(800, Math.floor(containerWidth / BASE_SCALE) - LABEL_MARGIN))
+    : DEFAULT_SYSTEM_WIDTH;
 
   /**
    * Feature 019: Build mapping from layout source references to note IDs
@@ -168,6 +222,10 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
   }, [score, layout]);
 
   useEffect(() => {
+    // Wait for container measurement before computing layout — avoids computing
+    // with the fallback width then immediately recomputing with the real width.
+    if (containerWidth === 0) return;
+
     const computeAndSetLayout = async () => {
       try {
         setLoading(true);
@@ -176,9 +234,13 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
         // Convert score to layout format
         const layoutInput = convertScoreToLayoutFormat(score);
 
-        // Compute layout with complete config (now async)
+        console.log(`[LayoutView] Computing layout — containerWidth=${containerWidth}px, maxSystemWidth=${maxSystemWidth} layout units`);
+
+        // Compute layout filling the measured container width.
+        // max_system_width is in layout units; at BASE_SCALE=0.5 this equals
+        // the full container CSS width in pixels.
         const result = await computeLayout(layoutInput, {
-          max_system_width: 2400,
+          max_system_width: maxSystemWidth,
           system_height: 200,
           system_spacing: 100,
           units_per_space: 20, // 20 logical units = 1 staff space
@@ -200,11 +262,11 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
     };
 
     computeAndSetLayout();
-  }, [score]);
+  }, [score, maxSystemWidth]);
 
   if (loading) {
     return (
-      <div style={styles.container}>
+      <div ref={containerRef} style={styles.container}>
         <div style={styles.message}>
           <div style={styles.spinner}>🎼</div>
           <p>Computing layout from first voice...</p>
@@ -215,7 +277,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
   if (error) {
     return (
-      <div style={styles.container}>
+      <div ref={containerRef} style={styles.container}>
         <div style={styles.error}>
           <h3>⚠️ Layout Error</h3>
           <p>{error}</p>
@@ -232,7 +294,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
   if (!layout) {
     return (
-      <div style={styles.container}>
+      <div ref={containerRef} style={styles.container}>
         <div style={styles.message}>
           <p>No layout available</p>
         </div>
@@ -240,15 +302,10 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
     );
   }
 
+  // Feature 027 (T022): Removed blue info bar (instrument count + TempoControl).
+  // TempoControl moved to PlaybackControls compact strip (T025).
   return (
-    <div style={styles.container}>
-      <div style={styles.info}>
-        <span>🎵 Play View: All instruments ({score.instruments.length})</span>
-        {/* Feature 022: TempoControl in Play View */}
-        <div style={styles.tempoControlWrapper}>
-          <TempoControl disabled={playbackStatus === 'playing'} />
-        </div>
-      </div>
+    <div ref={containerRef} style={styles.container}>
       <ScoreViewer 
         layout={layout} 
         highlightedNoteIds={highlightedNoteIds}
@@ -298,19 +355,5 @@ const styles = {
     overflow: 'auto',
     maxHeight: '300px',
     fontSize: '0.875rem',
-  },
-  info: {
-    padding: '0.75rem 1rem',
-    backgroundColor: '#e3f2fd',
-    borderBottom: '1px solid #90caf9',
-    fontSize: '0.875rem',
-    fontWeight: 'bold' as const,
-    color: '#1976d2',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tempoControlWrapper: {
-    marginLeft: '1rem',
   },
 };
