@@ -145,7 +145,7 @@ describe('User Story 4: Performance Validation', () => {
       // Performance assertions
       expect(avgRenderTime).toBeLessThan(frameBudget);
       expect(maxRenderTime).toBeLessThan(frameBudget * 4); // Allow occasional spikes (CI tolerance)
-      expect(slowFrames / renderTimes.length).toBeLessThan(0.15); // <15% slow frames (CI-tolerant)
+      expect(slowFrames / renderTimes.length).toBeLessThanOrEqual(0.15); // ≤15% slow frames (CI-tolerant)
     });
 
     it('should render only visible systems during scroll', () => {

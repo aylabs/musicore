@@ -50,14 +50,14 @@ export async function initWasm(): Promise<WasmModule> {
         ? import.meta.env.BASE_URL 
         : `${import.meta.env.BASE_URL}/`;
       
-      // Add cache-busting timestamp to force reload of updated WASM module
-      // Manual version bump when WASM changes: increment this number
-      const wasmVersion = 2; // Increment when WASM binary changes
-      const cacheBuster = `${wasmVersion}.${Date.now()}`;
-      const jsUrl = new URL(`${basePath}wasm/musicore_backend.js?v=${cacheBuster}`, window.location.origin);
-      const wasmUrl = new URL(`${basePath}wasm/musicore_backend_bg.wasm?v=${cacheBuster}`, window.location.origin);
+      // WASM versioning: Service worker precache uses revision hashes for cache invalidation.
+      // Do NOT add Date.now() or random cache busters — they create unique URLs that
+      // the service worker cannot match to precached entries, breaking offline mode.
+      // When WASM binary changes, rebuild frontend → new SW revision hash handles invalidation.
+      const jsUrl = new URL(`${basePath}wasm/musicore_backend.js`, window.location.origin);
+      const wasmUrl = new URL(`${basePath}wasm/musicore_backend_bg.wasm`, window.location.origin);
       
-      console.log('[WASM] Loading module:', { jsUrl: jsUrl.href, wasmUrl: wasmUrl.href, cacheBuster, version: wasmVersion });
+      console.log('[WASM] Loading module:', { jsUrl: jsUrl.href, wasmUrl: wasmUrl.href });
       
       // Dynamically import the JS bindings
       const wasm = await import(/* @vite-ignore */ jsUrl.href) as WasmModule;
