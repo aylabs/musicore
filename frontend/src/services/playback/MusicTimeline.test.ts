@@ -25,6 +25,9 @@ describe('MusicTimeline - usePlayback hook', () => {
           startTransport: vi.fn(),
           stopTransport: vi.fn(),
           clearSchedule: vi.fn(),
+          getTransportSeconds: vi.fn(() => 0),
+          scheduleRepeat: vi.fn(() => 999),
+          clearTransportEvent: vi.fn(),
         })),
       },
     }));

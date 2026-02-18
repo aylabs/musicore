@@ -122,6 +122,14 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Initialize to -Infinity so the first updateViewport() call always runs. */
   private lastAppliedScrollTop: number = -Infinity;
 
+  /** Reverse index: noteId → systemIndex. Built once when sourceToNoteIdMap changes.
+   * Replaces the O(systems × notes) nested scan in scrollToHighlightedSystem
+   * with an O(k) lookup where k = number of highlighted notes. */
+  private noteIdToSystemIndex: Map<string, number> = new Map();
+
+  /** The sourceToNoteIdMap instance used to build noteIdToSystemIndex */
+  private cachedSourceMap: Map<string, string> | null = null;
+
   /** Feature 024 (T027): Minimum scroll delta before updating viewport state (pixels) */
   private static readonly SCROLL_THRESHOLD = 4;
 
@@ -301,22 +309,40 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Checks visibility: even if the same system index, re-scroll if it has
    * drifted out of the visible viewport area.
    */
+  /**
+   * Build the reverse index noteId → systemIndex from sourceToNoteIdMap.
+   * Called lazily before the first scroll lookup and whenever the map changes.
+   * O(N) — runs once per score/layout change, not during playback.
+   */
+  private ensureNoteIdIndex(): void {
+    const { sourceToNoteIdMap } = this.props;
+    if (!sourceToNoteIdMap || sourceToNoteIdMap === this.cachedSourceMap) return;
+    this.cachedSourceMap = sourceToNoteIdMap;
+    this.noteIdToSystemIndex.clear();
+    for (const [key, noteId] of sourceToNoteIdMap.entries()) {
+      const systemIndex = parseInt(key.split('/')[0], 10);
+      // Keep the lowest system index for each noteId (first occurrence)
+      if (!this.noteIdToSystemIndex.has(noteId)) {
+        this.noteIdToSystemIndex.set(noteId, systemIndex);
+      }
+    }
+  }
+
   private scrollToHighlightedSystem(): void {
     const { layout, highlightedNoteIds, sourceToNoteIdMap } = this.props;
     if (!layout || !highlightedNoteIds || !sourceToNoteIdMap) return;
 
-    // Find the system index containing highlighted notes
-    let targetSystemIndex = -1;
+    // Ensure reverse index is up-to-date (O(N) once, then cached)
+    this.ensureNoteIdIndex();
 
-    for (const system of layout.systems) {
-      for (const [key, noteId] of sourceToNoteIdMap.entries()) {
-        const keySystemIndex = parseInt(key.split('/')[0], 10);
-        if (keySystemIndex === system.index && highlightedNoteIds.has(noteId)) {
-          targetSystemIndex = system.index;
-          break;
-        }
+    // O(k) lookup: find system index for any highlighted note
+    let targetSystemIndex = -1;
+    for (const noteId of highlightedNoteIds) {
+      const systemIndex = this.noteIdToSystemIndex.get(noteId);
+      if (systemIndex !== undefined) {
+        targetSystemIndex = systemIndex;
+        break;
       }
-      if (targetSystemIndex >= 0) break;
     }
 
     if (targetSystemIndex < 0) {

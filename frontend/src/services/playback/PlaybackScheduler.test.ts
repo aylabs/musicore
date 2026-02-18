@@ -8,6 +8,9 @@ vi.mock('./ToneAdapter', () => {
   const mockStopAll = vi.fn();
   const mockInit = vi.fn().mockResolvedValue(undefined);
   const mockGetCurrentTime = vi.fn(() => 0);
+  const mockGetTransportSeconds = vi.fn(() => 0);
+  const mockScheduleRepeat = vi.fn(() => 999); // return a fake event ID
+  const mockClearTransportEvent = vi.fn();
 
   return {
     ToneAdapter: {
@@ -16,6 +19,9 @@ vi.mock('./ToneAdapter', () => {
         playNote: mockPlayNote,
         stopAll: mockStopAll,
         getCurrentTime: mockGetCurrentTime,
+        getTransportSeconds: mockGetTransportSeconds,
+        scheduleRepeat: mockScheduleRepeat,
+        clearTransportEvent: mockClearTransportEvent,
         isInitialized: vi.fn(() => true),
       })),
     },
