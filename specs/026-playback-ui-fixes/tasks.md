@@ -200,6 +200,58 @@
 
 ---
 
+## Phase 8: Bug Fixes Found During Testing
+
+*These bugs were discovered and fixed during testing of the user stories above. Included here for complete traceability.*
+
+### Bug Fix 1 — Note Highlight Broken for Imported Scores (commit 16d2c31)
+
+**Root Cause**: React StrictMode double-mounts components in dev: constructor builds the HighlightIndex → `componentWillUnmount` clears it → `componentDidMount` #2 starts the rAF highlight loop with an empty index. Demo worked on tablet because it runs the production build (no StrictMode).
+
+- [X] T015 Fix `LayoutRenderer.componentDidMount` in `frontend/src/components/LayoutRenderer.tsx`
+  - Rebuild `HighlightIndex` in `componentDidMount` if index was cleared (noteCount=0 but notes prop non-empty)
+  - Preserves the existing index in `componentDidUpdate` when notes prop transiently becomes `[]` during score state transitions (guards against empty-notes re-renders wiping a valid index)
+  - Update mock in `frontend/src/services/playback/MusicTimeline.test.ts` for completeness
+
+**Checkpoint**: Imported score note highlighting works identically to the built-in demo on all builds
+
+---
+
+### Bug Fix 2 — Large Score Playback Degrades on Tablet (commit e82a8d5)
+
+**Root Cause**: Three independent O(n) or O(S×N) bottlenecks that scale with absolute score position, each called multiple times per second during playback.
+
+- [X] T016 Windowed scheduling in `frontend/src/services/playback/PlaybackScheduler.ts`
+  - Replace the full-score `Tone.Transport.schedule()` loop with a 10-second lookahead window + 4-second refill interval using a Transport repeating event
+  - `pendingNotes`, `pendingIndex`, `refillEventId` instance fields track scheduling state
+  - `clearSchedule()` cancels refill loop and clears pending notes before calling `stopAll()`
+  - Constants: `LOOKAHEAD_SECONDS = 10`, `REFILL_INTERVAL_SECONDS = 4`
+
+- [X] T017 Add three new methods to `frontend/src/services/playback/ToneAdapter.ts`
+  - `getTransportSeconds(): number` — returns `Tone.Transport.seconds` for window boundary calculation
+  - `scheduleRepeat(callback, intervalSeconds): number` — wraps `Tone.Transport.scheduleRepeat()`; returns event ID
+  - `clearTransportEvent(eventId: number): void` — calls `Tone.Transport.clear(id)`
+  - Update mocks in `MusicTimeline.test.ts` and `playback-integration.test.tsx` to include the three new methods
+
+- [X] T018 Reverse index in `frontend/src/pages/ScoreViewer.tsx`
+  - Add `noteIdToSystemIndex: Map<string, number>` and `cachedSourceMap` instance fields
+  - Add `ensureNoteIdIndex()`: builds the reverse index from `sourceToNoteIdMap` (O(N) once, then cached by reference)
+  - Replace the O(S×N) nested loop in `scrollToHighlightedSystem()` with an O(k) lookup via `noteIdToSystemIndex.get(noteId)` where k = highlighted notes
+
+- [X] T019 Skip unnecessary SVG rebuilds on viewport scroll in `frontend/src/components/LayoutRenderer.tsx`
+  - Add `updateViewBox()`: updates SVG `viewBox` attribute only (one DOM call, no DOM rebuild)
+  - Add `visibleSystemsChanged(prevViewport)`: compares system indices before/after via `getVisibleSystems()`
+  - In `componentDidUpdate`: viewport-only changes call `updateViewBox()` unconditionally; only call `renderSVG()` when `visibleSystemsChanged()` returns true
+  - Fix slow-frame warning threshold: replace hardcoded `16` with `this.frameInterval` (33ms on mobile, 16ms on desktop)
+
+**Checkpoint**: Moonlight Sonata (4932 notes) plays fluently on tablet from any measure, including measures far from the start; 861 tests pass
+  - US1: replay after natural end, replay after manual stop, multiple consecutive replays
+  - US2: multi-instrument score labels visible on all systems
+  - US3: ⏮ button present, works after natural end and mid-playback
+  - US4: page layout clean after natural end, no overflow
+
+---
+
 ## Dependency Graph
 
 ```
@@ -263,15 +315,17 @@ US1 is the highest-impact fix (core replay loop broken). After T003, the app is 
 
 | Metric | Count |
 |--------|-------|
-| Total tasks | 14 |
+| Total tasks | 19 |
 | Phase 1 (Setup) | 1 |
 | Phase 3 — US1 (P1) | 2 |
 | Phase 4 — US2 (P2) | 2 |
 | Phase 5 — US3 (P3) | 4 |
 | Phase 6 — US4 (P4) | 2 |
 | Phase 7 (Polish) | 3 |
+| Phase 8 — Bug Fix 1 (Highlight / StrictMode) | 1 |
+| Phase 8 — Bug Fix 2 (Performance) | 4 |
 | Parallelizable [P] tasks | 5 (T004, T005, T007, T008, T012, T014) |
 | New test files | 2 (`MusicTimeline.replay.test.ts`, `PlaybackControls.returnToStart.test.tsx`) |
 | Files modified (existing) | 1 (`ScoreViewer.layout.test.tsx` — extended) |
-| Source files touched | 5 (`MusicTimeline.ts`, `pages/ScoreViewer.tsx`, `PlaybackControls.tsx`, `PlaybackControls.css`, `components/ScoreViewer.tsx`) |
+| Source files touched | 9 (`MusicTimeline.ts`, `pages/ScoreViewer.tsx`, `PlaybackControls.tsx`, `PlaybackControls.css`, `components/ScoreViewer.tsx`, `LayoutRenderer.tsx`, `PlaybackScheduler.ts`, `ToneAdapter.ts`, `components/ScoreViewer.tsx`) |
 | MVP scope | US1 only (T001–T003) |

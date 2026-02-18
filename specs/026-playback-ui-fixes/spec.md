@@ -2,7 +2,7 @@
 
 **Feature Branch**: `026-playback-ui-fixes`  
 **Created**: 2026-02-18  
-**Status**: Draft  
+**Status**: Completed  
 **Input**: User description: "When a score playback ends, replay mixes scores and the play status is wrong. When the playback ends, we need a button to return to the start of the score. When the playback ends, the score container is larger than the web page containing it. During the playback, the label of the instrument for each system is cut because the systems container seems to be wider to the left than the web page viewport for it"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -78,6 +78,50 @@ A musician's score has finished playing. The score container fits within the pag
 - What happens on very short scores (1-2 measures) where playback ends almost immediately after starting?
 - How does "Return to Start" behave if pressed while the score is already at measure 1?
 - Does the container overflow bug compound with the label clipping bug — do both fixes need to be applied together or are they independent?
+
+---
+
+## Bug Fixes Found During Testing
+
+The following bugs were discovered and fixed during the implementation of the four user stories above. They are tracked here as part of this branch's delivered scope.
+
+### Bug Fix 1 — Note Highlight Broken for Imported Scores (Priority: P1)
+
+When importing a MusicXML score, note highlighting during playback stopped working entirely (no notes were highlighted). The built-in demo score worked correctly while imported scores were silent.
+
+**Root Cause**: React StrictMode (active in dev mode) double-mounts every component — constructor builds the HighlightIndex (301 notes), `componentWillUnmount` clears it, then `componentDidMount` #2 starts the rAF loop with an empty index. In production there is no double-mount, so the demo worked on tablet (production build).
+
+**Fix**: `LayoutRenderer.componentDidMount` now rebuilds the HighlightIndex if it was cleared (noteCount=0 but notes prop is non-empty). `componentDidUpdate` also preserves the existing index when the notes prop transiently becomes empty during score state transitions.
+
+**Files**: `frontend/src/components/LayoutRenderer.tsx`  
+**Commit**: `16d2c31`
+
+---
+
+### Bug Fix 2 — Large Score Playback Degrades on Tablet (Priority: P1)
+
+Playing a large score (Moonlight Sonata, 4932 notes) on tablet degraded progressively — the further from the start, the slower playback became. Starting from a pinned note at measure 145 was immediately slow, even before any scrolling occurred. Three independent bottlenecks were identified:
+
+**Bottleneck A — Tone.js Transport Overload**  
+`PlaybackScheduler.scheduleNotes()` created one `Tone.Transport.schedule()` event per note, totalling ~5000 events. Tone.js Transport processes ALL events on every audio frame → O(n) per frame. On mobile this saturated the main thread.
+
+*Fix*: Windowed scheduling with a 10-second lookahead window and a 4-second refill interval. Active Transport events stay at ~200–400 at any time instead of ~5000.  
+New `ToneAdapter` methods: `getTransportSeconds()`, `scheduleRepeat()`, `clearTransportEvent()`.
+
+**Bottleneck B — O(S×N) Auto-Scroll Scan**  
+`ScoreViewer.scrollToHighlightedSystem()` used a nested loop (systems × `sourceToNoteIdMap` entries) with string-splitting on every iteration. At measure 145 (~30 systems deep): ~148K iterations per call, called ~4–10 times/second.
+
+*Fix*: Reverse index `noteIdToSystemIndex: Map<string, number>` built once when `sourceToNoteIdMap` changes. Per-call lookup is O(k) where k = highlighted notes (~1–4).
+
+**Bottleneck C — Unnecessary SVG Rebuilds During Scroll**  
+Every viewport change (including auto-scroll animation frames) triggered a full `renderSVG()` → clear all SVG children → rebuild all visible systems. On tablet this took ~30ms per call even when visible systems hadn't changed.
+
+*Fix*: Viewport-only changes now only update the SVG `viewBox` attribute (one cheap DOM call). A full rebuild only runs when `getVisibleSystems()` returns a different set of systems. Also: the slow-frame warning threshold was hardcoded to 16ms (60fps) even on tablet where the target is 33ms (30fps); now uses `this.frameInterval`.
+
+**Files**: `frontend/src/services/playback/PlaybackScheduler.ts`, `frontend/src/services/playback/ToneAdapter.ts`, `frontend/src/pages/ScoreViewer.tsx`, `frontend/src/components/LayoutRenderer.tsx`  
+**Commit**: `e82a8d5`
+
+---
 
 ## Requirements *(mandatory)*
 
