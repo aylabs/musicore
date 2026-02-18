@@ -149,6 +149,14 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Render SVG after component mounts and start highlight loop
    */
   componentDidMount(): void {
+    // React StrictMode in dev unmounts+remounts every component once.
+    // componentWillUnmount calls highlightIndex.clear(), so by the time the
+    // second componentDidMount runs the index is empty. Rebuild it here if needed.
+    if (this.props.notes && this.props.notes.length > 0 &&
+        (!this.highlightIndex || this.highlightIndex.noteCount === 0)) {
+      if (!this.highlightIndex) this.highlightIndex = new HighlightIndex();
+      this.highlightIndex.build(this.props.notes);
+    }
     this.renderSVG();
     this.svgRef.current?.addEventListener('click', this.handleSVGClick);
     this.startHighlightLoop();
@@ -183,11 +191,15 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     }
 
     // Rebuild highlight index when notes change
-    if (prevProps.notes !== this.props.notes && this.props.notes) {
-      if (!this.highlightIndex) {
-        this.highlightIndex = new HighlightIndex();
+    if (prevProps.notes !== this.props.notes) {
+      const newNotes = this.props.notes;
+      if (newNotes && newNotes.length > 0) {
+        if (!this.highlightIndex) {
+          this.highlightIndex = new HighlightIndex();
+        }
+        this.highlightIndex.build(newNotes);
       }
-      this.highlightIndex.build(this.props.notes);
+      // If notes becomes empty, preserve existing index (transient state during score transitions)
     }
   }
 
@@ -658,7 +670,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // override fill/stroke via !important. Inline blue fills would persist
     // when the CSS class is removed, causing stale highlights.
     const { sourceToNoteIdMap } = this.props;
-    
+
     for (const glyph of run.glyphs) {
       // Resolve noteId from source reference
       let noteId: string | undefined;

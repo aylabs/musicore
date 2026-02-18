@@ -175,15 +175,6 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
         // Convert score to layout format
         const layoutInput = convertScoreToLayoutFormat(score);
-        
-        console.log('[LayoutView] Converting score to layout:', {
-          originalScore: score,
-          layoutInput,
-          firstInstrument: score.instruments[0],
-          firstStaff: score.instruments[0]?.staves[0],
-          firstVoice: score.instruments[0]?.staves[0]?.voices[0],
-          firstNotes: score.instruments[0]?.staves[0]?.voices[0]?.interval_events?.slice(0, 3),
-        });
 
         // Compute layout with complete config (now async)
         const result = await computeLayout(layoutInput, {
