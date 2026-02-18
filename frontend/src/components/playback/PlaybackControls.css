@@ -128,6 +128,18 @@
   background-color: #e53935;
 }
 
+/* Feature 026 (US3): Return to Start button */
+.return-to-start-button {
+  background-color: #607d8b;
+  color: white;
+  min-width: 48px;
+  padding: 10px 14px;
+}
+
+.return-to-start-button:hover:not(:disabled) {
+  background-color: #546e7a;
+}
+
 /* No notes message - US1 T027 */
 .no-notes-message {
   text-align: center;

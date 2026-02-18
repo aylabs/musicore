@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { Score, Note } from "../types/score";
 import { apiClient } from "../services/score-api";
 import { InstrumentList } from "./InstrumentList";
@@ -329,6 +329,29 @@ export function ScoreViewer({
   }, [playbackState.status]);
 
   /**
+   * Feature 026 (US3): Return to Start
+   * Stop playback and scroll the page back to measure 1.
+   * Also provides the scroll-reset mechanism reused by the US4 auto-end effect.
+   */
+  const handleReturnToStart = useCallback(() => {
+    playbackState.stop();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [playbackState]);
+
+  /**
+   * Feature 026 (US4): Auto-scroll to top when natural playback ends.
+   * Detects the transition 'playing' → 'stopped' and resets scroll position,
+   * preventing the inner div from visually overflowing the outer container.
+   */
+  const prevStatusRef = useRef<string>('stopped');
+  useEffect(() => {
+    if (prevStatusRef.current === 'playing' && playbackState.status === 'stopped') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    prevStatusRef.current = playbackState.status;
+  }, [playbackState.status]);
+
+  /**
    * Auto-play demo when loaded (Feature 013)
    */
   useEffect(() => {
@@ -441,6 +464,7 @@ export function ScoreViewer({
         onPlay={playbackState.play}
         onPause={playbackState.pause}
         onStop={playbackState.stop}
+        onReturnToStart={handleReturnToStart}
         compact={viewMode !== 'individual'}
         currentTick={playbackState.currentTick}
         totalDurationTicks={playbackState.totalDurationTicks}

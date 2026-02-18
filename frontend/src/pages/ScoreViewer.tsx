@@ -89,6 +89,13 @@ interface ScoreViewerState {
  */
 const BASE_SCALE = 0.5;
 
+/**
+ * Label margin: extra space on the left of each system for instrument name labels.
+ * Feature 026 (Fix P2): Increased from 80 → 150 layout units to prevent clipping
+ * of multi-instrument names at typical render scales.
+ */
+export const LABEL_MARGIN = 150;
+
 export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Reference to scroll container */
   private containerRef: RefObject<HTMLDivElement | null>;
@@ -273,7 +280,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const viewportWidth = this.props.layout.total_width;
 
     // Expand viewport leftward to show instrument name labels (Feature 023)
-    const labelMargin = 80;
+    const labelMargin = LABEL_MARGIN;
     this.setState({
       viewport: {
         x: -labelMargin,
@@ -444,7 +451,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     // Calculate scroll container dimensions based on layout and renderScale
     // Include label margin in width so SVG viewBox and element aspect ratios match
-    const labelMargin = 80; // Must match value in updateViewport
+    const labelMargin = LABEL_MARGIN; // Must match value in updateViewport
     const renderScale = zoom * BASE_SCALE;
     const totalHeight = layout.total_height * renderScale;
     const totalWidth = (layout.total_width + labelMargin) * renderScale;

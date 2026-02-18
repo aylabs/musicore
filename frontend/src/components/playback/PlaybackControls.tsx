@@ -33,6 +33,8 @@ export interface PlaybackControlsProps {
   tempo?: number;
   /** Feature 022: Tempo multiplier from TempoControl */
   tempoMultiplier?: number;
+  /** Feature 026 (US3): Handler for Return to Start button — scrolls view to measure 1 */
+  onReturnToStart?: () => void;
 }
 
 /**
@@ -71,6 +73,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onStop,
   compact = false, // Feature 010: Compact mode for stacked view
   rightActions = null, // Feature 010: Additional actions for right side
+  onReturnToStart, // Feature 026 (US3): Return to Start handler
   currentTick = 0, // Feature 022: Playback timer
   totalDurationTicks = 0,
   tempo = 120,
@@ -145,6 +148,19 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         >
           ⏹ Stop
         </button>
+
+        {/* Feature 026 (US3): Return to Start — scroll view to measure 1 */}
+        {onReturnToStart && (
+          <button
+            className="playback-button return-to-start-button"
+            onClick={onReturnToStart}
+            disabled={status === 'playing'}
+            title="Return to Start"
+            aria-label="Return to Start"
+          >
+            ⏮
+          </button>
+        )}
       </div>
 
       {/* Feature 022: Playback timer display (visible in all modes) */}

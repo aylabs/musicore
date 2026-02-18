@@ -26,7 +26,7 @@
 
 **Purpose**: Ensure test directories exist for the three new test files. No new npm dependencies required.
 
-- [ ] T001 Verify/create test subdirectories: `frontend/tests/services/`, `frontend/tests/components/`, `frontend/tests/pages/` (run `mkdir -p` as needed; directories may already exist)
+- [X] T001 Verify/create test subdirectories: `frontend/tests/services/`, `frontend/tests/components/`, `frontend/tests/pages/` (run `mkdir -p` as needed; directories may already exist)
 
 **Checkpoint**: Test directories ready — user story test files can now be created
 
@@ -48,7 +48,7 @@
 
 > **Write test FIRST — verify it FAILS before implementing the fix.**
 
-- [ ] T002 [US1] Write failing replay cleanup tests in `frontend/tests/services/MusicTimeline.replay.test.ts`
+- [X] T002 [US1] Write failing replay cleanup tests in `frontend/tests/services/MusicTimeline.replay.test.ts`
   - Test: natural-end timeout calls `adapter.stopAll()` before setting `status='stopped'`
   - Test: natural-end timeout calls `scheduler.clearSchedule()` before setting `status='stopped'`
   - Test: `play()` after natural end does not produce overlapping scheduled events
@@ -57,7 +57,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Fix natural-end timeout in `frontend/src/services/playback/MusicTimeline.ts`
+- [X] T003 [US1] Fix natural-end timeout in `frontend/src/services/playback/MusicTimeline.ts`
   - Inside the `window.setTimeout` natural-end callback, add before the state setters:
     1. `scheduler.clearSchedule()`
     2. `adapter.stopAll()`
@@ -80,14 +80,14 @@
 
 > **Write test FIRST — verify it FAILS before implementing the fix.**
 
-- [ ] T004 [P] [US2] Write failing labelMargin tests in `frontend/tests/pages/ScoreViewer.layout.test.tsx`
+- [X] T004 [P] [US2] Write failing labelMargin tests in `frontend/tests/pages/ScoreViewer.layout.test.tsx`
   - Test: exported/accessible `labelMargin` constant equals 150
   - Test: `totalWidth = (layout.total_width + 150) * renderScale` (label area included)
   - Test: viewport `x` offset equals `-150` (viewBox starts 150 units left of origin)
 
 ### Implementation for User Story 2
 
-- [ ] T005 [P] [US2] Change `labelMargin` from `80` to `150` in **both** occurrences in `frontend/src/pages/ScoreViewer.tsx`
+- [X] T005 [P] [US2] Change `labelMargin` from `80` to `150` in **both** occurrences in `frontend/src/pages/ScoreViewer.tsx`
   - Occurrence 1: inside `updateViewport()` — `const labelMargin = 80;`
   - Occurrence 2: inside `render()` — `const labelMargin = 80;`
   - Verify no other hardcoded `80` margin references exist in this file
@@ -106,7 +106,7 @@
 
 > **Write test FIRST — verify it FAILS before implementing the fix.**
 
-- [ ] T006 [US3] Write failing Return-to-Start button tests in `frontend/tests/components/PlaybackControls.returnToStart.test.tsx`
+- [X] T006 [US3] Write failing Return-to-Start button tests in `frontend/tests/components/PlaybackControls.returnToStart.test.tsx`
   - Test: ⏮ button renders when `onReturnToStart` prop is provided
   - Test: ⏮ button does NOT render when `onReturnToStart` is omitted (backward compat)
   - Test: ⏮ button is enabled when `status='stopped'`
@@ -117,7 +117,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T007 [P] [US3] Add `onReturnToStart` prop and ⏮ button to `frontend/src/components/playback/PlaybackControls.tsx`
+- [X] T007 [P] [US3] Add `onReturnToStart` prop and ⏮ button to `frontend/src/components/playback/PlaybackControls.tsx`
   - Add `onReturnToStart?: () => void` to `PlaybackControlsProps` interface
   - Inside `.playback-buttons`, after the Stop button, render:
     ```tsx
@@ -134,11 +134,11 @@
     )}
     ```
 
-- [ ] T008 [P] [US3] Add `.return-to-start-button` styles to `frontend/src/components/playback/PlaybackControls.css`
+- [X] T008 [P] [US3] Add `.return-to-start-button` styles to `frontend/src/components/playback/PlaybackControls.css`
   - Style consistent with existing `.playback-button` siblings
   - The button should visually match Play/Pause/Stop buttons in size and spacing
 
-- [ ] T009 [US3] Add `handleReturnToStart` and wire to `PlaybackControls` in `frontend/src/components/ScoreViewer.tsx` (depends on T007)
+- [X] T009 [US3] Add `handleReturnToStart` and wire to `PlaybackControls` in `frontend/src/components/ScoreViewer.tsx` (depends on T007)
   - Add callback:
     ```typescript
     const handleReturnToStart = useCallback(() => {
@@ -162,14 +162,14 @@
 
 > **Add to existing test file — verify new tests FAIL before implementing the fix.**
 
-- [ ] T010 [US4] Add scroll-reset-on-natural-end tests to `frontend/tests/pages/ScoreViewer.layout.test.tsx`
+- [X] T010 [US4] Add scroll-reset-on-natural-end tests to `frontend/tests/pages/ScoreViewer.layout.test.tsx`
   - Test: after playback status transitions `'playing' → 'stopped'`, `window.scrollTo` is called with `{ top: 0 }`
   - Test: `window.scrollTo` is NOT called when status transitions `'stopped' → 'playing'` (no spurious scroll on start)
   - Test: score container height equals `totalHeight` (inner div does not exceed outer div)
 
 ### Implementation for User Story 4
 
-- [ ] T011 [US4] Add `prevStatusRef` and scroll-to-top `useEffect` in `frontend/src/components/ScoreViewer.tsx`
+- [X] T011 [US4] Add `prevStatusRef` and scroll-to-top `useEffect` in `frontend/src/components/ScoreViewer.tsx`
   - Add ref: `const prevStatusRef = useRef<PlaybackStatus>('stopped');`
   - Add effect after existing effects:
     ```typescript
@@ -190,9 +190,9 @@
 
 **Purpose**: Overflow guard and final validation across all fixes
 
-- [ ] T012 [P] Add `overflow-x: hidden` to outer page/app container in `frontend/src/index.css` or `frontend/src/App.css` to prevent horizontal scroll from exposing the label area boundary during viewport resize events
-- [ ] T013 Run full Vitest test suite (`cd frontend && npx vitest run`) and confirm all new and existing tests pass
-- [ ] T014 [P] Manual smoke test following all scenarios in `specs/026-playback-ui-fixes/quickstart.md`:
+- [X] T012 [P] Add `overflow-x: hidden` to outer page/app container in `frontend/src/index.css` to prevent horizontal scroll from exposing the label area boundary during viewport resize events
+- [X] T013 Run full Vitest test suite (`cd frontend && npx vitest run`) and confirm all new and existing tests pass
+- [X] T014 [P] Manual smoke test following all scenarios in `specs/026-playback-ui-fixes/quickstart.md`:
   - US1: replay after natural end, replay after manual stop, multiple consecutive replays
   - US2: multi-instrument score labels visible on all systems
   - US3: ⏮ button present, works after natural end and mid-playback

@@ -44,6 +44,9 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  /* Feature 026 (Fix P2): Prevent horizontal scroll from exposing the label
+     area boundary when the viewport is narrower than the score content. */
+  overflow-x: hidden;
 }
 
 h1 {
