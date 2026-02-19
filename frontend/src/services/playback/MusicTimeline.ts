@@ -133,10 +133,15 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Loop enforcement: jump back to loop start when loop end is reached
       if (loopEndTickRef.current !== null && newCurrentTick >= loopEndTickRef.current) {
         const loopStartTick = pinnedStartTickRef.current ?? 0;
+        // clearSchedule() stops the Transport; restart it before rescheduling
+        // so the newly-queued notes actually play (Transport.schedule() only
+        // fires while the Transport is running).
+        scheduler.clearSchedule();
+        adapter.startTransport(); // stops residual state, starts fresh from pos 0
+        // Reset timing refs AFTER startTransport so getCurrentTime() captures
+        // the new Transport start moment.
         playbackStartTickRef.current = loopStartTick;
         startTimeRef.current = adapter.getCurrentTime();
-        // Reschedule notes from the loop start (fire-and-forget)
-        scheduler.clearSchedule();
         scheduler.scheduleNotes(notes, tempo, loopStartTick, tempoState.tempoMultiplier).catch(() => {});
         lastReactTickRef.current = loopStartTick;
         tickSourceRef.current = { currentTick: loopStartTick, status: 'playing' };
