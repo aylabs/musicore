@@ -380,11 +380,14 @@ export function ScoreViewer({
   const [loopStart, setLoopStart] = useState<PinState | null>(null);
   const [loopEnd,   setPinLoopEnd] = useState<PinState | null>(null);
 
-  /** Green-highlighted note IDs: both loop endpoints */
+  /** Green-highlighted note IDs: only shown when just ONE pin is set (no region yet).
+   * When the full loop region is active the overlay rect replaces the need for
+   * individual note highlights. */
   const pinnedNoteIds = useMemo(() => {
+    // Both pins set → region rect is visible, green highlights not needed
+    if (loopStart && loopEnd) return new Set<string>();
     const ids = new Set<string>();
     if (loopStart) ids.add(loopStart.noteId);
-    if (loopEnd)   ids.add(loopEnd.noteId);
     return ids;
   }, [loopStart, loopEnd]);
 
@@ -433,12 +436,19 @@ export function ScoreViewer({
         setLoopStart(start);
         setPinLoopEnd(end);
         playbackState.setPinnedStart(start.tick);
-        // Loop fires after the last note *finishes* — use end_tick (start + duration)
-        const endNote = allNotes.find(n => n.start_tick === end.tick && n.id === end.noteId)
-          ?? allNotes.find(n => n.start_tick === end.tick);
-        const loopEndTick = endNote
-          ? end.tick + endNote.duration_ticks
-          : end.tick;
+        // Loop fires after note B plays, right before the next note starts.
+        // Using duration_ticks alone causes notes from other voices that overlap
+        // the last note's duration to bleed into the loop.
+        // Strategy: loop fires at nextNoteTick - 1 (just before any note after B),
+        // or B.tick + duration if B is the last note in the score.
+        const endNote = allNotes.find(n => n.id === end.noteId);
+        const notesAfterEnd = allNotes.filter(n => n.start_tick > end.tick);
+        const nextNoteTick = notesAfterEnd.length > 0
+          ? notesAfterEnd.reduce((min, n) => n.start_tick < min ? n.start_tick : min, Infinity)
+          : Infinity;
+        const loopEndTick = nextNoteTick !== Infinity
+          ? nextNoteTick - 1
+          : end.tick + (endNote?.duration_ticks ?? 960);
         playbackState.setLoopEnd(loopEndTick);
         if (playbackState.status !== 'playing') playbackState.seekToTick(start.tick);
       }
