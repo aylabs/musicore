@@ -96,6 +96,8 @@ export function ScoreViewer({
       handleReturnToViewRef.current();
     };
 
+    // Only enter fullscreen play mode when a score is actually loaded.
+    // On the landing screen (no score), keep the app-header (logo/banner) visible.
     if (viewMode === 'layout') {
       // T010: Body class hides the app header via CSS (App.css rule)
       document.body.classList.add('fullscreen-play');
@@ -119,6 +121,20 @@ export function ScoreViewer({
       };
     }
   }, [viewMode]);
+
+  // Feature 027 — Landing screen: remove fullscreen-play when no score is loaded,
+  // even if viewMode is still 'layout' from a previous session preference.
+  // This keeps the app-header (logo/banner) visible on the landing/welcome screen.
+  // When score loads into layout mode, re-add the class so play view goes fullscreen.
+  // Note: viewMode is intentionally excluded from deps — the viewMode effect handles
+  // viewMode changes; this effect only reacts to score load/unload events.
+  useEffect(() => {
+    if (!score) {
+      document.body.classList.remove('fullscreen-play');
+    } else if (viewMode === 'layout') {
+      document.body.classList.add('fullscreen-play');
+    }
+  }, [score]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
@@ -354,13 +370,32 @@ export function ScoreViewer({
   );
 
   /**
-   * Selected note state: tracks which note was clicked for seek-and-play
+   * Feature 027: Pinned position — long-press sets a permanent green highlight.
+   * pinnedNoteId selects which note glyphs get the green CSS class.
+   * pinnedStartTickRef (inside usePlayback) holds the tick Play always restarts from.
    */
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [pinnedNoteId, setPinnedNoteId] = useState<string | null>(null);
+
+  /** Single-element set passed to LayoutRenderer for green highlight rendering */
+  const pinnedNoteIds = useMemo(
+    () => pinnedNoteId ? new Set([pinnedNoteId]) : new Set<string>(),
+    [pinnedNoteId]
+  );
+
+  /** Handle pin / unpin from long-press gesture (tick for seek, noteId for highlight) */
+  const handlePin = useCallback((tick: number | null, noteId: string | null) => {
+    setPinnedNoteId(noteId);
+    // seekToTick moves the position indicator (and pauses if playing).
+    // setPinnedStart sets the anchor that Play always restarts from.
+    // These are kept separate so that seek-and-play taps never clobber the pin.
+    if (tick !== null) playbackState.seekToTick(tick);
+    playbackState.setPinnedStart(tick); // null clears the pin on long-press of same note
+  }, [playbackState.seekToTick, playbackState.setPinnedStart]);
   
   /**
-   * Toggle playback between play and pause
-   * Used for tablet: tapping outside staff regions in layout view
+   * Toggle playback between play and pause.
+   * If a tick is pinned (long-press green marker), play() will start from
+   * pinnedStartTickRef automatically — no seekToTick needed here.
    */
   const togglePlayback = useCallback(() => {
     if (playbackState.status === 'playing') {
@@ -379,34 +414,6 @@ export function ScoreViewer({
     playbackState.pause();
     handleReturnToView();
   }, [playbackState, handleReturnToView]);
-
-  /**
-   * Handle note click: select the note, seek to its position, and start playback.
-   * Clicking a note in the rendered score will:
-   * 1. Visually select it (orange highlight)
-   * 2. Seek playback to the note's start tick
-   * 3. Start playing from that position
-   */
-  /**
-   * Handle note click: select the note and seek to its position.
-   * Feature 027 (T015): Does NOT auto-play — US2 spec requires note tap = seek only.
-   * Empty-area tap = toggle play/pause (handled by onTogglePlayback on the container).
-   */
-  const handleNoteClick = useCallback((noteId: string) => {
-    const note = allNotes.find(n => n.id === noteId);
-    if (!note) return;
-
-    setSelectedNoteId(noteId);
-    playbackState.seekToTick(note.start_tick);
-    // T015: Removed play() call — note tap seeks without auto-play per FR-005
-  }, [allNotes, playbackState]);
-
-  // Clear selected note when playback stops
-  useEffect(() => {
-    if (playbackState.status === 'stopped') {
-      setSelectedNoteId(null);
-    }
-  }, [playbackState.status]);
 
   /**
    * Feature 026 (US3): Return to Start
@@ -598,11 +605,19 @@ export function ScoreViewer({
             score={score} 
             highlightedNoteIds={highlightedNoteIds}
             onTogglePlayback={togglePlayback}
-            onNoteClick={handleNoteClick}
-            selectedNoteId={selectedNoteId ?? undefined}
             playbackStatus={playbackState.status}
             tickSourceRef={playbackState.tickSourceRef}
             allNotes={allNotes}
+            pinnedNoteIds={pinnedNoteIds}
+            pinnedNoteId={pinnedNoteId}
+            onPin={handlePin}
+            onSeekAndPlay={(tick) => {
+              // seekToTick updates lastReactTickRef synchronously (no stale-closure issue).
+              // If a green pin is set, play() will use it automatically; otherwise
+              // it uses the tapped tick set by seekToTick here.
+              playbackState.seekToTick(tick);
+              playbackState.play();
+            }}
           />
           {/* Return to Start button — placed at end of score so user sees it after playback ends */}
           {showReturnToStart && playbackState.status === 'stopped' && (

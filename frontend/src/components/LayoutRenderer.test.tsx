@@ -211,21 +211,19 @@ describe('[T029] BUG: highlighted note fill must be orange #FF8C00, not blue #4A
 // This test FAILS before T035 (value is "middle"), PASSES after T035 ("hanging").
 // ============================================================================
 
-describe('[T033] BUG: bracket glyph must use dominant-baseline="hanging"', () => {
-  it('renderBracket produces a text element with dominant-baseline="hanging"', async () => {
-    // Call renderBracket via prototype with renderGlyph bound to receiver.
-    // Verifies that the <text> element gets dominant-baseline="hanging" (not "middle").
+describe('[T033] Brace renders as SVG path, Bracket renders as SVG lines', () => {
+  it('renderBracket with Brace type produces an SVG <path> element spanning topY→bottomY', async () => {
     const { LayoutRenderer } = await import('./LayoutRenderer');
 
     const minimalStaffGroup = {
       instrument_id: 'piano',
-      bracket_type: 'Bracket',
+      bracket_type: 'Brace',
       bracket_glyph: {
-        x: 10,
-        y: 20,
-        scale_y: 3.5,
+        x: 15,
+        y: 0,
+        scale_y: 0.781,
         codepoint: '\uE000',
-        bounding_box: { x: 0, y: 0, width: 12, height: 50 },
+        bounding_box: { x: 10, y: 0, width: 20, height: 250 },
       },
       staves: [],
       brace_glyph: null,
@@ -239,11 +237,10 @@ describe('[T033] BUG: bracket glyph must use dominant-baseline="hanging"', () =>
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
       highlightColor: '#FF8C00',
+      staffLineColor: '#000000',
       glyphColor: '#000000',
     };
 
-    // Build receiver with renderGlyph bound so renderBracket can call this.renderGlyph(...)
-     
     const receiver: any = { props: { config: minimalConfig } };
     receiver.renderGlyph = LayoutRenderer.prototype.renderGlyph.bind(receiver);
 
@@ -253,11 +250,54 @@ describe('[T033] BUG: bracket glyph must use dominant-baseline="hanging"', () =>
     ) as SVGGElement | null;
 
     expect(bracketGroup).not.toBeNull();
+    // Must contain a <path> element (SVG Bézier brace)
+    const pathEl = bracketGroup?.querySelector('path');
+    expect(pathEl).not.toBeNull();
+    // Must NOT contain a <text> glyph (font metric approach abandoned)
+    expect(bracketGroup?.querySelector('text')).toBeNull();
+  });
 
-    // After T035: dominant-baseline must be "hanging" (top-anchor for bracket alignment)
-    const textEl = bracketGroup?.querySelector('text');
-    expect(textEl).not.toBeNull();
-    expect(textEl?.getAttribute('dominant-baseline')).toBe('hanging');
+  it('renderBracket with Bracket type produces SVG line primitives (no path)', async () => {
+    const { LayoutRenderer } = await import('./LayoutRenderer');
+
+    const minimalStaffGroup = {
+      instrument_id: 'piano',
+      bracket_type: 'Bracket',
+      bracket_glyph: {
+        x: 15,
+        y: 0,
+        scale_y: 1,
+        codepoint: '\uE002',
+        bounding_box: { x: 10, y: 0, width: 20, height: 100 },
+      },
+      staves: [],
+      brace_glyph: null,
+      measures: [],
+    };
+
+    const minimalConfig = {
+      staffLineWidth: 1,
+      staffLineSpacing: 10,
+      fontFamily: 'Bravura',
+      defaultColor: '#000000',
+      selectionColor: '#FF6B00',
+      highlightColor: '#FF8C00',
+      staffLineColor: '#000000',
+      glyphColor: '#000000',
+    };
+
+    const receiver: any = { props: { config: minimalConfig } };
+    receiver.renderGlyph = LayoutRenderer.prototype.renderGlyph.bind(receiver);
+
+    const bracketGroup = LayoutRenderer.prototype.renderBracket.call(
+      receiver,
+      minimalStaffGroup,
+    ) as SVGGElement | null;
+
+    expect(bracketGroup).not.toBeNull();
+    expect(bracketGroup?.querySelector('text')).toBeNull();
+    const lines = bracketGroup?.querySelectorAll('line');
+    expect(lines?.length).toBeGreaterThanOrEqual(3);
   });
 });
 

@@ -47,6 +47,8 @@ export interface LayoutRendererProps {
   onNoteClick?: (noteId: string) => void;
   /** ID of the currently selected note (for visual feedback) */
   selectedNoteId?: string;
+  /** Long-press pinned note IDs — rendered with permanent green highlight */
+  pinnedNoteIds?: Set<string>;
   /** Feature 024: Tick source ref for rAF-driven highlight updates.
    * Must be a ref object (not a value) so the rAF loop reads live tick data
    * even when shouldComponentUpdate blocks React re-renders. */
@@ -83,6 +85,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
   private lastFrameTime = 0;
   /** Previous frame's highlighted note IDs for diff computation */
   private prevHighlightedIds = new Set<string>();
+  /** Previous pinned note IDs for diff computation */
+  private prevPinnedIds = new Set<string>();
   /** Target interval between highlight frames (33ms mobile / 16ms desktop) */
   private frameInterval = 16;
   /** Pre-sorted note index for O(log n) highlight queries */
@@ -147,7 +151,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       nextProps.config !== this.props.config ||
       nextProps.viewport !== this.props.viewport ||
       nextProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap ||
-      nextProps.selectedNoteId !== this.props.selectedNoteId
+      nextProps.selectedNoteId !== this.props.selectedNoteId ||
+      nextProps.pinnedNoteIds !== this.props.pinnedNoteIds
     );
   }
 
@@ -216,6 +221,11 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
         this.highlightIndex.build(newNotes);
       }
       // If notes becomes empty, preserve existing index (transient state during score transitions)
+    }
+
+    // Apply pinned highlight when pinnedNoteIds prop changes
+    if (prevProps.pinnedNoteIds !== this.props.pinnedNoteIds) {
+      this.updatePinnedHighlights();
     }
   }
 
@@ -290,6 +300,33 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * HighlightIndex, diffs against previous frame, toggles CSS classes.
    * Never triggers React re-renders.
    */
+  /**
+   * Apply or remove the green 'pinned' CSS class based on pinnedNoteIds prop.
+   * Called on componentDidUpdate when pinnedNoteIds changes, and from reapplyHighlights.
+   */
+  private updatePinnedHighlights(): void {
+    const svg = this.svgRef.current;
+    if (!svg) return;
+    const currentPinned = this.props.pinnedNoteIds ?? new Set<string>();
+
+    // Remove .pinned from ALL matching layout-glyph elements for IDs no longer pinned.
+    // Scoped to .layout-glyph to skip hit-rects (transparent overlays) and beams.
+    for (const id of this.prevPinnedIds) {
+      if (!currentPinned.has(id)) {
+        svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => el.classList.remove('pinned'));
+      }
+    }
+    // Add .pinned to all layout-glyph elements for this note (notehead + accidental + stem)
+    // and strip any stale orange highlight so green is visible immediately.
+    for (const id of currentPinned) {
+      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
+        el.classList.add('pinned');
+        el.classList.remove('highlighted');
+      });
+    }
+    this.prevPinnedIds = new Set(currentPinned);
+  }
+
   private updateHighlights(): void {
     // Read live tick data from ref (bypasses shouldComponentUpdate freezing)
     const tickSource = this.props.tickSourceRef?.current;
@@ -315,13 +352,16 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const svg = this.svgRef.current;
     if (!svg) return;
 
+    // Scoped to .layout-glyph to skip transparent hit-rects (fix Bug #1: orange box)
+    // and beam polygons (fix Bug #2: beam spanning all notes turns whole group orange).
     for (const id of patch.removed) {
-      const el = svg.querySelector(`[data-note-id="${id}"]`);
-      el?.classList.remove('highlighted');
+      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => el.classList.remove('highlighted'));
     }
     for (const id of patch.added) {
-      const el = svg.querySelector(`[data-note-id="${id}"]`);
-      el?.classList.add('highlighted');
+      // Skip elements that are pinned — green takes priority, orange must not overwrite
+      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
+        if (!el.classList.contains('pinned')) el.classList.add('highlighted');
+      });
     }
 
     this.prevHighlightedIds = new Set(currentIds);
@@ -358,10 +398,15 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     if (currentIds.length === 0) return;
 
+    // Scoped to .layout-glyph — skips hit-rects and beams (same reasoning as updateHighlights).
     for (const id of currentIds) {
-      const el = svg.querySelector(`[data-note-id="${id}"]`);
-      el?.classList.add('highlighted');
+      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
+        if (!el.classList.contains('pinned')) el.classList.add('highlighted');
+      });
     }
+
+    // Re-apply pinned highlights after structural render
+    this.updatePinnedHighlights();
   }
 
   /**
@@ -469,7 +514,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
 
     // Render each staff group (Task T018)
     for (const staffGroup of system.staff_groups) {
-      const staffGroupElement = this.renderStaffGroup(staffGroup, system.index);
+      const staffGroupElement = this.renderStaffGroup(staffGroup, system.index, system.staff_groups.length);
       systemGroup.appendChild(staffGroupElement);
     }
 
@@ -502,7 +547,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @param systemIndex - System index for source reference mapping
    * @returns SVG group element containing staff group content
    */
-  private renderStaffGroup(staffGroup: StaffGroup, systemIndex: number): SVGGElement {
+  private renderStaffGroup(staffGroup: StaffGroup, systemIndex: number, systemGroupCount: number = 1): SVGGElement {
     const staffGroupElement = createSVGGroup();
     staffGroupElement.setAttribute('data-staff-group', 'true');
     staffGroupElement.setAttribute('data-instrument-id', staffGroup.instrument_id);
@@ -521,8 +566,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       }
     }
 
-    // Feature 023: Render instrument name label (US2)
-    if (staffGroup.name_label) {
+    // Feature 023: Render instrument name label — only when multiple instruments (US2)
+    if (staffGroup.name_label && systemGroupCount > 1) {
       const { name_label } = staffGroup;
       const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       textElement.setAttribute('x', String(name_label.position.x));
@@ -554,53 +599,99 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * @returns SVG group element or null if no bracket
    */
   private renderBracket(staffGroup: StaffGroup): SVGGElement | null {
-    // Use bracket geometry calculated by Rust layout engine (no frontend calculations)
-    const { bracket_glyph } = staffGroup;
-    
-    if (!bracket_glyph) {
-      return null;
-    }
+    const { bracket_glyph, bracket_type } = staffGroup;
+    if (!bracket_glyph) return null;
 
     const { config } = this.props;
     const bracketGroup = createSVGGroup();
     bracketGroup.setAttribute('class', 'bracket');
+    bracketGroup.setAttribute('data-bracket-type', bracket_type.toLowerCase());
 
-    // Render bracket glyph using geometry from Rust
-    const bracketGlyphElement = this.renderGlyph(
-      {
-        position: { x: 0, y: 0 }, // Position via transform
-        bounding_box: bracket_glyph.bounding_box,
-        codepoint: bracket_glyph.codepoint,
-        source_reference: {
-          instrument_id: staffGroup.instrument_id,
-          staff_index: 0,
-          voice_index: 0,
-          event_index: 0,
-        },
-      },
-      config.fontFamily,
-      80, // SMuFL standard fontSize
-      config.glyphColor
-    );
-    
-    // Apply transform using geometry from Rust
-    bracketGlyphElement.setAttribute(
-      'transform',
-      `translate(${bracket_glyph.x}, ${bracket_glyph.y}) scale(1, ${bracket_glyph.scale_y.toFixed(3)})`
-    );
-    // Feature 027 (T035): Bracket uses top-anchor semantics — override renderGlyph's
-    // default 'middle' dominant-baseline. With Rust fix (T034, y=top_y), 'hanging'
-    // aligns the glyph's visual top with the top staff line coordinate.
-    bracketGlyphElement.setAttribute('dominant-baseline', 'hanging');
-    // Use lowercase for data attribute value
-    bracketGlyphElement.setAttribute(
-      'data-bracket-type', 
-      staffGroup.bracket_type.toLowerCase()
-    );
-    
-    bracketGroup.appendChild(bracketGlyphElement);
+    if (bracket_type === 'Bracket') {
+      // Draw a square bracket as SVG primitives: thick vertical bar + horizontal serifs
+      const x = bracket_glyph.x;
+      const topY = bracket_glyph.bounding_box.y;
+      const bottomY = topY + bracket_glyph.bounding_box.height;
+      const color = config.staffLineColor;
+      const barWidth = 5;
+      const serifWidth = 12;
 
-    return bracketGroup;
+      // Thick vertical bar
+      const bar = createSVGElement('line');
+      bar.setAttribute('x1', x.toString());
+      bar.setAttribute('y1', topY.toString());
+      bar.setAttribute('x2', x.toString());
+      bar.setAttribute('y2', bottomY.toString());
+      bar.setAttribute('stroke', color);
+      bar.setAttribute('stroke-width', barWidth.toString());
+      bar.setAttribute('stroke-linecap', 'butt');
+      bracketGroup.appendChild(bar);
+
+      // Top serif
+      const topSerif = createSVGElement('line');
+      topSerif.setAttribute('x1', (x - barWidth / 2).toString());
+      topSerif.setAttribute('y1', topY.toString());
+      topSerif.setAttribute('x2', (x + serifWidth).toString());
+      topSerif.setAttribute('y2', topY.toString());
+      topSerif.setAttribute('stroke', color);
+      topSerif.setAttribute('stroke-width', '2.5');
+      topSerif.setAttribute('stroke-linecap', 'butt');
+      bracketGroup.appendChild(topSerif);
+
+      // Bottom serif
+      const bottomSerif = createSVGElement('line');
+      bottomSerif.setAttribute('x1', (x - barWidth / 2).toString());
+      bottomSerif.setAttribute('y1', bottomY.toString());
+      bottomSerif.setAttribute('x2', (x + serifWidth).toString());
+      bottomSerif.setAttribute('y2', bottomY.toString());
+      bottomSerif.setAttribute('stroke', color);
+      bottomSerif.setAttribute('stroke-width', '2.5');
+      bottomSerif.setAttribute('stroke-linecap', 'butt');
+      bracketGroup.appendChild(bottomSerif);
+
+      return bracketGroup;
+    }
+
+    // Brace: draw as an SVG Bézier path — avoids all font-metric guesswork.
+    // The { shape: tips (right-facing) at topY and bottomY, two outward arcs,
+    // meeting at a left-pointing spike at centerY.
+    {
+      const bb = bracket_glyph.bounding_box;
+      const topY  = bb.y;
+      const H     = bb.height;
+      const bottomY = topY + H;
+      const centerY = topY + H / 2;
+      const color = config.staffLineColor;
+
+      // Geometry: tips on the right, spine/bulges curving left, center spike further left.
+      const xRight = bb.x + bb.width;          // right edge — where tips are (near staff)
+      const xBulge = bb.x;                      // leftmost extent of the two lobes
+      const xSpike = bb.x - bb.width * 0.25;   // center spike (slightly past left edge)
+
+      // SVG cubic-Bézier path for { opening rightward:
+      //  Upper half: tip → bulge arc → center spike
+      //  Lower half: center spike → bulge arc → tip  (mirror)
+      const d = [
+        `M ${xRight},${topY}`,
+        // upper arc: tip curves left and down to upper lobe, then back in to center spike
+        `C ${xRight},${topY + H * 0.08}  ${xBulge},${topY + H * 0.04}  ${xBulge},${topY + H * 0.25}`,
+        `C ${xBulge},${topY + H * 0.44}  ${xRight},${topY + H * 0.44}  ${xSpike},${centerY}`,
+        // lower arc: mirror of upper half
+        `C ${xRight},${centerY + H * 0.06}  ${xBulge},${bottomY - H * 0.44}  ${xBulge},${bottomY - H * 0.25}`,
+        `C ${xBulge},${bottomY - H * 0.04}  ${xRight},${bottomY - H * 0.08}  ${xRight},${bottomY}`,
+      ].join(' ');
+
+      const path = createSVGElement('path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      bracketGroup.appendChild(path);
+
+      return bracketGroup;
+    }
   }
 
   /**
@@ -748,7 +839,15 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       // Add data-note-id for click detection and highlight targeting (Feature 019, 024)
       if (noteId) {
         (glyphElement as SVGElement).dataset.noteId = noteId;
-        glyphElement.classList.add('layout-glyph');
+        // Beam polygons (U+0001) span the entire beamed group and share the first
+        // note's ID — highlight them would make the whole group turn orange (Bug #2).
+        // They keep data-note-id for tap/click detection but are NOT marked as
+        // layout-glyph so the querySelectorAll('.layout-glyph[data-note-id]') in
+        // updateHighlights / updatePinnedHighlights skips them.
+        const isBeam = glyph.codepoint === '\u0001' || glyph.codepoint === '\x01';
+        if (!isBeam) {
+          glyphElement.classList.add('layout-glyph');
+        }
         glyphElement.style.cursor = 'pointer';
       }
       glyphRunGroup.appendChild(glyphElement);
@@ -918,7 +1017,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     return (
       <svg
         ref={this.svgRef}
-        className={className}
+        className={`layout-renderer-svg${className ? ` ${className}` : ''}`}
         xmlns={svgNS}
         preserveAspectRatio="xMinYMin meet"
         style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}

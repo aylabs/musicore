@@ -144,8 +144,10 @@ describe('ToneAdapter', () => {
     await adapter.init();
 
     const { start } = await import('tone');
-    // Tone.start() should only be called once due to initialization guard
-    expect(start).toHaveBeenCalledTimes(1);
+    // Tone.start() is called on EVERY init() invocation to ensure the AudioContext
+    // is resumed (browsers auto-suspend it after silence). The sampler is only
+    // created once. So for 3 init() calls, Tone.start() is called 3 times.
+    expect(start).toHaveBeenCalledTimes(3);
   });
 
   /**

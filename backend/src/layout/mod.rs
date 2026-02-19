@@ -1477,7 +1477,7 @@ fn create_bracket_glyph(
         BracketType::None => String::new(),
     };
 
-    let x_position = 15.0; // Left margin
+    let x_position = 5.0; // Left margin
 
     BracketGlyph {
         codepoint,

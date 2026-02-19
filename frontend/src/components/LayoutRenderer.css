@@ -6,9 +6,23 @@
  * Styles for music notation rendering and note highlighting during playback.
  */
 
-/* Base glyph run styling */
-.glyph-run {
-  /* Default styling for glyph groups */
+/* Prevent OS context menu and text selection on the score SVG.
+ * Long-press on the score is reserved for position-based playback seeking. */
+.layout-renderer-svg {
+  user-select: none;
+  -webkit-user-select: none;
+  /* iOS: suppress the system callout (copy/paste bubble on long press) */
+  -webkit-touch-callout: none;
+}
+
+/* Prevent OS text-selection callout on any child of the score scroll container.
+ * Applied to the outer container div so long-press on notes never triggers the
+ * blue iOS selection handles or the Android text selection toolbar. */
+.score-scroll-container,
+.score-scroll-container * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Highlighted glyph styling - Feature 019, Feature 027 */
@@ -51,4 +65,15 @@ polygon.highlighted {
   stroke: #FF8C00 !important;
   filter: drop-shadow(0 0 3px rgba(255, 100, 0, 0.8));
   transition: fill 50ms ease-out, stroke 50ms ease-out;
+}
+/**
+ * Feature 027: Green highlight for long-press pinned position.
+ * Declared AFTER .layout-glyph.highlighted so green wins when both classes
+ * are present (CSS cascade: equal specificity + !important, last-declared wins).
+ * updateHighlights() also skips adding .highlighted to already-pinned elements.
+ */
+.layout-glyph.pinned {
+  fill: #00C853 !important;
+  stroke: #00C853 !important;
+  filter: drop-shadow(0 0 4px rgba(0, 180, 60, 0.8)) !important;
 }
