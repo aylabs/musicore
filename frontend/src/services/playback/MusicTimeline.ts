@@ -22,6 +22,13 @@ export interface PlaybackState {
   stop: () => void;
   seekToTick: (tick: number) => void; // Feature 009: Seek to specific tick position
   unpinStartTick: () => void; // Feature 009: Clear pinned start position
+  /**
+   * Set the pinned start tick — the position Play always restarts from when a
+   * green marker is active.  ONLY called from the long-press pin gesture;
+   * seekToTick() intentionally does NOT touch this so that seek-and-play and
+   * pause/resume never clobber the user's pinned position.
+   */
+  setPinnedStart: (tick: number | null) => void;
 }
 
 /**
@@ -98,6 +105,14 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     const REACT_UPDATE_INTERVAL = 100; // ms — only update React state every ~100ms
 
     const tick = (): void => {
+      // Guard: if status was externally reset (e.g. natural-end handler ran before
+      // this rAF frame), stop immediately — do NOT overwrite currentTick with a
+      // stale large value.  This prevents the race where rAF fires one extra frame
+      // after the natural-end handler sets tickSourceRef.status = 'stopped' and
+      // setCurrentTick(0), which would overwrite 0 with the end-of-score tick and
+      // make the next play() find no schedulable notes.
+      if (tickSourceRef.current.status !== 'playing') return;
+
       const currentTime = adapter.getCurrentTime();
       const elapsedTime = currentTime - startTimeRef.current;
       
@@ -147,20 +162,26 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
         playbackEndTimeoutRef.current = null;
       }
 
-      // If starting from the beginning (currentTick = 0), skip to the first note
-      // This avoids playing through rest measures at the start of the score
-      // Feature 009: If there's a pinned position from note selection, use that instead
-      let playbackStartTick = currentTick;
+      // Determine playback start tick — snapshot this BEFORE any await so concurrent
+      // state changes (rAF tick updates) cannot alter it mid-flight.
+      // Priority: pinned position (long-press pin) > current position > first note.
+      // Use lastReactTickRef.current (sync-updated by seekToTick) rather than the
+      // closed-over `currentTick` React state, which may be stale when play() is
+      // called in the same event handler as seekToTick().
+      let playbackStartTick: number;
       if (pinnedStartTickRef.current !== null) {
-        // Use pinned position from selected note
+        // Use pinned position from long-press selection
         playbackStartTick = pinnedStartTickRef.current;
         setCurrentTick(playbackStartTick);
-      } else if (currentTick === 0 && notes.length > 0) {
-        const firstNote = notes.reduce((earliest, note) => 
+      } else if (lastReactTickRef.current === 0 && notes.length > 0) {
+        // Skip leading silence — jump to first real note
+        const firstNote = notes.reduce((earliest, note) =>
           note.start_tick < earliest.start_tick ? note : earliest
         );
         playbackStartTick = firstNote.start_tick;
         setCurrentTick(playbackStartTick);
+      } else {
+        playbackStartTick = lastReactTickRef.current;
       }
 
       // Feature 009: Store the tick position where playback starts for scroll calculations
@@ -207,9 +228,23 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
           playbackEndTimeoutRef.current = window.setTimeout(() => {
             // Feature 026 (Fix P1): Clean up audio state on natural playback end.
             // Without this, Tone.js Transport stays active and replay overlaps.
+            //
+            // Cancel the rAF loop FIRST — before any state updates — so it cannot
+            // fire one last frame and overwrite currentTick(0) with the end-of-score
+            // tick value. That race caused the next play() to pass a too-large
+            // playbackStartTick to scheduleNotes(), which filtered out every note.
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = 0;
+            // Reset startTimeRef so any lingering rAF that already fired cannot
+            // compute a meaningful elapsed time (elapsedTicks would be ~0).
+            startTimeRef.current = 0;
+
             scheduler.clearSchedule();
             adapter.stopAll();
-            pinnedStartTickRef.current = null;
+            // NOTE: do NOT clear pinnedStartTickRef here — if the user has pinned a
+            // position (green marker), it must survive the natural score end so that
+            // pressing Play again restarts from the pin.  Only explicit Stop() and
+            // unpinStartTick() (note de-selection) should clear the pin.
             lastReactTickRef.current = 0;
             tickSourceRef.current = { currentTick: 0, status: 'stopped' };
             // Update React state
@@ -223,6 +258,12 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // US3 T052: Handle browser autoplay policy errors
       const errorMessage = error instanceof Error ? error.message : String(error);
       
+      // Reset status in case setStatus('playing') was already called before the error
+      setStatus('stopped');
+      setCurrentTick(0);
+      lastReactTickRef.current = 0;
+      tickSourceRef.current = { currentTick: 0, status: 'stopped' };
+
       // Check if this is an autoplay policy error
       if (errorMessage.includes('autoplay') || 
           errorMessage.includes('user interaction') ||
@@ -233,10 +274,10 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       }
       
       console.error('Failed to initialize audio:', error);
-      // Stay in stopped/paused state if initialization fails
-      throw error;
     }
-  }, [adapter, scheduler, notes, tempo, currentTick, tempoState.tempoMultiplier]);
+  // currentTick intentionally omitted: play() now reads lastReactTickRef.current
+  // (sync-updated) instead of the closed-over React state to avoid stale values.
+  }, [adapter, scheduler, notes, tempo, tempoState.tempoMultiplier]);
 
   /**
    * US1 T022: Implement pause() - Pause playback and track currentTick
@@ -342,17 +383,28 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       playbackEndTimeoutRef.current = null;
     }
 
-    // Set the tick position and pin it
+    // Update the position indicator — but do NOT touch pinnedStartTickRef.
+    // The pin anchor is managed exclusively by setPinnedStart() (called only
+    // from the long-press gesture) so that seek-and-play taps never overwrite
+    // the user's green marker position.
     setCurrentTick(tick);
     lastReactTickRef.current = tick;
     tickSourceRef.current = { currentTick: tick, status: tickSourceRef.current.status };
-    pinnedStartTickRef.current = tick;
 
     // If currently playing, transition to paused so user can resume
     if (status === 'playing') {
       setStatus('paused');
     }
   }, [status, adapter, scheduler]);
+
+  /**
+   * Set (or clear) the pinned start position for the Play button.
+   * This is the ONLY function that mutates pinnedStartTickRef.
+   * Called exclusively from the long-press pin gesture in the UI.
+   */
+  const setPinnedStart = useCallback((tick: number | null) => {
+    pinnedStartTickRef.current = tick;
+  }, []);
 
   /**
    * Feature 009: Clear pinned start position
@@ -385,6 +437,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     stop,
     seekToTick,
     unpinStartTick,
+    setPinnedStart,
   };
   /* eslint-enable react-hooks/refs */
 }

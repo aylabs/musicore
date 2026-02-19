@@ -30,6 +30,8 @@ export interface ScoreViewerProps {
   highlightedNoteIds?: Set<string>;
   /** Feature 019: Map from SourceReference keys to Note IDs */
   sourceToNoteIdMap?: Map<string, string>;
+  /** Long-press pinned note IDs — rendered with permanent green highlight */
+  pinnedNoteIds?: Set<string>;
   /** Toggle playback on click/touch of the score */
   onTogglePlayback?: () => void;
   /** Callback when a note glyph is clicked */
@@ -42,6 +44,15 @@ export interface ScoreViewerProps {
   tickSourceRef?: { current: ITickSource };
   /** Feature 024: Notes array for building HighlightIndex */
   notes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
+  /** Long-press pin: combined seek + note highlight callback.
+   * tick=null means unpin. noteId is the spatially nearest note to the tap. */
+  onPin?: (tick: number | null, noteId: string | null) => void;
+  /** Current pinned note ID (null = not pinned) — used for same-note unpin detection */
+  pinnedNoteId?: string | null;
+  /** Short tap when far from current position: seek + auto-play */
+  onSeekAndPlay?: (tick: number) => void;
+  /** Current playback status — used to decide tap behaviour */
+  playbackStatus?: 'playing' | 'paused' | 'stopped';
 }
 
 /**
@@ -118,6 +129,19 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** Feature 024 (T026): rAF-based scroll throttle ID */
   private scrollRafId: number = 0;
 
+  /** Long-press seek: timer handle */
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Last touch X used for both long-press and short-tap logic */
+  private touchX: number = 0;
+  /** Last touch Y */
+  private touchY: number = 0;
+  /** True once the 500ms long-press timer fires; suppresses short-tap handling */
+  private longPressFired: boolean = false;
+  /** True after any touchend; suppresses the subsequent synthetic click event */
+  private touchWasHandled: boolean = false;
+  /** True if the finger drifted enough during a touch to count as a scroll */
+  private hasMoved: boolean = false;
+
   /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState)
    * Initialize to -Infinity so the first updateViewport() call always runs. */
   private lastAppliedScrollTop: number = -Infinity;
@@ -183,6 +207,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
     }
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+    }
     if (this.autoScrollAnimationId !== null) {
       cancelAnimationFrame(this.autoScrollAnimationId);
     }
@@ -235,6 +262,170 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Feature 024 (T026): Replaced setTimeout debounce with rAF for
    * efficient scroll handling that aligns with display refresh rate.
    */
+  /**
+   * Touch strategy:
+   *   Short tap, close to current position  → toggle play/stop
+   *   Short tap, far from current position  → seek + auto-play
+   *   Long press (≥ 500 ms, finger still)   → pin / unpin at this position
+   *
+   * Scroll detection: if finger drifts > 15 px, cancel long press AND mark
+   * hasMoved=true so the short-tap handler is also suppressed on touchEnd.
+   */
+  private handleTouchStart = (e: React.TouchEvent): void => {
+    const touch = e.touches[0];
+    this.touchX = touch.clientX;
+    this.touchY = touch.clientY;
+    this.longPressFired = false;
+    this.touchWasHandled = false;
+    this.hasMoved = false;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressFired = true;
+      // Long press → pin / unpin
+      // Spatial lookup: find the note glyph closest to the touch point so we
+      // pin exactly the note the user tapped (not all notes at that tick, and
+      // not accidentals or notes from the other clef/staff).
+      const noteId = this.findNearestNoteId(this.touchX, this.touchY);
+      // Use the note's actual start_tick — linear tickFromTouch is inaccurate
+      // because notes are not linearly spaced along the visual system width.
+      const tick = (noteId !== null ? this.tickFromNoteId(noteId) : null)
+        ?? this.tickFromTouch(this.touchX, this.touchY);
+      const isPinned = noteId !== null && noteId === this.props.pinnedNoteId;
+      this.props.onPin?.(isPinned ? null : tick, isPinned ? null : noteId);
+    }, 500);
+  };
+
+  private handleTouchEnd = (): void => {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.touchWasHandled = true;
+    if (!this.longPressFired && !this.hasMoved) {
+      // Short tap (not a scroll, not a long press): toggle or seek-and-play
+      this.handleTapAt(this.touchX, this.touchY);
+    }
+  };
+
+  private handleTouchCancel = (): void => {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.touchWasHandled = true;
+    this.hasMoved = true; // treat cancel as a scroll (suppress tap)
+  };
+
+  private handleTouchMove = (e: React.TouchEvent): void => {
+    const touch = e.touches[0];
+    const dx = touch.clientX - this.touchX;
+    const dy = touch.clientY - this.touchY;
+    if (Math.sqrt(dx * dx + dy * dy) > 15) {
+      // Finger drifted: this is a scroll gesture — cancel long press and mark moved
+      this.hasMoved = true;
+      if (this.longPressTimer !== null) {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+      }
+    }
+  };
+
+  /**
+   * Short tap logic (simplified):
+   *   Playing  → pause at current position
+   *   Stopped/paused → seek to the tapped note and play.
+   *     If a green pin is set, play() will automatically use it instead of the
+   *     tapped position (pin priority is handled inside MusicTimeline.play()).
+   */
+  private handleTapAt = (clientX: number, clientY: number): void => {
+    if (this.props.playbackStatus === 'playing') {
+      this.props.onTogglePlayback?.(); // pause
+      return;
+    }
+    // Resolve tapped position using nearest note's exact start_tick.
+    const nearestNoteId = this.findNearestNoteId(clientX, clientY);
+    const tick = (nearestNoteId !== null ? this.tickFromNoteId(nearestNoteId) : null)
+      ?? this.tickFromTouch(clientX, clientY);
+    // Seek and play from tapped position (pin takes priority inside play()).
+    this.props.onSeekAndPlay?.(tick ?? 0);
+  };
+
+  /**
+   * Click handler (mouse/pointer; suppressed after touch to avoid double-firing).
+   */
+  private handleContainerClick = (e: React.MouseEvent): void => {
+    if (this.touchWasHandled) { this.touchWasHandled = false; return; }
+    this.handleTapAt(e.clientX, e.clientY);
+  };
+
+  /**
+   * Compute the playback tick at a screen coordinate (clientX, clientY).
+   * Returns null if the position doesn't correspond to a valid system.
+   */
+  /**
+   * Spatial nearest-note lookup: finds the note glyph element (`.layout-glyph`)
+   * whose bounding-box centre is closest to the given screen coordinate.
+   * Returns the note's ID string, or null if no glyphs are visible.
+   *
+   * Using `.layout-glyph` (visual SVG elements, not hit rects) avoids selecting
+   * the enlarged transparent hit-rect, which could resolve to a neighbour note.
+   */
+  private findNearestNoteId(clientX: number, clientY: number): string | null {
+    const container = this.containerRef.current;
+    if (!container) return null;
+    const glyphs = container.querySelectorAll<SVGElement>('.layout-glyph[data-note-id]');
+    let nearestId: string | null = null;
+    let nearestDistSq = Infinity;
+    for (const el of glyphs) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue; // invisible
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const distSq = (cx - clientX) ** 2 + (cy - clientY) ** 2;
+      if (distSq < nearestDistSq) {
+        nearestDistSq = distSq;
+        nearestId = el.dataset.noteId ?? null;
+      }
+    }
+    return nearestId;
+  }
+
+  /**
+   * Look up the actual start_tick of a note by ID from the notes index.
+   * Returns null when notes prop is absent or the ID is not found.
+   *
+   * This is the counterpart to tickFromTouch's linear interpolation: once we
+   * know WHICH note the user tapped (via findNearestNoteId), we return its
+   * precise start_tick so scheduling never starts 2-3 notes late.
+   */
+  private tickFromNoteId(noteId: string): number | null {
+    const note = this.props.notes?.find(n => n.id === noteId);
+    return note ? note.start_tick : null;
+  }
+
+  private tickFromTouch = (clientX: number, clientY: number): number | null => {
+    const { layout } = this.props;
+    if (!layout) return null;
+    const container = this.containerRef.current;
+    if (!container) return null;
+
+    const rect = container.getBoundingClientRect();
+    const renderScale = this.state.zoom * BASE_SCALE;
+    const layoutX = (clientX - rect.left) / renderScale - LABEL_MARGIN;
+    const layoutY = (clientY - rect.top) / renderScale;
+
+    const system = layout.systems.find(
+      s => layoutY >= s.bounding_box.y && layoutY < s.bounding_box.y + s.bounding_box.height
+    );
+    if (!system) return null;
+
+    const { start_tick, end_tick } = system.tick_range;
+    const sw = system.bounding_box.width;
+    const sx = system.bounding_box.x;
+    const clampedX = Math.max(sx, Math.min(sx + sw, layoutX));
+    const fraction = sw > 0 ? (clampedX - sx) / sw : 0;
+    return Math.floor(start_tick + fraction * (end_tick - start_tick));
+  };
+
   private handleScroll = (): void => {
     // rAF-based throttle: coalesce all scroll events within one frame
     if (this.scrollRafId === 0) {
@@ -392,7 +583,11 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     // Calculate target page scroll: position system ~20% from viewport top
     const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
     const containerTopInPage = containerRect.top + currentPageScroll;
-    const targetScroll = Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2);
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const targetScroll = Math.min(
+      Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2),
+      maxScroll
+    );
 
     // Cancel any in-progress animation (different target system)
     if (this.autoScrollAnimationId !== null) {
@@ -460,11 +655,19 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         {/* Scroll Container (T066) */}
         <div
           ref={this.containerRef}
-          onClick={this.props.onTogglePlayback}
+          onClick={this.handleContainerClick}
+          className="score-scroll-container"
+          onContextMenu={(e) => e.preventDefault()}
+          onTouchStart={this.handleTouchStart}
+          onTouchEnd={this.handleTouchEnd}
+          onTouchCancel={this.handleTouchCancel}
+          onTouchMove={this.handleTouchMove}
           style={{
             ...styles.container,
             backgroundColor: config.backgroundColor,
-            cursor: this.props.onTogglePlayback ? 'pointer' : 'default',
+            cursor: 'default',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           <div style={{ 
@@ -492,6 +695,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 selectedNoteId={this.props.selectedNoteId}
                 tickSourceRef={this.props.tickSourceRef}
                 notes={this.props.notes}
+                pinnedNoteIds={this.props.pinnedNoteIds}
               />
             </div>
           </div>

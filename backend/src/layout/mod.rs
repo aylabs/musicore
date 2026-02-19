@@ -1477,7 +1477,7 @@ fn create_bracket_glyph(
         BracketType::None => String::new(),
     };
 
-    let x_position = 15.0; // Left margin
+    let x_position = 5.0; // Left margin
 
     BracketGlyph {
         codepoint,
@@ -1760,7 +1760,7 @@ mod tests {
         );
 
         // Verify x position (left margin)
-        assert_eq!(bracket_glyph.x, 15.0, "Brace should be at x=15");
+        assert_eq!(bracket_glyph.x, 5.0, "Brace should be at x=5");
 
         // Verify vertical scaling is applied
         assert!(

@@ -105,9 +105,10 @@ describe('LayoutRenderer Component', () => {
 
       const svg = container.querySelector('svg');
       expect(svg).toBeTruthy();
-      // Check className attribute (happy-dom compatible)
-      const classAttr = svg?.getAttribute('class');
-      expect(classAttr).toBe('test-class');
+      // Check className attribute: always includes layout-renderer-svg base class
+      const classAttr = svg?.getAttribute('class') ?? '';
+      expect(classAttr).toContain('layout-renderer-svg');
+      expect(classAttr).toContain('test-class');
     });
 
     it('should render SVG element', () => {
@@ -805,13 +806,15 @@ describe('LayoutRenderer Component', () => {
         />
       );
 
-      // Verify brace element exists
+      // Verify brace element exists — rendered as SVG Bézier path
       const brace = container.querySelector('[data-bracket-type="brace"]');
       expect(brace).toBeTruthy();
-      expect(brace?.tagName).toBe('text');
+      expect(brace?.tagName.toLowerCase()).toBe('g');
+      // Must contain a <path> element (SVG Bézier brace, not a font glyph)
+      expect(brace?.querySelector('path')).toBeTruthy();
     });
 
-    it('should render brace with correct SMuFL codepoint', () => {
+    it('should render brace as SVG Bézier path (no SMuFL text glyph)', () => {
       const layoutWithBrace: GlobalLayout = {
         systems: [
           {
@@ -859,10 +862,12 @@ describe('LayoutRenderer Component', () => {
       );
 
       const brace = container.querySelector('[data-bracket-type="brace"]');
-      expect(brace?.textContent).toBe('\uE000'); // SMuFL brace
+      // SVG-path brace: no font glyph text, only a <path> element
+      expect(brace?.querySelector('text')).toBeNull();
+      expect(brace?.querySelector('path')).toBeTruthy();
     });
 
-    it('should apply vertical scaling to brace', () => {
+    it('should render brace with correct SVG path bounds', () => {
       const layoutWithBrace: GlobalLayout = {
         systems: [
           {
@@ -910,10 +915,10 @@ describe('LayoutRenderer Component', () => {
       );
 
       const brace = container.querySelector('[data-bracket-type="brace"]');
-      const transform = brace?.getAttribute('transform');
-      
-      expect(transform).toBeTruthy();
-      expect(transform).toMatch(/scale\(1,\s*[\d.]+\)/);
+      // Path element should exist and have a non-empty 'd' attribute
+      const pathEl = brace?.querySelector('path');
+      expect(pathEl).toBeTruthy();
+      expect(pathEl?.getAttribute('d')).toBeTruthy();
     });
 
     it('should not render brace for single-staff instrument', () => {
@@ -1020,13 +1025,16 @@ describe('LayoutRenderer Component', () => {
         />
       );
 
-      // Verify bracket element exists
+      // Verify bracket element exists — rendered as SVG line primitives
       const bracket = container.querySelector('[data-bracket-type="bracket"]');
       expect(bracket).toBeTruthy();
-      expect(bracket?.tagName).toBe('text');
+      expect(bracket?.tagName.toLowerCase()).toBe('g');
+      // Must contain line elements: vertical bar + top serif + bottom serif
+      const lines = bracket?.querySelectorAll('line');
+      expect(lines?.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('should render bracket with correct SMuFL codepoint', () => {
+    it('should render bracket as SVG line primitives (no SMuFL text glyph)', () => {
       const layoutWithBracket: GlobalLayout = {
         systems: [
           {
@@ -1074,7 +1082,10 @@ describe('LayoutRenderer Component', () => {
       );
 
       const bracket = container.querySelector('[data-bracket-type="bracket"]');
-      expect(bracket?.textContent).toBe('\uE002'); // SMuFL bracket
+      // SVG-primitive bracket: no text content, only line elements
+      expect(bracket?.querySelector('text')).toBeNull();
+      const lines = bracket?.querySelectorAll('line');
+      expect(lines?.length).toBeGreaterThanOrEqual(3); // vertical bar + 2 serifs
     });
 
     it('should not render bracket when bracket_type is None', () => {

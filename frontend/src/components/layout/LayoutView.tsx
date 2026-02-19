@@ -61,6 +61,14 @@ interface LayoutViewProps {
   tickSourceRef?: { current: ITickSource };
   /** Feature 024: All notes for building HighlightIndex in LayoutRenderer */
   allNotes?: ReadonlyArray<{ id: string; start_tick: number; duration_ticks: number }>;
+  /** Green pinned highlight note IDs — permanent until unpinned */
+  pinnedNoteIds?: Set<string>;
+  /** Current pinned note ID (null = not pinned) — forwarded to pages/ScoreViewer for unpin detection */
+  pinnedNoteId?: string | null;
+  /** Long-press pin: seek to tick and highlight noteId. Both null = unpin. */
+  onPin?: (tick: number | null, noteId: string | null) => void;
+  /** Short tap far from current position: seek + auto-play */
+  onSeekAndPlay?: (tick: number) => void;
 }
 
 /**
@@ -161,7 +169,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNoteClick, selectedNoteId, tickSourceRef, allNotes }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playbackStatus, onNoteClick, selectedNoteId, tickSourceRef, allNotes, pinnedNoteIds, pinnedNoteId, onPin, onSeekAndPlay }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +189,6 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
     // a feedback loop. window.innerWidth is always the true available CSS width.
     const measure = () => {
       const width = document.documentElement.clientWidth;
-      console.log('[LayoutView] viewport clientWidth:', width, 'window.innerWidth:', window.innerWidth);
       setContainerWidth(width);
     };
 
@@ -233,8 +240,6 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
 
         // Convert score to layout format
         const layoutInput = convertScoreToLayoutFormat(score);
-
-        console.log(`[LayoutView] Computing layout — containerWidth=${containerWidth}px, maxSystemWidth=${maxSystemWidth} layout units`);
 
         // Compute layout filling the measured container width.
         // max_system_width is in layout units; at BASE_SCALE=0.5 this equals
@@ -311,10 +316,15 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, onNote
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
         onTogglePlayback={onTogglePlayback}
+        playbackStatus={playbackStatus}
         onNoteClick={onNoteClick}
         selectedNoteId={selectedNoteId}
         tickSourceRef={tickSourceRef}
         notes={allNotes}
+        pinnedNoteIds={pinnedNoteIds}
+        pinnedNoteId={pinnedNoteId}
+        onPin={onPin}
+        onSeekAndPlay={onSeekAndPlay}
       />
     </div>
   );

@@ -62,14 +62,16 @@ export class ToneAdapter {
    * ```
    */
   public async init(): Promise<void> {
+    // Always resume the AudioContext before playing — browsers auto-suspend it
+    // after a period of silence (e.g., after natural playback end). Tone.start()
+    // is idempotent: it is a no-op when the context is already running.
+    await Tone.start();
+
     if (this.initialized) {
-      return; // Already initialized, skip
+      return; // Sampler/synth already created, nothing else to do
     }
 
     try {
-      // Start Tone.js audio context (required for browser autoplay policy)
-      await Tone.start();
-      
       // Note: We don't start Tone.Transport here - we'll start it fresh each playback
 
       if (this.useSampler) {
@@ -164,13 +166,21 @@ export class ToneAdapter {
   }
 
   /**
-   * Start Tone.Transport from the beginning
-   * Call this before scheduling notes for a fresh playback
+   * Start Tone.Transport from the beginning.
+   * Starts with a 50 ms lookahead so notes scheduled at Transport time 0
+   * are never in the past by the time scheduleNotes() runs.
+   * This is the canonical Tone.js pattern for gapless first-note scheduling.
    */
   public startTransport(): void {
+    // Stop then cancel any residual events (belt-and-suspenders; clearSchedule should
+    // have already done this, but calling again guarantees a clean slate when the
+    // previous session ended naturally without an explicit stop() call).
     Tone.Transport.stop();
-    Tone.Transport.seconds = 0;
-    Tone.Transport.start();
+    Tone.Transport.cancel();
+    // Explicitly pass 0 as the start-position offset so the Transport always begins
+    // at position 0 regardless of how it was left by the previous session.
+    // '+0.05' gives scheduleNotes() a 50 ms window before position-0 events fire.
+    Tone.Transport.start('+0.05', 0);
   }
 
   /**
