@@ -2,6 +2,15 @@
 
 **🚀 Live App**: [https://aylabs.github.io/musicore/](https://aylabs.github.io/musicore/)
 
+### Play view gestures
+
+| Gesture | Action |
+|---|---|
+| **Tap** a note | Seek playback to that note and highlight it |
+| **Long-press** a note | Pin the note (green highlight) — sets the loop start point |
+| **Long-press** a second note | Define a loop region between the two pinned notes (green overlay) |
+| **Tap inside** the loop region | Clear the loop and return to free playback |
+
 A tablet-native app for interactive scores, designed for practice and performance.
 
 [![Rust](https://img.shields.io/badge/Rust-1.93-orange)](https://www.rust-lang.org/)
