@@ -77,3 +77,13 @@ polygon.highlighted {
   stroke: #00C853 !important;
   filter: drop-shadow(0 0 4px rgba(0, 180, 60, 0.8)) !important;
 }
+
+/**
+ * Loop region overlay rect drawn behind notes.
+ * Semi-transparent green tint highlights the section that will repeat.
+ */
+.loop-region {
+  fill: rgba(0, 180, 80, 0.12);
+  stroke: rgba(0, 180, 80, 0.4);
+  stroke-width: 1;
+}

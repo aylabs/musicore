@@ -15,6 +15,9 @@ import { demoLoaderService } from "../services/onboarding/demoLoader";
 import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
 import "./ScoreViewer.css";
 
+/** A single long-press pin: a noteId coupled with its absolute tick position */
+interface PinState { noteId: string; tick: number; }
+
 interface ScoreViewerProps {
   scoreId?: string;
   /** Optional controlled view mode (if not provided, uses internal state with 'individual' default) */
@@ -370,27 +373,105 @@ export function ScoreViewer({
   );
 
   /**
-   * Feature 027: Pinned position — long-press sets a permanent green highlight.
-   * pinnedNoteId selects which note glyphs get the green CSS class.
-   * pinnedStartTickRef (inside usePlayback) holds the tick Play always restarts from.
+   * Loop region state — long-press on a note sets loopStart (green pin).
+   * Long-press on a second note creates a loop: [loopStart.tick, loopEnd.tick].
+   * Long-press inside the loop region clears both pins.
    */
-  const [pinnedNoteId, setPinnedNoteId] = useState<string | null>(null);
+  const [loopStart, setLoopStart] = useState<PinState | null>(null);
+  const [loopEnd,   setPinLoopEnd] = useState<PinState | null>(null);
 
-  /** Single-element set passed to LayoutRenderer for green highlight rendering */
-  const pinnedNoteIds = useMemo(
-    () => pinnedNoteId ? new Set([pinnedNoteId]) : new Set<string>(),
-    [pinnedNoteId]
+  /** Green-highlighted note IDs: only shown when just ONE pin is set (no region yet).
+   * When the full loop region is active the overlay rect replaces the need for
+   * individual note highlights. */
+  const pinnedNoteIds = useMemo(() => {
+    // Both pins set → region rect is visible, green highlights not needed
+    if (loopStart && loopEnd) return new Set<string>();
+    const ids = new Set<string>();
+    if (loopStart) ids.add(loopStart.noteId);
+    return ids;
+  }, [loopStart, loopEnd]);
+
+  /** Loop region passed down to LayoutRenderer for the overlay rect */
+  const loopRegion = useMemo(() =>
+    loopStart && loopEnd
+      ? { startTick: loopStart.tick, endTick: loopEnd.tick }
+      : null,
+    [loopStart, loopEnd]
   );
 
-  /** Handle pin / unpin from long-press gesture (tick for seek, noteId for highlight) */
+  /**
+   * Handle pin / unpin from long-press gesture (tick for seek, noteId for highlight).
+   * State machine:
+   *   No pins      → set loopStart (single green pin)
+   *   pinA only, same note   → clear pin
+   *   pinA only, diff note   → create loop [min, max] by tick order
+   *   Both pins, inside loop → clear loop
+   *   Both pins, outside     → replace with new single pin
+   */
   const handlePin = useCallback((tick: number | null, noteId: string | null) => {
-    setPinnedNoteId(noteId);
-    // seekToTick moves the position indicator (and pauses if playing).
-    // setPinnedStart sets the anchor that Play always restarts from.
-    // These are kept separate so that seek-and-play taps never clobber the pin.
-    if (tick !== null) playbackState.seekToTick(tick);
-    playbackState.setPinnedStart(tick); // null clears the pin on long-press of same note
-  }, [playbackState.seekToTick, playbackState.setPinnedStart]);
+    if (tick === null || noteId === null) return;
+
+    if (!loopStart) {
+      // No pins: set first pin
+      setLoopStart({ noteId, tick });
+      setPinLoopEnd(null);
+      playbackState.setPinnedStart(tick);
+      playbackState.setLoopEnd(null);
+      if (playbackState.status !== 'playing') playbackState.seekToTick(tick);
+      return;
+    }
+
+    if (!loopEnd) {
+      if (loopStart.noteId === noteId) {
+        // Same note: unpin
+        setLoopStart(null);
+        playbackState.setPinnedStart(null);
+        playbackState.setLoopEnd(null);
+        if (playbackState.status !== 'playing') playbackState.seekToTick(tick);
+      } else {
+        // Different note: normalise by tick order and create loop
+        const [start, end] = tick < loopStart.tick
+          ? [{ noteId, tick }, loopStart]
+          : [loopStart, { noteId, tick }];
+        setLoopStart(start);
+        setPinLoopEnd(end);
+        playbackState.setPinnedStart(start.tick);
+        // Loop fires after note B plays, right before the next note starts.
+        // Using duration_ticks alone causes notes from other voices that overlap
+        // the last note's duration to bleed into the loop.
+        // Strategy: loop fires at nextNoteTick - 1 (just before any note after B),
+        // or B.tick + duration if B is the last note in the score.
+        const endNote = allNotes.find(n => n.id === end.noteId);
+        const notesAfterEnd = allNotes.filter(n => n.start_tick > end.tick);
+        const nextNoteTick = notesAfterEnd.length > 0
+          ? notesAfterEnd.reduce((min, n) => n.start_tick < min ? n.start_tick : min, Infinity)
+          : Infinity;
+        const loopEndTick = nextNoteTick !== Infinity
+          ? nextNoteTick - 1
+          : end.tick + (endNote?.duration_ticks ?? 960);
+        playbackState.setLoopEnd(loopEndTick);
+        if (playbackState.status !== 'playing') playbackState.seekToTick(start.tick);
+      }
+      return;
+    }
+
+    // Both pins set
+    if (tick >= loopStart.tick && tick <= loopEnd.tick) {
+      // Inside loop region: clear
+      setLoopStart(null);
+      setPinLoopEnd(null);
+      playbackState.setPinnedStart(null);
+      playbackState.setLoopEnd(null);
+      if (playbackState.status !== 'playing') playbackState.seekToTick(tick);
+    } else {
+      // Outside loop: start fresh single pin
+      setLoopStart({ noteId, tick });
+      setPinLoopEnd(null);
+      playbackState.setPinnedStart(tick);
+      playbackState.setLoopEnd(null);
+      if (playbackState.status !== 'playing') playbackState.seekToTick(tick);
+    }
+  }, [loopStart, loopEnd, playbackState, allNotes]);
   
   /**
    * Toggle playback between play and pause.
@@ -609,8 +690,9 @@ export function ScoreViewer({
             tickSourceRef={playbackState.tickSourceRef}
             allNotes={allNotes}
             pinnedNoteIds={pinnedNoteIds}
-            pinnedNoteId={pinnedNoteId}
+            pinnedNoteId={loopStart?.noteId ?? null}
             onPin={handlePin}
+            loopRegion={loopRegion}
             onSeekAndPlay={(tick) => {
               // seekToTick updates lastReactTickRef synchronously (no stale-closure issue).
               // If a green pin is set, play() will use it automatically; otherwise

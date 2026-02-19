@@ -29,6 +29,13 @@ export interface PlaybackState {
    * pause/resume never clobber the user's pinned position.
    */
   setPinnedStart: (tick: number | null) => void;
+  /**
+   * Set (or clear) the loop end tick for loop-region playback.
+   * When set, the rAF tick loop jumps back to pinnedStartTickRef when
+   * currentTick reaches or exceeds this value.
+   * Pass null to disable looping.
+   */
+  setLoopEnd: (tick: number | null) => void;
 }
 
 /**
@@ -67,6 +74,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   const playbackStartTickRef = useRef<number>(0); // Feature 009: Track tick position when playback started
   const playbackEndTimeoutRef = useRef<number | null>(null); // Timer for auto-stop when playback ends
   const pinnedStartTickRef = useRef<number | null>(null); // Feature 009: Pinned start position from selected note
+  const loopEndTickRef = useRef<number | null>(null); // Loop end tick — rAF loop jumps back when reached
   const rafIdRef = useRef<number>(0); // Feature 024: rAF handle for tick broadcast
   const lastReactTickRef = useRef<number>(0); // Feature 024: Last tick value pushed to React state
 
@@ -122,6 +130,26 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Calculate absolute position: starting tick + elapsed ticks
       const newCurrentTick = playbackStartTickRef.current + elapsedTicks;
       
+      // Loop enforcement: jump back to loop start when loop end is reached
+      if (loopEndTickRef.current !== null && newCurrentTick >= loopEndTickRef.current) {
+        const loopStartTick = pinnedStartTickRef.current ?? 0;
+        // clearSchedule() stops the Transport; restart it before rescheduling
+        // so the newly-queued notes actually play (Transport.schedule() only
+        // fires while the Transport is running).
+        scheduler.clearSchedule();
+        adapter.startTransport(); // stops residual state, starts fresh from pos 0
+        // Reset timing refs AFTER startTransport so getCurrentTime() captures
+        // the new Transport start moment.
+        playbackStartTickRef.current = loopStartTick;
+        startTimeRef.current = adapter.getCurrentTime();
+        scheduler.scheduleNotes(notes, tempo, loopStartTick, tempoState.tempoMultiplier).catch(() => {});
+        lastReactTickRef.current = loopStartTick;
+        tickSourceRef.current = { currentTick: loopStartTick, status: 'playing' };
+        setCurrentTick(loopStartTick);
+        rafIdRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       // Feature 024: Always update the mutable tick source (no React re-render)
       tickSourceRef.current = { currentTick: newCurrentTick, status: 'playing' };
       
@@ -204,8 +232,9 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
       // Feature 008 - Tempo Change: T015 Pass tempo multiplier to scheduler
       await scheduler.scheduleNotes(notes, tempo, playbackStartTick, tempoState.tempoMultiplier);
 
-      // Calculate when playback will end and auto-stop
-      if (notes.length > 0) {
+      // Calculate when playback will end and auto-stop.
+      // Skip the end-timeout when a loop is active — the rAF loop handles looping.
+      if (notes.length > 0 && loopEndTickRef.current === null) {
         // Find the last note end time
         const notesToPlay = notes.filter(note => note.start_tick >= playbackStartTick);
         if (notesToPlay.length > 0) {
@@ -407,6 +436,14 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   }, []);
 
   /**
+   * Set (or clear) the loop end tick.
+   * When non-null, the rAF tick loop will jump back to pinnedStartTickRef on reaching this tick.
+   */
+  const setLoopEnd = useCallback((tick: number | null) => {
+    loopEndTickRef.current = tick;
+  }, []);
+
+  /**
    * Feature 009: Clear pinned start position
    * 
    * Removes the pinned start position set by seekToTick(). After calling this,
@@ -438,6 +475,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     seekToTick,
     unpinStartTick,
     setPinnedStart,
+    setLoopEnd,
   };
   /* eslint-enable react-hooks/refs */
 }

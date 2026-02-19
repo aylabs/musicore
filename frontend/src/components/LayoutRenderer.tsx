@@ -49,6 +49,9 @@ export interface LayoutRendererProps {
   selectedNoteId?: string;
   /** Long-press pinned note IDs — rendered with permanent green highlight */
   pinnedNoteIds?: Set<string>;
+  /** Loop region: when both pins are active, draws a semi-transparent overlay rect.
+   * startTick and endTick are the absolute tick positions of the two pinned notes. */
+  loopRegion?: { startTick: number; endTick: number } | null;
   /** Feature 024: Tick source ref for rAF-driven highlight updates.
    * Must be a ref object (not a value) so the rAF loop reads live tick data
    * even when shouldComponentUpdate blocks React re-renders. */
@@ -152,7 +155,8 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       nextProps.viewport !== this.props.viewport ||
       nextProps.sourceToNoteIdMap !== this.props.sourceToNoteIdMap ||
       nextProps.selectedNoteId !== this.props.selectedNoteId ||
-      nextProps.pinnedNoteIds !== this.props.pinnedNoteIds
+      nextProps.pinnedNoteIds !== this.props.pinnedNoteIds ||
+      nextProps.loopRegion !== this.props.loopRegion
     );
   }
 
@@ -226,6 +230,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Apply pinned highlight when pinnedNoteIds prop changes
     if (prevProps.pinnedNoteIds !== this.props.pinnedNoteIds) {
       this.updatePinnedHighlights();
+    }
+
+    // Re-render SVG when loop region changes (overlay rect must be redrawn)
+    if (prevProps.loopRegion !== this.props.loopRegion) {
+      this.renderSVG();
+      this.reapplyHighlights();
     }
   }
 
@@ -499,6 +509,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     systemGroup.setAttribute('transform', `translate(${x}, ${y})`);
     systemGroup.setAttribute('data-system-index', system.index.toString());
 
+    // Loop region overlay — inserted first so notes render on top
+    if (this.props.loopRegion) {
+      const overlay = this.renderLoopOverlay(system);
+      if (overlay) systemGroup.appendChild(overlay);
+    }
+
     // Render measure number above the system (T011)
     if (system.measure_number) {
       const text = createSVGElement('text');
@@ -538,6 +554,98 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     }
 
     return systemGroup;
+  }
+
+  /**
+   * Renders a semi-transparent loop-region overlay rect for `system`.
+   *
+   * Strategy:
+   * 1. Skip entirely if the loop region doesn't overlap this system's tick_range.
+   * 2. Build a tick → x map by scanning every glyph in the system via sourceToNoteIdMap + notes.
+   * 3. x_start = x of first note >= loopStartTick (or staff left edge if loop begins before system).
+   * 4. x_end   = x of first note >= loopEndTick   (or staff right edge if loop ends after system).
+   *
+   * The rect uses the `.loop-region` CSS class and has pointer-events:none so it
+   * doesn't interfere with tap/long-press handling.
+   */
+  private renderLoopOverlay(system: System): SVGRectElement | null {
+    const loopRegion = this.props.loopRegion!;
+    const { startTick, endTick } = loopRegion;
+
+    const sysStart = system.tick_range.start_tick;
+    const sysEnd   = system.tick_range.end_tick;
+
+    // No overlap between loop and this system
+    if (endTick <= sysStart || startTick >= sysEnd) return null;
+
+    // Build tick → leftmost-x map from all glyphs in this system
+    const tickToX = new Map<number, number>();
+    const { sourceToNoteIdMap, notes } = this.props;
+
+    if (sourceToNoteIdMap && notes && notes.length > 0) {
+      const noteIdToTick = new Map<string, number>();
+      for (const note of notes) noteIdToTick.set(note.id, note.start_tick);
+
+      for (const staffGroup of system.staff_groups) {
+        for (const staff of staffGroup.staves) {
+          for (const run of staff.glyph_runs) {
+            for (const glyph of run.glyphs) {
+              if (!glyph.source_reference) continue;
+              const key = createSourceKey({ system_index: system.index, ...glyph.source_reference });
+              const noteId = sourceToNoteIdMap.get(key);
+              if (!noteId) continue;
+              const tick = noteIdToTick.get(noteId);
+              if (tick === undefined) continue;
+              const existing = tickToX.get(tick);
+              if (existing === undefined || glyph.position.x < existing) {
+                tickToX.set(tick, glyph.position.x);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Resolve coordinate edges from staff lines (absolute in SVG space)
+    const firstStaff = system.staff_groups[0]?.staves[0];
+    const lastGroup  = system.staff_groups[system.staff_groups.length - 1];
+    const lastStaff  = lastGroup?.staves[lastGroup.staves.length - 1];
+
+    const topY    = firstStaff?.staff_lines[0]?.y_position        ?? system.bounding_box.y;
+    const bottomY = lastStaff?.staff_lines[4]?.y_position          ?? (system.bounding_box.y + system.bounding_box.height);
+    const leftEdge  = firstStaff?.staff_lines[0]?.start_x          ?? system.bounding_box.x;
+    const rightEdge = firstStaff?.staff_lines[0]?.end_x            ?? (system.bounding_box.x + system.bounding_box.width);
+
+    const sortedTicks = [...tickToX.keys()].sort((a, b) => a - b);
+
+    // x_start: first note >= startTick (or left edge when loop precedes system)
+    let xStart: number;
+    if (startTick <= sysStart) {
+      xStart = leftEdge;
+    } else {
+      const match = sortedTicks.find(t => t >= startTick);
+      xStart = match !== undefined ? tickToX.get(match)! : leftEdge;
+    }
+
+    // x_end: first note >= endTick (or right edge when loop extends past system)
+    let xEnd: number;
+    if (endTick >= sysEnd) {
+      xEnd = rightEdge;
+    } else {
+      const match = sortedTicks.find(t => t >= endTick);
+      xEnd = match !== undefined ? tickToX.get(match)! : rightEdge;
+    }
+
+    if (xEnd <= xStart) return null;
+
+    const rect = createSVGElement('rect') as SVGRectElement;
+    rect.setAttribute('class', 'loop-region');
+    rect.setAttribute('x',      xStart.toString());
+    rect.setAttribute('y',      topY.toString());
+    rect.setAttribute('width',  (xEnd - xStart).toString());
+    rect.setAttribute('height', (bottomY - topY).toString());
+    rect.setAttribute('pointer-events', 'none');
+    return rect;
   }
 
   /**
