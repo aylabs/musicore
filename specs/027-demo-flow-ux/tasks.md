@@ -167,6 +167,32 @@
 
 ---
 
+## Phase 9: Loop Region Playback (Session 2026-02-19)
+
+**Purpose**: Add a loop region feature so users can long-press two notes to define a repeating section during practice. Includes four iterative bug fixes discovered during manual testing.
+
+**Covers**: FR-013 – FR-018, US6
+
+### Implementation
+
+- [X] T039 [US6] Add `loopStart`/`loopEnd` state (`PinState` interface) and `handlePin` state machine in `frontend/src/components/ScoreViewer.tsx`: no pins → set loopStart + seek; one pin/same note → clear; one pin/diff note → normalise by tick order and form loop; both pins/inside region → clear both; both pins/outside → new single pin. `pinnedNoteIds` is empty when both pins are set (overlay replaces highlights). Forward `loopRegion` prop to `<LayoutView>`.
+- [X] T040 [US6] Add `loopRegion` prop to `frontend/src/components/layout/LayoutView.tsx` → `frontend/src/pages/ScoreViewer.tsx` → `frontend/src/components/LayoutRenderer.tsx`. Implement `renderLoopOverlay(system)` in `LayoutRenderer`: per-system green `<rect class="loop-region">` built from `tickToX` map of glyph positions, clipped to staff edges. Add `.loop-region` CSS class in `frontend/src/components/LayoutRenderer.css`. Wire `shouldComponentUpdate` and `componentDidUpdate` to re-render on `loopRegion` change.
+- [X] T041 [US6] Add `loopEndTickRef` and `setLoopEnd()` to `frontend/src/services/playback/MusicTimeline.ts`. In the rAF tick loop: when `newCurrentTick >= loopEndTickRef.current`, call `clearSchedule()` then `adapter.startTransport()` then `scheduleNotes(notes, tempo, loopStartTick, …)` and reset all timing refs. Suppress natural-end timeout when a loop is active.
+
+### Bug Fixes (iterative manual testing)
+
+- [X] T042 [BUG] [US6] Fix silent loop restart: `clearSchedule()` calls `Transport.stop()` — notes scheduled on a stopped Transport are dropped silently. Fix: call `adapter.startTransport()` between `clearSchedule()` and `scheduleNotes()` in the loop-back block of `frontend/src/services/playback/MusicTimeline.ts`.
+- [X] T043 [BUG] [US6] Fix last note of loop region not playing: `setLoopEnd(end.tick)` triggered rAF at note _start_ and jumped back before the note sounded. Fix: compute `loopEndTick = end.tick + endNote.duration_ticks` in `frontend/src/components/ScoreViewer.tsx`.
+- [X] T044 [BUG] [US6] Fix 3 extra notes bleeding past loop end: `duration_ticks` approach allowed overlapping voices to sound during the last note's window. Fix: `loopEndTick = nextNoteTick - 1` where `nextNoteTick = min(start_tick) for all notes with start_tick > end.tick`. Falls back to `end.tick + duration_ticks` when no note exists after the end pin.
+- [X] T045 [BUG] [US6] Fix green pin highlights shown alongside loop overlay: `pinnedNoteIds` was populated with both endpoint IDs even when the full region overlay was active. Fix: return `new Set()` from `pinnedNoteIds` memo when both `loopStart` and `loopEnd` are set.
+
+### DX / Docs
+
+- [X] T046 Fix pre-push hook Rust test step in `.git/hooks/pre-push`: `| tail -3` pipe caused `if !` to check `tail`'s exit code (always 0) and displayed only the last binary's 0-test summary. Fix: capture full output in a variable, check `$?` directly, show output only on failure, print last `test result:` line on success.
+- [X] T047 Add play-view gestures table to `README.md` immediately below the app link: Tap = seek, Long-press 1 = pin loop start, Long-press 2 = define loop region, Tap inside region = clear loop.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -283,7 +309,8 @@ After MVP (US1 + US2):
 | 6: Note Highlight | US4 (P3) | T029–T031 | `LayoutRenderer.css` |
 | 7: Bracket Centering | US5 (P3) | T032–T035 | `backend/layout/mod.rs`, `LayoutRenderer.tsx` |
 | 8: Polish | — | T036–T038 | `frontend/tests/`, `spec.md` |
-| **Total** | | **38 tasks** | |
+| 9: Loop Region Playback | US6 (P2) | T039–T047 | `MusicTimeline.ts`, `ScoreViewer.tsx`, `LayoutView.tsx`, `pages/ScoreViewer.tsx`, `LayoutRenderer.tsx/.css`, `.git/hooks/pre-push`, `README.md` |
+| **Total** | | **47 tasks** | |
 
 **Parallel opportunities**: 14 tasks marked [P]  
 **MVP scope**: Phases 1–4 (US1 + US2) = 17 tasks  

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `027-demo-flow-ux`  
 **Created**: 2026-02-18  
-**Status**: Completed (2026-02-18 — all 35 tasks T001–T035 implemented; T036 e2e smoke test written)  
+**Status**: Completed (2026-02-19 — all 47 tasks T001–T047 implemented; loop region + bug fixes + docs added in session 2)  
 **Input**: User description: "Demo user flow — full-screen play view, return arrow navigation, remove blue instrument-count bar, move tempo control to right of timer, remove zoom control (tablet users use pinch-to-zoom), move title to left of playback buttons, improve pitch-to-play (note tap = seek only, no auto-start, use proper hitbox), improve pause/resume on touch (tap empty area), center bracket between clefs, improve note highlight visibility (possibly vertical slicing bar), change Instrument View button to return arrow"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -92,6 +92,26 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 
 ---
 
+### User Story 6 — Loop Region Playback (Priority: P2)
+
+A user rehearsing a difficult passage wants to long-press two notes to define a repeating loop region so that playback automatically restarts at the start note when the end note finishes. While the loop is active, a green overlay highlights the region and the individual pin highlights are suppressed. Tapping anywhere inside the region clears the loop and returns to free playback.
+
+**Why this priority**: Enhances the practice flow without changing the core interaction model added in US2. Builds on the pin/seek infrastructure.
+
+**Independent Test**: Long-press note A → green pin highlight; long-press note B → green overlay rect appears between A and B; playback reaches B → jumps back to A with audio; tap inside the overlay → overlay clears, playback continues freely.
+
+**Acceptance Scenarios**:
+
+1. **Given** no notes are pinned, **When** the user long-presses a note, **Then** that note is highlighted in green (loop start pin) and playback seeks to that note.
+2. **Given** one note is pinned (loop start), **When** the user long-presses a second note, **Then** a green overlay rect appears between the two notes, individual pin highlights are removed, and the loop region is active.
+3. **Given** the user long-presses the same note that is already pinned, **When** that note is long-pressed, **Then** the pin is cleared.
+4. **Given** a loop region is active, **When** playback reaches the tick of the first note after the loop-end note, **Then** playback restarts from the loop-start note with audio.
+5. **Given** a loop region is active, **When** the user taps anywhere within the green overlay, **Then** the loop is cleared and free playback resumes.
+6. **Given** a loop region spans multiple systems, **When** the score is rendered, **Then** each system that overlaps the tick range shows its portion of the green overlay.
+7. **Given** two pins are set in reverse tap order (second note has earlier tick), **When** the loop is formed, **Then** the region is normalised so the earlier tick is always the loop start.
+
+---
+
 ### Edge Cases
 
 - What happens when the score title is very long (>40 characters) and must share the toolbar row with playback buttons and tempo? → Title is truncated with ellipsis (`…`); controls always take priority.
@@ -116,6 +136,12 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **FR-010**: The tempo control MUST be displayed to the right of the playback timer within the playback strip.
 - **FR-011**: The zoom control (buttons or slider) MUST be removed from the Play screen UI entirely.
 - **FR-012**: The current-beat position MUST be indicated by an enhanced note highlight (increased colour contrast, size, or opacity relative to the current style). A full-height vertical bar spanning all staves is explicitly out of scope for this feature unless SC-005 is not met by the enhanced highlight alone, in which case it is added as a separate follow-up task.
+- **FR-013**: Long-pressing a note MUST pin it as the loop start, seeking playback to that note.
+- **FR-014**: Long-pressing a second note (different from the first) MUST define a loop region between the two pinned notes, normalised so the lower-tick note is always the start.
+- **FR-015**: While a loop region is active, individual pin highlights MUST be suppressed; only the green overlay rect MUST be shown.
+- **FR-016**: When playback reaches the first note-start tick beyond the loop-end note, playback MUST restart from the loop-start tick with audio.
+- **FR-017**: Tapping inside the loop region overlay MUST clear the loop and return to free playback.
+- **FR-018**: The loop region overlay MUST be rendered as a semi-transparent green rect on every system whose tick range overlaps the loop.
 
 ### Assumptions
 
@@ -138,6 +164,12 @@ A user viewing a multi-staff instrument (e.g., piano with treble and bass clef) 
 - **SC-007**: Seek-on-tap (note tap → playback position change) completes within 300 ms of touch release, including scheduler reset and audible output from the new position.
 
 ## Clarifications
+
+### Session 2026-02-19
+
+- Q: How should the loop boundary be calculated to avoid extra notes bleeding past the end pin? → A: `loopEndTick = nextNoteTick - 1` where `nextNoteTick` is the `start_tick` of the first note whose `start_tick` is strictly greater than the end-pin tick. This avoids overlapping voices sounding past the intended boundary.
+- Q: Why does audio not play when the loop restarts? → A: `clearSchedule()` calls `stopAll()` which calls `Transport.stop()` — notes scheduled on a stopped Transport are silently dropped. Fix: call `adapter.startTransport()` between `clearSchedule()` and `scheduleNotes()` in the rAF loop-back block.
+- Q: How should the pre-push Rust test step be fixed when it reports `0 passed`? → A: The `| tail -3` pipe makes the shell check `tail`'s exit code (always 0) rather than `cargo test`'s, and `tail -3` shows only the last binary summary which may have 0 tests. Fix: capture output in a variable and inspect `$?` directly.
 
 ### Session 2026-02-18
 
