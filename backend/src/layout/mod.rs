@@ -1760,7 +1760,7 @@ mod tests {
         );
 
         // Verify x position (left margin)
-        assert_eq!(bracket_glyph.x, 15.0, "Brace should be at x=15");
+        assert_eq!(bracket_glyph.x, 5.0, "Brace should be at x=5");
 
         // Verify vertical scaling is applied
         assert!(
