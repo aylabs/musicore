@@ -433,7 +433,13 @@ export function ScoreViewer({
         setLoopStart(start);
         setPinLoopEnd(end);
         playbackState.setPinnedStart(start.tick);
-        playbackState.setLoopEnd(end.tick);
+        // Loop fires after the last note *finishes* — use end_tick (start + duration)
+        const endNote = allNotes.find(n => n.start_tick === end.tick && n.id === end.noteId)
+          ?? allNotes.find(n => n.start_tick === end.tick);
+        const loopEndTick = endNote
+          ? end.tick + endNote.duration_ticks
+          : end.tick;
+        playbackState.setLoopEnd(loopEndTick);
         if (playbackState.status !== 'playing') playbackState.seekToTick(start.tick);
       }
       return;
@@ -455,7 +461,7 @@ export function ScoreViewer({
       playbackState.setLoopEnd(null);
       if (playbackState.status !== 'playing') playbackState.seekToTick(tick);
     }
-  }, [loopStart, loopEnd, playbackState]);
+  }, [loopStart, loopEnd, playbackState, allNotes]);
   
   /**
    * Toggle playback between play and pause.
