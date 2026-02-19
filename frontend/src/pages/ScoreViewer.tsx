@@ -32,6 +32,8 @@ export interface ScoreViewerProps {
   sourceToNoteIdMap?: Map<string, string>;
   /** Long-press pinned note IDs — rendered with permanent green highlight */
   pinnedNoteIds?: Set<string>;
+  /** Loop region for overlay rect and rAF loop-back */
+  loopRegion?: { startTick: number; endTick: number } | null;
   /** Toggle playback on click/touch of the score */
   onTogglePlayback?: () => void;
   /** Callback when a note glyph is clicked */
@@ -289,8 +291,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       // because notes are not linearly spaced along the visual system width.
       const tick = (noteId !== null ? this.tickFromNoteId(noteId) : null)
         ?? this.tickFromTouch(this.touchX, this.touchY);
-      const isPinned = noteId !== null && noteId === this.props.pinnedNoteId;
-      this.props.onPin?.(isPinned ? null : tick, isPinned ? null : noteId);
+      // Always pass (tick, noteId) — the loop state machine in ScoreViewer
+      // (component layer) decides whether this is a pin, unpin, or loop clear.
+      this.props.onPin?.(tick, noteId);
     }, 500);
   };
 
@@ -696,6 +699,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 tickSourceRef={this.props.tickSourceRef}
                 notes={this.props.notes}
                 pinnedNoteIds={this.props.pinnedNoteIds}
+                loopRegion={this.props.loopRegion}
               />
             </div>
           </div>

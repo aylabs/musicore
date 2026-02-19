@@ -69,6 +69,8 @@ interface LayoutViewProps {
   onPin?: (tick: number | null, noteId: string | null) => void;
   /** Short tap far from current position: seek + auto-play */
   onSeekAndPlay?: (tick: number) => void;
+  /** Loop region: when both pins are set, overlay rect + rAF loop-back */
+  loopRegion?: { startTick: number; endTick: number } | null;
 }
 
 /**
@@ -169,7 +171,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playbackStatus, onNoteClick, selectedNoteId, tickSourceRef, allNotes, pinnedNoteIds, pinnedNoteId, onPin, onSeekAndPlay }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playbackStatus, onNoteClick, selectedNoteId, tickSourceRef, allNotes, pinnedNoteIds, pinnedNoteId, onPin, onSeekAndPlay, loopRegion }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -325,6 +327,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playba
         pinnedNoteId={pinnedNoteId}
         onPin={onPin}
         onSeekAndPlay={onSeekAndPlay}
+        loopRegion={loopRegion}
       />
     </div>
   );
