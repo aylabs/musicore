@@ -230,7 +230,13 @@ export function ScoreViewer({
     setScoreId(result.score.id);
     setIsFileSourced(true); // Frontend is source of truth for WASM-imported scores (not in backend DB)
     resetFileState(); // Clear file state (this is a new score from import)
-    
+
+    // Reset playback to the beginning so the new score always starts at tick 0,
+    // regardless of where the previous score was paused or stopped.
+    playbackState.resetPlayback();
+    setLoopStart(null);
+    setPinLoopEnd(null);
+
     // Feature 022: Set score title from metadata (work_title > filename fallback)
     const fileName = result.metadata.file_name;
     const strippedName = fileName ? fileName.replace(/\.[^.]+$/, '') : null;

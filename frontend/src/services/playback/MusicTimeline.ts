@@ -36,6 +36,13 @@ export interface PlaybackState {
    * Pass null to disable looping.
    */
   setLoopEnd: (tick: number | null) => void;
+  /**
+   * Hard-reset all playback state to the beginning.
+   * Stops audio, clears all pins and loop markers, resets currentTick to 0,
+   * and transitions to 'stopped'. Safe to call from any state.
+   * Used when loading a new score so the previous position is not inherited.
+   */
+  resetPlayback: () => void;
 }
 
 /**
@@ -459,6 +466,35 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     }
   }, [status]);
 
+  /**
+   * Hard-reset all playback state to the beginning.
+   * Safe to call from any state (stopped, paused, playing).
+   */
+  const resetPlayback = useCallback(() => {
+    // Stop any running audio unconditionally
+    scheduler.clearSchedule();
+    adapter.stopAll();
+
+    // Cancel the end-of-score auto-stop timer
+    if (playbackEndTimeoutRef.current !== null) {
+      window.clearTimeout(playbackEndTimeoutRef.current);
+      playbackEndTimeoutRef.current = null;
+    }
+
+    // Clear loop and pin markers
+    pinnedStartTickRef.current = null;
+    loopEndTickRef.current = null;
+
+    // Reset all tick and timing state to the very beginning
+    setCurrentTick(0);
+    lastReactTickRef.current = 0;
+    tickSourceRef.current = { currentTick: 0, status: 'stopped' };
+    startTimeRef.current = 0;
+    pausedAtRef.current = 0;
+
+    setStatus('stopped');
+  }, [adapter, scheduler]);
+
   /* eslint-disable react-hooks/refs -- intentional: tickSourceRef exposes a live ref for rAF consumers */
   return {
     status,
@@ -476,6 +512,7 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
     unpinStartTick,
     setPinnedStart,
     setLoopEnd,
+    resetPlayback,
   };
   /* eslint-enable react-hooks/refs */
 }
