@@ -169,6 +169,12 @@
   justify-content: flex-start;
   align-items: center;
   gap: 12px;
+  /* Stick to the top of the viewport during vertical scroll in play view */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-radius: 0;           /* flat edges when pinned to viewport top */
+  border-bottom: 1px solid #ddd;
 }
 
 .playback-controls.compact .playback-buttons {
