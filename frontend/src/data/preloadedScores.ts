@@ -1,45 +1,50 @@
 /**
  * Manifest of preloaded scores bundled with the app.
- * Files are served from /scores/ (symlinked from frontend/public/scores/ → ../../scores).
+ * Files are served from {BASE_URL}scores/ (symlinked from frontend/public/scores/ → ../../scores).
+ *
+ * Paths use import.meta.env.BASE_URL so they resolve correctly both locally (/)
+ * and on GitHub Pages (/musicore/).
  *
  * Feature 028: Load Score Dialog
  */
 export interface PreloadedScore {
   id: string;
   displayName: string;
-  /** Absolute path served by Vite / Nginx (e.g. "/scores/Bach_InventionNo1.mxl") */
+  /** Path relative to the app's base URL, e.g. "/musicore/scores/Bach_InventionNo1.mxl" */
   path: string;
 }
+
+const base = import.meta.env.BASE_URL; // "/" locally, "/musicore/" on GitHub Pages
 
 export const PRELOADED_SCORES: ReadonlyArray<PreloadedScore> = [
   {
     id: 'bach-invention-1',
     displayName: 'Bach — Invention No. 1',
-    path: '/scores/Bach_InventionNo1.mxl',
+    path: `${base}scores/Bach_InventionNo1.mxl`,
   },
   {
     id: 'beethoven-fur-elise',
     displayName: 'Beethoven — Für Elise',
-    path: '/scores/Beethoven_FurElise.mxl',
+    path: `${base}scores/Beethoven_FurElise.mxl`,
   },
   {
     id: 'burgmuller-arabesque',
     displayName: 'Burgmüller — Arabesque',
-    path: '/scores/Burgmuller_Arabesque.mxl',
+    path: `${base}scores/Burgmuller_Arabesque.mxl`,
   },
   {
     id: 'burgmuller-la-candeur',
     displayName: 'Burgmüller — La Candeur',
-    path: '/scores/Burgmuller_LaCandeur.mxl',
+    path: `${base}scores/Burgmuller_LaCandeur.mxl`,
   },
   {
     id: 'chopin-nocturne-op9-2',
     displayName: 'Chopin — Nocturne Op. 9 No. 2',
-    path: '/scores/Chopin_NocturneOp9No2.mxl',
+    path: `${base}scores/Chopin_NocturneOp9No2.mxl`,
   },
   {
     id: 'pachelbel-canon-d',
     displayName: 'Pachelbel — Canon in D',
-    path: '/scores/Pachelbel_CanonD.mxl',
+    path: `${base}scores/Pachelbel_CanonD.mxl`,
   },
 ] as const;

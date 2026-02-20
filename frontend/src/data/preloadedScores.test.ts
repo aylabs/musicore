@@ -11,9 +11,10 @@ describe('PRELOADED_SCORES', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('all paths follow /scores/<filename>.mxl pattern', () => {
+  it('all paths end with scores/<filename>.mxl', () => {
     for (const score of PRELOADED_SCORES) {
-      expect(score.path).toMatch(/^\/scores\/[^/]+\.mxl$/);
+      // BASE_URL is '/' in tests, '/musicore/' in production — allow any prefix
+      expect(score.path).toMatch(/scores\/[^/]+\.mxl$/);
     }
   });
 
