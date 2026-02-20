@@ -1,11 +1,11 @@
 /**
  * TempoControl Component Tests
- * 
- * Feature 008 - Tempo Change: Unit tests for tempo control buttons
+ *
+ * Feature 008 - Tempo Change: Unit tests for tempo control slider
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import TempoControl from './TempoControl';
 import * as TempoStateContext from '../../services/state/TempoStateContext';
@@ -15,343 +15,207 @@ vi.mock('../../services/state/TempoStateContext', () => ({
   useTempoState: vi.fn(),
 }));
 
-describe('TempoControl', () => {
-  const mockAdjustTempo = vi.fn();
+function makeMock(tempoMultiplier = 1.0, originalTempo = 120) {
+  const mockSetTempoMultiplier = vi.fn();
   const mockResetTempo = vi.fn();
-  const mockGetEffectiveTempo = vi.fn();
+  vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
+    tempoState: { tempoMultiplier, originalTempo },
+    setTempoMultiplier: mockSetTempoMultiplier,
+    adjustTempo: vi.fn(),
+    resetTempo: mockResetTempo,
+    getEffectiveTempo: () => Math.round(originalTempo * tempoMultiplier),
+    setOriginalTempo: vi.fn(),
+  });
+  return { mockSetTempoMultiplier, mockResetTempo };
+}
 
+describe('TempoControl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetEffectiveTempo.mockReturnValue(120);
-
-    vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-      tempoState: {
-        tempoMultiplier: 1.0,
-        originalTempo: 120,
-      },
-      setTempoMultiplier: vi.fn(),
-      adjustTempo: mockAdjustTempo,
-      resetTempo: mockResetTempo,
-      getEffectiveTempo: mockGetEffectiveTempo,
-      setOriginalTempo: vi.fn(),
-    });
   });
 
   describe('rendering', () => {
-    it('should render increment button', () => {
+    it('should render a range slider', () => {
+      makeMock();
       render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      expect(incrementButton).toBeInTheDocument();
-    });
 
-    it('should render decrement button', () => {
-      render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      expect(decrementButton).toBeInTheDocument();
-    });
-
-    it('should render reset button', () => {
-      render(<TempoControl />);
-      
-      const resetButton = screen.getByRole('button', { name: /reset.*tempo/i });
-      expect(resetButton).toBeInTheDocument();
+      const slider = screen.getByRole('slider', { name: /tempo/i });
+      expect(slider).toBeInTheDocument();
     });
 
     it('should display current tempo percentage', () => {
+      makeMock(1.0, 120);
       render(<TempoControl />);
-      
+
       expect(screen.getByText(/100%/)).toBeInTheDocument();
     });
 
     it('should display effective tempo in BPM', () => {
+      makeMock(1.0, 120);
       render(<TempoControl />);
-      
+
       expect(screen.getByText(/120.*BPM/i)).toBeInTheDocument();
     });
+
+    it('should display 150% at 1.5 multiplier', () => {
+      makeMock(1.5, 120);
+      render(<TempoControl />);
+
+      expect(screen.getByText(/150%/)).toBeInTheDocument();
+    });
+
+    it('should render the TEMPO label', () => {
+      makeMock();
+      render(<TempoControl />);
+
+      expect(screen.getByText(/tempo/i)).toBeInTheDocument();
+    });
+
+    it('should render the center tick marker', () => {
+      makeMock();
+      render(<TempoControl />);
+
+      // The center tick is a hidden <span> with class tempo-center-tick
+      const tick = document.querySelector('.tempo-center-tick');
+      expect(tick).toBeInTheDocument();
+    });
   });
 
-  describe('single click interactions', () => {
-    it('should call adjustTempo(1) on increment single click', async () => {
-      const user = userEvent.setup();
+  describe('slider value', () => {
+    it('should set slider value to the current tempoMultiplier', () => {
+      makeMock(1.2);
       render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      await user.click(incrementButton);
-      
-      expect(mockAdjustTempo).toHaveBeenCalledWith(1);
+
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(parseFloat(slider.value)).toBeCloseTo(1.2, 2);
     });
 
-    it('should call adjustTempo(-1) on decrement single click', async () => {
-      const user = userEvent.setup();
+    it('should set slider min to 0.5', () => {
+      makeMock();
       render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      await user.click(decrementButton);
-      
-      expect(mockAdjustTempo).toHaveBeenCalledWith(-1);
+
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(parseFloat(slider.min)).toBe(0.5);
     });
 
-    it('should call resetTempo on reset button click', async () => {
-      vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-        tempoState: {
-          tempoMultiplier: 1.2,
-          originalTempo: 120,
-        },
-        setTempoMultiplier: vi.fn(),
-        adjustTempo: mockAdjustTempo,
-        resetTempo: mockResetTempo,
-        getEffectiveTempo: () => 144,
-        setOriginalTempo: vi.fn(),
-      });
-      
+    it('should set slider max to 2.0', () => {
+      makeMock();
+      render(<TempoControl />);
+
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(parseFloat(slider.max)).toBe(2.0);
+    });
+  });
+
+  describe('slider interactions', () => {
+    it('should call setTempoMultiplier with new value when slider moved', () => {
+      const { mockSetTempoMultiplier } = makeMock(1.0);
+      render(<TempoControl />);
+
+      const slider = screen.getByRole('slider');
+      fireEvent.change(slider, { target: { value: '1.3' } });
+
+      expect(mockSetTempoMultiplier).toHaveBeenCalledWith(1.3);
+    });
+
+    it('should snap to 1.0 when slider is within snap threshold (within 5%)', () => {
+      const { mockSetTempoMultiplier } = makeMock(1.0);
+      render(<TempoControl />);
+
+      const slider = screen.getByRole('slider');
+      // 1.03 is within ±0.05 of 1.0 → should snap to 1.0
+      fireEvent.change(slider, { target: { value: '1.03' } });
+
+      expect(mockSetTempoMultiplier).toHaveBeenCalledWith(1.0);
+    });
+
+    it('should snap to 1.0 when slider is within snap threshold below center', () => {
+      const { mockSetTempoMultiplier } = makeMock(1.0);
+      render(<TempoControl />);
+
+      const slider = screen.getByRole('slider');
+      fireEvent.change(slider, { target: { value: '0.97' } });
+
+      expect(mockSetTempoMultiplier).toHaveBeenCalledWith(1.0);
+    });
+
+    it('should NOT snap when slider is outside threshold (>5% away)', () => {
+      const { mockSetTempoMultiplier } = makeMock(1.0);
+      render(<TempoControl />);
+
+      const slider = screen.getByRole('slider');
+      fireEvent.change(slider, { target: { value: '1.2' } });
+
+      expect(mockSetTempoMultiplier).toHaveBeenCalledWith(1.2);
+    });
+  });
+
+  describe('reset via value label', () => {
+    it('should call resetTempo when value label clicked at non-default', async () => {
+      const { mockResetTempo } = makeMock(1.3);
       const user = userEvent.setup();
       render(<TempoControl />);
-      
-      const resetButton = screen.getByRole('button', { name: /reset.*tempo/i });
-      await user.click(resetButton);
-      
+
+      // The value label is clickable when not at default
+      const label = screen.getByText(/156.*BPM/i);
+      await user.click(label);
+
       expect(mockResetTempo).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('long-press interactions', () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it('should call adjustTempo(10) on increment long-press', () => {
+    it('should NOT call resetTempo when value label clicked at 100%', async () => {
+      const { mockResetTempo } = makeMock(1.0);
+      const user = userEvent.setup();
       render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      
-      // Simulate pointer down
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Advance past threshold (500ms)
-      act(() => {
-        vi.advanceTimersByTime(500);
-      });
-      
-      expect(mockAdjustTempo).toHaveBeenCalledWith(10);
-    });
 
-    it('should call adjustTempo(-10) on decrement long-press', () => {
-      render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      
-      // Simulate pointer down
-      act(() => {
-        decrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Advance past threshold (500ms)
-      act(() => {
-        vi.advanceTimersByTime(500);
-      });
-      
-      expect(mockAdjustTempo).toHaveBeenCalledWith(-10);
-    });
+      const label = screen.getByText(/120.*BPM/i);
+      await user.click(label);
 
-    it('should repeat adjustTempo(10) while increment held', () => {
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Advance to trigger long-press and repeats
-      act(() => {
-        vi.advanceTimersByTime(1000);
-      });
-      
-      // Should trigger at 500ms, then repeat at 600ms, 700ms, 800ms, 900ms, 1000ms
-      expect(mockAdjustTempo).toHaveBeenCalledTimes(6);
-      expect(mockAdjustTempo).toHaveBeenCalledWith(10);
-    });
-
-    it('should stop repeating on pointer up', () => {
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Advance to trigger some repeats
-      act(() => {
-        vi.advanceTimersByTime(700);
-      });
-      
-      // Release
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-      });
-      
-      const callsBefore = mockAdjustTempo.mock.calls.length;
-      
-      // Advance more time - should not trigger more calls
-      act(() => {
-        vi.advanceTimersByTime(500);
-      });
-      
-      expect(mockAdjustTempo.mock.calls.length).toBe(callsBefore);
+      expect(mockResetTempo).not.toHaveBeenCalled();
     });
   });
 
-  describe('boundary conditions', () => {
-    it('should disable increment button at maximum (200%)', () => {
-      vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-        tempoState: {
-          tempoMultiplier: 2.0,
-          originalTempo: 120,
-        },
-        setTempoMultiplier: vi.fn(),
-        adjustTempo: mockAdjustTempo,
-        resetTempo: mockResetTempo,
-        getEffectiveTempo: () => 240,
-        setOriginalTempo: vi.fn(),
-      });
-      
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      expect(incrementButton).toBeDisabled();
+  describe('disabled state', () => {
+    it('should disable the slider when disabled prop is true', () => {
+      makeMock();
+      render(<TempoControl disabled />);
+
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(slider).toBeDisabled();
     });
 
-    it('should disable decrement button at minimum (50%)', () => {
-      vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-        tempoState: {
-          tempoMultiplier: 0.5,
-          originalTempo: 120,
-        },
-        setTempoMultiplier: vi.fn(),
-        adjustTempo: mockAdjustTempo,
-        resetTempo: mockResetTempo,
-        getEffectiveTempo: () => 60,
-        setOriginalTempo: vi.fn(),
-      });
-      
-      render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      expect(decrementButton).toBeDisabled();
+    it('should add disabled modifier class to container when disabled', () => {
+      makeMock();
+      render(<TempoControl disabled />);
+
+      const container = document.querySelector('.tempo-control');
+      expect(container).toHaveClass('tempo-control--disabled');
     });
 
-    it('should enable increment button near maximum (199%)', () => {
-      vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-        tempoState: {
-          tempoMultiplier: 1.99,
-          originalTempo: 120,
-        },
-        setTempoMultiplier: vi.fn(),
-        adjustTempo: mockAdjustTempo,
-        resetTempo: mockResetTempo,
-        getEffectiveTempo: () => 239,
-        setOriginalTempo: vi.fn(),
-      });
-      
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      expect(incrementButton).not.toBeDisabled();
-    });
+    it('should enable the slider when disabled prop is false', () => {
+      makeMock();
+      render(<TempoControl disabled={false} />);
 
-    it('should enable decrement button near minimum (51%)', () => {
-      vi.mocked(TempoStateContext.useTempoState).mockReturnValue({
-        tempoState: {
-          tempoMultiplier: 0.51,
-          originalTempo: 120,
-        },
-        setTempoMultiplier: vi.fn(),
-        adjustTempo: mockAdjustTempo,
-        resetTempo: mockResetTempo,
-        getEffectiveTempo: () => 61,
-        setOriginalTempo: vi.fn(),
-      });
-      
-      render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      expect(decrementButton).not.toBeDisabled();
-    });
-  });
-
-  describe('visual feedback', () => {
-    it('should show pressed state on increment button', () => {
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Check for pressed class
-      expect(incrementButton).toHaveClass('pressed');
-    });
-
-    it('should show pressed state on decrement button', () => {
-      render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      
-      act(() => {
-        decrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      
-      // Check for pressed class
-      expect(decrementButton).toHaveClass('pressed');
-    });
-
-    it('should remove pressed state on pointer up', () => {
-      render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      });
-      expect(incrementButton).toHaveClass('pressed');
-      
-      act(() => {
-        incrementButton.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-      });
-      expect(incrementButton).not.toHaveClass('pressed');
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(slider).not.toBeDisabled();
     });
   });
 
   describe('accessibility', () => {
-    it('should have aria-label on increment button', () => {
+    it('should have aria-label on slider', () => {
+      makeMock();
       render(<TempoControl />);
-      
-      const incrementButton = screen.getByRole('button', { name: /increase.*tempo/i });
-      expect(incrementButton).toHaveAccessibleName();
+
+      const slider = screen.getByRole('slider', { name: /tempo/i });
+      expect(slider).toHaveAccessibleName();
     });
 
-    it('should have aria-label on decrement button', () => {
+    it('should have aria-valuetext reflecting current tempo', () => {
+      makeMock(1.0, 120);
       render(<TempoControl />);
-      
-      const decrementButton = screen.getByRole('button', { name: /decrease.*tempo/i });
-      expect(decrementButton).toHaveAccessibleName();
-    });
 
-    it('should have aria-label on reset button', () => {
-      render(<TempoControl />);
-      
-      const resetButton = screen.getByRole('button', { name: /reset.*tempo/i });
-      expect(resetButton).toHaveAccessibleName();
+      const slider = screen.getByRole('slider');
+      expect(slider).toHaveAttribute('aria-valuetext', expect.stringMatching(/120.*BPM/i));
     });
   });
 });
