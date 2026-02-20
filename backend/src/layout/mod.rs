@@ -932,6 +932,7 @@ fn position_glyphs_for_staff(
                     duration_ticks: note.duration_ticks,
                     beam_levels,
                     beam_types,
+                    event_index: i, // Local index within this system's voice
                 }
             })
             .collect();
@@ -1160,7 +1161,7 @@ fn position_glyphs_for_staff(
                         instrument_id: instrument_id.to_string(),
                         staff_index,
                         voice_index,
-                        event_index: 0,
+                        event_index: group.notes[i].event_index,
                     },
                 };
                 stem_glyphs.push(stem_glyph);
@@ -1181,6 +1182,7 @@ fn position_glyphs_for_staff(
                     duration_ticks: n.duration_ticks,
                     beam_levels: n.beam_levels,
                     beam_types: n.beam_types.clone(),
+                    event_index: n.event_index,
                 })
                 .collect();
 
@@ -1210,7 +1212,9 @@ fn position_glyphs_for_staff(
                         instrument_id: instrument_id.to_string(),
                         staff_index,
                         voice_index,
-                        event_index: 0,
+                        // Beams use the first note's event_index — they visually span
+                        // the whole group but clicking a beam selects the group's first note.
+                        event_index: group.notes.first().map_or(0, |n| n.event_index),
                     },
                 };
                 all_glyphs.push(beam_glyph);
@@ -1242,7 +1246,8 @@ fn position_glyphs_for_staff(
                         instrument_id: instrument_id.to_string(),
                         staff_index,
                         voice_index,
-                        event_index: 0,
+                        // Same as primary beam: use first note's event_index.
+                        event_index: updated_group.notes.first().map_or(0, |n| n.event_index),
                     },
                 };
                 all_glyphs.push(beam_glyph);

@@ -58,6 +58,8 @@ pub struct BeamableNote {
     pub beam_levels: u8,
     /// Beam type per level (Begin/Continue/End/Hook) — empty if algorithmic
     pub beam_types: Vec<String>,
+    /// Local event index within the system (used for source_reference mapping)
+    pub event_index: usize,
 }
 
 /// Group notes that should be beamed together
@@ -704,6 +706,7 @@ mod tests {
                 duration_ticks: 480, // Eighth note
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -713,6 +716,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -722,6 +726,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 220.0,
@@ -731,6 +736,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -753,6 +759,7 @@ mod tests {
                 duration_ticks: 960, // Quarter note - should not beam
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -762,6 +769,7 @@ mod tests {
                 duration_ticks: 960,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -780,6 +788,7 @@ mod tests {
             duration_ticks: 480,
             beam_levels: 0,
             beam_types: Vec::new(),
+            event_index: 0,
         }];
 
         let groups = group_beamable_notes(&notes, 960);
@@ -799,6 +808,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -808,6 +818,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -827,6 +838,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -836,6 +848,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -857,6 +870,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 120.0, // Short distance
@@ -866,6 +880,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -888,6 +903,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -897,6 +913,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -923,6 +940,7 @@ mod tests {
             duration_ticks: 480,
             beam_levels: 0,
             beam_types: Vec::new(),
+            event_index: 0,
         }];
 
         let beam = create_beam(&notes, 0.0);
@@ -946,6 +964,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -955,6 +974,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Continue".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -964,6 +984,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Continue".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 220.0,
@@ -973,6 +994,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["End".to_string()],
+                event_index: 0,
             },
         ];
 
@@ -994,6 +1016,7 @@ mod tests {
                 duration_ticks: 960,
                 beam_levels: 0,
                 beam_types: Vec::new(), // quarter, no beams
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1003,6 +1026,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -1012,6 +1036,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["End".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 220.0,
@@ -1021,6 +1046,7 @@ mod tests {
                 duration_ticks: 960,
                 beam_levels: 0,
                 beam_types: Vec::new(), // quarter, no beams
+                event_index: 0,
             },
         ];
 
@@ -1040,6 +1066,7 @@ mod tests {
             duration_ticks: 480,
             beam_levels: 1,
             beam_types: vec!["Begin".to_string()],
+            event_index: 0,
         }];
 
         let groups = build_beam_groups_from_musicxml(&notes);
@@ -1058,6 +1085,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1067,6 +1095,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["End".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -1076,6 +1105,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 220.0,
@@ -1085,6 +1115,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["End".to_string()],
+                event_index: 0,
             },
         ];
 
@@ -1106,6 +1137,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["Begin".to_string(), "Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1115,6 +1147,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["Continue".to_string(), "Continue".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -1124,6 +1157,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["Continue".to_string(), "Continue".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 220.0,
@@ -1133,6 +1167,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["End".to_string(), "End".to_string()],
+                event_index: 0,
             },
         ];
 
@@ -1164,6 +1199,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1173,6 +1209,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["Continue".to_string(), "Begin".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -1182,6 +1219,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["End".to_string(), "End".to_string()],
+                event_index: 0,
             },
         ];
 
@@ -1222,6 +1260,7 @@ mod tests {
                 duration_ticks: 240,
                 beam_levels: 2,
                 beam_types: vec!["Begin".to_string(), "BackwardHook".to_string()],
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1231,6 +1270,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 1,
                 beam_types: vec!["End".to_string()],
+                event_index: 0,
             },
         ];
 
@@ -1265,6 +1305,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1274,6 +1315,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -1299,6 +1341,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1308,6 +1351,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -1332,6 +1376,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1341,6 +1386,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 180.0,
@@ -1350,6 +1396,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -1375,6 +1422,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
             BeamableNote {
                 x: 140.0,
@@ -1384,6 +1432,7 @@ mod tests {
                 duration_ticks: 480,
                 beam_levels: 0,
                 beam_types: Vec::new(),
+                event_index: 0,
             },
         ];
 
@@ -1405,6 +1454,7 @@ mod tests {
             duration_ticks: duration,
             beam_levels: 0,
             beam_types: Vec::new(),
+            event_index: 0,
         }
     }
 
