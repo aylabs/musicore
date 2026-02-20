@@ -70,3 +70,17 @@
     height: 20px;
   }
 }
+
+/* In fullscreen play view the app header is hidden and the compact PlaybackControls
+   strip sits at the very top of the viewport. The OfflineBanner (position: fixed)
+   overlaps it. Push the strip down by the banner height so it remains visible.
+   `:has()` is supported in Chrome 105+, Safari 15.4+, Firefox 121+. */
+body:has(.offline-banner) .playback-controls.compact {
+  padding-top: 48px;
+}
+
+@media (max-width: 640px) {
+  body:has(.offline-banner) .playback-controls.compact {
+    padding-top: 40px;
+  }
+}
