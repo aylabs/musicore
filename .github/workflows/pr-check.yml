@@ -90,3 +90,52 @@ jobs:
           curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
           cd backend
           wasm-pack build --target web --out-dir pkg --release
+
+  # -----------------------------------------------------------------------
+  # Production-simulation E2E tests
+  #
+  # Builds the frontend with the GitHub Pages sub-path (VITE_BASE=/musicore/)
+  # and runs Playwright tests against `vite preview`. This catches asset-path
+  # bugs (hardcoded '/' prefixes, missing BASE_URL usage, etc.) that only
+  # appear on the deployed sub-path, not during local dev.
+  # -----------------------------------------------------------------------
+  e2e-production:
+    runs-on: ubuntu-latest
+    needs: validate-frontend   # reuse type-check / lint result; skip if already failing
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build with production base path
+        working-directory: frontend
+        env:
+          VITE_BASE: /musicore/
+        run: npm run build
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production E2E tests
+        working-directory: frontend
+        run: npx playwright test --config playwright.config.prod.ts
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-prod-report
+          path: frontend/playwright-report/
+          retention-days: 7
