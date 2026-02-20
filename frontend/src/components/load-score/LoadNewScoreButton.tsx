@@ -1,0 +1,72 @@
+import { useRef } from 'react';
+import type { ChangeEvent } from 'react';
+import { useImportMusicXML } from '../../hooks/useImportMusicXML';
+import type { ImportResult } from '../../services/import/MusicXMLImportService';
+
+interface LoadNewScoreButtonProps {
+  onImportComplete: (result: ImportResult) => void;
+  disabled?: boolean;
+}
+
+/**
+ * File-picker button for importing a local MusicXML file from within the dialog.
+ * Reuses the same useImportMusicXML hook as ImportButton so behaviour is identical.
+ * Feature 028: Load Score Dialog — User Story 4 (T020).
+ */
+export function LoadNewScoreButton({
+  onImportComplete,
+  disabled = false,
+}: LoadNewScoreButtonProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { importFile, loading, error } = useImportMusicXML({
+    onSuccess: (result) => {
+      onImportComplete(result);
+    },
+  });
+
+  const handleButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importFile(file);
+    }
+    // reset so the same file can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const isBusy = disabled || loading;
+
+  return (
+    <div className="load-new-score-wrapper">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".musicxml,.xml,.mxl"
+        style={{ display: 'none' }}
+        aria-label="Upload MusicXML file"
+        onChange={handleFileChange}
+      />
+      <button
+        className="load-new-score-button"
+        onClick={handleButtonClick}
+        disabled={isBusy}
+        aria-label="Load from file"
+      >
+        {loading ? '⏳ Importing…' : '📂 Load from File'}
+      </button>
+      {error && (
+        <p className="load-new-score-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

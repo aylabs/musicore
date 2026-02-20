@@ -6,7 +6,6 @@ import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
-import { useOnboarding } from './hooks/useOnboarding'
 import packageJson from '../package.json'
 import './App.css'
 
@@ -24,7 +23,6 @@ import './App.css'
 function App() {
   const [wasmLoading, setWasmLoading] = useState(true)
   const [wasmError, setWasmError] = useState<string | null>(null)
-  const [wasmReady, setWasmReady] = useState(false)
   
   // Feature 017: Check URL for demo mode (?demo=true)
   const [showDemo, setShowDemo] = useState(false)
@@ -47,17 +45,12 @@ function App() {
     }
   }, []);
   
-  // Feature 013: Onboarding hook for first-run demo and view mode preference
-  // CRITICAL: Pass wasmReady to prevent race condition on mobile
-  const { viewMode, setViewMode, isDemoLoading, demoError } = useOnboarding(wasmReady)
-
   useEffect(() => {
     // Initialize WASM module on app startup
     initWasm()
       .then(() => {
         console.log('[App] WASM engine ready')
         setWasmLoading(false)
-        setWasmReady(true) // Signal to onboarding hook
       })
       .catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -67,8 +60,8 @@ function App() {
       })
   }, [])
 
-  // Show loading state while WASM initializes or demo loads on first run
-  if (wasmLoading || isDemoLoading) {
+  // Show loading state while WASM initializes
+  if (wasmLoading) {
     return (
       <div className="app">
         <header className="app-header">
@@ -98,7 +91,7 @@ function App() {
           gap: '1rem'
         }}>
           <div style={{ fontSize: '2rem' }}>🎼</div>
-          <p>{isDemoLoading ? 'Loading demo music...' : 'Loading music engine...'}</p>
+          <p>Loading music engine...</p>
         </main>
       </div>
     )
@@ -213,25 +206,6 @@ function App() {
       <FileStateProvider>
         <div className="app">
           <OfflineBanner />
-          {/* Feature 013: Demo loading error notification (T019) */}
-          {demoError && (
-            <div style={{
-              position: 'fixed',
-              top: '4rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: '#ff9800',
-              color: 'white',
-              padding: '1rem 2rem',
-              borderRadius: '4px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              zIndex: 1000,
-              maxWidth: '600px',
-              textAlign: 'center'
-            }}>
-              ⚠️ Demo music unavailable. You can import your own MusicXML files.
-            </div>
-          )}
           <header className="app-header">
             <h1>
               🎵 Musicore{' '}
@@ -251,10 +225,7 @@ function App() {
             </h1>
           </header>
           <main>
-            <ScoreViewer 
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
+            <ScoreViewer />
           </main>
           <IOSInstallModal />
         </div>

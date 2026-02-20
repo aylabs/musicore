@@ -6,13 +6,13 @@ import { PlaybackControls } from "./playback/PlaybackControls";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
 import { useTempoState } from "../services/state/TempoStateContext";
-import { ImportButton } from "./import/ImportButton";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
-import { demoLoaderService } from "../services/onboarding/demoLoader";
 import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
+import { LoadScoreButton } from "./load-score/LoadScoreButton";
+import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
 import "./ScoreViewer.css";
 
 /** A single long-press pin: a noteId coupled with its absolute tick position */
@@ -52,7 +52,7 @@ export function ScoreViewer({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [skipNextLoad, setSkipNextLoad] = useState(false); // Flag to prevent reload after local->backend sync
   const [isFileSourced, setIsFileSourced] = useState(false); // Track if score came from file (frontend is source of truth)
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(false); // Flag for auto-playing demo after load
+  const [dialogOpen, setDialogOpen] = useState(false); // Feature 028: Load Score dialog visibility
   const [scoreTitle, setScoreTitle] = useState<string | null>(null); // Feature 022: Score title from MusicXML metadata
   
   // View mode state for toggling between individual and layout views
@@ -221,68 +221,6 @@ export function ScoreViewer({
   void createNewScore;
 
   /**
-   * Load demo score from IndexedDB (Feature 013)
-   * Sets layout view and auto-plays the demo
-   */
-  const handleLoadDemoButtonClick = async () => {
-    // T007: Request full-screen NOW — we are still inside the synchronous part of the
-    // click-event handler, so the browser grants the user-gesture privilege.
-    // All subsequent awaits run outside the user-gesture context, so this is the
-    // only safe place to call requestFullscreen for the demo flow.
-    document.documentElement.requestFullscreen?.().catch(() => {
-      // iOS Safari does not support requestFullscreen — body class provides the CSS fallback
-    });
-    setLoading(true);
-    setError(null);
-    try {
-      // Get demo score from IndexedDB
-      let demoScore = await demoLoaderService.getDemoScore();
-      
-      if (!demoScore) {
-        // Demo might have outdated schema - reload it
-        console.log('[ScoreViewer] Demo not found or outdated, reloading...');
-        demoScore = await demoLoaderService.loadBundledDemo();
-      }
-      
-      if (!demoScore) {
-        setError("Demo not found. Try refreshing the page.");
-        return;
-      }
-
-      // Load the demo
-      setScore(demoScore);
-      setScoreId(demoScore.id);
-      setScoreTitle(demoScore.title ?? null); // Feature 022: Show demo title
-      setIsFileSourced(false);
-      setSkipNextLoad(true); // Skip the loadScore() useEffect since we already have the score
-      resetFileState();
-      
-      // Set view mode to layout (Play View — better for demo)
-      setViewMode('layout');
-      
-      // Set auto-play flag (will trigger in useEffect after score loads)
-      setShouldAutoPlay(true);
-      
-      console.log(`[ScoreViewer] Loaded demo: ${demoScore.title}, switching to layout view and auto-playing`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load demo");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Delete removed: syncLocalScoreToBackend()
-   * Feature 025: Offline Mode - No REST API sync needed
-   * All scores stored in IndexedDB only, identified by score.id
-   */
-
-  /**
-   * Load button and file selection handlers removed - Feature 014:
-   * Read-only viewer focuses on Import and Demo loading only.
-  };
-
-  /**
    * Handle successful MusicXML import (Feature 006)
    * Feature 011: WASM parsing creates in-memory score (not in backend DB)
    * Loads the imported score into the viewer
@@ -300,6 +238,16 @@ export function ScoreViewer({
     
     setSuccessMessage(`Imported ${result.statistics.note_count} notes from ${result.metadata.file_name || 'MusicXML file'}`);
     setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  /**
+   * Handle import completion from the Load Score dialog (Feature 028, T018).
+   * Opens the score in the play view (layout mode) in a paused state.
+   */
+  const handleDialogImportComplete = (result: ImportResult) => {
+    handleMusicXMLImport(result);
+    setDialogOpen(false);
+    setViewMode('layout');
   };
 
   /**
@@ -523,25 +471,6 @@ export function ScoreViewer({
     prevStatusRef.current = playbackState.status;
   }, [playbackState.status]);
 
-  /**
-   * Auto-play demo when loaded (Feature 013)
-   */
-  useEffect(() => {
-    if (shouldAutoPlay && score) {
-      console.log('[ScoreViewer] Auto-playing demo after score loaded');
-      // Small delay to ensure playback state is initialized with new notes
-      const timer = setTimeout(() => {
-        if (playbackState.play) {
-          playbackState.play();
-          console.log('[ScoreViewer] Demo playback started');
-        }
-        setShouldAutoPlay(false); // Reset flag
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [shouldAutoPlay, score, playbackState]);
-
   // Render loading state
   if (loading && !score) {
     return (
@@ -557,27 +486,21 @@ export function ScoreViewer({
       <div className="score-viewer">
         <div className="no-score">
           <div className="initial-actions">
-            {/* Feature 013: Load demo button */}
-            <button 
-              onClick={handleLoadDemoButtonClick} 
-              disabled={loading}
-              style={{ 
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                fontWeight: 'bold'
-              }}
-            >              🎵 Demo
-            </button>
-            {/* Feature 006: Import MusicXML Score */}
-            <ImportButton
-              onImportComplete={handleMusicXMLImport}
-              buttonText="Import Score"
+            {/* Feature 028: Load Score button opens the Load Score dialog */}
+            <LoadScoreButton
+              onClick={() => setDialogOpen(true)}
               disabled={loading}
             />
           </div>
           {error && <div className="error">{error}</div>}
           {successMessage && <div className="success">{successMessage}</div>}
         </div>
+        {/* Feature 028: Load Score Dialog */}
+        <LoadScoreDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onImportComplete={handleDialogImportComplete}
+        />
       </div>
     );
   }
@@ -605,9 +528,8 @@ export function ScoreViewer({
           {/* Feature 010: Import (left) and View Mode Selector (right) on same line */}
           <div className="score-toolbar">
             <div className="toolbar-left">
-              <ImportButton
-                onImportComplete={handleMusicXMLImport}
-                buttonText="Import"
+              <LoadScoreButton
+                onClick={() => setDialogOpen(true)}
               />
             </div>
             <div className="toolbar-right">
@@ -717,6 +639,12 @@ export function ScoreViewer({
       )}
 
       {loading && <div className="loading-overlay">Updating...</div>}
+      {/* Feature 028: Load Score Dialog */}
+      <LoadScoreDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onImportComplete={handleDialogImportComplete}
+      />
     </div>
   );
 }
