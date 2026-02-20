@@ -44,29 +44,10 @@ vi.mock("../../services/score-api", () => ({
   },
 }));
 
-// Mock demo loader service
-vi.mock("../../services/onboarding/demoLoader", () => ({
-  demoLoaderService: {
-    shouldLoadDemo: vi.fn().mockReturnValue(false),
-    loadDemo: vi.fn(),
-    markDemoLoaded: vi.fn(),
-  },
-}));
-
 // Mock storage service
 vi.mock("../../services/storage/local-storage", () => ({
   loadScoreFromIndexedDB: vi.fn().mockResolvedValue(null),
   saveScoreToIndexedDB: vi.fn(),
-}));
-
-// Mock useOnboarding hook to control view mode and demo loading
-vi.mock("../../hooks/useOnboarding", () => ({
-  useOnboarding: vi.fn().mockReturnValue({
-    viewMode: "individual",
-    setViewMode: vi.fn(),
-    isDemoLoading: false,
-    demoError: null,
-  }),
 }));
 
 // Wrapper component for providers
@@ -189,7 +170,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
     });
 
     // Query for New Score button in landing page
@@ -242,7 +223,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
   });
 
   /**
-   * Test: Import button should still render (functionality preserved)
+   * Test: Load Score button should still render (functionality preserved, Feature 028)
    */
   it("should still render Import button", async () => {
     render(
@@ -252,16 +233,16 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
     });
 
-    // Verify Import button is present
-    const importButton = screen.queryByRole("button", { name: /import/i });
-    expect(importButton).toBeInTheDocument();
+    // Verify Load Score button is present
+    const loadButton = screen.queryByRole("button", { name: /load score/i });
+    expect(loadButton).toBeInTheDocument();
   });
 
   /**
-   * Test: Demo button should still render on landing page (functionality preserved)
+   * Test: Load Score button should render on landing page (Feature 028)
    */
   it("should still render Demo button on landing page", async () => {
     render(
@@ -271,11 +252,13 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /demo/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
     });
 
-    // Verify Demo button is present on landing page
-    const demoButton = screen.queryByRole("button", { name: /demo/i });
-    expect(demoButton).toBeInTheDocument();
+    // Verify Load Score button is present; Demo button is gone
+    const loadScoreButton = screen.queryByRole("button", { name: /load score/i });
+    expect(loadScoreButton).toBeInTheDocument();
+    const demoButton = screen.queryByRole("button", { name: /^demo$/i });
+    expect(demoButton).not.toBeInTheDocument();
   });
 });

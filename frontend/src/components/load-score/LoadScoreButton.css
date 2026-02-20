@@ -1,0 +1,25 @@
+.load-score-button {
+  background-color: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.load-score-button:hover:not(:disabled) {
+  background-color: #4f46e5;
+}
+
+.load-score-button:active:not(:disabled) {
+  background-color: #4338ca;
+}
+
+.load-score-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

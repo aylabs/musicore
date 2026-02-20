@@ -72,10 +72,36 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 027-demo-flow-ux: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 027-demo-flow-ux: Added TypeScript (React 18 + Hooks), Rust stable ≥1.79 + React, Vite, Vitest, Playwright, Tone.js, wasm-bindgen, History API, Fullscreen API
 - 026-playback-ui-fixes: Added TypeScript 5.x strict mode + React 18+, Vite 7.3.1, Tone.js, Vitest 4.0.18
-- 025-offline-mode: Added TypeScript 5.x (frontend), Rust 1.75+ (backend WASM module, no changes expected) + React 18+, vite-plugin-pwa, Workbox (service worker), IndexedDB (via custom wrapper), WASM music engine (already compiled), Tone.js (audio playback)
 
 
 <!-- MANUAL ADDITIONS START -->
+## Feature 028: Load Score Dialog
+
+**Branch**: `028-load-score-dialog`
+
+**What's changing**:
+- Landing screen: single **Load Score** button (removes Demo + Import Score buttons)
+- New `<dialog>`-based modal: 2-panel (preloaded list left, file-picker button right)
+- Preloaded scores: 6 `.mxl` files served from `frontend/public/scores/` (symlink to `/scores/`)
+- Offline: `mxl` added to Workbox `globPatterns` in `vite.config.ts`
+- Feature 013 onboarding removed: `useOnboarding.ts`, `services/onboarding/` deleted, `App.tsx` cleaned
+
+**New files**:
+- `frontend/src/data/preloadedScores.ts` — `PRELOADED_SCORES` manifest constant
+- `frontend/src/components/load-score/LoadScoreButton.tsx` — stateless trigger button
+- `frontend/src/components/load-score/LoadScoreDialog.tsx` — modal using `<dialog>` element
+- `frontend/src/components/load-score/PreloadedScoreList.tsx` — renders 6 score entries
+- `frontend/src/components/load-score/LoadNewScoreButton.tsx` — wraps `useImportMusicXML` for file-picker
+
+**Key integration**:
+- Preloaded load: `fetch(score.path)` → `new File([blob], name)` → `useImportMusicXML.importFile()`
+- On success: `handleMusicXMLImport(result)` then `setViewMode('layout')` in `ScoreViewer`
+- Play view opens **paused at tick 0** — user taps Play
+
+**Deleted**:
+- `frontend/src/hooks/useOnboarding.ts`
+- `frontend/src/services/onboarding/` (entire directory)
 <!-- MANUAL ADDITIONS END -->
