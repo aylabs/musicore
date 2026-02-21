@@ -314,6 +314,25 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
    * Apply or remove the green 'pinned' CSS class based on pinnedNoteIds prop.
    * Called on componentDidUpdate when pinnedNoteIds changes, and from reapplyHighlights.
    */
+  /**
+   * Apply a scale(factor) SVG transform centred on the glyph's (x, y) position.
+   * Uses translate(x,y) scale(f) translate(-x,-y) in SVG attribute space so the
+   * element scales around its own anchor point without relying on CSS transform-box,
+   * which Safari mis-implements for SVG <text> elements (causes visual displacement).
+   * Only applied to <text> elements (noteheads/accidentals); stems and beams are
+   * left at their natural size.
+   */
+  private applyNoteheadScale(el: Element, scale: number): void {
+    if (el.tagName !== 'text') return;
+    if (scale === 1) {
+      el.removeAttribute('transform');
+    } else {
+      const x = parseFloat(el.getAttribute('x') ?? '0');
+      const y = parseFloat(el.getAttribute('y') ?? '0');
+      el.setAttribute('transform', `translate(${x} ${y}) scale(${scale}) translate(${-x} ${-y})`);
+    }
+  }
+
   private updatePinnedHighlights(): void {
     const svg = this.svgRef.current;
     if (!svg) return;
@@ -323,7 +342,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Scoped to .layout-glyph to skip hit-rects (transparent overlays) and beams.
     for (const id of this.prevPinnedIds) {
       if (!currentPinned.has(id)) {
-        svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => el.classList.remove('pinned'));
+        svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
+          el.classList.remove('pinned');
+          this.applyNoteheadScale(el, 1);
+        });
       }
     }
     // Add .pinned to all layout-glyph elements for this note (notehead + accidental + stem)
@@ -332,6 +354,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
         el.classList.add('pinned');
         el.classList.remove('highlighted');
+        this.applyNoteheadScale(el, 1.2);
       });
     }
     this.prevPinnedIds = new Set(currentPinned);
@@ -365,12 +388,19 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Scoped to .layout-glyph to skip transparent hit-rects (fix Bug #1: orange box)
     // and beam polygons (fix Bug #2: beam spanning all notes turns whole group orange).
     for (const id of patch.removed) {
-      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => el.classList.remove('highlighted'));
+      svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
+        el.classList.remove('highlighted');
+        // Only remove scale if element is not also pinned
+        if (!el.classList.contains('pinned')) this.applyNoteheadScale(el, 1);
+      });
     }
     for (const id of patch.added) {
       // Skip elements that are pinned — green takes priority, orange must not overwrite
       svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
-        if (!el.classList.contains('pinned')) el.classList.add('highlighted');
+        if (!el.classList.contains('pinned')) {
+          el.classList.add('highlighted');
+          this.applyNoteheadScale(el, 1.2);
+        }
       });
     }
 
@@ -411,7 +441,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // Scoped to .layout-glyph — skips hit-rects and beams (same reasoning as updateHighlights).
     for (const id of currentIds) {
       svg.querySelectorAll(`.layout-glyph[data-note-id="${id}"]`).forEach(el => {
-        if (!el.classList.contains('pinned')) el.classList.add('highlighted');
+        if (!el.classList.contains('pinned')) {
+          el.classList.add('highlighted');
+          this.applyNoteheadScale(el, 1.2);
+        }
       });
     }
 

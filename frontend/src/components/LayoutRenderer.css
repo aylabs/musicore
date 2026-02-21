@@ -68,21 +68,17 @@ polygon.highlighted {
 }
 
 /**
- * Notehead scale-up on highlight: 50% larger, centred on the glyph itself.
- * transform-box: fill-box makes transform-origin relative to the element's
- * own bounding box so scale(1.5) expands around the notehead centre rather
- * than the SVG origin.
- * Only applied to text elements (SMuFL noteheads) — stems and beams keep
- * their original size to avoid visual clutter.
+ * Notehead scale-up on highlight.
+ * The scale transform is applied as an SVG `transform` attribute in JS
+ * (LayoutRenderer.tsx applyNoteheadScale) rather than via CSS, because
+ * Safari does not correctly implement `transform-box: fill-box` on SVG
+ * <text> elements — it miscomputes the bounding box origin and visually
+ * displaces the notehead away from its beam/stem.
+ * The JS approach uses translate(x,y) scale(1.2) translate(-x,-y) which
+ * works correctly in all browsers using the SVG coordinate system.
  */
 text.layout-glyph {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: fill 50ms ease-out, stroke 50ms ease-out, transform 80ms ease-out;
-}
-
-text.layout-glyph.highlighted {
-  transform: scale(1.2) !important;
+  transition: fill 50ms ease-out, stroke 50ms ease-out;
 }
 
 /**
@@ -97,9 +93,7 @@ text.layout-glyph.highlighted {
   filter: drop-shadow(0 0 4px rgba(0, 180, 60, 0.8)) !important;
 }
 
-text.layout-glyph.pinned {
-  transform: scale(1.2) !important;
-}
+/* Pinned notehead scale is also applied via JS SVG attribute (see applyNoteheadScale). */
 
 /**
  * Loop region overlay rect drawn behind notes.
