@@ -11,6 +11,10 @@ interface LoadScoreDialogProps {
   open: boolean;
   onClose: () => void;
   onImportComplete: (result: ImportResult) => void;
+  /** Called synchronously at the very start of any load gesture (preset click or file select),
+   * before async work begins. Use this to call requestFullscreen() while still inside the
+   * browser's user-gesture window (Safari / Firefox require this). */
+  onWillLoad?: () => void;
 }
 
 /**
@@ -20,7 +24,7 @@ interface LoadScoreDialogProps {
  *
  * Feature 028: Load Score Dialog — User Stories 2–5.
  */
-export function LoadScoreDialog({ open, onClose, onImportComplete }: LoadScoreDialogProps) {
+export function LoadScoreDialog({ open, onClose, onImportComplete, onWillLoad }: LoadScoreDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -68,6 +72,9 @@ export function LoadScoreDialog({ open, onClose, onImportComplete }: LoadScoreDi
    * Feature 028, US3 (T017).
    */
   const loadPresetScore = async (score: PreloadedScore) => {
+    // Call before the first await so we're still inside the browser's user-gesture window.
+    // This allows requestFullscreen() to succeed (Safari / Firefox are strict about this).
+    onWillLoad?.();
     setSelectedId(score.id);
     setPresetError(null);
     setPresetLoading(true);
@@ -135,6 +142,7 @@ export function LoadScoreDialog({ open, onClose, onImportComplete }: LoadScoreDi
           <LoadNewScoreButton
             onImportComplete={handleLocalImportComplete}
             disabled={isBusy}
+            onWillLoad={onWillLoad}
           />
         </section>
       </div>
