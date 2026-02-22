@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
+import { RecordingView } from './components/recording/RecordingView'
 import { OfflineBanner } from './components/OfflineBanner'
 import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
@@ -26,6 +27,10 @@ function App() {
   
   // Feature 017: Check URL for demo mode (?demo=true)
   const [showDemo, setShowDemo] = useState(false)
+
+  // Feature 001-recording-view: Recording debug view (?debug=true)
+  const [showRecording, setShowRecording] = useState(false)
+  const [debugMode, setDebugMode] = useState(false)
   
   // Mobile debug console (eruda) - enable with ?debug=true
   useEffect(() => {
@@ -42,6 +47,11 @@ function App() {
     if (urlParams.get('demo') === 'true') {
       console.log('[App] Demo mode enabled - showing RendererDemo');
       setShowDemo(true);
+    }
+
+    // Feature 001-recording-view: Enable debug mode flag for Record View button
+    if (urlParams.get('debug') === 'true') {
+      setDebugMode(true);
     }
   }, []);
   
@@ -173,6 +183,13 @@ function App() {
 
   // Normal app render once WASM is ready
   
+  // Feature 001-recording-view: Show RecordingView when navigated to from ScoreViewer
+  if (showRecording) {
+    return (
+      <RecordingView onBack={() => setShowRecording(false)} />
+    )
+  }
+
   // Feature 017: Show RendererDemo if ?demo=true parameter is present
   if (showDemo) {
     return (
@@ -225,7 +242,10 @@ function App() {
             </h1>
           </header>
           <main>
-            <ScoreViewer />
+            <ScoreViewer
+              debugMode={debugMode}
+              onShowRecording={() => setShowRecording(true)}
+            />
           </main>
           <IOSInstallModal />
         </div>

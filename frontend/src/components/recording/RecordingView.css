@@ -1,0 +1,364 @@
+/*
+ * RecordingView layout styles
+ * Debug-mode-only component — simple readable layout for developer use
+ */
+
+.recording-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: #1a1a1a;
+  color: #f0f0f0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.recording-view__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.recording-view__back-btn {
+  background: transparent;
+  border: 1px solid #555;
+  color: #ccc;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.recording-view__back-btn:hover {
+  border-color: #aaa;
+  color: #fff;
+}
+
+.recording-view__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.recording-view__debug-badge {
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: #ff6b00;
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+
+.recording-view__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  flex: 1;
+}
+
+/* ── Compact top row (oscilloscope + pitch) ─────────────────────────────── */
+
+.recording-view__top-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.recording-view__top-row .oscilloscope-canvas {
+  /* Grow to fill the row; height is fixed via the height prop on the canvas */
+  flex: 1;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #0d0d0d;
+  display: block;
+}
+
+/* ── Start/Stop toggle ───────────────────────────────────────────────────── */
+
+.recording-view__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.recording-view__toggle-btn {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  background: #2e7d32;
+  color: #fff;
+}
+
+.recording-view__toggle-btn:hover {
+  background: #388e3c;
+}
+
+.recording-view__toggle-btn--stop {
+  background: #b71c1c;
+  color: #fff;
+}
+
+.recording-view__toggle-btn--stop:hover {
+  background: #c62828;
+}
+
+/* ── Recording active indicator ──────────────────────────────────────────── */
+
+.recording-view__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #aaa;
+}
+
+.recording-view__status--active {
+  color: #ef5350;
+}
+
+.recording-view__status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef5350;
+  animation: recording-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Error display ─────────────────────────────────────────────────────────── */
+
+.recording-view__error {
+  padding: 0.75rem 1rem;
+  background: rgba(183, 28, 28, 0.2);
+  border: 1px solid #b71c1c;
+  border-radius: 6px;
+  color: #ef9a9a;
+  font-size: 0.875rem;
+}
+
+/* ── Oscilloscope (now lives inside .recording-view__top-row) ────────────── */
+
+/* (border/background applied via .recording-view__top-row .oscilloscope-canvas) */
+
+/* ── Current pitch (inline with oscilloscope) ────────────────────────────── */
+
+.recording-view__pitch-display {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #f0f0f0;
+  min-width: 3.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Note history list ─────────────────────────────────────────────────────── */
+
+.recording-view__history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.recording-view__history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recording-view__history-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+}
+
+/* NoteHistoryList internal header */
+.note-history-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.note-history-list__title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+}
+
+.note-history-list__clear-btn {
+  background: transparent;
+  border: 1px solid #444;
+  color: #888;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.note-history-list__clear-btn:hover {
+  border-color: #888;
+  color: #ddd;
+}
+
+.recording-view__clear-btn {
+  background: transparent;
+  border: 1px solid #444;
+  color: #aaa;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.recording-view__clear-btn:hover {
+  border-color: #888;
+  color: #ddd;
+}
+
+/* ── RecordingStaff ──────────────────────────────────────────────────────── */
+
+.recording-staff {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.recording-staff__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+}
+
+.recording-staff__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.recording-staff__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+}
+
+.recording-staff__clear-btn {
+  background: transparent;
+  border: 1px solid #444;
+  color: #aaa;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.recording-staff__clear-btn:hover {
+  border-color: #888;
+  color: #ddd;
+}
+
+.recording-staff__play-btn {
+  border: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.recording-staff__play-btn:active {
+  transform: scale(0.96);
+}
+
+.recording-staff__play-btn--notes {
+  background: #1565c0;
+  color: #fff;
+}
+
+.recording-staff__play-btn--notes:hover {
+  opacity: 0.85;
+}
+
+.recording-staff__play-btn--audio {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.recording-staff__play-btn--audio:hover {
+  opacity: 0.85;
+}
+
+.recording-staff__play-btn--stop {
+  background: #b71c1c;
+  color: #fff;
+}
+
+.recording-staff__play-btn--stop:hover {
+  opacity: 0.85;
+}
+
+.recording-staff__renderer {
+  width: 100%;
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 6px;
+  /* Give the SVG staff room — viewportHeight is 200px in DEFAULT_STAFF_CONFIG */
+  min-height: 80px;
+}
+
+.recording-staff__renderer svg {
+  display: block;
+}
+
+.recording-staff__status {
+  font-size: 0.8rem;
+  color: #aaa;
+  padding: 0 0.25rem;
+  min-height: 1.2em;
+}
+
+.recording-staff__status strong {
+  color: #d4a0ff;
+  font-weight: 600;
+}
+
+.recording-staff__status--muted {
+  color: #555;
+  font-style: italic;
+}

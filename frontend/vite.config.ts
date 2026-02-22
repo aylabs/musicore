@@ -1,9 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => {
+  // HTTPS is only needed for local dev (getUserMedia requires a secure context
+  // on LAN / Android). Disable for `vite preview` and CI so that Playwright
+  // can reach the server over plain HTTP without timing out.
+  const useHttps = command === 'serve' && !process.env.CI;
+
+  return {
   // Base path for GitHub Pages deployment
   // For user/org pages: base: '/'
   // For project pages: base: '/repository-name/'
@@ -13,9 +20,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // Listen on all network interfaces
     port: 5173,       // Default Vite port
+    ...(useHttps ? { https: {} } : {}),  // Self-signed cert via @vitejs/plugin-basic-ssl
   },
   
   plugins: [
+    ...(useHttps ? [basicSsl()] : []),
     react(),
     // PWA plugin configuration
     VitePWA({
@@ -107,4 +116,5 @@ export default defineConfig({
   build: {
     target: 'esnext'
   }
+  };
 })
