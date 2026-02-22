@@ -17,8 +17,8 @@
 
 **Purpose**: Wire the new view into the existing app routing. No new patterns — mirrors the `showRecording` flag established in `001-recording-view`.
 
-- [ ] T001 Add `showPractice` boolean state and `PracticeView` routing to `frontend/src/App.tsx` (parallel to the existing `showRecording` flag pattern)
-- [ ] T002 [P] Add `onShowPractice` prop and debug "Practice" button to `frontend/src/components/ScoreViewer.tsx` (alongside the existing "Record" button)
+- [x] T001 Add `showPractice` boolean state and `PracticeView` routing to `frontend/src/App.tsx` (parallel to the existing `showRecording` flag pattern)
+- [x] T002 [P] Add `onShowPractice` prop and debug "Practice" button to `frontend/src/components/ScoreViewer.tsx` (alongside the existing "Record" button)
 
 **Checkpoint**: App compiles; "Practice" button visible in debug mode; clicking it renders a placeholder.
 
@@ -30,9 +30,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Create all 7 domain types in `frontend/src/types/practice.ts` (`ExerciseNote`, `Exercise`, `ResponseNote`, `NoteComparisonStatus`, `NoteComparison`, `ExerciseResult`, `PracticePhase`) as specified in `contracts/typescript-interfaces.md`
-- [ ] T004 Create `frontend/src/services/practice/usePracticeRecorder.ts` — requests mic on mount, exposes `startCapture()`, `stopCapture()`, `clearCapture()`, `currentPitch`; wraps AudioWorklet + `pitchDetection.ts` without modifying them (FR-014)
-- [ ] T005 [P] Write unit tests for `usePracticeRecorder` in `frontend/src/services/practice/usePracticeRecorder.test.ts` — covers mic lifecycle (idle → requesting → active → error), `startCapture`/`stopCapture` capture arrays, `clearCapture` reset
+- [x] T003 Create all 7 domain types in `frontend/src/types/practice.ts` (`ExerciseNote`, `Exercise`, `ResponseNote`, `NoteComparisonStatus`, `NoteComparison`, `ExerciseResult`, `PracticePhase`) as specified in `contracts/typescript-interfaces.md`
+- [x] T004 Create `frontend/src/services/practice/usePracticeRecorder.ts` — requests mic on mount, exposes `startCapture()`, `stopCapture()`, `clearCapture()`, `currentPitch`; wraps AudioWorklet + `pitchDetection.ts` without modifying them (FR-014)
+- [x] T005 [P] Write unit tests for `usePracticeRecorder` in `frontend/src/services/practice/usePracticeRecorder.test.ts` — covers mic lifecycle (idle → requesting → active → error), `startCapture`/`stopCapture` capture arrays, `clearCapture` reset
 
 **Checkpoint**: `npm test` passes; `usePracticeRecorder` tests green (or skipped with correct mocks); types compile without errors.
 
@@ -48,16 +48,16 @@
 
 > **Write FIRST — verify they FAIL before implementing the corresponding module**
 
-- [ ] T006 [P] [US1] Write unit tests for `exerciseGenerator` in `frontend/src/services/practice/exerciseGenerator.test.ts` — verify: returns exactly 8 notes, all `midiPitch` ∈ `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs` formula at 80 BPM, deterministic output with `seed` parameter
-- [ ] T012 [P] [US1] Write component tests for `PracticeView` in `frontend/src/components/practice/PracticeView.test.tsx` — verify: renders 8 exercise notes on mount, Play button present in `ready` phase, phase transitions to `playing` on Play press, results view visible after playback ends
+- [x] T006 [P] [US1] Write unit tests for `exerciseGenerator` in `frontend/src/services/practice/exerciseGenerator.test.ts` — verify: returns exactly 8 notes, all `midiPitch` ∈ `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs` formula at 80 BPM, deterministic output with `seed` parameter
+- [x] T012 [P] [US1] Write component tests for `PracticeView` in `frontend/src/components/practice/PracticeView.test.tsx` — verify: renders 8 exercise notes on mount, Play button present in `ready` phase, phase transitions to `playing` on Play press, results view visible after playback ends
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create `frontend/src/services/practice/exerciseGenerator.ts` — implement `generateExercise(bpm?: number, seed?: number): Exercise`; 8 notes, pitches from MIDI `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs = slotIndex × (60_000 / bpm)` (T006 tests must pass)
-- [ ] T008 [US1] Create `frontend/src/components/practice/PracticeView.tsx` scaffold — renders exercise staff via `NotationLayoutEngine`/`NotationRenderer`, renders empty response staff, manages `phase` / `exercise` / `result` / `highlightedSlotIndex` state; depends on T003, T007
-- [ ] T009 [P] [US1] Create `frontend/src/components/practice/PracticeView.css` — two-staff vertical layout, Play/Stop button, tablet portrait orientation (no horizontal scroll per SC-004)
-- [ ] T010 [US1] Add playback to `PracticeView.tsx` — Play button triggers `OscillatorNode` tone synthesis per note (reuse envelope pattern from `RecordingStaff`), sequential slot highlighting at configured BPM, Stop button ends playback mid-exercise (FR-004, FR-007); depends on T008
-- [ ] T011 [US1] Integrate `usePracticeRecorder` into `PracticeView.tsx` — call `startCapture(exercise, startMs)` on Play, display `currentPitch` detections on response staff in real time, call `stopCapture()` on playback end or Stop press; depends on T004, T010
+- [x] T007 [P] [US1] Create `frontend/src/services/practice/exerciseGenerator.ts` — implement `generateExercise(bpm?: number, seed?: number): Exercise`; 8 notes, pitches from MIDI `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs = slotIndex × (60_000 / bpm)` (T006 tests must pass)
+- [x] T008 [US1] Create `frontend/src/components/practice/PracticeView.tsx` scaffold — renders exercise staff via `NotationLayoutEngine`/`NotationRenderer`, renders empty response staff, manages `phase` / `exercise` / `result` / `highlightedSlotIndex` state; depends on T003, T007
+- [x] T009 [P] [US1] Create `frontend/src/components/practice/PracticeView.css` — two-staff vertical layout, Play/Stop button, tablet portrait orientation (no horizontal scroll per SC-004)
+- [x] T010 [US1] Add playback to `PracticeView.tsx` — Play button triggers `OscillatorNode` tone synthesis per note (reuse envelope pattern from `RecordingStaff`), sequential slot highlighting at configured BPM, Stop button ends playback mid-exercise (FR-004, FR-007); depends on T008
+- [x] T011 [US1] Integrate `usePracticeRecorder` into `PracticeView.tsx` — call `startCapture(exercise, startMs)` on Play, display `currentPitch` detections on response staff in real time, call `stopCapture()` on playback end or Stop press; depends on T004, T010
 
 **Checkpoint**: Full US1 flow is independently testable. After this phase: App shows PracticeView, exercise staff renders 8 notes, mic captures input, results report appears after Stop.
 
@@ -73,13 +73,13 @@
 
 > **Write FIRST — verify they FAIL before implementing `exerciseScorer`**
 
-- [ ] T013 [P] [US2] Write unit tests for `exerciseScorer` in `frontend/src/services/practice/exerciseScorer.test.ts` — cases: all correct → score=100, all missed → score=0, mixed pitch/timing → expected partial score, extraneous notes reduce denominator, `NoteComparisonStatus` values match spec per FR-008/FR-009
+- [x] T013 [P] [US2] Write unit tests for `exerciseScorer` in `frontend/src/services/practice/exerciseScorer.test.ts` — cases: all correct → score=100, all missed → score=0, mixed pitch/timing → expected partial score, extraneous notes reduce denominator, `NoteComparisonStatus` values match spec per FR-008/FR-009
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Create `frontend/src/services/practice/exerciseScorer.ts` — implement `scoreExercise(exercise, responses, extraneousNotes): ExerciseResult`; greedy beat-slot alignment using ±200 ms window, cent-deviation comparison (`|midiCents − targetMidi×100| ≤ 50`), scoring formula: `totalSlots = notes.length + extraneousNotes.length; score = Math.round(50 × pitchScore + 50 × timingScore)` (T013 tests must pass); depends on T003
-- [ ] T015 [P] [US2] Create `frontend/src/components/practice/ExerciseResultsView.tsx` — renders per-note comparison table (columns: slot, target note, status icon, pitch deviation, timing deviation), extraneous notes section, total score display; props: `{ result: ExerciseResult; exercise: Exercise }`; depends on T003
-- [ ] T016 [US2] Wire the results phase into `PracticeView.tsx` — on playback end or Stop: call `stopCapture()` → `scoreExercise()` → `setResult()` → `setPhase('results')` → render `ExerciseResultsView`; depends on T011, T014, T015
+- [x] T014 [US2] Create `frontend/src/services/practice/exerciseScorer.ts` — implement `scoreExercise(exercise, responses, extraneousNotes): ExerciseResult`; greedy beat-slot alignment using ±200 ms window, cent-deviation comparison (`|midiCents − targetMidi×100| ≤ 50`), scoring formula: `totalSlots = notes.length + extraneousNotes.length; score = Math.round(50 × pitchScore + 50 × timingScore)` (T013 tests must pass); depends on T003
+- [x] T015 [P] [US2] Create `frontend/src/components/practice/ExerciseResultsView.tsx` — renders per-note comparison table (columns: slot, target note, status icon, pitch deviation, timing deviation), extraneous notes section, total score display; props: `{ result: ExerciseResult; exercise: Exercise }`; depends on T003
+- [x] T016 [US2] Wire the results phase into `PracticeView.tsx` — on playback end or Stop: call `stopCapture()` → `scoreExercise()` → `setResult()` → `setPhase('results')` → render `ExerciseResultsView`; depends on T011, T014, T015
 
 **Checkpoint**: US1 + US2 both independently functional. Score and per-note breakdown visible after every exercise run.
 
@@ -95,12 +95,12 @@
 
 > **Write FIRST — verify they FAIL before implementing retry handlers**
 
-- [ ] T017 [P] [US3] Extend `frontend/src/components/practice/PracticeView.test.tsx` with Try Again / New Exercise tests — verify: Try Again restores same `exercise` object identity and clears `result`; New Exercise generates a different sequence and clears `result`
+- [x] T017 [P] [US3] Extend `frontend/src/components/practice/PracticeView.test.tsx` with Try Again / New Exercise tests — verify: Try Again restores same `exercise` object identity and clears `result`; New Exercise generates a different sequence and clears `result`
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Add "Try Again" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, sets `phase → 'ready'`, keeps current `exercise` unchanged; depends on T016
-- [ ] T019 [US3] Add "New Exercise" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, calls `generateExercise()`, replaces `exercise` state, sets `phase → 'ready'`; depends on T018
+- [x] T018 [US3] Add "Try Again" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, sets `phase → 'ready'`, keeps current `exercise` unchanged; depends on T016
+- [x] T019 [US3] Add "New Exercise" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, calls `generateExercise()`, replaces `exercise` state, sets `phase → 'ready'`; depends on T018
 
 **Checkpoint**: All three user stories independently functional. Full practice loop: load → play → report → retry/new → play again.
 
@@ -110,9 +110,9 @@
 
 **Purpose**: Deferred FR requirements, layout validation, and mic-denied degraded mode.
 
-- [ ] T020 Add mic-denied error message to `PracticeView.tsx` — when `micState === 'error'`, display FR-013 message ("Microphone access required to record your response"); exercise staff and Play button remain functional; depends on T004
-- [ ] T021 Validate tablet portrait layout in `PracticeView.css` — confirm no horizontal scroll on iPad/Surface (SC-004); check portrait + landscape modes; tweak `PracticeView.css` as needed
-- [ ] T022 Wire `onBack` prop in `PracticeView.tsx` — render a "← Back" button that calls `props.onBack`, clears mic resources (calls `stopCapture()` and unmount cleanup); depends on T008
+- [x] T020 Add mic-denied error message to `PracticeView.tsx` — when `micState === 'error'`, display FR-013 message ("Microphone access required to record your response"); exercise staff and Play button remain functional; depends on T004
+- [x] T021 Validate tablet portrait layout in `PracticeView.css` — confirm no horizontal scroll on iPad/Surface (SC-004); check portrait + landscape modes; tweak `PracticeView.css` as needed
+- [x] T022 Wire `onBack` prop in `PracticeView.tsx` — render a "← Back" button that calls `props.onBack`, clears mic resources (calls `stopCapture()` and unmount cleanup); depends on T008
 
 **Checkpoint**: All FRs satisfied, all SCs achievable in manual testing per `quickstart.md`.
 

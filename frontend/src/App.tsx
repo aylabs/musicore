@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
 import { RecordingView } from './components/recording/RecordingView'
+import { PracticeView } from './components/practice/PracticeView'
 import { OfflineBanner } from './components/OfflineBanner'
 import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
@@ -30,6 +31,8 @@ function App() {
 
   // Feature 001-recording-view: Recording debug view (?debug=true)
   const [showRecording, setShowRecording] = useState(false)
+  // Feature 001-piano-practice: Practice debug view (?debug=true)
+  const [showPractice, setShowPractice] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
   
   // Mobile debug console (eruda) - enable with ?debug=true
@@ -190,6 +193,13 @@ function App() {
     )
   }
 
+  // Feature 001-piano-practice: Show PracticeView when navigated to from ScoreViewer
+  if (showPractice) {
+    return (
+      <PracticeView onBack={() => setShowPractice(false)} />
+    )
+  }
+
   // Feature 017: Show RendererDemo if ?demo=true parameter is present
   if (showDemo) {
     return (
@@ -245,6 +255,7 @@ function App() {
             <ScoreViewer
               debugMode={debugMode}
               onShowRecording={() => setShowRecording(true)}
+              onShowPractice={() => setShowPractice(true)}
             />
           </main>
           <IOSInstallModal />
