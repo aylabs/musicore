@@ -25,6 +25,7 @@ import type { PracticePhase, ExerciseResult } from '../../types/practice';
 import { generateExercise } from '../../services/practice/exerciseGenerator';
 import { scoreExercise } from '../../services/practice/exerciseScorer';
 import { usePracticeRecorder } from '../../services/practice/usePracticeRecorder';
+import { ToneAdapter } from '../../services/playback/ToneAdapter';
 import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngine';
 import { NotationRenderer } from '../notation/NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
@@ -67,7 +68,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     usePracticeRecorder();
 
   // ── Playback refs ────────────────────────────────────────────────────────
-  const playbackCtxRef = useRef<AudioContext | null>(null);
   const playbackTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Build Note[] for the exercise staff ─────────────────────────────────
@@ -136,8 +136,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stopPlayback = useCallback(() => {
     playbackTimersRef.current.forEach(clearTimeout);
     playbackTimersRef.current = [];
-    try { playbackCtxRef.current?.close(); } catch { /* ignore */ }
-    playbackCtxRef.current = null;
+    ToneAdapter.getInstance().stopAll();
   }, []);
 
   // ── Handle Play (T010) ───────────────────────────────────────────────────
@@ -151,51 +150,26 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setResult(null);
     setHighlightedSlotIndex(null);
 
-    const ctx = new AudioContext();
-    playbackCtxRef.current = ctx;
+    const adapter = ToneAdapter.getInstance();
+    await adapter.init();
+    adapter.startTransport();
+
     const startMs = Date.now();
     startCapture(exercise, startMs);
 
-    const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.5;
-    masterGain.connect(ctx.destination);
-
     const msPerBeat = 60_000 / exercise.bpm;
+    const durationSec = (msPerBeat * 0.85) / 1000;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
+    // Schedule all notes on the Transport (piano samples via ToneAdapter)
     exercise.notes.forEach((note, i) => {
-      const offsetMs = note.expectedOnsetMs;
-      const durationMs = msPerBeat * 0.85; // slight staccato
+      adapter.playNote(note.midiPitch, durationSec, note.expectedOnsetMs / 1000);
 
-      // Highlight this slot
+      // Highlight this slot via setTimeout (visual sync)
       const highlightTimer = setTimeout(() => {
         setHighlightedSlotIndex(i);
-      }, offsetMs);
+      }, note.expectedOnsetMs);
       timers.push(highlightTimer);
-
-      // Schedule OscillatorNode tone
-      const toneTimer = setTimeout(() => {
-        if (!playbackCtxRef.current) return;
-        const c = playbackCtxRef.current;
-        const osc = c.createOscillator();
-        const gain = c.createGain();
-        osc.connect(gain);
-        gain.connect(masterGain);
-
-        const hz = 440 * Math.pow(2, (note.midiPitch - 69) / 12);
-        osc.frequency.value = hz;
-        osc.type = 'sine';
-
-        const now = c.currentTime;
-        const durSec = durationMs / 1000;
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.8, now + 0.01);
-        gain.gain.setValueAtTime(0.8, now + durSec - 0.02);
-        gain.gain.linearRampToValueAtTime(0, now + durSec);
-        osc.start(now);
-        osc.stop(now + durSec);
-      }, offsetMs);
-      timers.push(toneTimer);
     });
 
     // When the last note finishes, finalise

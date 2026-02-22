@@ -12,6 +12,18 @@ import { PracticeView } from './PracticeView';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
+// Mock ToneAdapter so no actual audio engine initialises during tests
+vi.mock('../../services/playback/ToneAdapter', () => ({
+  ToneAdapter: {
+    getInstance: () => ({
+      init: vi.fn().mockResolvedValue(undefined),
+      startTransport: vi.fn(),
+      stopAll: vi.fn(),
+      playNote: vi.fn(),
+    }),
+  },
+}));
+
 // Mock usePracticeRecorder so we don't need real browser audio APIs
 vi.mock('../../services/practice/usePracticeRecorder', () => ({
   usePracticeRecorder: () => ({
@@ -136,6 +148,8 @@ describe('PracticeView', () => {
     it('transitions to results phase automatically when playback finishes', async () => {
       render(<PracticeView onBack={vi.fn()} />);
       fireEvent.click(screen.getByTestId('play-btn'));
+      // Flush the async adapter.init() microtask so timers get registered
+      await act(async () => { await Promise.resolve(); });
       // Advance past all scheduled timers (8 slots × 750 ms + buffer)
       await act(async () => {
         vi.advanceTimersByTime(8 * 750 + 1000);
