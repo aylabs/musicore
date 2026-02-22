@@ -1,0 +1,176 @@
+# Tasks: Piano Practice Exercise
+
+**Input**: Design documents from `/specs/001-piano-practice/`  
+**Branch**: `001-piano-practice`  
+**Date**: 2026-02-22  
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
+- **[Story]**: Which user story — [US1], [US2], [US3]
+- Exact file paths included in every task description
+
+---
+
+## Phase 1: Setup
+
+**Purpose**: Wire the new view into the existing app routing. No new patterns — mirrors the `showRecording` flag established in `001-recording-view`.
+
+- [ ] T001 Add `showPractice` boolean state and `PracticeView` routing to `frontend/src/App.tsx` (parallel to the existing `showRecording` flag pattern)
+- [ ] T002 [P] Add `onShowPractice` prop and debug "Practice" button to `frontend/src/components/ScoreViewer.tsx` (alongside the existing "Record" button)
+
+**Checkpoint**: App compiles; "Practice" button visible in debug mode; clicking it renders a placeholder.
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core domain types and microphone hook that MUST exist before any user story can be implemented.
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
+
+- [ ] T003 Create all 7 domain types in `frontend/src/types/practice.ts` (`ExerciseNote`, `Exercise`, `ResponseNote`, `NoteComparisonStatus`, `NoteComparison`, `ExerciseResult`, `PracticePhase`) as specified in `contracts/typescript-interfaces.md`
+- [ ] T004 Create `frontend/src/services/practice/usePracticeRecorder.ts` — requests mic on mount, exposes `startCapture()`, `stopCapture()`, `clearCapture()`, `currentPitch`; wraps AudioWorklet + `pitchDetection.ts` without modifying them (FR-014)
+- [ ] T005 [P] Write unit tests for `usePracticeRecorder` in `frontend/src/services/practice/usePracticeRecorder.test.ts` — covers mic lifecycle (idle → requesting → active → error), `startCapture`/`stopCapture` capture arrays, `clearCapture` reset
+
+**Checkpoint**: `npm test` passes; `usePracticeRecorder` tests green (or skipped with correct mocks); types compile without errors.
+
+---
+
+## Phase 3: User Story 1 — Play a generated exercise and receive results (Priority: P1) 🎯 MVP
+
+**Goal**: A student can open PracticeView, see exactly 8 random quarter notes on a treble-clef staff, press Play to hear them highlighted one by one, play along (mic captures notes onto a second staff), press Stop or wait for playback to complete, and view a results report.
+
+**Independent Test**: Open PracticeView → press Play → play any notes into mic → verify results report appears listing each note as Correct / Wrong pitch / Wrong timing / Missed.
+
+### Tests for User Story 1
+
+> **Write FIRST — verify they FAIL before implementing the corresponding module**
+
+- [ ] T006 [P] [US1] Write unit tests for `exerciseGenerator` in `frontend/src/services/practice/exerciseGenerator.test.ts` — verify: returns exactly 8 notes, all `midiPitch` ∈ `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs` formula at 80 BPM, deterministic output with `seed` parameter
+- [ ] T012 [P] [US1] Write component tests for `PracticeView` in `frontend/src/components/practice/PracticeView.test.tsx` — verify: renders 8 exercise notes on mount, Play button present in `ready` phase, phase transitions to `playing` on Play press, results view visible after playback ends
+
+### Implementation for User Story 1
+
+- [ ] T007 [P] [US1] Create `frontend/src/services/practice/exerciseGenerator.ts` — implement `generateExercise(bpm?: number, seed?: number): Exercise`; 8 notes, pitches from MIDI `{48,50,52,53,55,57,59,60}`, `expectedOnsetMs = slotIndex × (60_000 / bpm)` (T006 tests must pass)
+- [ ] T008 [US1] Create `frontend/src/components/practice/PracticeView.tsx` scaffold — renders exercise staff via `NotationLayoutEngine`/`NotationRenderer`, renders empty response staff, manages `phase` / `exercise` / `result` / `highlightedSlotIndex` state; depends on T003, T007
+- [ ] T009 [P] [US1] Create `frontend/src/components/practice/PracticeView.css` — two-staff vertical layout, Play/Stop button, tablet portrait orientation (no horizontal scroll per SC-004)
+- [ ] T010 [US1] Add playback to `PracticeView.tsx` — Play button triggers `OscillatorNode` tone synthesis per note (reuse envelope pattern from `RecordingStaff`), sequential slot highlighting at configured BPM, Stop button ends playback mid-exercise (FR-004, FR-007); depends on T008
+- [ ] T011 [US1] Integrate `usePracticeRecorder` into `PracticeView.tsx` — call `startCapture(exercise, startMs)` on Play, display `currentPitch` detections on response staff in real time, call `stopCapture()` on playback end or Stop press; depends on T004, T010
+
+**Checkpoint**: Full US1 flow is independently testable. After this phase: App shows PracticeView, exercise staff renders 8 notes, mic captures input, results report appears after Stop.
+
+---
+
+## Phase 4: User Story 2 — Detailed per-note results report (Priority: P2)
+
+**Goal**: The results report shows each target note's status (✅ Correct, ⚠️ Wrong pitch, ⏱ Wrong timing, ❌ Missed, Extraneous), deviation values, and a 0–100 score computed from the 50/50 pitch+timing formula.
+
+**Independent Test**: Complete an exercise; inspect the report. Verify: each of the 8 slots has a status label, a numeric score is shown, extraneous notes are listed, a perfect response produces score=100 and an empty response produces score=0.
+
+### Tests for User Story 2
+
+> **Write FIRST — verify they FAIL before implementing `exerciseScorer`**
+
+- [ ] T013 [P] [US2] Write unit tests for `exerciseScorer` in `frontend/src/services/practice/exerciseScorer.test.ts` — cases: all correct → score=100, all missed → score=0, mixed pitch/timing → expected partial score, extraneous notes reduce denominator, `NoteComparisonStatus` values match spec per FR-008/FR-009
+
+### Implementation for User Story 2
+
+- [ ] T014 [US2] Create `frontend/src/services/practice/exerciseScorer.ts` — implement `scoreExercise(exercise, responses, extraneousNotes): ExerciseResult`; greedy beat-slot alignment using ±200 ms window, cent-deviation comparison (`|midiCents − targetMidi×100| ≤ 50`), scoring formula: `totalSlots = notes.length + extraneousNotes.length; score = Math.round(50 × pitchScore + 50 × timingScore)` (T013 tests must pass); depends on T003
+- [ ] T015 [P] [US2] Create `frontend/src/components/practice/ExerciseResultsView.tsx` — renders per-note comparison table (columns: slot, target note, status icon, pitch deviation, timing deviation), extraneous notes section, total score display; props: `{ result: ExerciseResult; exercise: Exercise }`; depends on T003
+- [ ] T016 [US2] Wire the results phase into `PracticeView.tsx` — on playback end or Stop: call `stopCapture()` → `scoreExercise()` → `setResult()` → `setPhase('results')` → render `ExerciseResultsView`; depends on T011, T014, T015
+
+**Checkpoint**: US1 + US2 both independently functional. Score and per-note breakdown visible after every exercise run.
+
+---
+
+## Phase 5: User Story 3 — Retry or generate a new exercise (Priority: P3)
+
+**Goal**: From the results screen the student can press "Try Again" (same 8 notes, response staff cleared, phase resets to `ready`) or "New Exercise" (new random sequence, response staff cleared, phase resets to `ready`).
+
+**Independent Test**: After a completed exercise, press "Try Again" → same note sequence reappears with response staff empty, within 500 ms (SC-005). Press "New Exercise" → different sequence appears (run multiple times to confirm randomness).
+
+### Tests for User Story 3
+
+> **Write FIRST — verify they FAIL before implementing retry handlers**
+
+- [ ] T017 [P] [US3] Extend `frontend/src/components/practice/PracticeView.test.tsx` with Try Again / New Exercise tests — verify: Try Again restores same `exercise` object identity and clears `result`; New Exercise generates a different sequence and clears `result`
+
+### Implementation for User Story 3
+
+- [ ] T018 [US3] Add "Try Again" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, sets `phase → 'ready'`, keeps current `exercise` unchanged; depends on T016
+- [ ] T019 [US3] Add "New Exercise" button and handler to `PracticeView.tsx` (visible in `results` phase only) — calls `clearCapture()`, calls `generateExercise()`, replaces `exercise` state, sets `phase → 'ready'`; depends on T018
+
+**Checkpoint**: All three user stories independently functional. Full practice loop: load → play → report → retry/new → play again.
+
+---
+
+## Phase 6: Polish & Cross-Cutting Concerns
+
+**Purpose**: Deferred FR requirements, layout validation, and mic-denied degraded mode.
+
+- [ ] T020 Add mic-denied error message to `PracticeView.tsx` — when `micState === 'error'`, display FR-013 message ("Microphone access required to record your response"); exercise staff and Play button remain functional; depends on T004
+- [ ] T021 Validate tablet portrait layout in `PracticeView.css` — confirm no horizontal scroll on iPad/Surface (SC-004); check portrait + landscape modes; tweak `PracticeView.css` as needed
+- [ ] T022 Wire `onBack` prop in `PracticeView.tsx` — render a "← Back" button that calls `props.onBack`, clears mic resources (calls `stopCapture()` and unmount cleanup); depends on T008
+
+**Checkpoint**: All FRs satisfied, all SCs achievable in manual testing per `quickstart.md`.
+
+---
+
+## Dependencies
+
+```
+T001 ──────────────────────────────────────────────────────► (App routing ready)
+T002 [P with T001]
+T003 ──► T004 ──► T011
+      └─► T007 ──► T008 ──► T010 ──► T011 ──► T016
+                         └─► T009 [P]
+      └─► T014 ──► T016
+                             T015 [P] ──► T016
+T016 ──► T018 ──► T019
+```
+
+**Story completion order**:
+1. **Foundation** (T003–T005) — blocks everything
+2. **US1** (T006–T012) — MVP; complete end-to-end flow
+3. **US2** (T013–T016) — scoring detail; depends on US1 capture infrastructure
+4. **US3** (T017–T019) — purely additive; depends on T016 results phase
+
+---
+
+## Parallel Execution Opportunities
+
+### Within Phase 2 (Foundation)
+- T004 + T005 can overlap after T003 (T005 = tests draft while T004 implements)
+
+### Within Phase 3 (US1)
+- **T006 + T012**: Both test files can be *drafted* simultaneously before implementations exist
+- **T007 + T009**: `exerciseGenerator.ts` and `PracticeView.css` touch entirely different files
+- T008 and T009 can be developed in parallel once T007 is done
+
+### Within Phase 4 (US2)
+- **T013 + T015**: `exerciseScorer.test.ts` and `ExerciseResultsView.tsx` are independent files
+
+### Within Phase 6 (Polish)
+- T020, T021, T022 are fully independent of each other
+
+---
+
+## Implementation Strategy
+
+**MVP = Phase 1 + Phase 2 + Phase 3 only (US1)**.
+
+Phase 3 alone delivers the complete observable cycle: generate → display → play → capture → report. US2 and US3 add depth and replayability but do not change the fundamental feature viability.
+
+**Suggested delivery order**:
+1. T001–T002 (routing, ~30 min)
+2. T003 (types, ~20 min)
+3. T004–T005 + T006–T007 in two parallel tracks (~45 min)
+4. T008–T011 sequentially (core PracticeView, ~90 min)
+5. T012 (component tests, ~30 min)
+6. T013–T016 (scoring + results view, ~60 min)
+7. T017–T019 (retry flow, ~30 min)
+8. T020–T022 (polish, ~30 min)
+
+**Estimated total**: ~6 hours for one developer following TDD.
