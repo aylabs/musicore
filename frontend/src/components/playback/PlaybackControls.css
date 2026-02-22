@@ -102,12 +102,12 @@
 
 /* Individual button styles */
 .play-button {
-  background-color: #ff9800;
+  background-color: #4caf50;
   color: white;
 }
 
 .play-button:hover:not(:disabled) {
-  background-color: #fb8c00;
+  background-color: #45a049;
 }
 
 .pause-button {
@@ -201,12 +201,12 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: #667eea;
+  background-color: #ff9800;
   color: white;
 }
 
 .playback-right-actions .view-mode-button:hover {
-  background-color: #5568d3;
+  background-color: #fb8c00;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
