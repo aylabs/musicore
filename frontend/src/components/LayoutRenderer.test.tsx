@@ -5,7 +5,7 @@
  * Constitution VII: Failing tests must be written before fixes.
  *
  * T002: shouldComponentUpdate must return true when selectedNoteId changes
- * T029: .layout-glyph.highlighted fill must be #FF8C00, not #4A90E2
+ * T029: .layout-glyph.highlighted fill must be #F5A340, not #4A90E2
  * T033: bracket glyph text element must have dominant-baseline="hanging"
  *
  * @see specs/027-demo-flow-ux/tasks.md T002, T029, T033
@@ -133,18 +133,18 @@ describe('[T002] BUG: shouldComponentUpdate missing selectedNoteId', () => {
   });
 });
 // ============================================================================
-// T029 [BUG]: .layout-glyph.highlighted fill must be #FF8C00 (orange), not #4A90E2 (blue)
+// T029 [BUG]: .layout-glyph.highlighted fill must be #F5A340 (amber), not #4A90E2 (blue)
 //
 // Root cause: LayoutRenderer.css currently sets fill: #4A90E2 for all
-// .highlighted selectors. FR-012 requires orange (#FF8C00) for maximum
-// contrast against black notation at viewing distance SC-005.
+// .highlighted selectors. FR-012 requires amber (#F5A340) for
+// good contrast against dark notation at viewing distance SC-005.
 //
 // This test FAILS before T030 (fill is #4A90E2 — bug confirmed).
-// This test PASSES after T030 (fill is #FF8C00 — fix applied).
+// This test PASSES after T030 (fill is #F5A340 — fix applied).
 // ============================================================================
 
-describe('[T029] BUG: highlighted note fill must be orange #FF8C00, not blue #4A90E2', () => {
-  it('LayoutRenderer.css sets fill: #FF8C00 for .layout-glyph.highlighted', async () => {
+describe('[T029] BUG: highlighted note fill must be amber #F5A340, not blue #4A90E2', () => {
+  it('LayoutRenderer.css sets fill: #F5A340 for .layout-glyph.highlighted', async () => {
     // Load the CSS file content via dynamic import (Vitest supports CSS modules)
     // We inspect the actual CSS rules by injecting a style and checking computed style.
     const div = document.createElement('div');
@@ -170,10 +170,10 @@ describe('[T029] BUG: highlighted note fill must be orange #FF8C00, not blue #4A
 
     document.body.removeChild(div);
 
-    // After T030: must contain #FF8C00 (orange), not #4A90E2 (blue)
-    // Both assertions: .layout-glyph.highlighted has orange fill
+    // After T030: must contain #F5A340 (amber), not #4A90E2 (blue)
+    // Both assertions: .layout-glyph.highlighted has amber fill
     const hasBlue = cssText.includes('#4A90E2') || cssText.includes('#4a90e2');
-    const hasOrange = cssText.includes('#FF8C00') || cssText.includes('#ff8c00');
+    const hasOrange = cssText.includes('#F5A340') || cssText.includes('#f5a340');
 
     // In JSDOM, CSS may not be parsed from imported files — so we fall back
     // to checking the raw source text of the CSS file that was loaded.
@@ -186,7 +186,7 @@ describe('[T029] BUG: highlighted note fill must be orange #FF8C00, not blue #4A
       const cssSource = fs.readFileSync(cssPath, 'utf-8');
 
       const sourceHasBlue = cssSource.includes('#4A90E2') || cssSource.includes('#4a90e2');
-      const sourceHasOrange = cssSource.includes('#FF8C00') || cssSource.includes('#ff8c00');
+      const sourceHasOrange = cssSource.includes('#F5A340') || cssSource.includes('#f5a340');
 
       // The highlighted rules must use orange
       expect(sourceHasOrange).toBe(true);
@@ -236,7 +236,7 @@ describe('[T033] Brace renders as SVG path, Bracket renders as SVG lines', () =>
       fontFamily: 'Bravura',
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
-      highlightColor: '#FF8C00',
+      highlightColor: '#F5A340',
       staffLineColor: '#000000',
       glyphColor: '#000000',
     };
@@ -281,7 +281,7 @@ describe('[T033] Brace renders as SVG path, Bracket renders as SVG lines', () =>
       fontFamily: 'Bravura',
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
-      highlightColor: '#FF8C00',
+      highlightColor: '#F5A340',
       staffLineColor: '#000000',
       glyphColor: '#000000',
     };
@@ -353,7 +353,7 @@ describe('[T013] BUG: renderGlyphRun must emit transparent hit-rect overlay per 
       fontFamily: 'Bravura',
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
-      highlightColor: '#FF8C00',
+      highlightColor: '#F5A340',
       glyphColor: '#000000',
     };
 
@@ -437,7 +437,7 @@ describe('[T014] US2: hit-rect overlay width/height must be >= MIN_TOUCH_PX / re
       fontFamily: 'Bravura',
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
-      highlightColor: '#FF8C00',
+      highlightColor: '#F5A340',
       glyphColor: '#000000',
     };
 
@@ -502,7 +502,7 @@ describe('[T014] US2: hit-rect overlay width/height must be >= MIN_TOUCH_PX / re
       fontFamily: 'Bravura',
       defaultColor: '#000000',
       selectionColor: '#FF6B00',
-      highlightColor: '#FF8C00',
+      highlightColor: '#F5A340',
       glyphColor: '#000000',
     };
 

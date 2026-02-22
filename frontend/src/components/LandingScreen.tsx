@@ -21,11 +21,11 @@ const NOTE_GLYPHS = [
 
 /**
  * Three colors from the play-view palette (LayoutRenderer.css).
- * - Black:  standard music notation default
- * - Orange: #FF8C00 — highlighted notehead (T030/FR-012)
- * - Green:  #00C853 — pinned-position notehead (Feature 027)
+ * - Slate:  #3D4B5C — softened dark, easier on the eye than pure black
+ * - Amber:  #F5A340 — warm softened orange (highlighted notehead, T030/FR-012)
+ * - Sage:   #5AC481 — soft jade green (pinned-position notehead, Feature 027)
  */
-const NOTE_COLORS = ['#000000', '#FF8C00', '#00C853'] as const;
+const NOTE_COLORS = ['#3D4B5C', '#F5A340', '#5AC481'] as const;
 
 /** Full loop duration in seconds (Lissajous period) — 20s for a leisurely pace */
 const LOOP_DURATION = 20;

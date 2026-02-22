@@ -147,7 +147,7 @@ describe('LandingScreen', () => {
     const newColor = (note as HTMLElement).style.color;
     // After 1.2 seconds, color must have changed from initial
     // (if initial is already different from new, that's the tick working)
-    expect(newColor).toMatch(/^(#000000|rgb\(0, 0, 0\)|#FF8C00|rgb\(255, 140, 0\)|#00C853|rgb\(0, 200, 83\))$/i);
+    expect(newColor).toMatch(/^(#3D4B5C|rgb\(61, 75, 92\)|#F5A340|rgb\(245, 163, 64\)|#5AC481|rgb\(90, 196, 129\))$/i);
   });
 
   /**

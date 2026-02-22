@@ -24,7 +24,7 @@
    -------------------------------------------------------------------------- */
 .landing-note {
   position: absolute;
-  font-size: 8rem;
+  font-size: 4rem;
   cursor: pointer;
   user-select: none;
   /* Prevent touch devices triggering context-menu on long-press */
