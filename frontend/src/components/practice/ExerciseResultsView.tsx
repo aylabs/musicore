@@ -78,6 +78,7 @@ export function ExerciseResultsView({ result, exercise }: ExerciseResultsViewPro
             <tr>
               <th>#</th>
               <th>Target</th>
+              <th>Detected</th>
               <th>Status</th>
               <th>Pitch Δ (¢)</th>
               <th>Timing Δ (ms)</th>
@@ -92,6 +93,11 @@ export function ExerciseResultsView({ result, exercise }: ExerciseResultsViewPro
               >
                 <td>{i + 1}</td>
                 <td>{midiToName(exercise.notes[i].midiPitch)}</td>
+                <td>
+                  {c.response
+                    ? `${midiToName(Math.round(c.response.midiCents / 100))} (${c.response.hz.toFixed(1)} Hz)`
+                    : '—'}
+                </td>
                 <td aria-label={STATUS_LABEL[c.status]}>
                   <span className="practice-results__status-icon">
                     {STATUS_ICON[c.status]}

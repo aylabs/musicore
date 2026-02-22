@@ -338,7 +338,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         )}
 
         {/* ── Response staff (playing: live capture; results: comparison) ─── */}
-        {(phase === 'playing' || (phase === 'results' && liveResponseNotes.length > 0)) && (
+        {(phase === 'playing' || phase === 'results') && (
           <div className="practice-view__staff-block" data-testid="response-staff-block">
             <div className="practice-view__staff-label">Your Response</div>
             <div

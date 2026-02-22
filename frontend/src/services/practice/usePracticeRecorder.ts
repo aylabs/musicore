@@ -341,6 +341,7 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     cap.extraneousNotes = [];
     cap.lastOnsetMsPerSlot = new Array(exercise.notes.length).fill(-Infinity);
     stabRef.current = { label: null, count: 0 };
+    setLiveResponseNotes([]); // always start clean — avoids stale notes from previous capture
   }, []);
 
   // ─── stopCapture ──────────────────────────────────────────────────────────
