@@ -69,6 +69,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
   // ── Playback refs ────────────────────────────────────────────────────────
   const playbackTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  /** Prevents double-firing the auto-start on rapid pitch fluctuations */
+  const autoStartedRef = useRef(false);
 
   // ── Build Note[] for the exercise staff ─────────────────────────────────
   //    One quarter note per slot, start_tick = slotIndex × QUARTER_TICKS
@@ -207,12 +209,22 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setPhase('results');
   }, [exercise, bpm, stopCapture, stopPlayback]);
 
+  // ── Auto-start: trigger playback on first detected pitch ──────────────────
+  useEffect(() => {
+    if (phase === 'ready' && currentPitch && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void handlePlay();
+    }
+  }, [currentPitch, phase, handlePlay]);
+
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
     stopPlayback();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    autoStartedRef.current = false;
     setPhase('ready');
     // exercise stays the same
   }, [clearCapture, stopPlayback]);
@@ -223,6 +235,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    autoStartedRef.current = false;
     setExercise(generateExercise(bpm));
     setPhase('ready');
   }, [bpm, clearCapture, stopPlayback]);
@@ -315,14 +328,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         {phase !== 'results' && (
           <div className="practice-view__controls">
             {phase === 'ready' && (
-              <button
-                className="practice-view__play-btn"
-                onClick={handlePlay}
-                aria-label="Play exercise"
-                data-testid="play-btn"
+              <p
+                className="practice-view__start-prompt"
+                data-testid="start-prompt"
+                aria-live="polite"
               >
-                ▶ Play
-              </button>
+                {micState === 'active'
+                  ? '🎹 Start playing… the exercise will follow you'
+                  : '🎹 Waiting for microphone…'}
+              </p>
             )}
             {phase === 'playing' && (
               <button

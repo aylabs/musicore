@@ -188,6 +188,26 @@
   flex-wrap: wrap;
 }
 
+/* ─── Start prompt ────────────────────────────────────────────────────────── */
+
+.practice-view__start-prompt {
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #1976d2;
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  text-align: center;
+  animation: pulse-prompt 2s ease-in-out infinite;
+}
+
+@keyframes pulse-prompt {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
 .practice-view__play-btn,
 .practice-view__stop-btn {
   padding: 0.65rem 2rem;

@@ -226,7 +226,6 @@ export function RecordingStaff({ currentPitch, bpm = 120, audioChunksRef, clearA
         setNotes([]);
       } else {
         nextTickRef.current = newTick;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setNotes(prev => [...prev, finalisedNote]);
       }
     }
