@@ -337,8 +337,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           </div>
         )}
 
-        {/* ── Response staff (shown during playing) ──────────────── */}
-        {phase === 'playing' && (
+        {/* ── Response staff (playing: live capture; results: comparison) ─── */}
+        {(phase === 'playing' || (phase === 'results' && liveResponseNotes.length > 0)) && (
           <div className="practice-view__staff-block" data-testid="response-staff-block">
             <div className="practice-view__staff-label">Your Response</div>
             <div
@@ -352,7 +352,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 showClef
               />
             </div>
-            {currentPitch && (
+            {phase === 'playing' && currentPitch && (
               <div className="practice-view__pitch-display" aria-live="polite">
                 Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
               </div>
