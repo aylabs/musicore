@@ -506,6 +506,7 @@ export function ScoreViewer({
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
           onImportComplete={handleDialogImportComplete}
+          onWillLoad={() => document.documentElement.requestFullscreen?.().catch(() => {})}
         />
       </div>
     );
@@ -650,6 +651,7 @@ export function ScoreViewer({
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onImportComplete={handleDialogImportComplete}
+        onWillLoad={() => document.documentElement.requestFullscreen?.().catch(() => {})}
       />
     </div>
   );

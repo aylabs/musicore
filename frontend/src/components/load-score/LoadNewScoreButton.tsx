@@ -6,6 +6,9 @@ import type { ImportResult } from '../../services/import/MusicXMLImportService';
 interface LoadNewScoreButtonProps {
   onImportComplete: (result: ImportResult) => void;
   disabled?: boolean;
+  /** Called synchronously at the start of the file-change gesture, before any async work.
+   * Use this to call requestFullscreen() while still inside the user-gesture window. */
+  onWillLoad?: () => void;
 }
 
 /**
@@ -16,6 +19,7 @@ interface LoadNewScoreButtonProps {
 export function LoadNewScoreButton({
   onImportComplete,
   disabled = false,
+  onWillLoad,
 }: LoadNewScoreButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +38,9 @@ export function LoadNewScoreButton({
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Call before the first await so we're still inside the browser's user-gesture window.
+      // This allows requestFullscreen() to succeed (Safari/Firefox are strict about this).
+      onWillLoad?.();
       await importFile(file);
     }
     // reset so the same file can be re-selected
