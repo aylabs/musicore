@@ -209,6 +209,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setPhase('results');
   }, [exercise, bpm, stopCapture, stopPlayback]);
 
+  // ── Pre-warm ToneAdapter when mic is ready so adapter.init() is instant ────
+  //    This eliminates the startMs timing drift that caused early slots to be
+  //    missed (adapter.init could take 500 ms+ loading piano samples).
+  useEffect(() => {
+    if (micState === 'active') {
+      void ToneAdapter.getInstance().init();
+    }
+  }, [micState]);
+
   // ── Auto-start: trigger playback on first detected pitch ──────────────────
   useEffect(() => {
     if (phase === 'ready' && currentPitch && !autoStartedRef.current) {

@@ -28,8 +28,20 @@ import { detectPitch } from '../recording/pitchDetection';
 const PITCH_STABLE_FRAMES = 3;
 /** Null must persist for this many frames before emitting silence */
 const SILENCE_STABLE_FRAMES = 5;
-/** Beat-slot alignment window in ms (FR-006) */
-const SLOT_WINDOW_MS = 200;
+/**
+ * Beat-slot alignment window in ms (FR-006).
+ * Computed dynamically as 45% of the beat period, capped at 300 ms so adjacent
+ * slots never overlap even at higher tempos.
+ * e.g. 80 BPM → 337 ms → capped to 300 ms
+ *      120 BPM → 225 ms
+ */
+function slotWindowMs(bpm: number): number {
+  return Math.min(Math.round((60_000 / bpm) * 0.45), 300);
+}
+/** Minimum MIDI pitch accepted during capture — filters sub-harmonic noise */
+const CAPTURE_MIDI_MIN = 48; // C3
+/** Maximum MIDI pitch accepted during capture — filters ultrasonic artifacts */
+const CAPTURE_MIDI_MAX = 84; // C6
 /** Pitch match threshold in cents (FR-008) */
 /** Min gap between two note onsets on the same slot (ms) — take the first one */
 const MIN_ONSET_GAP_MS = 100;
@@ -261,6 +273,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
           const hz = confirmed.hz;
           // midiCents: 12×log2(hz/440)×100 + 6900
           const midiCents = 12 * Math.log2(hz / 440) * 100 + 6900;
+          const midiPitchRaw = Math.round(midiCents / 100);
+
+          // Range gate: ignore pitches far outside the playable exercise range
+          // (eliminates sub-harmonic noise and microphone handling artefacts)
+          if (midiPitchRaw < CAPTURE_MIDI_MIN || midiPitchRaw > CAPTURE_MIDI_MAX) return;
 
           const responseNote: ResponseNote = {
             hz,
@@ -269,12 +286,13 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             confidence: confirmed.confidence,
           };
 
-          // Greedy slot alignment: find the nearest open slot within ±SLOT_WINDOW_MS
+          // Greedy slot alignment: find the nearest open slot within ±window
+          const window = slotWindowMs(cap.exercise.bpm);
           let bestSlot = -1;
           let bestDist = Infinity;
           for (const note of cap.exercise.notes) {
             const dist = Math.abs(onsetMs - note.expectedOnsetMs);
-            if (dist <= SLOT_WINDOW_MS && dist < bestDist) {
+            if (dist <= window && dist < bestDist) {
               // Skip if this slot already has a response and it was recorded recently
               const lastOnset = cap.lastOnsetMsPerSlot[note.slotIndex] ?? -Infinity;
               if (onsetMs - lastOnset < MIN_ONSET_GAP_MS) continue;
@@ -288,7 +306,7 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             if (!cap.slotResponses[bestSlot]) {
               cap.slotResponses[bestSlot] = responseNote;
               // Reactive update: add this note to the live staff
-              const midiPitch = Math.round(midiCents / 100);
+              const midiPitch = midiPitchRaw;
               setLiveResponseNotes((prev) => [
                 ...prev,
                 {
