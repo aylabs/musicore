@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PitchSample } from '../../types/recording';
+import type { Note } from '../../types/score';
 import type { Exercise, ResponseNote } from '../../types/practice';
 import { detectPitch } from '../recording/pitchDetection';
 
@@ -44,6 +45,12 @@ export interface UsePracticeRecorderReturn {
   micError: string | null;
   /** Latest detected pitch from pitchDetection.ts (null when silent) */
   currentPitch: PitchSample | null;
+  /**
+   * Confirmed response notes placed so far in the current capture, as Note[]
+   * ready to pass directly to NotationLayoutEngine. Updated reactively each
+   * time a slot is filled. Empty until startCapture() is called.
+   */
+  liveResponseNotes: Note[];
   /**
    * Begin collecting response notes for slot alignment.
    * @param exercise  Provides slot timing windows
@@ -97,6 +104,7 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
   const [micState, setMicState] = useState<MicState>('idle');
   const [micError, setMicError] = useState<string | null>(null);
   const [currentPitch, setCurrentPitch] = useState<PitchSample | null>(null);
+  const [liveResponseNotes, setLiveResponseNotes] = useState<Note[]>([]);
 
   const refsRef = useRef<RecorderRefs>({
     audioCtx: null,
@@ -279,6 +287,17 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             // Only take the first (best-timing) response per slot
             if (!cap.slotResponses[bestSlot]) {
               cap.slotResponses[bestSlot] = responseNote;
+              // Reactive update: add this note to the live staff
+              const midiPitch = Math.round(midiCents / 100);
+              setLiveResponseNotes((prev) => [
+                ...prev,
+                {
+                  id: `resp-slot-${bestSlot}`,
+                  start_tick: bestSlot * 960,
+                  duration_ticks: 960,
+                  pitch: midiPitch,
+                },
+              ]);
             }
             cap.lastOnsetMsPerSlot[bestSlot] = onsetMs;
           } else {
@@ -349,7 +368,8 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     cap.lastOnsetMsPerSlot = [];
     stabRef.current = { label: null, count: 0 };
     setCurrentPitch(null);
+    setLiveResponseNotes([]);
   }, []);
 
-  return { micState, micError, currentPitch, startCapture, stopCapture, clearCapture };
+  return { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture };
 }

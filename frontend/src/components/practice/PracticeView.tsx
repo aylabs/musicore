@@ -64,7 +64,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
 
   // ── Mic recorder ────────────────────────────────────────────────────────
-  const { micState, micError, currentPitch, startCapture, stopCapture, clearCapture } =
+  const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
     usePracticeRecorder();
 
   // ── Playback refs ────────────────────────────────────────────────────────
@@ -94,26 +94,33 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     [exerciseNotes],
   );
 
-  // ── Ghost note for response staff (current detected pitch during playing) ─
+  // ── Ghost note: current held pitch shown at the highlighted slot position ────
   const ghostNote = useMemo<Note | null>(() => {
     if (phase !== 'playing' || !currentPitch) return null;
+    const slotIndex = highlightedSlotIndex ?? 0;
     return {
       id: '__practice_ghost__',
-      start_tick: 0,
+      start_tick: slotIndex * QUARTER_TICKS,
       duration_ticks: QUARTER_TICKS,
       pitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
     };
-  }, [phase, currentPitch]);
+  }, [phase, currentPitch, highlightedSlotIndex]);
+
+  // ── Response staff: confirmed notes + live ghost ──────────────────────────
+  const responseStaffNotes = useMemo<Note[]>(
+    () => (ghostNote ? [...liveResponseNotes, ghostNote] : liveResponseNotes),
+    [liveResponseNotes, ghostNote],
+  );
 
   const responseLayout = useMemo(
     () =>
       NotationLayoutEngine.calculateLayout({
-        notes: ghostNote ? [ghostNote] : [],
+        notes: responseStaffNotes,
         clef: 'Treble',
         timeSignature: { numerator: 4, denominator: 4 },
         config: STAFF_CONFIG,
       }),
-    [ghostNote],
+    [responseStaffNotes],
   );
 
   // ── Derive highlighted note ID for exercise staff ────────────────────────

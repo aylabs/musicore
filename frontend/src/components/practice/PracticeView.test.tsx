@@ -30,6 +30,7 @@ vi.mock('../../services/practice/usePracticeRecorder', () => ({
     micState: 'active',
     micError: null,
     currentPitch: null,
+    liveResponseNotes: [],
     startCapture: vi.fn(),
     stopCapture: vi.fn().mockReturnValue({ responses: new Array(8).fill(null), extraneousNotes: [] }),
     clearCapture: vi.fn(),
