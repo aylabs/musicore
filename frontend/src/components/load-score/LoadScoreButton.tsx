@@ -23,7 +23,7 @@ export function LoadScoreButton({
       aria-label={ariaLabel ?? 'Load Score'}
       {...rest}
     >
-      🎵 Load Score
+      Load Score
     </button>
   );
 }

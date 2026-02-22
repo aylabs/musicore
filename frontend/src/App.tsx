@@ -66,7 +66,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           <h1>
-            🎵 Musicore{' '}
+            Musicore{' '}
             <a 
               href="https://github.com/aylabs/musicore" 
               target="_blank" 
@@ -103,7 +103,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           <h1>
-            🎵 Musicore{' '}
+            Musicore{' '}
             <a 
               href="https://github.com/aylabs/musicore" 
               target="_blank" 
@@ -179,7 +179,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           <h1>
-            🎵 Musicore - Layout Renderer Demo{' '}
+            Musicore - Layout Renderer Demo{' '}
             <a 
               href="/"
               style={{ 
@@ -208,7 +208,7 @@ function App() {
           <OfflineBanner />
           <header className="app-header">
             <h1>
-              🎵 Musicore{' '}
+              Musicore{' '}
               <a 
                 href="https://github.com/aylabs/musicore" 
                 target="_blank" 

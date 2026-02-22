@@ -26,23 +26,23 @@
 }
 
 /* Highlighted glyph styling - Feature 019, Feature 027 */
-/* T030: Changed from blue #4A90E2 to orange #FF8C00 (FR-012, SC-005) */
+/* T030: Changed from blue #4A90E2 to amber #F5A340 (FR-012, SC-005) */
 /* Applied to individual glyphs (text, line, rect elements) */
 text.highlighted {
-  fill: #FF8C00 !important;  /* Orange fill for highlighted noteheads */
+  fill: #F5A340 !important;  /* Amber fill for highlighted noteheads */
 }
 
 line.highlighted {
-  stroke: #CC6600 !important;  /* Dark orange stroke for highlighted stems */
+  stroke: #C07830 !important;  /* Dark amber stroke for highlighted stems */
   stroke-width: 2 !important;
 }
 
 rect.highlighted {
-  fill: #FF8C00 !important;  /* Orange fill for highlighted beams */
+  fill: #F5A340 !important;  /* Amber fill for highlighted beams */
 }
 
 polygon.highlighted {
-  fill: #FF8C00 !important;  /* Orange fill for highlighted beam polygons */
+  fill: #F5A340 !important;  /* Amber fill for highlighted beam polygons */
 }
 
 /* Optional: Smooth transition for highlight appearance */
@@ -55,15 +55,15 @@ polygon.highlighted {
 
 /**
  * Feature 024: Generalized highlight class for CSS-class-based toggling.
- * Feature 027 (T030/T031): Orange #FF8C00 with drop-shadow glow for
- * maximum contrast against black notation at tablet viewing distance (SC-005).
+ * Feature 027 (T030/T031): Amber #F5A340 with drop-shadow glow for
+ * good contrast against dark notation at tablet viewing distance (SC-005).
  * Used by updateHighlights() rAF loop — avoids inline style manipulation.
  * Applied to any SVG element with data-note-id attribute.
  */
 .layout-glyph.highlighted {
-  fill: #FF8C00 !important;
-  stroke: #FF8C00 !important;
-  filter: drop-shadow(0 0 3px rgba(255, 100, 0, 0.8));
+  fill: #F5A340 !important;
+  stroke: #F5A340 !important;
+  filter: drop-shadow(0 0 3px rgba(245, 163, 64, 0.7));
   transition: fill 50ms ease-out, stroke 50ms ease-out;
 }
 
@@ -88,9 +88,9 @@ text.layout-glyph {
  * updateHighlights() also skips adding .highlighted to already-pinned elements.
  */
 .layout-glyph.pinned {
-  fill: #00C853 !important;
-  stroke: #00C853 !important;
-  filter: drop-shadow(0 0 4px rgba(0, 180, 60, 0.8)) !important;
+  fill: #5AC481 !important;
+  stroke: #5AC481 !important;
+  filter: drop-shadow(0 0 4px rgba(90, 196, 129, 0.7)) !important;
 }
 
 /* Pinned notehead scale is also applied via JS SVG attribute (see applyNoteheadScale). */

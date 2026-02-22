@@ -1,0 +1,67 @@
+/* ==========================================================================
+   LandingScreen.css — Feature 001-landing-redesign
+   ========================================================================== */
+
+/**
+ * Full-viewport container that sits behind the .app-header banner.
+ * Uses position: fixed so it covers the entire viewport regardless of
+ * document scroll state, and z-index: 0 keeps it below the header.
+ */
+.landing-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  background: #f5f5f5;
+}
+
+/* --------------------------------------------------------------------------
+   Animated note glyph
+   Uses the .music-glyph class (index.css) for Bravura font-family.
+   Position is driven inline (left/top %) by the rAF loop.
+   -------------------------------------------------------------------------- */
+.landing-note {
+  position: absolute;
+  font-size: 4rem;
+  cursor: pointer;
+  user-select: none;
+  /* Prevent touch devices triggering context-menu on long-press */
+  touch-action: manipulation;
+  /* Progressive color fade — 0.7s avoids sudden flicker between palette values */
+  transition: color 0.7s ease;
+  /* Centre the glyph on its (x, y) coordinate */
+  transform: translate(-50%, -50%);
+}
+
+.landing-note:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* --------------------------------------------------------------------------
+   Load-score action panel — pinned near the bottom of the viewport,
+   above the note layer so clicks are not intercepted by the note.
+   -------------------------------------------------------------------------- */
+.landing-actions {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced-motion override
+   The glyph/color animation is handled in JS; only the CSS transition
+   needs suppressing here.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .landing-note {
+    transition: none;
+  }
+}

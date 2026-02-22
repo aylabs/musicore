@@ -49,6 +49,13 @@ body {
   overflow-x: hidden;
 }
 
+/* Ensure the React root and app always span the full viewport width
+   (body uses display:flex which would otherwise shrink-wrap the root). */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;

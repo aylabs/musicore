@@ -13,6 +13,7 @@ import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
 import { LoadScoreButton } from "./load-score/LoadScoreButton";
 import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
+import { LandingScreen } from "./LandingScreen";
 import "./ScoreViewer.css";
 
 /** A single long-press pin: a noteId coupled with its absolute tick position */
@@ -486,21 +487,14 @@ export function ScoreViewer({
     );
   }
 
-  // Render initial state (no score)
+  // Render initial state (no score) — Feature 001: LandingScreen
   if (!score) {
     return (
       <div className="score-viewer">
-        <div className="no-score">
-          <div className="initial-actions">
-            {/* Feature 028: Load Score button opens the Load Score dialog */}
-            <LoadScoreButton
-              onClick={() => setDialogOpen(true)}
-              disabled={loading}
-            />
-          </div>
-          {error && <div className="error">{error}</div>}
-          {successMessage && <div className="success">{successMessage}</div>}
-        </div>
+        {/* Feature 001: animated landing hero covers the full viewport */}
+        <LandingScreen onLoadScore={() => setDialogOpen(true)} />
+        {error && <div className="error">{error}</div>}
+        {successMessage && <div className="success">{successMessage}</div>}
         {/* Feature 028: Load Score Dialog */}
         <LoadScoreDialog
           open={dialogOpen}
