@@ -52,6 +52,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A (no storage changes — all in-memory/UI state) (026-playback-ui-fixes)
 - TypeScript (React 18 + Hooks), Rust stable ≥1.79 + React, Vite, Vitest, Playwright, Tone.js, wasm-bindgen, History API, Fullscreen API (027-demo-flow-ux)
 - N/A — no new or changed storage (027-demo-flow-ux)
+- TypeScript 5.9 / React 19.2 / Vite 7.x + Web Audio API (`AudioWorklet`, `getUserMedia`), `pitchy` (MPM pitch detection, ~33 kB, zero-dependency), Canvas 2D API (001-recording-view)
+- N/A — in-memory React state only; no IndexedDB, no backend (001-recording-view)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -72,9 +74,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 001-recording-view: Added TypeScript 5.9 / React 19.2 / Vite 7.x + Web Audio API (`AudioWorklet`, `getUserMedia`), `pitchy` (MPM pitch detection, ~33 kB, zero-dependency), Canvas 2D API
+- 001-landing-redesign: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 027-demo-flow-ux: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 027-demo-flow-ux: Added TypeScript (React 18 + Hooks), Rust stable ≥1.79 + React, Vite, Vitest, Playwright, Tone.js, wasm-bindgen, History API, Fullscreen API
-- 026-playback-ui-fixes: Added TypeScript 5.x strict mode + React 18+, Vite 7.3.1, Tone.js, Vitest 4.0.18
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -193,6 +193,29 @@
 .toolbar-right {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+/* Debug-only Record View button — styled to stand out next to Play View */
+.record-view-debug-btn {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  font-weight: 600;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s;
+}
+
+.record-view-debug-btn:hover {
+  background: #6d28d9;
+}
+
+.record-view-debug-btn:active {
+  background: #5b21b6;
 }
 
 /* Legacy score-actions styling - kept for backward compatibility */

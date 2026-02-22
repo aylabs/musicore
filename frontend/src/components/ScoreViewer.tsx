@@ -25,6 +25,10 @@ interface ScoreViewerProps {
   viewMode?: ViewMode;
   /** Optional callback for view mode changes (required if viewMode is controlled) */
   onViewModeChange?: (mode: ViewMode) => void;
+  /** Debug mode: shows Record View button when true */
+  debugMode?: boolean;
+  /** Called when Record View button is pressed (only relevant when debugMode=true) */
+  onShowRecording?: () => void;
 }
 
 /**
@@ -45,6 +49,8 @@ export function ScoreViewer({
   scoreId: initialScoreId,
   viewMode: controlledViewMode,
   onViewModeChange: controlledOnViewModeChange,
+  debugMode = false,
+  onShowRecording,
 }: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
@@ -491,6 +497,15 @@ export function ScoreViewer({
   if (!score) {
     return (
       <div className="score-viewer">
+        {debugMode && (
+          <button
+            className="record-view-debug-btn"
+            onClick={onShowRecording}
+            aria-label="Record View"
+          >
+            Record View
+          </button>
+        )}
         {/* Feature 001: animated landing hero covers the full viewport */}
         <LandingScreen onLoadScore={() => setDialogOpen(true)} />
         {error && <div className="error">{error}</div>}
@@ -534,6 +549,15 @@ export function ScoreViewer({
               />
             </div>
             <div className="toolbar-right">
+              {debugMode && (
+                <button
+                  className="record-view-debug-btn"
+                  onClick={onShowRecording}
+                  aria-label="Record View"
+                >
+                  Record View
+                </button>
+              )}
               {score && score.instruments.length > 0 && (
                 <ViewModeSelector
                   currentMode={viewMode}

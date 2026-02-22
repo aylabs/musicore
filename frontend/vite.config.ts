@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,9 +14,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // Listen on all network interfaces
     port: 5173,       // Default Vite port
+    https: {},        // Self-signed cert via @vitejs/plugin-basic-ssl
   },
   
   plugins: [
+    basicSsl(),
     react(),
     // PWA plugin configuration
     VitePWA({
