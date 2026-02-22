@@ -2,20 +2,25 @@
   background-color: #4caf50;
   color: #ffffff;
   border: none;
-  border-radius: 12px;
-  padding: 1.25rem 3rem;
-  font-size: 1.5rem;
-  font-weight: 700;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
-  letter-spacing: 0.03em;
-  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.45);
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.35);
 }
 
 .load-score-button:hover:not(:disabled) {
   background-color: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.55);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .load-score-button:active:not(:disabled) {
