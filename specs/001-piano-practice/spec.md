@@ -17,7 +17,7 @@ A student opens the Practice Exercise view and sees a staff with randomly genera
 
 **Acceptance Scenarios**:
 
-1. **Given** the user opens the Practice Exercise view, **When** the view loads, **Then** a staff is displayed with 8–16 randomly generated quarter notes drawn from the C3–C4 octave range, and a second empty staff is visible below it.
+1. **Given** the user opens the Practice Exercise view, **When** the view loads, **Then** a staff is displayed with exactly 8 randomly generated quarter notes drawn from the C3–C4 octave range, and a second empty staff is visible below it.
 2. **Given** the exercise is loaded, **When** the user presses Play, **Then** each note on the exercise staff is highlighted in turn at the configured tempo, and an audible tone plays for each note.
 3. **Given** playback is active, **When** the user plays a note on their piano that is detected by the microphone, **Then** that note appears on the second (response) staff in real time.
 4. **Given** playback has finished and the user has played at least one note, **Then** a results report is displayed showing each target note, its status, and a final numeric score (0–100).
@@ -73,18 +73,18 @@ After reviewing the results, the student can either retry the same exercise (sam
 ### Functional Requirements
 
 - **FR-001**: The Practice Exercise view MUST be accessible via a button in the Instrument view that is only visible when the application is running in debug mode, consistent with the existing Record View button pattern.
-- **FR-002**: On entering the Practice Exercise view, the system MUST automatically generate between 8 and 16 quarter-note pitches, randomly selected from the range C3–C4 inclusive (pitches: C3, D3, E3, F3, G3, A3, B3, C4), and display them on a treble-clef staff.
+- **FR-002**: On entering the Practice Exercise view, the system MUST automatically generate exactly 8 quarter-note pitches, randomly selected from the range C3–C4 inclusive (pitches: C3, D3, E3, F3, G3, A3, B3, C4), and display them on a treble-clef staff. A variable note count (up to 16) is deferred to a future configurable difficulty level.
 - **FR-003**: A second empty treble-clef staff MUST be displayed below the exercise staff to receive the user's played notes in real time.
 - **FR-004**: The system MUST provide a Play button. When pressed, it MUST highlight each note in the exercise staff sequentially at the configured tempo (default 80 BPM) and simultaneously produce an audible synthesised tone matching each note.
-- **FR-005**: While playback is active, the system MUST use microphone input to detect pitches played by the user and display them on the response staff as they are played.
+- **FR-005**: The system MUST request microphone permission when the Practice Exercise view mounts. While playback is active (after the user presses Play), the system MUST use the already-open microphone stream to detect pitches played by the user and display them on the response staff in real time. Microphone capture MUST stop when playback ends or the user presses Stop.
 - **FR-006**: The system MUST align each user-played note to the nearest beat slot in the exercise sequence for comparison. A beat slot is defined as the ±200 ms window around each target note's expected onset time at the current tempo.
-- **FR-007**: When playback completes (all notes have been highlighted), or the user presses Stop, the system MUST generate and display a results report containing: (a) a per-note comparison table and (b) a final numeric score from 0 to 100.
-- **FR-008**: The per-note comparison MUST classify each target note slot using one of four statuses: Correct (right pitch within timing tolerance), Wrong pitch (note detected in the right slot but wrong pitch), Wrong timing (right pitch detected outside the beat window), or Missed (no note detected for that slot).
+- **FR-007**: When playback completes (all notes have been highlighted), OR the user presses Stop, the system MUST immediately generate and display a results report containing: (a) a per-note comparison table and (b) a final numeric score from 0 to 100. Any target note slots that were not yet reached at the time Stop was pressed MUST be classified as ❌ Missed.
+- **FR-008**: The per-note comparison MUST classify each target note slot using one of four statuses: Correct (detected pitch within ±50 cents of the target MIDI note AND within the timing tolerance window), Wrong pitch (note detected in the right slot but the detected pitch deviates more than ±50 cents from the target), Wrong timing (detected pitch is within ±50 cents of the target but onset falls outside the ±200 ms beat window), or Missed (no note detected for that slot).
 - **FR-009**: Extra notes played by the user that do not correspond to any target beat slot MUST be recorded as Extraneous and MUST reduce the final score.
 - **FR-010**: The final score MUST be computed with 50% weight on pitch accuracy and 50% weight on timing accuracy, normalised to 0–100.
 - **FR-011**: The results view MUST provide a "Try Again" button that clears the response staff and restores the same exercise sequence, ready to play again.
 - **FR-012**: The results view MUST provide a "New Exercise" button that generates a new random note sequence and clears the response staff.
-- **FR-013**: If microphone access is unavailable or denied, the view MUST display a clear error message and still allow the user to view and listen to the exercise notes via the Play button.
+- **FR-013**: If microphone access is unavailable or denied at view mount, the view MUST display a clear error message immediately and still allow the user to view and listen to the exercise notes via the Play button. The response staff will remain empty in this case.
 - **FR-014**: The feature MUST reuse the existing pitch detection service used by the Recording view; no duplicate pitch-detection logic should be introduced.
 - **FR-015**: The default exercise configuration MUST be: 8 notes, quarter-note duration, 80 BPM, pitch range C3–C4.
 
@@ -103,7 +103,7 @@ After reviewing the results, the student can either retry the same exercise (sam
 
 - **SC-001**: A student can load the view, play back an exercise, perform a response, and read a results report in under 2 minutes from first opening the view.
 - **SC-002**: The scoring algorithm always produces 100 for a perfectly reproduced exercise and 0 for a completely missed one, with no exceptions.
-- **SC-003**: Note onset detection correctly identifies pitch and assigns the correct beat slot for inputs that are within ±200 ms of the target beat, in at least 90% of cases during manual testing across the C3–C4 range.
+- **SC-003**: Note onset detection correctly identifies pitch (±50 cents tolerance) and assigns the correct beat slot for inputs whose onset is within ±200 ms of the target beat, in at least 90% of cases during manual testing across the C3–C4 range.
 - **SC-004**: The view is fully usable on a tablet in portrait orientation without horizontal scrolling, consistent with the rest of the application.
 - **SC-005**: "Try Again" restores the same exercise and clears the response staff within 500 ms of being pressed.
 
@@ -118,6 +118,19 @@ After reviewing the results, the student can either retry the same exercise (sam
 - A timing tolerance of ±200 ms per beat at 80 BPM (~±quarter-note/3) is sufficient for the initial version.
 - The random generator does not currently guarantee against repeated adjacent pitches.
 - Score weighting (50% pitch / 50% timing) can be made configurable in a later iteration.
+- Exercise results and scores are ephemeral — shown on screen only and discarded when the student presses Try Again, New Exercise, or navigates away. No persistence to local storage, backend, or file is required in this iteration.
+
+---
+
+## Clarifications
+
+### Session 2026-02-22
+
+- Q: What pitch tolerance counts as a "Correct" answer? → A: ±50 cents — any detected pitch within half a semitone of the target MIDI note counts as correct pitch.
+- Q: When does the microphone start capturing the user's input? → A: Mic activates when the Practice view opens (permission requested on mount); note capture begins when Play is pressed and stops when playback ends or Stop is pressed.
+- Q: What happens when the user presses Stop mid-exercise? → A: Stop ends the exercise and immediately generates the results report; all target slots not yet reached are classified as Missed.
+- Q: Are exercise results and scores persistent or ephemeral? → A: Ephemeral — results are shown on screen only and discarded when the student starts a new exercise or navigates away. No storage is required.
+- Q: How is the exercise note count determined? → A: Always exactly 8 notes in this initial version. A variable count (up to 16) is deferred to a future difficulty-level feature.
 
 ---
 
