@@ -102,12 +102,12 @@
 
 /* Individual button styles */
 .play-button {
-  background-color: #4caf50;
+  background-color: #ff9800;
   color: white;
 }
 
 .play-button:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: #fb8c00;
 }
 
 .pause-button {
