@@ -358,7 +358,9 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     cap.slotResponses = new Array(exercise.notes.length).fill(null);
     cap.extraneousNotes = [];
     cap.lastOnsetMsPerSlot = new Array(exercise.notes.length).fill(-Infinity);
-    stabRef.current = { label: null, count: 0 };
+    // Do NOT reset stabRef here — preserving the current stabiliser state means any
+    // pitch already confirmed (stab.count ≥ 3) is captured on the very next worklet
+    // frame without the 3-frame re-stabilisation delay.
     setLiveResponseNotes([]); // always start clean — avoids stale notes from previous capture
   }, []);
 

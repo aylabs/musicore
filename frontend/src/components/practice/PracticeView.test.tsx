@@ -117,9 +117,14 @@ describe('PracticeView', () => {
       expect(screen.queryByTestId('stop-btn')).not.toBeInTheDocument();
     });
 
-    it('auto-starts and transitions to playing when first pitch is detected', async () => {
+    it('auto-starts and shows count-in prompt then transitions to playing', async () => {
       await renderAutoStarted();
+      // Stop is always available once phase is playing (even during count-in)
       expect(screen.getByTestId('stop-btn')).toBeInTheDocument();
+      // During count-in the start-prompt changes to a "get ready" message
+      expect(screen.getByTestId('start-prompt')).toHaveTextContent(/get ready/i);
+      // After the count-in beat (80 BPM → 750 ms) the prompt disappears
+      await act(async () => { vi.advanceTimersByTime(750); });
       expect(screen.queryByTestId('start-prompt')).not.toBeInTheDocument();
     });
 

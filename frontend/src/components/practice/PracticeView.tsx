@@ -62,6 +62,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
+  /** True during the one-beat count-in between auto-start and actual capture start */
+  const [isCountingIn, setIsCountingIn] = useState(false);
 
   // ── Mic recorder ────────────────────────────────────────────────────────
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
@@ -97,16 +99,20 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   );
 
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
+  //    Suppressed during count-in (capture not yet active) and when the current
+  //    slot already has a confirmed response note — avoids visual overlap/flicker
+  //    that made confirmed notes appear to "disappear" when the ghost moved away.
   const ghostNote = useMemo<Note | null>(() => {
-    if (phase !== 'playing' || !currentPitch) return null;
+    if (phase !== 'playing' || !currentPitch || isCountingIn) return null;
     const slotIndex = highlightedSlotIndex ?? 0;
+    if (liveResponseNotes.some((n) => n.start_tick === slotIndex * QUARTER_TICKS)) return null;
     return {
       id: '__practice_ghost__',
       start_tick: slotIndex * QUARTER_TICKS,
       duration_ticks: QUARTER_TICKS,
       pitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
     };
-  }, [phase, currentPitch, highlightedSlotIndex]);
+  }, [phase, currentPitch, highlightedSlotIndex, isCountingIn, liveResponseNotes]);
 
   // ── Response staff: confirmed notes + live ghost ──────────────────────────
   const responseStaffNotes = useMemo<Note[]>(
@@ -146,6 +152,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     playbackTimersRef.current.forEach(clearTimeout);
     playbackTimersRef.current = [];
     ToneAdapter.getInstance().stopAll();
+    setIsCountingIn(false);
   }, []);
 
   // ── Handle Play (T010) ───────────────────────────────────────────────────
@@ -156,6 +163,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       clearCapture();
     }
     setPhase('playing');
+    setIsCountingIn(true);
     setResult(null);
     setHighlightedSlotIndex(null);
 
@@ -163,37 +171,46 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     await adapter.init();
     adapter.startTransport();
 
-    const startMs = Date.now();
-    startCapture(exercise, startMs);
-
     const msPerBeat = 60_000 / exercise.bpm;
+    // One-beat count-in: exercise audio starts immediately but the capture window
+    // and highlight timers only begin one beat later.  This prevents the user's
+    // trigger note from racing with the slot-0 window and allows any in-flight
+    // pitch to stabilise cleanly before slots are measured.
+    const leadInMs = msPerBeat;
     const durationSec = (msPerBeat * 0.85) / 1000;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Schedule all notes on the Transport (piano samples via ToneAdapter)
-    exercise.notes.forEach((note, i) => {
-      adapter.playNote(note.midiPitch, durationSec, note.expectedOnsetMs / 1000);
-
-      // Highlight this slot via setTimeout (visual sync)
-      const highlightTimer = setTimeout(() => {
-        setHighlightedSlotIndex(i);
-      }, note.expectedOnsetMs);
-      timers.push(highlightTimer);
+    // Schedule all exercise notes shifted forward by one beat
+    exercise.notes.forEach((note) => {
+      adapter.playNote(note.midiPitch, durationSec, (leadInMs + note.expectedOnsetMs) / 1000);
     });
 
-    // When the last note finishes, finalise
-    const lastOnsetMs = (exercise.notes.length - 1) * msPerBeat;
-    const finishMs = lastOnsetMs + msPerBeat + 100; // extra 100 ms buffer
+    // After count-in: open capture window and register per-slot highlight + finish timers
+    const captureTimer = setTimeout(() => {
+      setIsCountingIn(false);
+      const startMs = Date.now();
+      startCapture(exercise, startMs);
 
-    const finishTimer = setTimeout(() => {
-      stopPlayback();
-      setHighlightedSlotIndex(null);
-      const { responses, extraneousNotes } = stopCapture();
-      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
-      setResult(exerciseResult);
-      setPhase('results');
-    }, finishMs);
-    timers.push(finishTimer);
+      exercise.notes.forEach((note, i) => {
+        const highlightTimer = setTimeout(() => {
+          setHighlightedSlotIndex(i);
+        }, note.expectedOnsetMs);
+        timers.push(highlightTimer);
+      });
+
+      const lastOnsetMs = (exercise.notes.length - 1) * msPerBeat;
+      const finishMs = lastOnsetMs + msPerBeat + 100; // extra 100 ms buffer
+      const finishTimer = setTimeout(() => {
+        stopPlayback();
+        setHighlightedSlotIndex(null);
+        const { responses, extraneousNotes } = stopCapture();
+        const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
+        setResult(exerciseResult);
+        setPhase('results');
+      }, finishMs);
+      timers.push(finishTimer);
+    }, leadInMs);
+    timers.push(captureTimer);
 
     playbackTimersRef.current = timers;
   }, [phase, exercise, startCapture, stopCapture, clearCapture, stopPlayback]);
@@ -336,13 +353,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         {/* ── Controls ───────────────────────────────────────────── */}
         {phase !== 'results' && (
           <div className="practice-view__controls">
-            {phase === 'ready' && (
+            {(phase === 'ready' || isCountingIn) && (
               <p
                 className="practice-view__start-prompt"
                 data-testid="start-prompt"
                 aria-live="polite"
               >
-                {micState === 'active'
+                {isCountingIn
+                  ? '⏳ Get ready…'
+                  : micState === 'active'
                   ? '🎹 Start playing… the exercise will follow you'
                   : '🎹 Waiting for microphone…'}
               </p>
