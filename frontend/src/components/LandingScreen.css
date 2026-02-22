@@ -15,6 +15,11 @@
   overflow: hidden;
   z-index: 0;
   background: #f5f5f5;
+  cursor: pointer;
+  /* Remove browser tap-highlight and focus ring on click */
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  user-select: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -39,11 +44,17 @@
   transform: translate(-50%, -50%) scale(1.15);
 }
 
+/* Paused state on the container: dim note to signal animation is frozen */
+.landing-screen--paused .landing-note {
+  opacity: 0.45;
+}
+
 /* --------------------------------------------------------------------------
-   Load-score action panel — pinned near the bottom of the viewport,
-   above the note layer so clicks are not intercepted by the note.
-   -------------------------------------------------------------------------- */
-.landing-actions {
+   Load-score action panel — stop-propagation in JSX prevents click bubbling
+   to the container pause/resume handler.
+   Landing screen overrides the shared button size to be larger than the
+   Instrument View instance.
+   -------------------------------------------------------------------------- */.landing-actions {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -53,6 +64,15 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+.landing-actions .load-score-button {
+  border-radius: 12px !important;
+  padding: 1.25rem 3rem !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.45) !important;
+  letter-spacing: 0.03em !important;
+  min-width: unset !important;
 }
 
 /* --------------------------------------------------------------------------

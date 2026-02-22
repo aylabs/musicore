@@ -77,7 +77,7 @@ export interface LandingScreenProps {
  * - Covers the entire viewport behind the .app-header banner
  * - Single Bravura note glyph follows a fixed Lissajous looping path
  * - Glyph and color change simultaneously every second (no immediate repeats)
- * - Click resets the animation to its initial position (t = 0)
+ * - Click the note to pause / resume the animation
  * - Pauses when the browser tab is hidden (Page Visibility API)
  * - Respects prefers-reduced-motion: position frozen, glyph/color still cycle
  */
@@ -96,6 +96,10 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
   const [colorIdx, setColorIdx] = useState(() =>
     Math.floor(Math.random() * NOTE_COLORS.length)
   );
+
+  // Pause/resume state — ref for rAF callbacks, state for aria/CSS
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
 
   // Refs for rAF loop state (not reactive — avoid re-renders)
   const rafRef = useRef<number>(0);
@@ -158,14 +162,14 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --------------------------------------------------------------------------
-  // Tab visibility: cancel rAF when hidden, restart when visible
+  // Tab visibility: cancel rAF when hidden, restart when visible (unless user-paused)
   // --------------------------------------------------------------------------
   useEffect(() => {
     function onVisibilityChange() {
       if (document.hidden) {
         cancelAnimationFrame(rafRef.current);
         prevTimeRef.current = null; // prevent large time-jump on resume
-      } else {
+      } else if (!pausedRef.current) {
         rafRef.current = requestAnimationFrame(function tick(now: number) {
           if (document.hidden) {
             prevTimeRef.current = null;
@@ -201,13 +205,48 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --------------------------------------------------------------------------
-  // Click-to-reset: snap back to t=0 and restart the path
+  // Click-to-pause / click-to-resume
   // --------------------------------------------------------------------------
   function handleNoteClick() {
-    elapsedRef.current = 0;
-    prevTimeRef.current = null;
-    prevSecondRef.current = -1;
-    setPosition(evalPath(0));
+    if (pausedRef.current) {
+      // Resume: restart rAF, discard stale delta
+      pausedRef.current = false;
+      setPaused(false);
+      prevTimeRef.current = null;
+      rafRef.current = requestAnimationFrame(function tick(now: number) {
+        if (document.hidden || pausedRef.current) {
+          prevTimeRef.current = null;
+          if (!pausedRef.current) rafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+        if (prevTimeRef.current !== null) {
+          elapsedRef.current += (now - prevTimeRef.current) / 1000;
+        }
+        prevTimeRef.current = now;
+
+        const currentSecond = Math.floor(elapsedRef.current);
+        if (currentSecond !== prevSecondRef.current) {
+          prevSecondRef.current = currentSecond;
+          const nextGlyph = pickRandom(NOTE_GLYPHS.length, glyphIdxRef.current);
+          const nextColor = pickRandom(NOTE_COLORS.length, colorIdxRef.current);
+          setGlyphIdx(nextGlyph);
+          setColorIdx(nextColor);
+        }
+
+        if (!reducedMotion) {
+          const t = (elapsedRef.current % LOOP_DURATION) / LOOP_DURATION;
+          setPosition(evalPath(t));
+        }
+
+        rafRef.current = requestAnimationFrame(tick);
+      });
+    } else {
+      // Pause: cancel rAF and freeze elapsed time
+      pausedRef.current = true;
+      setPaused(true);
+      cancelAnimationFrame(rafRef.current);
+      prevTimeRef.current = null;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -215,17 +254,18 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
   // --------------------------------------------------------------------------
   return (
     <div
-      className="landing-screen"
+      className={`landing-screen${paused ? ' landing-screen--paused' : ''}`}
       data-testid="landing-screen"
       role="region"
-      aria-label="Landing screen"
+      aria-label={paused ? 'Landing screen (paused — click to resume)' : 'Landing screen (click to pause)'}
+      tabIndex={-1}
+      onClick={handleNoteClick}
     >
       {/* Animated Bravura note glyph */}
       <span
         className="landing-note music-glyph"
         data-testid="landing-note"
         aria-hidden="true"
-        onClick={handleNoteClick}
         style={{
           left: `${position.x}%`,
           top: `${position.y}%`,
@@ -235,8 +275,8 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
         {NOTE_GLYPHS[glyphIdx]}
       </span>
 
-      {/* Load score action — positioned above the animated layer */}
-      <div className="landing-actions">
+      {/* Load score action — stop propagation so button click doesn't toggle pause */}
+      <div className="landing-actions" onClick={e => e.stopPropagation()}>
         <LoadScoreButton onClick={onLoadScore} />
       </div>
     </div>

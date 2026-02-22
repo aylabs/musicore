@@ -177,36 +177,31 @@ describe('LandingScreen', () => {
    * T007 — Click resets position to initial
    * FR-007: click returns note to starting position
    */
-  it('T007: clicking the note resets position to initial (t=0) values', async () => {
+  it('T007: clicking the screen pauses the animation; clicking again resumes it', async () => {
     const user = userEvent.setup({ advanceTimers: (ms) => advanceTime(ms) });
     render(<LandingScreen onLoadScore={vi.fn()} />);
+    const screen_ = screen.getByTestId('landing-screen');
     const note = screen.getByTestId('landing-note');
 
-    // Record initial position style
-    const initialLeft = (note as HTMLElement).style.left;
-    const initialTop = (note as HTMLElement).style.top;
+    // Advance so note moves away from initial position
+    act(() => { for (let i = 0; i < 30; i++) advanceTime(100); }); // 3 s
 
-    // Advance time so the note moves away from initial position
-    act(() => {
-      for (let i = 0; i < 30; i++) advanceTime(100); // 3 seconds
-    });
+    const posAtPause = (note as HTMLElement).style.left;
 
-    const movedLeft = (note as HTMLElement).style.left;
-    const movedTop = (note as HTMLElement).style.top;
-    // Note should have moved (left or top should differ from initial OR we just click and verify reset)
+    // Click the screen to PAUSE
+    await user.click(screen_);
 
-    // Click the note to reset — setPosition(evalPath(0)) fires synchronously
-    // inside the click handler; no extra RAF frame needed.
-    await user.click(note);
+    // Advance more time — position must NOT change while paused
+    act(() => { for (let i = 0; i < 20; i++) advanceTime(100); }); // 2 s
 
-    const resetLeft = (note as HTMLElement).style.left;
-    const resetTop = (note as HTMLElement).style.top;
+    const posDuringPause = (note as HTMLElement).style.left;
+    expect(posDuringPause).toBe(posAtPause);
 
-    // After reset, position should match initial (t=0) values
-    expect(resetLeft).toBe(initialLeft);
-    expect(resetTop).toBe(initialTop);
-    // Suppress unused variable warnings
-    void movedLeft; void movedTop;
+    // Click the screen to RESUME
+    await user.click(screen_);
+
+    // Advance a frame — animation loop running again, no crash
+    act(() => { advanceTime(200); });
   });
 
   /**

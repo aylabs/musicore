@@ -9,9 +9,9 @@
 .view-mode-button {
   padding: 10px 20px;
   font-size: 1em;
-  background: #f5f5f5;
-  color: #333;
-  border: 2px solid #e0e0e0;
+  background: #ff9800;
+  color: white;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -19,11 +19,12 @@
 }
 
 .view-mode-button:hover {
-  background: #e8e8e8;
-  border-color: #ccc;
+  background: #fb8c00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .view-mode-button:focus {
-  outline: 2px solid #4CAF50;
+  outline: 2px solid #ff9800;
   outline-offset: 2px;
 }
