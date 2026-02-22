@@ -56,7 +56,8 @@ interface PracticeViewProps {
 
 export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Phase & exercise state ──────────────────────────────────────────────
-  const [exercise, setExercise] = useState(() => generateExercise());
+  const [bpm, setBpm] = useState(80);
+  const [exercise, setExercise] = useState(() => generateExercise(80));
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
@@ -120,6 +121,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     () =>
       highlightedSlotIndex !== null ? [`ex-slot-${highlightedSlotIndex}`] : [],
     [highlightedSlotIndex],
+  );
+
+  // ── Tempo change ─────────────────────────────────────────────────────────
+  const handleBpmChange = useCallback(
+    (newBpm: number) => {
+      setBpm(newBpm);
+      if (phase === 'ready') setExercise(generateExercise(newBpm));
+    },
+    [phase],
   );
 
   // ── Stop playback helper ─────────────────────────────────────────────────
@@ -210,10 +220,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stopPlayback();
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
-    const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
+    const raw = scoreExercise(exercise, responses, extraneousNotes);
+    const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setPhase('results');
-  }, [exercise, stopCapture, stopPlayback]);
+  }, [exercise, bpm, stopCapture, stopPlayback]);
 
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
@@ -231,9 +242,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
-    setExercise(generateExercise());
+    setExercise(generateExercise(bpm));
     setPhase('ready');
-  }, [clearCapture, stopPlayback]);
+  }, [bpm, clearCapture, stopPlayback]);
 
   // ── Back button — cleanup on navigate away (T022) ────────────────────────
   const handleBack = useCallback(() => {
@@ -281,19 +292,41 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         )}
 
         {/* ── Exercise staff ─────────────────────────────────────── */}
-        <div className="practice-view__staff-block" data-testid="exercise-staff-block">
-          <div className="practice-view__staff-label">Exercise</div>
-          <div
-            className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
-            data-testid="exercise-staff-renderer"
-            aria-label="Exercise notes"
-            role="img"
-          >
-            <NotationRenderer
-              layout={exerciseLayout}
-              highlightedNoteIds={highlightedNoteIds}
-              showClef
+        <div className="practice-view__staff-block practice-view__staff-block--with-tempo" data-testid="exercise-staff-block">
+          <div className="practice-view__staff-content">
+            <div className="practice-view__staff-label">Exercise</div>
+            <div
+              className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
+              data-testid="exercise-staff-renderer"
+              aria-label="Exercise notes"
+              role="img"
+            >
+              <NotationRenderer
+                layout={exerciseLayout}
+                highlightedNoteIds={highlightedNoteIds}
+                showClef
+              />
+            </div>
+          </div>
+          {/* Tempo slider — right of staff */}
+          <div className="practice-view__tempo-panel">
+            <label className="practice-view__tempo-label" htmlFor="tempo-slider">Tempo</label>
+            <input
+              id="tempo-slider"
+              type="range"
+              className="practice-view__tempo-slider"
+              min={40}
+              max={120}
+              step={5}
+              value={bpm}
+              disabled={phase === 'playing'}
+              onChange={(e) => handleBpmChange(Number(e.target.value))}
+              aria-label="Tempo in BPM"
+              data-testid="tempo-slider"
             />
+            <span className="practice-view__tempo-value">{bpm}</span>
+            <span className="practice-view__tempo-bpm-label">BPM</span>
+            <span className="practice-view__tempo-factor">×{(bpm / 120).toFixed(2)}</span>
           </div>
         </div>
 
@@ -349,7 +382,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         {/* ── Results phase ──────────────────────────────────────── */}
         {phase === 'results' && result && (
           <>
-            <ExerciseResultsView result={result} exercise={exercise} />
             <div className="practice-view__controls">
               <button
                 className="practice-view__play-btn"
@@ -369,6 +401,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 🎲 New Exercise
               </button>
             </div>
+            <ExerciseResultsView result={result} exercise={exercise} />
           </>
         )}
       </main>

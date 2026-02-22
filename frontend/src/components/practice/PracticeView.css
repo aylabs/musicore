@@ -110,6 +110,75 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* ─── Staff + tempo side-by-side ──────────────────────────────────────────── */
+
+.practice-view__staff-block--with-tempo {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+}
+
+.practice-view__staff-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-view__tempo-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 62px;
+  flex-shrink: 0;
+  padding: 0.5rem 0.5rem;
+  border-left: 1px solid #e0e0e0;
+  margin-left: 0.5rem;
+}
+
+.practice-view__tempo-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #888;
+}
+
+.practice-view__tempo-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 90px;
+  width: 28px;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.practice-view__tempo-slider:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.practice-view__tempo-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.practice-view__tempo-bpm-label {
+  font-size: 0.6rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.practice-view__tempo-factor {
+  font-size: 0.68rem;
+  color: #1976d2;
+  font-weight: 600;
+}
+
 /* ─── Controls ────────────────────────────────────────────────────────────── */
 
 .practice-view__controls {

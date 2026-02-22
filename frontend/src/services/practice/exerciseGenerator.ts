@@ -10,8 +10,8 @@ import type { Exercise, ExerciseNote } from '../../types/practice';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Diatonic pitches from C3 to C4 inclusive (C3=48, D3=50 ... C4=60) */
-const C3_TO_C4_PITCHES: readonly number[] = [48, 50, 52, 53, 55, 57, 59, 60];
+/** Diatonic pitches from C4 to C5 inclusive (C4=60, D4=62 ... C5=72) */
+const C4_TO_C5_PITCHES: readonly number[] = [60, 62, 64, 65, 67, 69, 71, 72];
 
 const DEFAULT_BPM = 80;
 const NOTE_COUNT = 8;
@@ -48,10 +48,10 @@ export function generateExercise(bpm: number = DEFAULT_BPM, seed?: number): Exer
   const msPerBeat = 60_000 / bpm;
 
   const notes: ExerciseNote[] = Array.from({ length: NOTE_COUNT }, (_, i) => {
-    const pitchIndex = Math.floor(rand() * C3_TO_C4_PITCHES.length);
+    const pitchIndex = Math.floor(rand() * C4_TO_C5_PITCHES.length);
     return {
       slotIndex: i,
-      midiPitch: C3_TO_C4_PITCHES[pitchIndex],
+      midiPitch: C4_TO_C5_PITCHES[pitchIndex],
       expectedOnsetMs: i * msPerBeat,
     };
   });

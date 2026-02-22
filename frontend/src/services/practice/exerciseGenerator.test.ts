@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateExercise } from './exerciseGenerator';
 
-const VALID_PITCHES = new Set([48, 50, 52, 53, 55, 57, 59, 60]);
+const VALID_PITCHES = new Set([60, 62, 64, 65, 67, 69, 71, 72]);
 const DEFAULT_BPM = 80;
 
 describe('generateExercise', () => {
@@ -37,7 +37,7 @@ describe('generateExercise', () => {
   });
 
   describe('pitches', () => {
-    it('all midiPitch values are from the C3–C4 diatonic set', () => {
+    it('all midiPitch values are from the C4–C5 diatonic set', () => {
       const ex = generateExercise();
       ex.notes.forEach((note) => {
         expect(VALID_PITCHES.has(note.midiPitch)).toBe(true);
