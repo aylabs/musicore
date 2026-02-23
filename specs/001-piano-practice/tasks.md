@@ -118,6 +118,40 @@
 
 ---
 
+---
+
+## Phase 7: Configuration Sidebar & UX Improvements
+
+**Purpose**: Replace the single-option debug toggle with a full left-side configuration panel; improve layout density and full-screen behaviour.
+
+### T023 — ExerciseConfig type + generator refactor
+- [x] T023 Add `ExerciseConfig` interface (`preset`, `noteCount`, `clef`, `octaveRange`) and `DEFAULT_EXERCISE_CONFIG` export to `frontend/src/services/practice/exerciseGenerator.ts`; add `NOTE_POOLS` record (`Treble-1/2`, `Bass-1/2`); update `generateExercise(bpm, config, seed?)` to 3-param signature; add `C3_TO_C4_PITCHES` constant and extend `generateC4ScaleExercise(bpm, noteCount, clef)` to select C3 scale for bass clef; lower `CAPTURE_MIDI_MIN` to 36 (C2) in `frontend/src/services/practice/usePracticeRecorder.ts` to cover Bass-2 pool
+
+### T024 — PracticeConfigPanel component
+- [x] T024 [P] Create `frontend/src/components/practice/PracticeConfigPanel.tsx` — left sidebar `<aside>` with five sections: Score (preset radio: Random / C4 Scale), Notes (range slider 1–12, locked for c4scale), Clef (Treble/Bass radio, enabled for all presets), Octaves (1/2 radio, locked for c4scale), Tempo (range slider 40–120 BPM); props `{ config, bpm, disabled, onConfigChange, onBpmChange }`; `data-testid="practice-config-panel"`
+
+### T025 — PracticeView state + layout wiring
+- [x] T025 Update `frontend/src/components/practice/PracticeView.tsx` — replace `c4Scale` boolean with `exerciseConfig: ExerciseConfig` state; remove `effectiveExercise` memo; add `handleConfigChange` callback; update `handleBpmChange`, `handleNewExercise`, `handlePlay`, `handleStop` to reference `exercise` directly; `effectiveClef = exerciseConfig.clef` (no forced-Treble override); render two-column body: `<PracticeConfigPanel>` + `<main className="practice-view__main">`; remove old tempo panel and debug checkbox
+
+### T026 — CSS two-column sidebar layout
+- [x] T026 [P] Update `frontend/src/components/practice/PracticeView.css` — body becomes `flex-direction: row`; add `.practice-config` (200 px wide sidebar), `.practice-view__main` (flex:1 column); add all `.practice-config__*` styles (section, title, radio-label, slider, value, unit, row, inline-radios); tablet `@media (max-width: 768px)` collapses sidebar to horizontal strip
+
+### T027 — Native browser fullscreen on mount
+- [x] T027 Update `frontend/src/components/practice/PracticeView.tsx` — add `useEffect` that calls `document.documentElement.requestFullscreen()` on mount and `document.exitFullscreen()` on unmount, matching the pattern used by ScoreViewer play mode; CSS container uses `position: fixed; inset: 0; z-index: 100` as a same-session fallback for browsers that reject the API call
+
+### T028 — Compact inline staff labels
+- [x] T028 [P] Update `.practice-view__staff-block` in `frontend/src/components/practice/PracticeView.css` — change to `flex-row` with rotated vertical label on left + `.practice-view__staff-inner` flex-column wrapper for renderer + pitch display; eliminates the header-row height above the SVG
+
+### T029 — C4 scale clef freedom
+- [x] T029 Remove forced-Treble override from `PracticeView.tsx` (`effectiveClef` now always equals `exerciseConfig.clef`); unlock Clef radio buttons in `PracticeConfigPanel.tsx` when `preset === 'c4scale'` (only Note count and Octave range remain locked)
+
+### T030 — C4 scale bass clef uses C3–C4 pitches
+- [x] T030 Add `C3_TO_C4_PITCHES` constant `[48,50,52,53,55,57,59,60]` to `exerciseGenerator.ts`; pass `clef` from `ExerciseConfig` through to `generateC4ScaleExercise`; Bass + c4scale generates C3 D3 E3 F3 G3 A3 B3 C4 instead of C4–C5
+
+**Checkpoint**: Practice view covers the full viewport (native fullscreen); configurable preset, note count, clef, octave range, and tempo; C4 scale adapts to selected clef.
+
+---
+
 ## Dependencies
 
 ```
