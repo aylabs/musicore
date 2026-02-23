@@ -324,16 +324,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
           if (cap.pending) {
             const finalisedNote = cap.pending; // capture before async updater runs
             cap.rawNotes.push(finalisedNote);
-            const msPerBeat = 60_000 / cap.exercise!.bpm;
-            const slotIdx = Math.max(
-              0,
-              Math.min(cap.exercise!.notes.length - 1, Math.round(finalisedNote.onsetMs / msPerBeat)),
-            );
             setLiveResponseNotes((prev) => [
               ...prev,
               {
-                id: `resp-${cap.rawNotes.length}`,
-                start_tick: slotIdx * 960,
+                id: `resp-${prev.length}`,
+                start_tick: prev.length * 960,
                 duration_ticks: 960,
                 pitch: Math.round(finalisedNote.midiCents / 100),
               },
@@ -348,16 +343,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             const finalisedNote = cap.pending; // capture before async updater runs
             cap.rawNotes.push(finalisedNote);
             cap.pending = null;
-            const msPerBeat = 60_000 / cap.exercise!.bpm;
-            const slotIdx = Math.max(
-              0,
-              Math.min(cap.exercise!.notes.length - 1, Math.round(finalisedNote.onsetMs / msPerBeat)),
-            );
             setLiveResponseNotes((prev) => [
               ...prev,
               {
-                id: `resp-${cap.rawNotes.length}`,
-                start_tick: slotIdx * 960,
+                id: `resp-${prev.length}`,
+                start_tick: prev.length * 960,
                 duration_ticks: 960,
                 pitch: Math.round(finalisedNote.midiCents / 100),
               },
