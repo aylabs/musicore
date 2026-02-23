@@ -129,7 +129,7 @@ export function ExerciseResultsView({ result, exercise }: ExerciseResultsViewPro
         >
           <strong>Extraneous notes:</strong>{' '}
           {extraneousNotes.length} extra note{extraneousNotes.length !== 1 ? 's' : ''} played
-          outside the beat windows — these reduced your score.
+          outside the beat windows.
         </div>
       )}
     </div>

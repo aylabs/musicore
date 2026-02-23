@@ -87,40 +87,24 @@ interface CaptureState {
 // ─── Post-hoc slot matcher ────────────────────────────────────────────────────
 
 /**
- * matchRawNotesToSlots — pairs recorded notes to exercise slots after the fact.
+ * matchRawNotesToSlots — pairs recorded notes to exercise slots sequentially.
  *
- * For each slot the closest unmatched raw note within half a beat period is
- * selected. This avoids real-time window races: every note is first recorded
- * faithfully, then matched when the full picture is available.
+ * The i-th detected note (in time order) is assigned to slot i regardless of
+ * timing. Mic detection timing is not accurate enough for beat-window matching;
+ * using a window causes legitimate notes to be dropped as "extraneous" when
+ * they fall slightly outside the expected onset. Sequential assignment avoids
+ * all false misses and extraneous penalties.
  */
 function matchRawNotesToSlots(
   exercise: Exercise,
   rawNotes: ResponseNote[],
 ): { responses: (ResponseNote | null)[]; extraneousNotes: ResponseNote[] } {
-  const msPerBeat = 60_000 / exercise.bpm;
-  const halfBeat = msPerBeat / 2;
   const responses: (ResponseNote | null)[] = new Array(exercise.notes.length).fill(null);
-  const usedIndices = new Set<number>();
-
-  for (const exNote of exercise.notes) {
-    let bestIdx = -1;
-    let bestDist = Infinity;
-    for (let i = 0; i < rawNotes.length; i++) {
-      if (usedIndices.has(i)) continue;
-      const dist = Math.abs(rawNotes[i].onsetMs - exNote.expectedOnsetMs);
-      if (dist < halfBeat && dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx >= 0) {
-      usedIndices.add(bestIdx);
-      responses[exNote.slotIndex] = rawNotes[bestIdx];
-    }
+  for (let i = 0; i < rawNotes.length && i < exercise.notes.length; i++) {
+    responses[i] = rawNotes[i];
   }
-
-  const extraneousNotes = rawNotes.filter((_, i) => !usedIndices.has(i));
-  return { responses, extraneousNotes };
+  // Extra raw notes beyond the slot count are silently discarded — never extraneous.
+  return { responses, extraneousNotes: [] };
 }
 
 // ─── Internal refs ────────────────────────────────────────────────────────────

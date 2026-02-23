@@ -95,11 +95,13 @@ export function scoreExercise(
     };
   });
 
-  // Scoring formula (FR-010)
-  const totalSlots = exercise.notes.length + extraneousNotes.length;
-  const pitchScore = totalSlots > 0 ? correctPitchCount / totalSlots : 0;
-  const timingScore = totalSlots > 0 ? correctTimingCount / totalSlots : 0;
-  const score = Math.round(50 * pitchScore + 50 * timingScore);
+  // Scoring formula: pitch accuracy only (0–100).
+  // Timing is shown in the report but not penalised — mic detection is not
+  // accurate enough for timing evaluation. wrong-timing notes already
+  // incremented correctPitchCount above, so they receive full credit.
+  const score = exercise.notes.length > 0
+    ? Math.round(100 * correctPitchCount / exercise.notes.length)
+    : 0;
 
   return {
     comparisons,

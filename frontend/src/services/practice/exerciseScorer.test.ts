@@ -141,17 +141,17 @@ describe('scoreExercise', () => {
       expect(result.extraneousNotes).toHaveLength(1);
     });
 
-    it('extraneous notes reduce the score (inflate denominator)', () => {
+    it('extraneous notes do not affect the score', () => {
       const exercise = makeExercise([60]);
       // Perfect on the one slot
       const responses = [makeResponse(60, 0)];
-      // But one extraneous note
+      // Extraneous notes are no longer penalised (sequential matching discards them)
       const extra = [makeResponse(60, 99999)];
 
       const withExtra = scoreExercise(exercise, responses, extra);
       const withoutExtra = scoreExercise(exercise, responses, []);
 
-      expect(withExtra.score).toBeLessThan(withoutExtra.score);
+      expect(withExtra.score).toBe(withoutExtra.score);
     });
   });
 
@@ -167,13 +167,12 @@ describe('scoreExercise', () => {
       expect(result.correctPitchCount).toBe(1);
     });
 
-    it('score is Math.round(50 × pitchScore + 50 × timingScore)', () => {
+    it('score is Math.round(correctPitchCount / notes.length × 100)', () => {
       const exercise = makeExercise([60, 62]);
       // First slot: perfect. Second slot: missed.
       const responses: (ResponseNote | null)[] = [makeResponse(60, 0), null];
       const result = scoreExercise(exercise, responses, []);
-      // totalSlots = 2, pitchScore = 1/2, timingScore = 1/2
-      // score = Math.round(50 × 0.5 + 50 × 0.5) = 50
+      // correctPitchCount = 1, notes.length = 2 → score = Math.round(100 × 0.5) = 50
       expect(result.score).toBe(50);
     });
 
