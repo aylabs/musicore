@@ -58,3 +58,20 @@ export function generateExercise(bpm: number = DEFAULT_BPM, seed?: number): Exer
 
   return { notes, bpm };
 }
+
+/**
+ * generateC4ScaleExercise(bpm?) → Exercise
+ *
+ * Returns a fixed 8-note C major scale ascending from C4 to C5.
+ * Useful for debugging and initial training: the expected pitches are
+ * known and predictable (C4 D4 E4 F4 G4 A4 B4 C5).
+ */
+export function generateC4ScaleExercise(bpm: number = DEFAULT_BPM): Exercise {
+  const msPerBeat = 60_000 / bpm;
+  const notes: ExerciseNote[] = C4_TO_C5_PITCHES.map((midiPitch, i) => ({
+    slotIndex: i,
+    midiPitch,
+    expectedOnsetMs: i * msPerBeat,
+  }));
+  return { notes, bpm };
+}

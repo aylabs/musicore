@@ -22,7 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Note } from '../../types/score';
 import type { PracticePhase, ExerciseResult } from '../../types/practice';
-import { generateExercise } from '../../services/practice/exerciseGenerator';
+import { generateExercise, generateC4ScaleExercise } from '../../services/practice/exerciseGenerator';
 import { scoreExercise } from '../../services/practice/exerciseScorer';
 import { usePracticeRecorder } from '../../services/practice/usePracticeRecorder';
 import { ToneAdapter } from '../../services/playback/ToneAdapter';
@@ -62,8 +62,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
-  /** Training mode: all exercise notes replaced with C4 (MIDI 60) */
-  const [allC4, setAllC4] = useState(false);
+  /** Debug mode: replace exercise with fixed C4 major scale (C4–C5) */
+  const [c4Scale, setC4Scale] = useState(false);
 
   // ── Mic recorder ────────────────────────────────────────────────────────
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
@@ -74,13 +74,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Prevents double-firing the auto-start on rapid pitch fluctuations */
   const autoStartedRef = useRef(false);
 
-  // ── Training mode: override all pitches to C4 (MIDI 60) ──────────────────
+  // ── Debug mode: replace exercise with fixed C4 major scale ───────────────
   const effectiveExercise = useMemo(
     () =>
-      allC4
-        ? { ...exercise, notes: exercise.notes.map((n) => ({ ...n, midiPitch: 60 })) }
+      c4Scale
+        ? generateC4ScaleExercise(bpm)
         : exercise,
-    [exercise, allC4],
+    [exercise, c4Scale, bpm],
   );
 
   // ── Build Note[] for the exercise staff ─────────────────────────────────
@@ -361,17 +361,17 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           </div>
         </div>
 
-        {/* ── Training mode toggle ───────────────────────────────── */}
+        {/* ── Debug mode toggle ─────────────────────────────────── */}
         <label className="practice-view__all-c4-label">
           <input
             type="checkbox"
             className="practice-view__all-c4-checkbox"
-            checked={allC4}
+            checked={c4Scale}
             disabled={phase === 'playing'}
-            onChange={(e) => setAllC4(e.target.checked)}
+            onChange={(e) => setC4Scale(e.target.checked)}
             data-testid="all-c4-checkbox"
           />
-          All C4 (training mode)
+          C4 scale (C4–C5, debug)
         </label>
 
         {/* ── Controls ───────────────────────────────────────────── */}
