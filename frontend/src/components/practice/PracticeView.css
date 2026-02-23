@@ -297,18 +297,87 @@
   padding: 1rem;
 }
 
+/* ─── Score block ─────────────────────────────────────────────────────────── */
+
+.practice-results__score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.practice-results__score-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+
 .practice-results__score {
-  font-size: 3rem;
-  font-weight: 800;
-  text-align: center;
+  font-size: 4rem;
+  font-weight: 900;
   line-height: 1;
 }
 
 .practice-results__score-max {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 400;
   color: #888;
   margin-left: 0.25rem;
+}
+
+.practice-results__score-grade {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+/* ─── Collapsible details ─────────────────────────────────────────────────── */
+
+.practice-results__details {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.practice-results__details-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+  user-select: none;
+  list-style: none; /* remove default marker in some browsers */
+}
+
+.practice-results__details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.practice-results__details-summary::after {
+  content: '▸';
+  font-size: 0.8rem;
+  color: #999;
+  transition: transform 0.2s ease;
+}
+
+.practice-results__details[open] > .practice-results__details-summary::after {
+  transform: rotate(90deg);
+}
+
+.practice-results__details[open] > .practice-results__details-summary {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.practice-results__details > .practice-results__table-wrapper,
+.practice-results__details > .practice-results__extraneous {
+  padding: 0.75rem;
 }
 
 .practice-results__table-wrapper {
