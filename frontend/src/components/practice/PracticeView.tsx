@@ -433,7 +433,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 🎲 New Exercise
               </button>
             </div>
-            <ExerciseResultsView result={result} exercise={exercise} />
+            <ExerciseResultsView result={result} exercise={effectiveExercise} />
           </>
         )}
       </main>
