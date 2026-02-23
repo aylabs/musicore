@@ -143,10 +143,10 @@ describe('PracticeView', () => {
       expect(screen.getByTestId('exercise-results-view')).toBeInTheDocument();
     });
 
-    it('calls onBack when Back button is pressed', () => {
+    it('calls onBack when Recording button is pressed', () => {
       const onBack = vi.fn();
       render(<PracticeView onBack={onBack} />);
-      fireEvent.click(screen.getByRole('button', { name: /back/i }));
+      fireEvent.click(screen.getByRole('button', { name: /recording/i }));
       expect(onBack).toHaveBeenCalledOnce();
     });
 

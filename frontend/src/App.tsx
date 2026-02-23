@@ -189,14 +189,14 @@ function App() {
   // Feature 001-recording-view: Show RecordingView when navigated to from ScoreViewer
   if (showRecording) {
     return (
-      <RecordingView onBack={() => setShowRecording(false)} />
+      <RecordingView onBack={() => { setShowRecording(false); setShowPractice(true); }} />
     )
   }
 
   // Feature 001-piano-practice: Show PracticeView when navigated to from ScoreViewer
   if (showPractice) {
     return (
-      <PracticeView onBack={() => setShowPractice(false)} />
+      <PracticeView onBack={() => { setShowPractice(false); setShowRecording(true); }} />
     )
   }
 

@@ -274,9 +274,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         <button
           className="practice-view__back-btn"
           onClick={handleBack}
-          aria-label="← Back"
+          aria-label="← Recording"
         >
-          ← Back
+          ← Recording
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
         <span className="practice-view__debug-badge">debug</span>
