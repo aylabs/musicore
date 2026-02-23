@@ -28,8 +28,8 @@ import { detectPitch } from '../recording/pitchDetection';
 const PITCH_STABLE_FRAMES = 3;
 /** Null must persist for this many frames before emitting silence */
 const SILENCE_STABLE_FRAMES = 5;
-/** Minimum MIDI pitch accepted during capture — filters sub-harmonic noise */
-const CAPTURE_MIDI_MIN = 48; // C3
+/** Minimum MIDI pitch accepted during capture — covers Bass-2 pool (C2 = 36) */
+const CAPTURE_MIDI_MIN = 36; // C2
 /** Maximum MIDI pitch accepted during capture — filters ultrasonic artifacts */
 const CAPTURE_MIDI_MAX = 84; // C6
 

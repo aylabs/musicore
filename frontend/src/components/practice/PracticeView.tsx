@@ -22,7 +22,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Note } from '../../types/score';
 import type { PracticePhase, ExerciseResult } from '../../types/practice';
-import { generateExercise, generateC4ScaleExercise } from '../../services/practice/exerciseGenerator';
+import {
+  generateExercise,
+  type ExerciseConfig,
+  DEFAULT_EXERCISE_CONFIG,
+} from '../../services/practice/exerciseGenerator';
 import { scoreExercise } from '../../services/practice/exerciseScorer';
 import { usePracticeRecorder } from '../../services/practice/usePracticeRecorder';
 import { ToneAdapter } from '../../services/playback/ToneAdapter';
@@ -30,6 +34,7 @@ import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngi
 import { NotationRenderer } from '../notation/NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
 import { ExerciseResultsView } from './ExerciseResultsView';
+import { PracticeConfigPanel } from './PracticeConfigPanel';
 import './PracticeView.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -58,14 +63,16 @@ interface PracticeViewProps {
 export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Phase & exercise state ──────────────────────────────────────────────
   const [bpm, setBpm] = useState(80);
-  const [exercise, setExercise] = useState(() => generateExercise(80));
+  const [exerciseConfig, setExerciseConfig] = useState<ExerciseConfig>(DEFAULT_EXERCISE_CONFIG);
+  const [exercise, setExercise] = useState(() => generateExercise(80, DEFAULT_EXERCISE_CONFIG));
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
   /** Countdown value shown before exercise starts (3, 2, 1, then null) */
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
-  /** Debug mode: replace exercise with fixed C4 major scale (C4–C5) */
-  const [c4Scale, setC4Scale] = useState(false);
+
+  // ── Effective clef: c4scale is always treble ──────────────────────────────
+  const effectiveClef = exerciseConfig.preset === 'c4scale' ? 'Treble' : exerciseConfig.clef;
 
   // ── Mic recorder ────────────────────────────────────────────────────────
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
@@ -78,37 +85,29 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Holds setTimeout IDs for the 3-2-1 countdown so they can be cancelled */
   const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ── Debug mode: replace exercise with fixed C4 major scale ───────────────
-  const effectiveExercise = useMemo(
-    () =>
-      c4Scale
-        ? generateC4ScaleExercise(bpm)
-        : exercise,
-    [exercise, c4Scale, bpm],
-  );
 
   // ── Build Note[] for the exercise staff ─────────────────────────────────
   //    One quarter note per slot, start_tick = slotIndex × QUARTER_TICKS
   const exerciseNotes = useMemo<Note[]>(
     () =>
-      effectiveExercise.notes.map((en) => ({
+      exercise.notes.map((en) => ({
         id: `ex-slot-${en.slotIndex}`,
         start_tick: en.slotIndex * QUARTER_TICKS,
         duration_ticks: QUARTER_TICKS,
         pitch: en.midiPitch,
       })),
-    [effectiveExercise],
+    [exercise],
   );
 
   const exerciseLayout = useMemo(
     () =>
       NotationLayoutEngine.calculateLayout({
         notes: exerciseNotes,
-        clef: 'Treble',
+        clef: effectiveClef,
         timeSignature: { numerator: 4, denominator: 4 },
         config: STAFF_CONFIG,
       }),
-    [exerciseNotes],
+    [exerciseNotes, effectiveClef],
   );
 
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
@@ -145,11 +144,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     () =>
       NotationLayoutEngine.calculateLayout({
         notes: responseStaffNotes,
-        clef: 'Treble',
+        clef: effectiveClef,
         timeSignature: { numerator: 4, denominator: 4 },
         config: STAFF_CONFIG,
       }),
-    [responseStaffNotes],
+    [responseStaffNotes, effectiveClef],
   );
 
   // ── Derive highlighted note ID for exercise staff ────────────────────────
@@ -159,13 +158,21 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     [highlightedSlotIndex],
   );
 
-  // ── Tempo change ─────────────────────────────────────────────────────────
+  // ── Tempo + config change ────────────────────────────────────────────────
   const handleBpmChange = useCallback(
     (newBpm: number) => {
       setBpm(newBpm);
-      if (phase === 'ready') setExercise(generateExercise(newBpm));
+      if (phase === 'ready') setExercise(generateExercise(newBpm, exerciseConfig));
     },
-    [phase],
+    [phase, exerciseConfig],
+  );
+
+  const handleConfigChange = useCallback(
+    (newConfig: ExerciseConfig) => {
+      setExerciseConfig(newConfig);
+      if (phase === 'ready') setExercise(generateExercise(bpm, newConfig));
+    },
+    [phase, bpm],
   );
 
   // ── Clear countdown timers helper ─────────────────────────────────────────
@@ -203,14 +210,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     adapter.setMuted(true);
 
     const startMs = Date.now();
-    startCapture(effectiveExercise, startMs);
+    startCapture(exercise, startMs);
 
-    const msPerBeat = 60_000 / effectiveExercise.bpm;
+    const msPerBeat = 60_000 / exercise.bpm;
     const durationSec = (msPerBeat * 0.85) / 1000;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // Schedule all notes on the Transport (piano samples via ToneAdapter)
-    effectiveExercise.notes.forEach((note, i) => {
+    exercise.notes.forEach((note, i) => {
       adapter.playNote(note.midiPitch, durationSec, note.expectedOnsetMs / 1000);
 
       // Highlight this slot via setTimeout (visual sync)
@@ -221,32 +228,32 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     });
 
     // When the last note finishes, finalise
-    const lastOnsetMs = (effectiveExercise.notes.length - 1) * msPerBeat;
+    const lastOnsetMs = (exercise.notes.length - 1) * msPerBeat;
     const finishMs = lastOnsetMs + msPerBeat + 100; // extra 100 ms buffer
 
     const finishTimer = setTimeout(() => {
       stopPlayback();
       setHighlightedSlotIndex(null);
       const { responses, extraneousNotes } = stopCapture();
-      const exerciseResult = scoreExercise(effectiveExercise, responses, extraneousNotes);
+      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
       setResult(exerciseResult);
       setPhase('results');
     }, finishMs);
     timers.push(finishTimer);
 
     playbackTimersRef.current = timers;
-  }, [phase, effectiveExercise, startCapture, stopCapture, clearCapture, stopPlayback]);
+  }, [phase, exercise, startCapture, stopCapture, clearCapture, stopPlayback]);
 
   // ── Handle Stop (FR-007) ─────────────────────────────────────────────────
   const handleStop = useCallback(() => {
     stopPlayback();
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
-    const raw = scoreExercise(effectiveExercise, responses, extraneousNotes);
+    const raw = scoreExercise(exercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setPhase('results');
-  }, [effectiveExercise, bpm, stopCapture, stopPlayback]);
+  }, [exercise, bpm, stopCapture, stopPlayback]);
 
   // ── Pre-warm ToneAdapter when mic is ready so adapter.init() is instant ────
   //    This eliminates the startMs timing drift that caused early slots to be
@@ -263,7 +270,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       autoStartedRef.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase('countdown');
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCountdownValue(3);
       const t1 = setTimeout(() => setCountdownValue(2), 1000);
       const t2 = setTimeout(() => setCountdownValue(1), 2000);
@@ -295,9 +301,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setResult(null);
     setHighlightedSlotIndex(null);
     autoStartedRef.current = false;
-    setExercise(generateExercise(bpm));
+    setExercise(generateExercise(bpm, exerciseConfig));
     setPhase('ready');
-  }, [bpm, clearCapture, clearCountdown, stopPlayback]);
+  }, [bpm, exerciseConfig, clearCapture, clearCountdown, stopPlayback]);
 
   // ── Back button — cleanup on navigate away (T022) ────────────────────────
   const handleBack = useCallback(() => {
@@ -320,34 +326,36 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
   return (
     <div className="practice-view" data-testid="practice-view">
-      {/* ── Header ─────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <header className="practice-view__header">
-        <button
-          className="practice-view__back-btn"
-          onClick={handleBack}
-          aria-label="← Recording"
-        >
+        <button className="practice-view__back-btn" onClick={handleBack} aria-label="← Recording">
           ← Recording
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
         <span className="practice-view__debug-badge">debug</span>
       </header>
 
-      <main className="practice-view__body">
-        {/* ── Mic error banner (FR-013, T020) ───────────────────── */}
-        {micState === 'error' && micError && (
-          <div
-            className="practice-view__mic-error"
-            role="alert"
-            data-testid="mic-error-banner"
-          >
-            🎤 {micError}
-          </div>
-        )}
+      {/* ── Body: sidebar + main ─────────────────────────────────── */}
+      <div className="practice-view__body">
 
-        {/* ── Exercise staff ─────────────────────────────────────── */}
-        <div className="practice-view__staff-block practice-view__staff-block--with-tempo" data-testid="exercise-staff-block">
-          <div className="practice-view__staff-content">
+        <PracticeConfigPanel
+          config={exerciseConfig}
+          bpm={bpm}
+          disabled={phase === 'playing' || phase === 'countdown'}
+          onConfigChange={handleConfigChange}
+          onBpmChange={handleBpmChange}
+        />
+
+        <main className="practice-view__main">
+          {/* ── Mic error banner ─────────────────────────────────── */}
+          {micState === 'error' && micError && (
+            <div className="practice-view__mic-error" role="alert" data-testid="mic-error-banner">
+              🎤 {micError}
+            </div>
+          )}
+
+          {/* ── Exercise staff ───────────────────────────────────── */}
+          <div className="practice-view__staff-block" data-testid="exercise-staff-block">
             <div className="practice-view__staff-label">Exercise</div>
             <div
               className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
@@ -355,139 +363,69 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               aria-label="Exercise notes"
               role="img"
             >
-              <NotationRenderer
-                layout={exerciseLayout}
-                highlightedNoteIds={highlightedNoteIds}
-                showClef
-              />
+              <NotationRenderer layout={exerciseLayout} highlightedNoteIds={highlightedNoteIds} showClef />
             </div>
           </div>
-          {/* Tempo slider — right of staff */}
-          <div className="practice-view__tempo-panel">
-            <label className="practice-view__tempo-label" htmlFor="tempo-slider">Tempo</label>
-            <input
-              id="tempo-slider"
-              type="range"
-              className="practice-view__tempo-slider"
-              min={40}
-              max={120}
-              step={5}
-              value={bpm}
-              disabled={phase === 'playing' || phase === 'countdown'}
-              onChange={(e) => handleBpmChange(Number(e.target.value))}
-              aria-label="Tempo in BPM"
-              data-testid="tempo-slider"
-            />
-            <span className="practice-view__tempo-value">{bpm}</span>
-            <span className="practice-view__tempo-bpm-label">BPM</span>
-            <span className="practice-view__tempo-factor">×{(bpm / 120).toFixed(2)}</span>
-          </div>
-        </div>
 
-        {/* ── Debug mode toggle ─────────────────────────────────── */}
-        <label className="practice-view__all-c4-label">
-          <input
-            type="checkbox"
-            className="practice-view__all-c4-checkbox"
-            checked={c4Scale}
-            disabled={phase === 'playing' || phase === 'countdown'}
-            onChange={(e) => setC4Scale(e.target.checked)}
-            data-testid="all-c4-checkbox"
-          />
-          C4 scale (C4–C5, debug)
-        </label>
-
-        {/* ── Controls ───────────────────────────────────────────── */}
-        {phase !== 'results' && (
-          <div className="practice-view__controls">
-            {phase === 'ready' && (
-              <p
-                className="practice-view__start-prompt"
-                data-testid="start-prompt"
-                aria-live="polite"
-              >
-                {micState === 'active'
-                  ? '🎹 Press any note to start'
-                  : '🎹 Waiting for microphone…'}
-              </p>
-            )}
-            {phase === 'countdown' && countdownValue !== null && (
-              <div
-                className="practice-view__countdown"
-                aria-live="assertive"
-                aria-label={`Starting in ${countdownValue}`}
-                data-testid="countdown-display"
-              >
-                <span
-                  className="practice-view__countdown-number"
-                  key={countdownValue}
-                >
-                  {countdownValue}
-                </span>
-              </div>
-            )}
-            {phase === 'playing' && (
-              <button
-                className="practice-view__stop-btn"
-                onClick={handleStop}
-                aria-label="Stop exercise"
-                data-testid="stop-btn"
-              >
-                ■ Stop
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* ── Response staff (playing: live capture; results: comparison) ─── */}
-        {(phase === 'playing' || phase === 'results') && (
-          <div className="practice-view__staff-block" data-testid="response-staff-block">
-            <div className="practice-view__staff-label">Your Response</div>
-            <div
-              className="practice-view__staff-renderer"
-              aria-label="Your response notes"
-              role="img"
-            >
-              <NotationRenderer
-                layout={responseLayout}
-                highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []}
-                showClef
-              />
-            </div>
-            {phase === 'playing' && currentPitch && (
-              <div className="practice-view__pitch-display" aria-live="polite">
-                Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Results phase ──────────────────────────────────────── */}
-        {phase === 'results' && result && (
-          <>
+          {/* ── Controls (ready / countdown / playing) ───────────── */}
+          {phase !== 'results' && (
             <div className="practice-view__controls">
-              <button
-                className="practice-view__play-btn"
-                onClick={handleTryAgain}
-                aria-label="Try Again"
-                data-testid="try-again-btn"
-              >
-                🔁 Try Again
-              </button>
-              <button
-                className="practice-view__play-btn"
-                onClick={handleNewExercise}
-                aria-label="New Exercise"
-                data-testid="new-exercise-btn"
-                style={{ background: '#388e3c' }}
-              >
-                🎲 New Exercise
-              </button>
+              {phase === 'ready' && (
+                <p className="practice-view__start-prompt" data-testid="start-prompt" aria-live="polite">
+                  {micState === 'active' ? '🎹 Press any note to start' : '🎹 Waiting for microphone…'}
+                </p>
+              )}
+              {phase === 'countdown' && countdownValue !== null && (
+                <div
+                  className="practice-view__countdown"
+                  aria-live="assertive"
+                  aria-label={`Starting in ${countdownValue}`}
+                  data-testid="countdown-display"
+                >
+                  <span className="practice-view__countdown-number" key={countdownValue}>
+                    {countdownValue}
+                  </span>
+                </div>
+              )}
+              {phase === 'playing' && (
+                <button className="practice-view__stop-btn" onClick={handleStop} aria-label="Stop exercise" data-testid="stop-btn">
+                  ■ Stop
+                </button>
+              )}
             </div>
-            <ExerciseResultsView result={result} exercise={effectiveExercise} />
-          </>
-        )}
-      </main>
+          )}
+
+          {/* ── Response staff ───────────────────────────────────── */}
+          {(phase === 'playing' || phase === 'results') && (
+            <div className="practice-view__staff-block" data-testid="response-staff-block">
+              <div className="practice-view__staff-label">Your Response</div>
+              <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
+                <NotationRenderer layout={responseLayout} highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []} showClef />
+              </div>
+              {phase === 'playing' && currentPitch && (
+                <div className="practice-view__pitch-display" aria-live="polite">
+                  Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Results ──────────────────────────────────────────── */}
+          {phase === 'results' && result && (
+            <>
+              <div className="practice-view__controls">
+                <button className="practice-view__play-btn" onClick={handleTryAgain} aria-label="Try Again" data-testid="try-again-btn">
+                  🔁 Try Again
+                </button>
+                <button className="practice-view__play-btn" onClick={handleNewExercise} aria-label="New Exercise" data-testid="new-exercise-btn" style={{ background: '#388e3c' }}>
+                  🎲 New Exercise
+                </button>
+              </div>
+              <ExerciseResultsView result={result} exercise={exercise} />
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

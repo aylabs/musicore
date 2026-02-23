@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { generateExercise } from './exerciseGenerator';
+import { generateExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
 
 const VALID_PITCHES = new Set([60, 62, 64, 65, 67, 69, 71, 72]);
 const DEFAULT_BPM = 80;
@@ -74,14 +74,14 @@ describe('generateExercise', () => {
 
   describe('determinism with seed', () => {
     it('produces the same sequence for the same seed', () => {
-      const a = generateExercise(80, 42);
-      const b = generateExercise(80, 42);
+      const a = generateExercise(80, DEFAULT_EXERCISE_CONFIG, 42);
+      const b = generateExercise(80, DEFAULT_EXERCISE_CONFIG, 42);
       expect(a.notes.map((n) => n.midiPitch)).toEqual(b.notes.map((n) => n.midiPitch));
     });
 
     it('produces different sequences for different seeds', () => {
-      const a = generateExercise(80, 1);
-      const b = generateExercise(80, 2);
+      const a = generateExercise(80, DEFAULT_EXERCISE_CONFIG, 1);
+      const b = generateExercise(80, DEFAULT_EXERCISE_CONFIG, 2);
       // With 8 notes from 8 pitches it is astronomically unlikely they match
       const aSeq = a.notes.map((n) => n.midiPitch).join(',');
       const bSeq = b.notes.map((n) => n.midiPitch).join(',');
