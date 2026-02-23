@@ -110,13 +110,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
   const ghostNote = useMemo<Note | null>(() => {
     if (phase !== 'playing' || !currentPitch) return null;
+    const slotIndex = highlightedSlotIndex ?? 0;
     return {
       id: '__practice_ghost__',
-      start_tick: liveResponseNotes.length * QUARTER_TICKS,
+      start_tick: slotIndex * QUARTER_TICKS,
       duration_ticks: QUARTER_TICKS,
       pitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
     };
-  }, [phase, currentPitch, liveResponseNotes.length]);
+  }, [phase, currentPitch, highlightedSlotIndex]);
 
   // ── Response staff notes ───────────────────────────────────────────────────
   //    During playing: sequential liveResponseNotes + ghost at next position.
