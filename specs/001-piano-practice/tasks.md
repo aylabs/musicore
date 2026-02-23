@@ -152,6 +152,29 @@
 
 ---
 
+## Phase 8: Step Mode & Production Promotion
+
+**Purpose**: Add a step-by-step practice mode where the exercise waits for the player to hit each note before advancing; promote the Practice View from debug-only to always-visible.
+
+### T031 — Step mode config + Mode selector
+- [x] T031 Add `mode: 'flow' | 'step'` field to `ExerciseConfig` interface and `DEFAULT_EXERCISE_CONFIG` in `frontend/src/services/practice/exerciseGenerator.ts`; add "Mode" section (Flow / Step radio buttons) to `frontend/src/components/practice/PracticeConfigPanel.tsx`
+
+### T032 — Note labels on NotationRenderer
+- [x] T032 [P] Add `noteLabels?: Record<string, string>` and `noteLabelColors?: Record<string, string>` props to `frontend/src/components/notation/NotationRenderer.tsx`; render a `<text>` label above each note head when a label exists for that note's id; font-size proportional to staff size, `textAnchor="middle"`, default colour `#1976d2`
+
+### T033 — Step mode logic in PracticeView
+- [x] T033 Implement step mode in `frontend/src/components/practice/PracticeView.tsx` — skip 3-2-1 countdown and start immediately; play one exercise note at a time; detect user pitch via `currentPitch`; correct note → green label on exercise staff, add to response staff, advance; wrong note → red expected-note label on exercise staff, wrong-note + label on response staff; last note correct → build `ExerciseResult` with `score = max(0, 100 − penalised_slots × 10)` and show results; include 450 ms input-delay guard (`STEP_INPUT_DELAY_MS`) and same-MIDI debounce (`lastStepMidiRef`) to prevent speaker-feedback false positives
+
+### T034 — Fix step mode scoring and false wrong-pitch reports
+- [x] T034 Fix two step mode scoring bugs in `frontend/src/components/practice/PracticeView.tsx`: (1) replace cumulative `stepWrongCountRef` with `stepPenalizedSlotsRef: Set<number>` so each slot is penalised at most once regardless of how many wrong pitch samples arrive; (2) retain `lastStepMidiRef` after advancing (set to `detectedMidi` not `null`) to debounce the lingering resonance of the just-played note which was causing the next slot to register a false `wrong-pitch`; slots with any failure get `status: 'wrong-pitch'` in the results comparison table
+
+### T035 — Promote Practice View to production
+- [x] T035 Remove `debugMode` gate from the Practice View button in `frontend/src/components/ScoreViewer.tsx` (both landing and toolbar render paths); Recording View button remains debug-only; update `frontend/src/App.tsx` so `PracticeView.onBack` returns to ScoreViewer instead of RecordingView; change back-button label to `← Back` and remove debug badge in `frontend/src/components/practice/PracticeView.tsx`; add `.practice-view-btn` CSS class to `frontend/src/components/ScoreViewer.css` mirroring `.load-score-button` (14px / 500 / 10px 20px, purple palette)
+
+**Checkpoint**: Step mode fully functional with accurate per-slot scoring and no false positives; Practice View accessible without `?debug=true` and visually consistent with other toolbar buttons.
+
+---
+
 ## Dependencies
 
 ```
