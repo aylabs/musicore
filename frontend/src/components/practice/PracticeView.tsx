@@ -486,11 +486,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     <div className="practice-view" data-testid="practice-view">
       {/* ── Header ──────────────────────────────────────────────── */}
       <header className="practice-view__header">
-        <button className="practice-view__back-btn" onClick={handleBack} aria-label="← Recording">
-          ← Recording
+        <button className="practice-view__back-btn" onClick={handleBack} aria-label="← Back">
+          ← Back
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
-        <span className="practice-view__debug-badge">debug</span>
       </header>
 
       {/* ── Body: sidebar + main ─────────────────────────────────── */}

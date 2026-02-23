@@ -196,7 +196,7 @@ function App() {
   // Feature 001-piano-practice: Show PracticeView when navigated to from ScoreViewer
   if (showPractice) {
     return (
-      <PracticeView onBack={() => { setShowPractice(false); setShowRecording(true); }} />
+      <PracticeView onBack={() => setShowPractice(false)} />
     )
   }
 

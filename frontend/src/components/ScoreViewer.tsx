@@ -509,15 +509,13 @@ export function ScoreViewer({
             Record View
           </button>
         )}
-        {debugMode && (
-          <button
-            className="record-view-debug-btn"
-            onClick={onShowPractice}
-            aria-label="Practice View"
-          >
-            Practice View
-          </button>
-        )}
+        <button
+          className="record-view-debug-btn"
+          onClick={onShowPractice}
+          aria-label="Practice View"
+        >
+          Practice View
+        </button>
         {/* Feature 001: animated landing hero covers the full viewport */}
         <LandingScreen onLoadScore={() => setDialogOpen(true)} />
         {error && <div className="error">{error}</div>}
@@ -570,15 +568,13 @@ export function ScoreViewer({
                   Record View
                 </button>
               )}
-              {debugMode && (
-                <button
-                  className="record-view-debug-btn"
-                  onClick={onShowPractice}
-                  aria-label="Practice View"
-                >
-                  Practice View
-                </button>
-              )}
+              <button
+                className="record-view-debug-btn"
+                onClick={onShowPractice}
+                aria-label="Practice View"
+              >
+                Practice View
+              </button>
               {score && score.instruments.length > 0 && (
                 <ViewModeSelector
                   currentMode={viewMode}
