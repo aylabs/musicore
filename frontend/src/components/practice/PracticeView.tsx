@@ -85,6 +85,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Holds setTimeout IDs for the 3-2-1 countdown so they can be cancelled */
   const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // ── Native browser fullscreen on mount ───────────────────────────────────
+  useEffect(() => {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    return () => {
+      document.exitFullscreen?.().catch(() => {});
+    };
+  }, []);
 
   // ── Build Note[] for the exercise staff ─────────────────────────────────
   //    One quarter note per slot, start_tick = slotIndex × QUARTER_TICKS
@@ -357,13 +364,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           {/* ── Exercise staff ───────────────────────────────────── */}
           <div className="practice-view__staff-block" data-testid="exercise-staff-block">
             <div className="practice-view__staff-label">Exercise</div>
-            <div
-              className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
-              data-testid="exercise-staff-renderer"
-              aria-label="Exercise notes"
-              role="img"
-            >
-              <NotationRenderer layout={exerciseLayout} highlightedNoteIds={highlightedNoteIds} showClef />
+            <div className="practice-view__staff-inner">
+              <div
+                className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
+                data-testid="exercise-staff-renderer"
+                aria-label="Exercise notes"
+                role="img"
+              >
+                <NotationRenderer layout={exerciseLayout} highlightedNoteIds={highlightedNoteIds} showClef />
+              </div>
             </div>
           </div>
 
@@ -399,14 +408,16 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           {(phase === 'playing' || phase === 'results') && (
             <div className="practice-view__staff-block" data-testid="response-staff-block">
               <div className="practice-view__staff-label">Your Response</div>
-              <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
-                <NotationRenderer layout={responseLayout} highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []} showClef />
-              </div>
-              {phase === 'playing' && currentPitch && (
-                <div className="practice-view__pitch-display" aria-live="polite">
-                  Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
+              <div className="practice-view__staff-inner">
+                <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
+                  <NotationRenderer layout={responseLayout} highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []} showClef />
                 </div>
-              )}
+                {phase === 'playing' && currentPitch && (
+                  <div className="practice-view__pitch-display" aria-live="polite">
+                    Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
