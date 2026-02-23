@@ -33,6 +33,9 @@ export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
 /** Diatonic pitches from C4 to C5 inclusive (C4=60, D4=62 ... C5=72) */
 const C4_TO_C5_PITCHES: readonly number[] = [60, 62, 64, 65, 67, 69, 71, 72];
 
+/** Diatonic pitches from C3 to C4 inclusive (C3=48, D3=50 ... C4=60) — bass clef scale */
+const C3_TO_C4_PITCHES: readonly number[] = [48, 50, 52, 53, 55, 57, 59, 60];
+
 const DEFAULT_BPM = 80;
 
 /**
@@ -85,7 +88,7 @@ export function generateExercise(
   seed?: number,
 ): Exercise {
   if (config.preset === 'c4scale') {
-    return generateC4ScaleExercise(bpm, config.noteCount);
+    return generateC4ScaleExercise(bpm, config.noteCount, config.clef);
   }
 
   const pool = NOTE_POOLS[`${config.clef}-${config.octaveRange}`];
@@ -102,16 +105,19 @@ export function generateExercise(
 }
 
 /**
- * generateC4ScaleExercise(bpm?, noteCount?) → Exercise
+ * generateC4ScaleExercise(bpm?, noteCount?, clef?) → Exercise
  *
- * Returns a fixed ascending C major scale (C4 D4 E4 F4 G4 A4 B4 C5),
- * truncated to noteCount notes (default 8).
+ * Returns a fixed ascending C major scale:
+ *   - Treble clef: C4–C5 (MIDI 60–72)
+ *   - Bass clef:   C3–C4 (MIDI 48–60)
+ * Truncated to noteCount notes (default 8).
  * Useful for debugging: expected pitches are known and predictable.
  */
-export function generateC4ScaleExercise(bpm: number = DEFAULT_BPM, noteCount = 8): Exercise {
+export function generateC4ScaleExercise(bpm: number = DEFAULT_BPM, noteCount = 8, clef: 'Treble' | 'Bass' = 'Treble'): Exercise {
+  const pitches = clef === 'Bass' ? C3_TO_C4_PITCHES : C4_TO_C5_PITCHES;
   const msPerBeat = 60_000 / bpm;
-  const num = Math.min(noteCount, C4_TO_C5_PITCHES.length);
-  const notes: ExerciseNote[] = C4_TO_C5_PITCHES.slice(0, num).map((midiPitch, i) => ({
+  const num = Math.min(noteCount, pitches.length);
+  const notes: ExerciseNote[] = pitches.slice(0, num).map((midiPitch, i) => ({
     slotIndex: i,
     midiPitch,
     expectedOnsetMs: i * msPerBeat,
