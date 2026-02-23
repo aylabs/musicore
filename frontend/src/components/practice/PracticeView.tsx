@@ -145,7 +145,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stopPlayback = useCallback(() => {
     playbackTimersRef.current.forEach(clearTimeout);
     playbackTimersRef.current = [];
-    ToneAdapter.getInstance().stopAll();
+    const adapter = ToneAdapter.getInstance();
+    adapter.stopAll();
+    adapter.setMuted(false); // restore audio when stopping
   }, []);
 
   // ── Handle Play (T010) ───────────────────────────────────────────────────
@@ -162,6 +164,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const adapter = ToneAdapter.getInstance();
     await adapter.init();
     adapter.startTransport();
+    // Mute speaker output so exercise notes don’t bleed into the mic
+    // and confuse the pitch detector. The staff highlighting is the visual guide.
+    adapter.setMuted(true);
 
     const startMs = Date.now();
     startCapture(exercise, startMs);

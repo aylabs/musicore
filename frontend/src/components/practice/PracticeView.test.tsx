@@ -26,6 +26,7 @@ vi.mock('../../services/playback/ToneAdapter', () => ({
       startTransport: vi.fn(),
       stopAll: vi.fn(),
       playNote: vi.fn(),
+      setMuted: vi.fn(),
     }),
   },
 }));

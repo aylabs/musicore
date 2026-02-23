@@ -322,6 +322,19 @@ export class ToneAdapter {
   }
 
   /**
+   * Mute or unmute the master audio output.
+   *
+   * Used by PracticeView to silence the exercise playback while the microphone
+   * is capturing the user's response, preventing speaker bleed from confusing
+   * the pitch detector.
+   *
+   * @param muted - true to silence all output, false to restore
+   */
+  public setMuted(muted: boolean): void {
+    Tone.Destination.mute = muted;
+  }
+
+  /**
    * Update the transport tempo (BPM)
    * 
    * Feature 008 - Tempo Change: T016
