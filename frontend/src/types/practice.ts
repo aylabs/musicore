@@ -93,7 +93,9 @@ export interface ExerciseResult {
 
 /**
  * State machine for the practice view UI.
- * Transitions: ready → playing → results
+ * Transitions: ready → countdown → playing → results
+ * ready: waiting for first note press to trigger countdown
+ * countdown: 3-2-1 displayed; mic capture not yet started
  * From results: Try Again → ready (same exercise) | New Exercise → ready (new exercise)
  */
-export type PracticePhase = 'ready' | 'playing' | 'results';
+export type PracticePhase = 'ready' | 'countdown' | 'playing' | 'results';

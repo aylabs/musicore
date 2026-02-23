@@ -78,14 +78,19 @@ beforeEach(() => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Render PracticeView with a detected pitch already present so the auto-start
- * useEffect fires on mount and transitions to 'playing'.
+ * Render PracticeView with a detected pitch already present, then advance
+ * fake timers past the 3-second countdown so the component reaches 'playing'.
  */
 async function renderAutoStarted(onBack = vi.fn()) {
   mockPitchRef.current = { hz: 440, label: 'A4', confidence: 0.9 };
   render(<PracticeView onBack={onBack} />);
-  // Flush useEffect + handlePlay's async adapter.init()
+  // Flush useEffect that transitions to 'countdown'
   await act(async () => { await Promise.resolve(); });
+  // Advance past the full 3-second countdown so handlePlay() is called
+  await act(async () => {
+    vi.advanceTimersByTime(3000);
+    await Promise.resolve();
+  });
 }
 
 /** Drive component all the way to the results phase. */
@@ -118,10 +123,21 @@ describe('PracticeView', () => {
       expect(screen.queryByTestId('stop-btn')).not.toBeInTheDocument();
     });
 
-    it('auto-starts and transitions to playing when first pitch is detected', async () => {
+    it('shows 3-2-1 countdown when first pitch is detected', async () => {
+      mockPitchRef.current = { hz: 440, label: 'A4', confidence: 0.9 };
+      render(<PracticeView onBack={vi.fn()} />);
+      // Flush the ready→countdown transition
+      await act(async () => { await Promise.resolve(); });
+      expect(screen.getByTestId('countdown-display')).toBeInTheDocument();
+      expect(screen.queryByTestId('stop-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('start-prompt')).not.toBeInTheDocument();
+    });
+
+    it('auto-starts and transitions to playing after countdown finishes', async () => {
       await renderAutoStarted();
       expect(screen.getByTestId('stop-btn')).toBeInTheDocument();
       expect(screen.queryByTestId('start-prompt')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('countdown-display')).not.toBeInTheDocument();
     });
 
     it('shows the response staff block during playing phase', async () => {

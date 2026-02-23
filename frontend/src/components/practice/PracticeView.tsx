@@ -62,6 +62,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
+  /** Countdown value shown before exercise starts (3, 2, 1, then null) */
+  const [countdownValue, setCountdownValue] = useState<number | null>(null);
   /** Debug mode: replace exercise with fixed C4 major scale (C4–C5) */
   const [c4Scale, setC4Scale] = useState(false);
 
@@ -73,6 +75,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const playbackTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   /** Prevents double-firing the auto-start on rapid pitch fluctuations */
   const autoStartedRef = useRef(false);
+  /** Holds setTimeout IDs for the 3-2-1 countdown so they can be cancelled */
+  const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Debug mode: replace exercise with fixed C4 major scale ───────────────
   const effectiveExercise = useMemo(
@@ -164,6 +168,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     [phase],
   );
 
+  // ── Clear countdown timers helper ─────────────────────────────────────────
+  const clearCountdown = useCallback(() => {
+    countdownTimersRef.current.forEach(clearTimeout);
+    countdownTimersRef.current = [];
+    setCountdownValue(null);
+  }, []);
+
   // ── Stop playback helper ─────────────────────────────────────────────────
   const stopPlayback = useCallback(() => {
     playbackTimersRef.current.forEach(clearTimeout);
@@ -246,45 +257,57 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     }
   }, [micState]);
 
-  // ── Auto-start: trigger playback on first detected pitch ──────────────────
+  // ── Auto-start: show 3-2-1 countdown on first detected pitch ───────────────
   useEffect(() => {
     if (phase === 'ready' && currentPitch && !autoStartedRef.current) {
       autoStartedRef.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void handlePlay();
+      setPhase('countdown');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCountdownValue(3);
+      const t1 = setTimeout(() => setCountdownValue(2), 1000);
+      const t2 = setTimeout(() => setCountdownValue(1), 2000);
+      const t3 = setTimeout(() => {
+        setCountdownValue(null);
+        void handlePlay();
+      }, 3000);
+      countdownTimersRef.current = [t1, t2, t3];
     }
   }, [currentPitch, phase, handlePlay]);
 
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
     stopPlayback();
+    clearCountdown();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
     autoStartedRef.current = false;
     setPhase('ready');
     // exercise stays the same
-  }, [clearCapture, stopPlayback]);
+  }, [clearCapture, clearCountdown, stopPlayback]);
 
   // ── New Exercise (T019) ──────────────────────────────────────────────────
   const handleNewExercise = useCallback(() => {
     stopPlayback();
+    clearCountdown();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
     autoStartedRef.current = false;
     setExercise(generateExercise(bpm));
     setPhase('ready');
-  }, [bpm, clearCapture, stopPlayback]);
+  }, [bpm, clearCapture, clearCountdown, stopPlayback]);
 
   // ── Back button — cleanup on navigate away (T022) ────────────────────────
   const handleBack = useCallback(() => {
     stopPlayback();
+    clearCountdown();
     // clearCapture releases captureRef; mic teardown is handled by
     // usePracticeRecorder's own unmount cleanup
     clearCapture();
     onBack();
-  }, [clearCapture, stopPlayback, onBack]);
+  }, [clearCapture, clearCountdown, stopPlayback, onBack]);
 
   // ── Stopwatch cleanup on unmount ─────────────────────────────────────────
   useEffect(() => {
@@ -350,7 +373,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               max={120}
               step={5}
               value={bpm}
-              disabled={phase === 'playing'}
+              disabled={phase === 'playing' || phase === 'countdown'}
               onChange={(e) => handleBpmChange(Number(e.target.value))}
               aria-label="Tempo in BPM"
               data-testid="tempo-slider"
@@ -367,7 +390,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             type="checkbox"
             className="practice-view__all-c4-checkbox"
             checked={c4Scale}
-            disabled={phase === 'playing'}
+            disabled={phase === 'playing' || phase === 'countdown'}
             onChange={(e) => setC4Scale(e.target.checked)}
             data-testid="all-c4-checkbox"
           />
@@ -384,9 +407,24 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 aria-live="polite"
               >
                 {micState === 'active'
-                  ? '🎹 Start playing… the exercise will follow you'
+                  ? '🎹 Press any note to start'
                   : '🎹 Waiting for microphone…'}
               </p>
+            )}
+            {phase === 'countdown' && countdownValue !== null && (
+              <div
+                className="practice-view__countdown"
+                aria-live="assertive"
+                aria-label={`Starting in ${countdownValue}`}
+                data-testid="countdown-display"
+              >
+                <span
+                  className="practice-view__countdown-number"
+                  key={countdownValue}
+                >
+                  {countdownValue}
+                </span>
+              </div>
             )}
             {phase === 'playing' && (
               <button

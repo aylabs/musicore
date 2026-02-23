@@ -208,6 +208,31 @@
   50%       { opacity: 0.65; }
 }
 
+/* ─── Countdown ───────────────────────────────────────────────────────────── */
+
+.practice-view__countdown {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem 0 1rem;
+}
+
+.practice-view__countdown-number {
+  font-size: 6rem;
+  font-weight: 900;
+  color: #1565c0;
+  line-height: 1;
+  display: inline-block;
+  animation: countdown-in 1s ease-out forwards;
+}
+
+@keyframes countdown-in {
+  0%   { transform: scale(1.6); opacity: 0.4; }
+  35%  { transform: scale(1.0); opacity: 1; }
+  80%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
 .practice-view__play-btn,
 .practice-view__stop-btn {
   padding: 0.65rem 2rem;
