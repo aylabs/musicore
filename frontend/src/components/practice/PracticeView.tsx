@@ -62,6 +62,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [phase, setPhase] = useState<PracticePhase>('ready');
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
+  /** Training mode: all exercise notes replaced with C4 (MIDI 60) */
+  const [allC4, setAllC4] = useState(false);
 
   // ── Mic recorder ────────────────────────────────────────────────────────
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
@@ -72,17 +74,26 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Prevents double-firing the auto-start on rapid pitch fluctuations */
   const autoStartedRef = useRef(false);
 
+  // ── Training mode: override all pitches to C4 (MIDI 60) ──────────────────
+  const effectiveExercise = useMemo(
+    () =>
+      allC4
+        ? { ...exercise, notes: exercise.notes.map((n) => ({ ...n, midiPitch: 60 })) }
+        : exercise,
+    [exercise, allC4],
+  );
+
   // ── Build Note[] for the exercise staff ─────────────────────────────────
   //    One quarter note per slot, start_tick = slotIndex × QUARTER_TICKS
   const exerciseNotes = useMemo<Note[]>(
     () =>
-      exercise.notes.map((en) => ({
+      effectiveExercise.notes.map((en) => ({
         id: `ex-slot-${en.slotIndex}`,
         start_tick: en.slotIndex * QUARTER_TICKS,
         duration_ticks: QUARTER_TICKS,
         pitch: en.midiPitch,
       })),
-    [exercise],
+    [effectiveExercise],
   );
 
   const exerciseLayout = useMemo(
@@ -168,14 +179,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     adapter.setMuted(true);
 
     const startMs = Date.now();
-    startCapture(exercise, startMs);
+    startCapture(effectiveExercise, startMs);
 
-    const msPerBeat = 60_000 / exercise.bpm;
+    const msPerBeat = 60_000 / effectiveExercise.bpm;
     const durationSec = (msPerBeat * 0.85) / 1000;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // Schedule all notes on the Transport (piano samples via ToneAdapter)
-    exercise.notes.forEach((note, i) => {
+    effectiveExercise.notes.forEach((note, i) => {
       adapter.playNote(note.midiPitch, durationSec, note.expectedOnsetMs / 1000);
 
       // Highlight this slot via setTimeout (visual sync)
@@ -186,32 +197,32 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     });
 
     // When the last note finishes, finalise
-    const lastOnsetMs = (exercise.notes.length - 1) * msPerBeat;
+    const lastOnsetMs = (effectiveExercise.notes.length - 1) * msPerBeat;
     const finishMs = lastOnsetMs + msPerBeat + 100; // extra 100 ms buffer
 
     const finishTimer = setTimeout(() => {
       stopPlayback();
       setHighlightedSlotIndex(null);
       const { responses, extraneousNotes } = stopCapture();
-      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
+      const exerciseResult = scoreExercise(effectiveExercise, responses, extraneousNotes);
       setResult(exerciseResult);
       setPhase('results');
     }, finishMs);
     timers.push(finishTimer);
 
     playbackTimersRef.current = timers;
-  }, [phase, exercise, startCapture, stopCapture, clearCapture, stopPlayback]);
+  }, [phase, effectiveExercise, startCapture, stopCapture, clearCapture, stopPlayback]);
 
   // ── Handle Stop (FR-007) ─────────────────────────────────────────────────
   const handleStop = useCallback(() => {
     stopPlayback();
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
-    const raw = scoreExercise(exercise, responses, extraneousNotes);
+    const raw = scoreExercise(effectiveExercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setPhase('results');
-  }, [exercise, bpm, stopCapture, stopPlayback]);
+  }, [effectiveExercise, bpm, stopCapture, stopPlayback]);
 
   // ── Pre-warm ToneAdapter when mic is ready so adapter.init() is instant ────
   //    This eliminates the startMs timing drift that caused early slots to be
@@ -336,6 +347,19 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <span className="practice-view__tempo-factor">×{(bpm / 120).toFixed(2)}</span>
           </div>
         </div>
+
+        {/* ── Training mode toggle ───────────────────────────────── */}
+        <label className="practice-view__all-c4-label">
+          <input
+            type="checkbox"
+            className="practice-view__all-c4-checkbox"
+            checked={allC4}
+            disabled={phase === 'playing'}
+            onChange={(e) => setAllC4(e.target.checked)}
+            data-testid="all-c4-checkbox"
+          />
+          All C4 (training mode)
+        </label>
 
         {/* ── Controls ───────────────────────────────────────────── */}
         {phase !== 'results' && (
