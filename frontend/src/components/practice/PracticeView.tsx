@@ -118,11 +118,23 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     };
   }, [phase, currentPitch, liveResponseNotes.length]);
 
-  // ── Response staff: confirmed notes + live ghost ──────────────────────────
-  const responseStaffNotes = useMemo<Note[]>(
-    () => (ghostNote ? [...liveResponseNotes, ghostNote] : liveResponseNotes),
-    [liveResponseNotes, ghostNote],
-  );
+  // ── Response staff notes ───────────────────────────────────────────────────
+  //    During playing: sequential liveResponseNotes + ghost at next position.
+  //    During results:  slot-aligned notes from result.comparisons so that
+  //                     missed slots leave visible gaps in the staff.
+  const responseStaffNotes = useMemo<Note[]>(() => {
+    if (phase === 'results' && result) {
+      return result.comparisons
+        .filter((c) => c.response !== null)
+        .map((c) => ({
+          id: `resp-slot-${c.target.slotIndex}`,
+          start_tick: c.target.slotIndex * QUARTER_TICKS,
+          duration_ticks: QUARTER_TICKS,
+          pitch: Math.round(c.response!.midiCents / 100),
+        }));
+    }
+    return ghostNote ? [...liveResponseNotes, ghostNote] : liveResponseNotes;
+  }, [phase, result, liveResponseNotes, ghostNote]);
 
   const responseLayout = useMemo(
     () =>
