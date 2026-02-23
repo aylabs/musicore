@@ -113,6 +113,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const lastStepMidiRef = useRef<number | null>(null);
   /** Timestamp when step note was last played (input delay guard) */
   const stepLastPlayTimeRef = useRef<number>(0);
+  /** Cumulative wrong attempts in step mode (used for final score) */
+  const stepWrongCountRef = useRef(0);
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -391,7 +393,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             timingDeviationMs: 0,
           })),
           extraneousNotes: [],
-          score: 100,
+          score: Math.max(0, Math.round(100 - stepWrongCountRef.current * 10)),
           correctPitchCount: exercise.notes.length,
           correctTimingCount: exercise.notes.length,
         };
@@ -407,6 +409,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       }
     } else {
       // ✗ Wrong note — show target note name as red hint + wrong note in response staff
+      stepWrongCountRef.current += 1;
       setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetNote.midiPitch) }));
       setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
       setStepWrongNote({
@@ -432,6 +435,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setStepWrongNote(null);
     setStepWrongLabel('');
     stepIndexRef.current = 0;
+    stepWrongCountRef.current = 0;
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setPhase('ready');
@@ -451,6 +455,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setStepWrongNote(null);
     setStepWrongLabel('');
     stepIndexRef.current = 0;
+    stepWrongCountRef.current = 0;
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setExercise(generateExercise(bpm, exerciseConfig));
