@@ -510,7 +510,7 @@ export function ScoreViewer({
           </button>
         )}
         <button
-          className="record-view-debug-btn"
+          className="practice-view-btn"
           onClick={onShowPractice}
           aria-label="Practice View"
         >
@@ -569,7 +569,7 @@ export function ScoreViewer({
                 </button>
               )}
               <button
-                className="record-view-debug-btn"
+                className="practice-view-btn"
                 onClick={onShowPractice}
                 aria-label="Practice View"
               >

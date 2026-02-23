@@ -218,6 +218,36 @@
   background: #5b21b6;
 }
 
+/* Practice View button — matches Load Score / Play View button style */
+.practice-view-btn {
+  background-color: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
+}
+
+.practice-view-btn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.practice-view-btn:active {
+  background-color: #5b21b6;
+}
+
 /* Legacy score-actions styling - kept for backward compatibility */
 .score-actions {
   display: flex;
