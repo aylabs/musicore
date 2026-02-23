@@ -6,12 +6,14 @@
 /* ─── Container ───────────────────────────────────────────────────────────── */
 
 .practice-view {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   background: #fafafa;
   color: #1a1a1a;
   overflow: hidden;
+  z-index: 100;
 }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */
@@ -195,12 +197,12 @@
 }
 
 .practice-view__staff-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #888;
-  margin-bottom: 0.5rem;
+  color: #aaa;
+  margin-bottom: 0.25rem;
 }
 
 .practice-view__staff-renderer {

@@ -42,11 +42,9 @@ import './PracticeView.css';
 /** Quarter note duration in ticks (960 PPQ standard) */
 const QUARTER_TICKS = 960;
 
-/** Staff config: compact size to fit two staves + results without scrolling */
+/** Staff config: tight spacing matches RecordingStaff */
 const STAFF_CONFIG = {
   ...DEFAULT_STAFF_CONFIG,
-  staffSpace: 8,
-  viewportHeight: 120,
   pixelsPerTick: 0.06,
   minNoteSpacing: 10,
   viewportWidth: 99999,
