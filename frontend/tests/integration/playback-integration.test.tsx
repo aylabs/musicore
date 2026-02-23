@@ -43,6 +43,7 @@ describe('Playback Integration - Note Timing', () => {
             scheduleRepeat: vi.fn(() => 999),
             clearTransportEvent: vi.fn(),
             isInitialized: vi.fn(() => true),
+            setMuted: vi.fn(),
           })),
         },
       };

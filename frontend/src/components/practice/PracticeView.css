@@ -1,0 +1,589 @@
+/* PracticeView.css — Piano Practice Exercise view styles
+ * Feature: 001-piano-practice (T009)
+ * Layout: two-staff vertical, tablet portrait optimised (SC-004, no horizontal scroll)
+ */
+
+/* ─── Container ───────────────────────────────────────────────────────────── */
+
+.practice-view {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  color: #1a1a1a;
+  overflow: hidden;
+  z-index: 100;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+.practice-view__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.practice-view__back-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555;
+  white-space: nowrap;
+}
+
+.practice-view__back-btn:hover {
+  background: #f0f0f0;
+}
+
+.practice-view__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.practice-view__debug-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  background: #ffe0b2;
+  border-radius: 10px;
+  color: #e65100;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Body: sidebar + main two-column ──────────────────────────────────── */
+
+.practice-view__body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ─── Sidebar (config panel) ─────────────────────────────────────── */
+
+.practice-config {
+  width: 200px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  padding: 1rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.practice-config__section {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.practice-config__section:last-child {
+  border-bottom: none;
+}
+
+.practice-config__section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #999;
+  margin: 0 0 0.45rem 0;
+}
+
+.practice-config__radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #333;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  user-select: none;
+}
+
+.practice-config__radio-label--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.practice-config__inline-radios {
+  display: flex;
+  gap: 1rem;
+}
+
+.practice-config__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-config__slider {
+  flex: 1;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.practice-config__slider:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.practice-config__value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  min-width: 1.6rem;
+  text-align: right;
+}
+
+.practice-config__unit {
+  font-size: 0.68rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Main content area ──────────────────────────────────────────────── */
+
+.practice-view__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+}
+
+/* ─── Error banner ────────────────────────────────────────────────────────── */
+
+.practice-view__mic-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #e65100;
+}
+
+/* ─── Staff blocks ────────────────────────────────────────────────────────── */
+
+.practice-view__staff-block {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-view__staff-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #bbb;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.practice-view__staff-inner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.practice-view__staff-renderer {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Staff + tempo side-by-side ──────────────────────────────────────────── */
+
+.practice-view__staff-block--with-tempo {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+}
+
+.practice-view__staff-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-view__tempo-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 62px;
+  flex-shrink: 0;
+  padding: 0.5rem 0.5rem;
+  border-left: 1px solid #e0e0e0;
+  margin-left: 0.5rem;
+}
+
+.practice-view__tempo-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #888;
+}
+
+.practice-view__tempo-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 90px;
+  width: 28px;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.practice-view__tempo-slider:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.practice-view__tempo-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.practice-view__tempo-bpm-label {
+  font-size: 0.6rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.practice-view__tempo-factor {
+  font-size: 0.68rem;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+/* ─── Controls ────────────────────────────────────────────────────────────── */
+
+.practice-view__controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ─── Start prompt ────────────────────────────────────────────────────────── */
+
+.practice-view__start-prompt {
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #1976d2;
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  text-align: center;
+  animation: pulse-prompt 2s ease-in-out infinite;
+}
+
+@keyframes pulse-prompt {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* ─── Countdown ───────────────────────────────────────────────────────────── */
+
+.practice-view__countdown {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.practice-view__countdown-number {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #1565c0;
+  line-height: 1;
+  display: inline-block;
+  animation: countdown-in 1s ease-out forwards;
+}
+
+@keyframes countdown-in {
+  0%   { transform: scale(1.6); opacity: 0.4; }
+  35%  { transform: scale(1.0); opacity: 1; }
+  80%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+.practice-view__play-btn,
+.practice-view__stop-btn {
+  padding: 0.65rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.practice-view__play-btn {
+  background: #1976d2;
+  color: #fff;
+}
+
+.practice-view__play-btn:hover:not(:disabled) {
+  background: #1565c0;
+}
+
+.practice-view__play-btn:disabled {
+  background: #90caf9;
+  cursor: not-allowed;
+}
+
+.practice-view__stop-btn {
+  background: #d32f2f;
+  color: #fff;
+}
+
+.practice-view__stop-btn:hover {
+  background: #b71c1c;
+}
+
+/* ─── Current pitch display ───────────────────────────────────────────────── */
+
+.practice-view__pitch-display {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #555;
+  min-height: 1.4rem;
+}
+
+/* ─── Slot highlight ──────────────────────────────────────────────────────── */
+
+/* NotationRenderer applies its own highlight; this provides the container cue */
+.practice-view__staff-renderer--playing {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Results view ────────────────────────────────────────────────────────── */
+
+.practice-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* ─── Score block ─────────────────────────────────────────────────────────── */
+
+.practice-results__score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.practice-results__score-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+
+.practice-results__score {
+  font-size: 4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.practice-results__score-max {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: #888;
+  margin-left: 0.25rem;
+}
+
+.practice-results__score-grade {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+/* ─── Collapsible details ─────────────────────────────────────────────────── */
+
+.practice-results__details {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.practice-results__details-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+  user-select: none;
+  list-style: none; /* remove default marker in some browsers */
+}
+
+.practice-results__details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.practice-results__details-summary::after {
+  content: '▸';
+  font-size: 0.8rem;
+  color: #999;
+  transition: transform 0.2s ease;
+}
+
+.practice-results__details[open] > .practice-results__details-summary::after {
+  transform: rotate(90deg);
+}
+
+.practice-results__details[open] > .practice-results__details-summary {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.practice-results__details > .practice-results__table-wrapper,
+.practice-results__details > .practice-results__extraneous {
+  padding: 0.75rem;
+}
+
+.practice-results__table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.practice-results__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.practice-results__table th,
+.practice-results__table td {
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.practice-results__table th {
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+}
+
+.practice-results__row--correct td {
+  background: #f1f8e9;
+}
+
+.practice-results__row--missed td {
+  background: #fce4ec;
+}
+
+.practice-results__row--wrong-pitch td {
+  background: #fff8e1;
+}
+
+.practice-results__row--wrong-timing td {
+  background: #e8f5e9;
+}
+
+.practice-results__status-icon {
+  font-size: 1rem;
+}
+
+.practice-results__extraneous {
+  padding: 0.5rem 0.75rem;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #555;
+}
+
+/* ─── Training mode checkbox ─────────────────────────────────────────────── */
+/* (moved to PracticeConfigPanel via .practice-config__* styles above) */
+
+/* ─── Tablet portrait adjustments ────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .practice-view__body {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+  }
+
+  .practice-config {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .practice-config__section {
+    border-bottom: none;
+    border-right: 1px solid #f0f0f0;
+    padding: 0.25rem 0.75rem 0.25rem 0;
+  }
+
+  .practice-config__section:last-child {
+    border-right: none;
+  }
+
+  .practice-view__play-btn,
+  .practice-view__stop-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+  }
+}

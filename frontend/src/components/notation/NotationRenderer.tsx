@@ -42,6 +42,12 @@ export interface NotationRendererProps {
   
   /** Feature 009 - US2 - T021: IDs of currently playing notes to highlight */
   highlightedNoteIds?: string[];
+
+  /** Step-mode: text labels to show above specific note heads, keyed by note id */
+  noteLabels?: Record<string, string>;
+
+  /** Step-mode: fill colour for each note label (default #1976d2), keyed by note id */
+  noteLabelColors?: Record<string, string>;
 }
 
 /**
@@ -55,7 +61,9 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
   showClef = true,
   notes = [],
   pixelsPerTick = 0.1,
-  highlightedNoteIds = [], // T021: Default to empty array
+  highlightedNoteIds = [],
+  noteLabels = {},
+  noteLabelColors = {},
 }) => {
   const handleNoteClick = (noteId: string, e: React.MouseEvent) => {
     // Stop propagation to prevent triggering container's playback toggle
@@ -160,6 +168,22 @@ const NotationRendererComponent: React.FC<NotationRendererProps> = ({
           >
             {note.glyphCodepoint}
           </text>
+
+          {/* Step-mode note label above note head */}
+          {noteLabels[note.id] && (
+            <text
+              x={note.x}
+              y={note.y - note.fontSize * 0.85}
+              fontSize={Math.max(10, note.fontSize * 0.36)}
+              fontFamily="system-ui, sans-serif"
+              fontWeight="700"
+              fill={noteLabelColors[note.id] ?? '#1976d2'}
+              textAnchor="middle"
+              dominantBaseline="auto"
+            >
+              {noteLabels[note.id]}
+            </text>
+          )}
         </React.Fragment>
       ))}
 

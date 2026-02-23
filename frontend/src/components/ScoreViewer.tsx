@@ -29,6 +29,8 @@ interface ScoreViewerProps {
   debugMode?: boolean;
   /** Called when Record View button is pressed (only relevant when debugMode=true) */
   onShowRecording?: () => void;
+  /** Called when Practice View button is pressed (only relevant when debugMode=true) */
+  onShowPractice?: () => void;
 }
 
 /**
@@ -51,6 +53,7 @@ export function ScoreViewer({
   onViewModeChange: controlledOnViewModeChange,
   debugMode = false,
   onShowRecording,
+  onShowPractice,
 }: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
@@ -506,6 +509,13 @@ export function ScoreViewer({
             Record View
           </button>
         )}
+        <button
+          className="practice-view-btn"
+          onClick={onShowPractice}
+          aria-label="Practice View"
+        >
+          Practice View
+        </button>
         {/* Feature 001: animated landing hero covers the full viewport */}
         <LandingScreen onLoadScore={() => setDialogOpen(true)} />
         {error && <div className="error">{error}</div>}
@@ -558,6 +568,13 @@ export function ScoreViewer({
                   Record View
                 </button>
               )}
+              <button
+                className="practice-view-btn"
+                onClick={onShowPractice}
+                aria-label="Practice View"
+              >
+                Practice View
+              </button>
               {score && score.instruments.length > 0 && (
                 <ViewModeSelector
                   currentMode={viewMode}

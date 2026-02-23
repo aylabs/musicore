@@ -113,11 +113,11 @@ describe('US1 — Debug Gate', () => {
    * T008 — Back button in RecordingView calls onBack
    * US1 Scenario 4: navigating back returns to Instruments View
    */
-  it('T008 — calls onBack when the ← Instruments button is clicked', async () => {
+  it('T008 — calls onBack when the ← Practice button is clicked', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(<RecordingView onBack={onBack} />);
-    await user.click(screen.getByRole('button', { name: /instruments/i }));
+    await user.click(screen.getByRole('button', { name: /practice/i }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 });

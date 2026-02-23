@@ -365,6 +365,7 @@ export const NotationLayoutEngine = {
       ? PPQ * (4 / timeSignature.denominator) * timeSignature.numerator 
       : 3840; // Default 4/4 time
     const barlineNoteSpacing = config.minNoteSpacing * 1.5;
+    let barlineOffset = 0; // cumulative offset applied to all notes after each barline
     
     const positioned: NotePosition[] = sortedNotes.map((note, index) => {
       // Convert pitch to staff position
@@ -373,11 +374,14 @@ export const NotationLayoutEngine = {
       // Calculate proportional X position from tick using standard proportional spacing
       let proportionalX = baseX + note.start_tick * config.pixelsPerTick;
       
-      // Check if note would collide with a barline (at measure boundaries)
-      // If note starts exactly at a measure boundary, add extra spacing
+      // When a note starts at a measure boundary, widen the gap before it to
+      // visually accommodate the barline. We accumulate the offset so that all
+      // subsequent notes are also shifted by the same amount, keeping inter-note
+      // spacing uniform within each measure.
       if (note.start_tick > 0 && note.start_tick % ticksPerMeasure === 0) {
-        proportionalX += barlineNoteSpacing;
+        barlineOffset += barlineNoteSpacing;
       }
+      proportionalX += barlineOffset;
       
       // Calculate minimum spacing needed: previous glyph width + gap + current glyph leading space
       // For very short notes (< 240 ticks), the proportional spacing may be insufficient

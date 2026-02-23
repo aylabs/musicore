@@ -20,6 +20,7 @@ import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngi
 import { NotationRenderer } from '../notation/NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
 import { quantizeDurationMs, durationTicksToName } from '../../services/recording/durationQuantizer';
+import { ToneAdapter } from '../../services/playback/ToneAdapter';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -101,8 +102,6 @@ export function RecordingStaff({ currentPitch, bpm = 120, audioChunksRef, clearA
   // ── Playback state ───────────────────────────────────────────────
   const [isPlayingNotes, setIsPlayingNotes] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  /** AudioContext used for note synthesis playback (kept to allow stop) */
-  const notesCtxRef = useRef<AudioContext | null>(null);
   /** AudioContext used for raw audio playback (kept to allow stop) */
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -121,62 +120,39 @@ export function RecordingStaff({ currentPitch, bpm = 120, audioChunksRef, clearA
   // ── Playback helpers ─────────────────────────────────────────────
 
   const stopPlayback = useCallback(() => {
-    notesCtxRef.current?.close();
-    notesCtxRef.current = null;
+    ToneAdapter.getInstance().stopAll();
     audioCtxRef.current?.close();
     audioCtxRef.current = null;
     setIsPlayingNotes(false);
     setIsPlayingAudio(false);
   }, []);
 
-  /** Synthesise detected notes using OscillatorNodes scheduled on a new AudioContext. */
+  /** Play detected notes using piano samples via ToneAdapter. */
   const handlePlayNotes = useCallback(() => {
     if (notes.length === 0) return;
     stopPlayback();
 
-    const ctx = new AudioContext();
-    notesCtxRef.current = ctx;
-    setIsPlayingNotes(true);
-
     const msPerQ = 60_000 / bpm;
     const msPerTick = msPerQ / 960;
-    const startTime = ctx.currentTime + 0.05;
-
-    const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.5;
-    masterGain.connect(ctx.destination);
-
     let lastEndSec = 0;
-    for (const note of notes) {
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      osc.connect(gainNode);
-      gainNode.connect(masterGain);
 
-      osc.frequency.value = 440 * Math.pow(2, (note.pitch - 69) / 12);
-      osc.type = 'sine';
-
-      const noteStartSec = note.start_tick * msPerTick / 1000;
-      const noteDurSec  = note.duration_ticks * msPerTick / 1000;
-      const noteEndSec  = noteStartSec + noteDurSec;
-
-      // Soft envelope to avoid clicks
-      gainNode.gain.setValueAtTime(0, startTime + noteStartSec);
-      gainNode.gain.linearRampToValueAtTime(0.8, startTime + noteStartSec + 0.01);
-      gainNode.gain.setValueAtTime(0.8, startTime + noteEndSec - 0.02);
-      gainNode.gain.linearRampToValueAtTime(0, startTime + noteEndSec);
-
-      osc.start(startTime + noteStartSec);
-      osc.stop(startTime + noteEndSec);
-
-      if (noteEndSec > lastEndSec) lastEndSec = noteEndSec;
-    }
-
-    setTimeout(() => {
-      ctx.close();
-      notesCtxRef.current = null;
-      setIsPlayingNotes(false);
-    }, (lastEndSec + 0.2) * 1000);
+    const adapter = ToneAdapter.getInstance();
+    void (async () => {
+      await adapter.init();
+      adapter.startTransport();
+      for (const note of notes) {
+        const noteStartSec = (note.start_tick * msPerTick) / 1000;
+        const noteDurSec = (note.duration_ticks * msPerTick) / 1000;
+        const noteEndSec = noteStartSec + noteDurSec;
+        adapter.playNote(note.pitch, noteDurSec, noteStartSec);
+        if (noteEndSec > lastEndSec) lastEndSec = noteEndSec;
+      }
+      setIsPlayingNotes(true);
+      setTimeout(() => {
+        adapter.stopAll();
+        setIsPlayingNotes(false);
+      }, (lastEndSec + 0.4) * 1000);
+    })();
   }, [notes, bpm, stopPlayback]);
 
   /** Concatenate raw PCM chunks and play back the original recorded audio. */
@@ -250,7 +226,6 @@ export function RecordingStaff({ currentPitch, bpm = 120, audioChunksRef, clearA
         setNotes([]);
       } else {
         nextTickRef.current = newTick;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setNotes(prev => [...prev, finalisedNote]);
       }
     }
@@ -330,7 +305,7 @@ export function RecordingStaff({ currentPitch, bpm = 120, audioChunksRef, clearA
                 className="recording-staff__play-btn recording-staff__play-btn--notes"
                 onClick={handlePlayNotes}
                 aria-label="Play detected notes"
-                title="Play detected notes (synthesised)"
+                title="Play detected notes (piano samples)"
               >
                 ▶ Notes
               </button>
