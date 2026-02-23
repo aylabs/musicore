@@ -28,23 +28,10 @@ import { detectPitch } from '../recording/pitchDetection';
 const PITCH_STABLE_FRAMES = 3;
 /** Null must persist for this many frames before emitting silence */
 const SILENCE_STABLE_FRAMES = 5;
-/**
- * Beat-slot alignment window in ms (FR-006).
- * Computed dynamically as 45% of the beat period, capped at 300 ms so adjacent
- * slots never overlap even at higher tempos.
- * e.g. 80 BPM → 337 ms → capped to 300 ms
- *      120 BPM → 225 ms
- */
-function slotWindowMs(bpm: number): number {
-  return Math.min(Math.round((60_000 / bpm) * 0.45), 300);
-}
 /** Minimum MIDI pitch accepted during capture — filters sub-harmonic noise */
 const CAPTURE_MIDI_MIN = 48; // C3
 /** Maximum MIDI pitch accepted during capture — filters ultrasonic artifacts */
 const CAPTURE_MIDI_MAX = 84; // C6
-/** Pitch match threshold in cents (FR-008) */
-/** Min gap between two note onsets on the same slot (ms) — take the first one */
-const MIN_ONSET_GAP_MS = 100;
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 
@@ -86,13 +73,54 @@ export interface UsePracticeRecorderReturn {
 interface CaptureState {
   active: boolean;
   exercise: Exercise | null;
+  /** Epoch ms when startCapture was called — used to compute note onset offsets */
   startMs: number;
-  /** Best-matching response for each slot (index = slotIndex) */
-  slotResponses: (ResponseNote | null)[];
-  /** Notes that fell outside all slot windows */
-  extraneousNotes: ResponseNote[];
-  /** Timestamp of last recorded onset per slot — to deduplicate rapid re-detections */
-  lastOnsetMsPerSlot: number[];
+  /**
+   * All note onsets finalised so far (pitch changed or silence confirmed).
+   * Slot assignment happens post-hoc in stopCapture via matchRawNotesToSlots.
+   */
+  rawNotes: ResponseNote[];
+  /** The pitch currently being held — onset recorded, note-off not yet received */
+  pending: ResponseNote | null;
+}
+
+// ─── Post-hoc slot matcher ────────────────────────────────────────────────────
+
+/**
+ * matchRawNotesToSlots — pairs recorded notes to exercise slots after the fact.
+ *
+ * For each slot the closest unmatched raw note within half a beat period is
+ * selected. This avoids real-time window races: every note is first recorded
+ * faithfully, then matched when the full picture is available.
+ */
+function matchRawNotesToSlots(
+  exercise: Exercise,
+  rawNotes: ResponseNote[],
+): { responses: (ResponseNote | null)[]; extraneousNotes: ResponseNote[] } {
+  const msPerBeat = 60_000 / exercise.bpm;
+  const halfBeat = msPerBeat / 2;
+  const responses: (ResponseNote | null)[] = new Array(exercise.notes.length).fill(null);
+  const usedIndices = new Set<number>();
+
+  for (const exNote of exercise.notes) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < rawNotes.length; i++) {
+      if (usedIndices.has(i)) continue;
+      const dist = Math.abs(rawNotes[i].onsetMs - exNote.expectedOnsetMs);
+      if (dist < halfBeat && dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) {
+      usedIndices.add(bestIdx);
+      responses[exNote.slotIndex] = rawNotes[bestIdx];
+    }
+  }
+
+  const extraneousNotes = rawNotes.filter((_, i) => !usedIndices.has(i));
+  return { responses, extraneousNotes };
 }
 
 // ─── Internal refs ────────────────────────────────────────────────────────────
@@ -129,12 +157,20 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     active: false,
     exercise: null,
     startMs: 0,
-    slotResponses: [],
-    extraneousNotes: [],
-    lastOnsetMsPerSlot: [],
+    rawNotes: [],
+    pending: null,
   });
 
-  const stabRef = useRef<{ label: string | null; count: number }>({ label: null, count: 0 });
+  /**
+   * stabRef — temporal stabiliser shared with the worklet message handler.
+   *
+   * `firstSeenMs` records the epoch ms when the current label was first
+   * observed, so onset timestamps backtrack to the actual start of the note
+   * rather than the moment it hit the PITCH_STABLE_FRAMES threshold.
+   */
+  const stabRef = useRef<{ label: string | null; count: number; firstSeenMs: number }>(
+    { label: null, count: 0, firstSeenMs: 0 },
+  );
 
   // ─── Teardown ─────────────────────────────────────────────────────────────
 
@@ -249,77 +285,81 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
         const buffer = evt.data.buffer as Float32Array;
         const rawPitch = detectPitch(buffer, audioCtx.sampleRate);
 
-        // Temporal stabiliser (same logic as useAudioRecorder)
+        // ── Temporal stabiliser ──────────────────────────────────────────────
         const stab = stabRef.current;
         const newLabel = rawPitch?.label ?? null;
-        if (newLabel === stab.label) {
-          stab.count++;
-        } else {
+        if (newLabel !== stab.label) {
           stab.label = newLabel;
           stab.count = 1;
+          stab.firstSeenMs = Date.now(); // backtrack onset to when label first appeared
+        } else {
+          stab.count++;
         }
         const threshold = newLabel === null ? SILENCE_STABLE_FRAMES : PITCH_STABLE_FRAMES;
+        const justConfirmed = stab.count === threshold;
         if (stab.count >= threshold) {
           setCurrentPitch(rawPitch);
         }
 
-        // Only record confirmed pitches
-        const confirmed = newLabel !== null && stab.count >= PITCH_STABLE_FRAMES ? rawPitch : null;
+        // ── Record-then-match capture approach ───────────────────────────────
+        // Notes are accumulated faithfully as they arrive; slot assignment
+        // happens post-hoc in stopCapture() once the full picture is known.
+        // This mirrors how RecordingStaff works and eliminates real-time
+        // window-racing bugs.
+        if (!justConfirmed || !captureRef.current.active || !captureRef.current.exercise) return;
 
-        if (confirmed && captureRef.current.active && captureRef.current.exercise) {
-          const cap = captureRef.current;
-          if (!cap.exercise) return;
-          const onsetMs = Date.now() - cap.startMs;
-          const hz = confirmed.hz;
-          // midiCents: 12×log2(hz/440)×100 + 6900
-          const midiCents = 12 * Math.log2(hz / 440) * 100 + 6900;
-          const midiPitchRaw = Math.round(midiCents / 100);
+        const cap = captureRef.current;
+        // Onset relative to when capture started: backtrack to label's first frame
+        const onsetMs = stab.firstSeenMs - cap.startMs;
 
-          // Range gate: ignore pitches far outside the playable exercise range
-          // (eliminates sub-harmonic noise and microphone handling artefacts)
-          if (midiPitchRaw < CAPTURE_MIDI_MIN || midiPitchRaw > CAPTURE_MIDI_MAX) return;
+        if (newLabel !== null && rawPitch) {
+          // ── New pitch confirmed ──────────────────────────────────────────
+          const midiCents = 12 * Math.log2(rawPitch.hz / 440) * 100 + 6900;
+          const midiRound = Math.round(midiCents / 100);
 
-          const responseNote: ResponseNote = {
-            hz,
-            midiCents,
-            onsetMs,
-            confidence: confirmed.confidence,
-          };
+          // Range gate — filters sub-harmonic noise and room rumble
+          if (midiRound < CAPTURE_MIDI_MIN || midiRound > CAPTURE_MIDI_MAX) return;
 
-          // Greedy slot alignment: find the nearest open slot within ±window
-          const window = slotWindowMs(cap.exercise.bpm);
-          let bestSlot = -1;
-          let bestDist = Infinity;
-          for (const note of cap.exercise.notes) {
-            const dist = Math.abs(onsetMs - note.expectedOnsetMs);
-            if (dist <= window && dist < bestDist) {
-              // Skip if this slot already has a response and it was recorded recently
-              const lastOnset = cap.lastOnsetMsPerSlot[note.slotIndex] ?? -Infinity;
-              if (onsetMs - lastOnset < MIN_ONSET_GAP_MS) continue;
-              bestDist = dist;
-              bestSlot = note.slotIndex;
-            }
+          // Finalise any previously pending note and add it to the live staff
+          if (cap.pending) {
+            cap.rawNotes.push(cap.pending);
+            const msPerBeat = 60_000 / cap.exercise!.bpm;
+            const slotIdx = Math.max(
+              0,
+              Math.min(cap.exercise!.notes.length - 1, Math.round(cap.pending.onsetMs / msPerBeat)),
+            );
+            setLiveResponseNotes((prev) => [
+              ...prev,
+              {
+                id: `resp-${cap.rawNotes.length}`,
+                start_tick: slotIdx * 960,
+                duration_ticks: 960,
+                pitch: Math.round(cap.pending!.midiCents / 100),
+              },
+            ]);
           }
 
-          if (bestSlot >= 0) {
-            // Only take the first (best-timing) response per slot
-            if (!cap.slotResponses[bestSlot]) {
-              cap.slotResponses[bestSlot] = responseNote;
-              // Reactive update: add this note to the live staff
-              const midiPitch = midiPitchRaw;
-              setLiveResponseNotes((prev) => [
-                ...prev,
-                {
-                  id: `resp-slot-${bestSlot}`,
-                  start_tick: bestSlot * 960,
-                  duration_ticks: 960,
-                  pitch: midiPitch,
-                },
-              ]);
-            }
-            cap.lastOnsetMsPerSlot[bestSlot] = onsetMs;
-          } else {
-            cap.extraneousNotes.push(responseNote);
+          // Start tracking the new pitch
+          cap.pending = { hz: rawPitch.hz, midiCents, onsetMs, confidence: rawPitch.confidence };
+        } else {
+          // ── Silence confirmed — finalise any held note ───────────────────
+          if (cap.pending) {
+            cap.rawNotes.push(cap.pending);
+            const msPerBeat = 60_000 / cap.exercise!.bpm;
+            const slotIdx = Math.max(
+              0,
+              Math.min(cap.exercise!.notes.length - 1, Math.round(cap.pending.onsetMs / msPerBeat)),
+            );
+            setLiveResponseNotes((prev) => [
+              ...prev,
+              {
+                id: `resp-${cap.rawNotes.length}`,
+                start_tick: slotIdx * 960,
+                duration_ticks: 960,
+                pitch: Math.round(cap.pending!.midiCents / 100),
+              },
+            ]);
+            cap.pending = null;
           }
         }
       };
@@ -355,11 +395,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     cap.active = true;
     cap.exercise = exercise;
     cap.startMs = startMs;
-    cap.slotResponses = new Array(exercise.notes.length).fill(null);
-    cap.extraneousNotes = [];
-    cap.lastOnsetMsPerSlot = new Array(exercise.notes.length).fill(-Infinity);
-    stabRef.current = { label: null, count: 0 };
-    setLiveResponseNotes([]); // always start clean — avoids stale notes from previous capture
+    cap.rawNotes = [];
+    cap.pending = null;
+    // Do NOT reset stabRef — preserving stab state means any pitch already
+    // stable (count ≥ PITCH_STABLE_FRAMES) fires immediately on the next frame.
+    setLiveResponseNotes([]);
   }, []);
 
   // ─── stopCapture ──────────────────────────────────────────────────────────
@@ -370,9 +410,13 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
   } => {
     const cap = captureRef.current;
     cap.active = false;
-    const responses = [...cap.slotResponses];
-    const extraneousNotes = [...cap.extraneousNotes];
-    return { responses, extraneousNotes };
+    // Finalise any pitch still being held when Stop is pressed
+    if (cap.pending) {
+      cap.rawNotes.push(cap.pending);
+      cap.pending = null;
+    }
+    if (!cap.exercise) return { responses: [], extraneousNotes: [] };
+    return matchRawNotesToSlots(cap.exercise, [...cap.rawNotes]);
   }, []);
 
   // ─── clearCapture ─────────────────────────────────────────────────────────
@@ -382,10 +426,9 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
     cap.active = false;
     cap.exercise = null;
     cap.startMs = 0;
-    cap.slotResponses = [];
-    cap.extraneousNotes = [];
-    cap.lastOnsetMsPerSlot = [];
-    stabRef.current = { label: null, count: 0 };
+    cap.rawNotes = [];
+    cap.pending = null;
+    stabRef.current = { label: null, count: 0, firstSeenMs: 0 };
     setCurrentPitch(null);
     setLiveResponseNotes([]);
   }, []);
