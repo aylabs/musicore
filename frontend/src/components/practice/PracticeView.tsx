@@ -402,7 +402,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         setPhase('results');
       } else {
         stepIndexRef.current = nextIdx;
-        lastStepMidiRef.current = null;
+        lastStepMidiRef.current = detectedMidi; // keep debounce — prevents lingering resonance triggering wrong on next slot
         setHighlightedSlotIndex(nextIdx);
         const adapter = ToneAdapter.getInstance();
         stepLastPlayTimeRef.current = Date.now();
