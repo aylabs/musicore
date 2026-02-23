@@ -40,8 +40,8 @@ export function PracticeConfigPanel({
   onBpmChange,
 }: PracticeConfigPanelProps) {
   const isC4Scale = config.preset === 'c4scale';
-  // Clef + octave only apply for random preset
-  const poolDisabled = disabled || isC4Scale;
+  // Note count + octave range are fixed for c4scale; clef remains free
+  const noteOctaveDisabled = disabled || isC4Scale;
 
   function set<K extends keyof ExerciseConfig>(key: K, value: ExerciseConfig[K]) {
     onConfigChange({ ...config, [key]: value });
@@ -98,24 +98,24 @@ export function PracticeConfigPanel({
 
       {/* ── Clef ────────────────────────────────────────────────── */}
       <Section title="Clef">
-        <label className={`practice-config__radio-label${poolDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
+        <label className={`practice-config__radio-label${disabled ? ' practice-config__radio-label--disabled' : ''}`}>
           <input
             type="radio"
             name="practice-clef"
             value="Treble"
             checked={config.clef === 'Treble'}
-            disabled={poolDisabled}
+            disabled={disabled}
             onChange={() => set('clef', 'Treble')}
           />
           Treble
         </label>
-        <label className={`practice-config__radio-label${poolDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
+        <label className={`practice-config__radio-label${disabled ? ' practice-config__radio-label--disabled' : ''}`}>
           <input
             type="radio"
             name="practice-clef"
             value="Bass"
             checked={config.clef === 'Bass'}
-            disabled={poolDisabled}
+            disabled={disabled}
             onChange={() => set('clef', 'Bass')}
           />
           Bass
@@ -125,24 +125,24 @@ export function PracticeConfigPanel({
       {/* ── Octave range ─────────────────────────────────────────── */}
       <Section title="Octaves">
         <div className="practice-config__inline-radios">
-          <label className={`practice-config__radio-label${poolDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
+          <label className={`practice-config__radio-label${noteOctaveDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
             <input
               type="radio"
               name="practice-octaves"
               value={1}
               checked={config.octaveRange === 1}
-              disabled={poolDisabled}
+              disabled={noteOctaveDisabled}
               onChange={() => set('octaveRange', 1)}
             />
             1
           </label>
-          <label className={`practice-config__radio-label${poolDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
+          <label className={`practice-config__radio-label${noteOctaveDisabled ? ' practice-config__radio-label--disabled' : ''}`}>
             <input
               type="radio"
               name="practice-octaves"
               value={2}
               checked={config.octaveRange === 2}
-              disabled={poolDisabled}
+              disabled={noteOctaveDisabled}
               onChange={() => set('octaveRange', 2)}
             />
             2

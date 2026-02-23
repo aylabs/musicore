@@ -71,8 +71,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Countdown value shown before exercise starts (3, 2, 1, then null) */
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
 
-  // ── Effective clef: c4scale is always treble ──────────────────────────────
-  const effectiveClef = exerciseConfig.preset === 'c4scale' ? 'Treble' : exerciseConfig.clef;
+  // ── Effective clef: always from config (c4scale can render in any clef) ─────────
+  const effectiveClef = exerciseConfig.clef;
 
   // ── Mic recorder ────────────────────────────────────────────────────────
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
