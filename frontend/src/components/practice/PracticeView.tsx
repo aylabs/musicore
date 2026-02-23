@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Note } from '../../types/score';
-import type { PracticePhase, ExerciseResult } from '../../types/practice';
+import type { PracticePhase, ExerciseResult, NoteComparisonStatus } from '../../types/practice';
 import {
   generateExercise,
   type ExerciseConfig,
@@ -41,6 +41,15 @@ import './PracticeView.css';
 
 /** Quarter note duration in ticks (960 PPQ standard) */
 const QUARTER_TICKS = 960;
+
+/** Milliseconds to ignore mic input after playing an exercise note (avoids speaker feedback) */
+const STEP_INPUT_DELAY_MS = 450;
+
+/** Convert MIDI pitch number to human-readable note name, e.g. 60 → "C4" */
+function midiToNoteName(midi: number): string {
+  const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  return `${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+}
 
 /** Staff config: tight spacing matches RecordingStaff */
 const STAFF_CONFIG = {
@@ -85,6 +94,26 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Holds setTimeout IDs for the 3-2-1 countdown so they can be cancelled */
   const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // ── Step mode state ───────────────────────────────────────────────────────
+  /** Labels to show above exercise staff notes: noteId → display string */
+  const [stepExNoteLabels, setStepExNoteLabels] = useState<Record<string, string>>({});
+  /** Fill colours for those labels: noteId → CSS colour */
+  const [stepExNoteColors, setStepExNoteColors] = useState<Record<string, string>>({});
+  /** Notes the user has correctly played in step mode */
+  const [stepResponseNotes, setStepResponseNotes] = useState<Note[]>([]);
+  /** Transient wrong note displayed in response staff (cleared on correct) */
+  const [stepWrongNote, setStepWrongNote] = useState<Note | null>(null);
+  /** Label for the wrong note above the response staff */
+  const [stepWrongLabel, setStepWrongLabel] = useState<string>('');
+
+  // ── Step mode refs ────────────────────────────────────────────────────────
+  /** Current slot index in step mode */
+  const stepIndexRef = useRef(0);
+  /** Last MIDI pitch that was acted on (debounce) */
+  const lastStepMidiRef = useRef<number | null>(null);
+  /** Timestamp when step note was last played (input delay guard) */
+  const stepLastPlayTimeRef = useRef<number>(0);
+
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
     document.documentElement.requestFullscreen?.().catch(() => {});
@@ -119,7 +148,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
   const ghostNote = useMemo<Note | null>(() => {
-    if (phase !== 'playing' || !currentPitch) return null;
+    if (exerciseConfig.mode !== 'flow' || phase !== 'playing' || !currentPitch) return null;
     const slotIndex = highlightedSlotIndex ?? 0;
     return {
       id: '__practice_ghost__',
@@ -127,13 +156,16 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       duration_ticks: QUARTER_TICKS,
       pitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
     };
-  }, [phase, currentPitch, highlightedSlotIndex]);
+  }, [exerciseConfig.mode, phase, currentPitch, highlightedSlotIndex]);
 
   // ── Response staff notes ───────────────────────────────────────────────────
-  //    During playing: sequential liveResponseNotes + ghost at next position.
-  //    During results:  slot-aligned notes from result.comparisons so that
-  //                     missed slots leave visible gaps in the staff.
+  //    Step mode:    correctly played notes + transient wrong note.
+  //    Flow playing: sequential liveResponseNotes + ghost.
+  //    Results:      slot-aligned notes from comparisons.
   const responseStaffNotes = useMemo<Note[]>(() => {
+    if (exerciseConfig.mode === 'step') {
+      return stepWrongNote ? [...stepResponseNotes, stepWrongNote] : stepResponseNotes;
+    }
     if (phase === 'results' && result) {
       return result.comparisons
         .filter((c) => c.response !== null)
@@ -145,7 +177,17 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         }));
     }
     return ghostNote ? [...liveResponseNotes, ghostNote] : liveResponseNotes;
-  }, [phase, result, liveResponseNotes, ghostNote]);
+  }, [exerciseConfig.mode, stepResponseNotes, stepWrongNote, phase, result, liveResponseNotes, ghostNote]);
+
+  // ── Step mode response labels (wrong note label above response staff) ─────────
+  const stepRespNoteLabels = useMemo<Record<string, string>>(() => {
+    if (!stepWrongNote || !stepWrongLabel) return {};
+    return { [stepWrongNote.id]: stepWrongLabel };
+  }, [stepWrongNote, stepWrongLabel]);
+  const stepRespNoteColors = useMemo<Record<string, string>>(() => {
+    if (!stepWrongNote) return {};
+    return { [stepWrongNote.id]: '#f44336' };
+  }, [stepWrongNote]);
 
   const responseLayout = useMemo(
     () =>
@@ -271,11 +313,27 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     }
   }, [micState]);
 
-  // ── Auto-start: show 3-2-1 countdown on first detected pitch ───────────────
+  // ── Auto-start: first detected pitch triggers the exercise ─────────────────
   useEffect(() => {
-    if (phase === 'ready' && currentPitch && !autoStartedRef.current) {
-      autoStartedRef.current = true;
+    if (phase !== 'ready' || !currentPitch || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+
+    if (exerciseConfig.mode === 'step') {
+      // Step mode: skip countdown, enter playing immediately
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPhase('playing');
+      setHighlightedSlotIndex(0);
+      stepIndexRef.current = 0;
+      lastStepMidiRef.current = null;
+      stepLastPlayTimeRef.current = Date.now();
+      void ToneAdapter.getInstance().init().then(() => {
+        const adapter = ToneAdapter.getInstance();
+        adapter.setMuted(false);
+        adapter.startTransport();
+        adapter.playNote(exercise.notes[0].midiPitch, 0.6, 0);
+      });
+    } else {
+      // Flow mode: 3-2-1 countdown
       setPhase('countdown');
       setCountdownValue(3);
       const t1 = setTimeout(() => setCountdownValue(2), 1000);
@@ -286,7 +344,80 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       }, 3000);
       countdownTimersRef.current = [t1, t2, t3];
     }
-  }, [currentPitch, phase, handlePlay]);
+  }, [currentPitch, phase, exerciseConfig.mode, exercise, handlePlay]);
+
+  // ── Step mode: respond to pitch detections ────────────────────────────────
+  useEffect(() => {
+    if (exerciseConfig.mode !== 'step' || phase !== 'playing' || !currentPitch) return;
+    // Ignore mic input right after playing a note (guard against speaker feedback)
+    if (Date.now() - stepLastPlayTimeRef.current < STEP_INPUT_DELAY_MS) return;
+
+    const detectedMidi = Math.round(12 * Math.log2(currentPitch.hz / 440) + 69);
+    // Debounce: only act on pitch changes
+    if (detectedMidi === lastStepMidiRef.current) return;
+    lastStepMidiRef.current = detectedMidi;
+
+    const stepIdx = stepIndexRef.current;
+    const targetNote = exercise.notes[stepIdx];
+    if (!targetNote) return;
+    const noteId = `ex-slot-${stepIdx}`;
+
+    if (detectedMidi === targetNote.midiPitch) {
+      // ✓ Correct note — mark it green, advance
+      const noteName = midiToNoteName(targetNote.midiPitch);
+      setStepExNoteLabels((prev) => ({ ...prev, [noteId]: noteName }));
+      setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#4caf50' }));
+      setStepWrongNote(null);
+      setStepWrongLabel('');
+      // Accumulate on response staff
+      const respNote: Note = {
+        id: `resp-step-${stepIdx}`,
+        start_tick: stepIdx * QUARTER_TICKS,
+        duration_ticks: QUARTER_TICKS,
+        pitch: targetNote.midiPitch,
+      };
+      setStepResponseNotes((prev) => [...prev, respNote]);
+
+      const nextIdx = stepIdx + 1;
+      if (nextIdx >= exercise.notes.length) {
+        // All done — build a perfect result and show results
+        const msPerBeat = 60_000 / exercise.bpm;
+        const exerciseResult: ExerciseResult = {
+          comparisons: exercise.notes.map((n) => ({
+            target: n,
+            response: { hz: 440 * Math.pow(2, (n.midiPitch - 69) / 12), midiCents: n.midiPitch * 100, onsetMs: n.slotIndex * msPerBeat, confidence: 1 },
+            status: 'correct' as NoteComparisonStatus,
+            pitchDeviationCents: 0,
+            timingDeviationMs: 0,
+          })),
+          extraneousNotes: [],
+          score: 100,
+          correctPitchCount: exercise.notes.length,
+          correctTimingCount: exercise.notes.length,
+        };
+        setResult(exerciseResult);
+        setPhase('results');
+      } else {
+        stepIndexRef.current = nextIdx;
+        lastStepMidiRef.current = null;
+        setHighlightedSlotIndex(nextIdx);
+        const adapter = ToneAdapter.getInstance();
+        stepLastPlayTimeRef.current = Date.now();
+        adapter.playNote(exercise.notes[nextIdx].midiPitch, 0.6, adapter.getTransportSeconds() + 0.08);
+      }
+    } else {
+      // ✗ Wrong note — show target note name as red hint + wrong note in response staff
+      setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetNote.midiPitch) }));
+      setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
+      setStepWrongNote({
+        id: 'resp-step-wrong',
+        start_tick: stepIdx * QUARTER_TICKS,
+        duration_ticks: QUARTER_TICKS,
+        pitch: detectedMidi,
+      });
+      setStepWrongLabel(midiToNoteName(detectedMidi));
+    }
+  }, [currentPitch, phase, exerciseConfig.mode, exercise]);
 
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
@@ -295,18 +426,32 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    setStepExNoteLabels({});
+    setStepExNoteColors({});
+    setStepResponseNotes([]);
+    setStepWrongNote(null);
+    setStepWrongLabel('');
+    stepIndexRef.current = 0;
+    lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setPhase('ready');
     // exercise stays the same
   }, [clearCapture, clearCountdown, stopPlayback]);
 
-  // ── New Exercise (T019) ──────────────────────────────────────────────────
+  // ── New Exercise (T019) ───────────────────────────────────
   const handleNewExercise = useCallback(() => {
     stopPlayback();
     clearCountdown();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    setStepExNoteLabels({});
+    setStepExNoteColors({});
+    setStepResponseNotes([]);
+    setStepWrongNote(null);
+    setStepWrongLabel('');
+    stepIndexRef.current = 0;
+    lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setExercise(generateExercise(bpm, exerciseConfig));
     setPhase('ready');
@@ -371,7 +516,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 aria-label="Exercise notes"
                 role="img"
               >
-                <NotationRenderer layout={exerciseLayout} highlightedNoteIds={highlightedNoteIds} showClef />
+                <NotationRenderer
+                  layout={exerciseLayout}
+                  highlightedNoteIds={highlightedNoteIds}
+                  showClef
+                  noteLabels={stepExNoteLabels}
+                  noteLabelColors={stepExNoteColors}
+                />
               </div>
             </div>
           </div>
@@ -381,7 +532,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <div className="practice-view__controls">
               {phase === 'ready' && (
                 <p className="practice-view__start-prompt" data-testid="start-prompt" aria-live="polite">
-                  {micState === 'active' ? '🎹 Press any note to start' : '🎹 Waiting for microphone…'}
+                  {micState === 'active'
+                    ? exerciseConfig.mode === 'step'
+                      ? '🎹 Play any note to start step-by-step'
+                      : '🎹 Press any note to start'
+                    : '🎹 Waiting for microphone…'}
                 </p>
               )}
               {phase === 'countdown' && countdownValue !== null && (
@@ -410,9 +565,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-label">Your Response</div>
               <div className="practice-view__staff-inner">
                 <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
-                  <NotationRenderer layout={responseLayout} highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []} showClef />
+                  <NotationRenderer
+                    layout={responseLayout}
+                    highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []}
+                    showClef
+                    noteLabels={stepRespNoteLabels}
+                    noteLabelColors={stepRespNoteColors}
+                  />
                 </div>
-                {phase === 'playing' && currentPitch && (
+                {phase === 'playing' && currentPitch && exerciseConfig.mode === 'flow' && (
                   <div className="practice-view__pitch-display" aria-live="polite">
                     Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
                   </div>

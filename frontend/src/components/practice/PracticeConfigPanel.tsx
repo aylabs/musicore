@@ -50,6 +50,32 @@ export function PracticeConfigPanel({
   return (
     <aside className="practice-config" aria-label="Exercise configuration" data-testid="practice-config-panel">
 
+      {/* ── Mode ────────────────────────────────────────────────── */}
+      <Section title="Mode">
+        <label className="practice-config__radio-label">
+          <input
+            type="radio"
+            name="practice-mode"
+            value="flow"
+            checked={config.mode === 'flow'}
+            disabled={disabled}
+            onChange={() => set('mode', 'flow')}
+          />
+          Flow
+        </label>
+        <label className="practice-config__radio-label">
+          <input
+            type="radio"
+            name="practice-mode"
+            value="step"
+            checked={config.mode === 'step'}
+            disabled={disabled}
+            onChange={() => set('mode', 'step')}
+          />
+          Step
+        </label>
+      </Section>
+
       {/* ── Preset ──────────────────────────────────────────────── */}
       <Section title="Score">
         <label className="practice-config__radio-label">

@@ -19,6 +19,8 @@ export interface ExerciseConfig {
   clef: 'Treble' | 'Bass';
   /** 1 = one octave around the clef centre; 2 = two octaves */
   octaveRange: 1 | 2;
+  /** Practice mode: 'flow' = timed play-through; 'step' = wait for correct note each slot */
+  mode: 'flow' | 'step';
 }
 
 export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
@@ -26,6 +28,7 @@ export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
   noteCount: 8,
   clef: 'Treble',
   octaveRange: 1,
+  mode: 'flow',
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
