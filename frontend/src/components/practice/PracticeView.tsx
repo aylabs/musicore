@@ -113,8 +113,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const lastStepMidiRef = useRef<number | null>(null);
   /** Timestamp when step note was last played (input delay guard) */
   const stepLastPlayTimeRef = useRef<number>(0);
-  /** Cumulative wrong attempts in step mode (used for final score) */
-  const stepWrongCountRef = useRef(0);
+  /** Slots that had at least one wrong attempt (each slot penalised once) */
+  const stepPenalizedSlotsRef = useRef<Set<number>>(new Set());
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -382,19 +382,20 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
       const nextIdx = stepIdx + 1;
       if (nextIdx >= exercise.notes.length) {
-        // All done — build a perfect result and show results
+        // All done — build result: correct notes stay correct, penalised slots get wrong-pitch
+        const penalized = stepPenalizedSlotsRef.current;
         const msPerBeat = 60_000 / exercise.bpm;
         const exerciseResult: ExerciseResult = {
-          comparisons: exercise.notes.map((n) => ({
+          comparisons: exercise.notes.map((n, i) => ({
             target: n,
             response: { hz: 440 * Math.pow(2, (n.midiPitch - 69) / 12), midiCents: n.midiPitch * 100, onsetMs: n.slotIndex * msPerBeat, confidence: 1 },
-            status: 'correct' as NoteComparisonStatus,
+            status: (penalized.has(i) ? 'wrong-pitch' : 'correct') as NoteComparisonStatus,
             pitchDeviationCents: 0,
             timingDeviationMs: 0,
           })),
           extraneousNotes: [],
-          score: Math.max(0, Math.round(100 - stepWrongCountRef.current * 10)),
-          correctPitchCount: exercise.notes.length,
+          score: Math.max(0, Math.round(100 - penalized.size * 10)),
+          correctPitchCount: exercise.notes.length - penalized.size,
           correctTimingCount: exercise.notes.length,
         };
         setResult(exerciseResult);
@@ -409,7 +410,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       }
     } else {
       // ✗ Wrong note — show target note name as red hint + wrong note in response staff
-      stepWrongCountRef.current += 1;
+      stepPenalizedSlotsRef.current.add(stepIdx);
       setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetNote.midiPitch) }));
       setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
       setStepWrongNote({
@@ -435,7 +436,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setStepWrongNote(null);
     setStepWrongLabel('');
     stepIndexRef.current = 0;
-    stepWrongCountRef.current = 0;
+    stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setPhase('ready');
@@ -455,7 +456,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setStepWrongNote(null);
     setStepWrongLabel('');
     stepIndexRef.current = 0;
-    stepWrongCountRef.current = 0;
+    stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
     setExercise(generateExercise(bpm, exerciseConfig));
