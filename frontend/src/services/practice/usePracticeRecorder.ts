@@ -335,10 +335,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
                 Math.round(finalisedNote.onsetMs / msPerBeat),
               ),
             );
+            const noteId = `resp-${slotIdx}`;
             setLiveResponseNotes((prev) => [
-              ...prev,
+              ...prev.filter((n) => n.id !== noteId),
               {
-                id: `resp-${slotIdx}`,
+                id: noteId,
                 start_tick: slotIdx * 960,
                 duration_ticks: 960,
                 pitch: Math.round(finalisedNote.midiCents / 100),
@@ -362,10 +363,11 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
                 Math.round(finalisedNote.onsetMs / msPerBeat),
               ),
             );
+            const noteId = `resp-${slotIdx}`;
             setLiveResponseNotes((prev) => [
-              ...prev,
+              ...prev.filter((n) => n.id !== noteId),
               {
-                id: `resp-${slotIdx}`,
+                id: noteId,
                 start_tick: slotIdx * 960,
                 duration_ticks: 960,
                 pitch: Math.round(finalisedNote.midiCents / 100),
