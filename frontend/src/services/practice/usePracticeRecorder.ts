@@ -328,23 +328,18 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             const finalisedNote = cap.pending; // capture before async updater runs
             cap.rawNotes.push(finalisedNote);
             const msPerBeat = 60_000 / cap.exercise!.bpm;
-            const slotIdx = Math.max(
-              0,
-              Math.min(
-                cap.exercise!.notes.length - 1,
-                Math.round(finalisedNote.onsetMs / msPerBeat),
-              ),
-            );
-            const noteId = `resp-${slotIdx}`;
-            setLiveResponseNotes((prev) => [
-              ...prev.filter((n) => n.id !== noteId),
-              {
-                id: noteId,
-                start_tick: slotIdx * 960,
-                duration_ticks: 960,
-                pitch: Math.round(finalisedNote.midiCents / 100),
-              },
-            ]);
+            const maxSlot = cap.exercise!.notes.length - 1;
+            const timingSlot = Math.max(0, Math.min(maxSlot, Math.round(finalisedNote.onsetMs / msPerBeat)));
+            const notePitch = Math.round(finalisedNote.midiCents / 100);
+            setLiveResponseNotes((prev) => {
+              const usedSlots = new Set(prev.map((n) => Number(n.id.replace('resp-', ''))));
+              let slot = timingSlot;
+              while (usedSlots.has(slot) && slot < maxSlot) slot++;
+              return [
+                ...prev,
+                { id: `resp-${slot}`, start_tick: slot * 960, duration_ticks: 960, pitch: notePitch },
+              ];
+            });
           }
 
           // Start tracking the new pitch
@@ -356,23 +351,18 @@ export function usePracticeRecorder(): UsePracticeRecorderReturn {
             cap.rawNotes.push(finalisedNote);
             cap.pending = null;
             const msPerBeat = 60_000 / cap.exercise!.bpm;
-            const slotIdx = Math.max(
-              0,
-              Math.min(
-                cap.exercise!.notes.length - 1,
-                Math.round(finalisedNote.onsetMs / msPerBeat),
-              ),
-            );
-            const noteId = `resp-${slotIdx}`;
-            setLiveResponseNotes((prev) => [
-              ...prev.filter((n) => n.id !== noteId),
-              {
-                id: noteId,
-                start_tick: slotIdx * 960,
-                duration_ticks: 960,
-                pitch: Math.round(finalisedNote.midiCents / 100),
-              },
-            ]);
+            const maxSlot = cap.exercise!.notes.length - 1;
+            const timingSlot = Math.max(0, Math.min(maxSlot, Math.round(finalisedNote.onsetMs / msPerBeat)));
+            const notePitch = Math.round(finalisedNote.midiCents / 100);
+            setLiveResponseNotes((prev) => {
+              const usedSlots = new Set(prev.map((n) => Number(n.id.replace('resp-', ''))));
+              let slot = timingSlot;
+              while (usedSlots.has(slot) && slot < maxSlot) slot++;
+              return [
+                ...prev,
+                { id: `resp-${slot}`, start_tick: slot * 960, duration_ticks: 960, pitch: notePitch },
+              ];
+            });
           }
         }
       };
