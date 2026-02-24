@@ -87,6 +87,18 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
     usePracticeRecorder();
 
+  // ── Config sidebar collapse ──────────────────────────────────────────────
+  const [configCollapsed, setConfigCollapsed] = useState(() => window.innerWidth <= 768);
+
+  // ── Onboarding tips banner ────────────────────────────────────────────────
+  const [showTips, setShowTips] = useState(
+    () => sessionStorage.getItem('practice-tips-v1-dismissed') !== 'yes'
+  );
+  const handleDismissTips = useCallback(() => {
+    sessionStorage.setItem('practice-tips-v1-dismissed', 'yes');
+    setShowTips(false);
+  }, []);
+
   // ── Playback refs ────────────────────────────────────────────────────────
   const playbackTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   /** Prevents double-firing the auto-start on rapid pitch fluctuations */
@@ -499,6 +511,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           config={exerciseConfig}
           bpm={bpm}
           disabled={phase === 'playing' || phase === 'countdown'}
+          collapsed={configCollapsed}
+          onToggle={() => setConfigCollapsed((v) => !v)}
           onConfigChange={handleConfigChange}
           onBpmChange={handleBpmChange}
         />
@@ -510,7 +524,24 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               🎤 {micError}
             </div>
           )}
-
+          {/* ── Onboarding tips banner ──────────────────────── */}
+          {showTips && (
+            <div className="practice-view__tips" role="note" data-testid="tips-banner">
+              <ul className="practice-view__tips-list">
+                <li>🎹 <strong>You need a keyboard</strong> to play the notes.</li>
+                <li>🎤 Place the <strong>microphone as close as possible</strong> to the keyboard’s speakers.</li>
+                <li>🤫 Practice in a <strong>quiet space</strong> — background noise reduces accuracy.</li>
+                <li>⭐ An <strong>external microphone</strong> significantly improves pitch detection.</li>
+              </ul>
+              <button
+                className="practice-view__tips-dismiss"
+                onClick={handleDismissTips}
+                aria-label="Dismiss tips"
+              >
+                Got it!
+              </button>
+            </div>
+          )}
           {/* ── Exercise staff ───────────────────────────────────── */}
           <div className="practice-view__staff-block" data-testid="exercise-staff-block">
             <div className="practice-view__staff-label">Exercise</div>
