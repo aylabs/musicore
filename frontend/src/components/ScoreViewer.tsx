@@ -88,6 +88,12 @@ export function ScoreViewer({
       // iOS Safari does not support exitFullscreen — CSS fallback handles it
     });
     document.body.classList.remove('fullscreen-play');
+    // Unload the score so ScoreViewer renders the landing page (no score).
+    // setViewMode('individual') is also reset so the next load starts fresh.
+    setScore(null);
+    setScoreId(undefined);
+    setScoreTitle(null);
+    setIsFileSourced(false);
     setViewMode('individual');
   }, [setViewMode]);
 

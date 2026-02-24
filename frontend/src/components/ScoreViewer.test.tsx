@@ -294,18 +294,20 @@ describe('[T006] US1: popstate event triggers back-navigation', () => {
     await renderWithScore('layout', onViewModeChange);
 
     // Simulate browser back button / swipe
-    await act(async () => {
+    // Use synchronous act to avoid awaiting the LandingScreen rAF loop
+    act(() => {
       window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
     });
 
-    // After T008, popstate listener calls setViewMode('individual')
+    // handleReturnToView calls onViewModeChange('individual') synchronously
     expect(onViewModeChange).toHaveBeenCalledWith('individual');
   });
 
   it('calls exitFullscreen when popstate event is dispatched', async () => {
     await renderWithScore('layout');
 
-    await act(async () => {
+    // Use synchronous act to avoid awaiting the LandingScreen rAF loop
+    act(() => {
       window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
     });
 
