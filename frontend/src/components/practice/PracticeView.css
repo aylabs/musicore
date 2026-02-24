@@ -479,6 +479,43 @@
   border-radius: 4px;
 }
 
+/* ─── Results row: score card + action buttons side-by-side ──────────────── */
+
+.practice-view__results-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.practice-view__results-row > .practice-results {
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-view__results-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 480px) {
+  .practice-view__results-row {
+    flex-direction: column;
+  }
+
+  .practice-view__results-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .practice-view__results-actions .practice-view__header-btn {
+    flex: 1;
+  }
+}
+
 /* ─── Results view ────────────────────────────────────────────────────────── */
 
 .practice-results {

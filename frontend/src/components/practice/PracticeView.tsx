@@ -596,26 +596,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               ■ Stop
             </button>
           )}
-          {phase === 'results' && (
-            <>
-              <button
-                className="practice-view__header-btn"
-                onClick={handleTryAgain}
-                aria-label="Try Again"
-                data-testid="try-again-btn"
-              >
-                🔁 Again
-              </button>
-              <button
-                className="practice-view__header-btn practice-view__header-btn--new"
-                onClick={handleNewExercise}
-                aria-label="New Exercise"
-                data-testid="new-exercise-btn"
-              >
-                🎲 New
-              </button>
-            </>
-          )}
         </div>
       </header>
 
@@ -742,7 +722,27 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
           {/* ── Results ──────────────────────────────────────────── */}
           {phase === 'results' && result && (
-            <ExerciseResultsView result={result} exercise={exercise} />
+            <div className="practice-view__results-row">
+              <ExerciseResultsView result={result} exercise={exercise} />
+              <div className="practice-view__results-actions">
+                <button
+                  className="practice-view__header-btn"
+                  onClick={handleTryAgain}
+                  aria-label="Try Again"
+                  data-testid="try-again-btn"
+                >
+                  🔁 Again
+                </button>
+                <button
+                  className="practice-view__header-btn practice-view__header-btn--new"
+                  onClick={handleNewExercise}
+                  aria-label="New Exercise"
+                  data-testid="new-exercise-btn"
+                >
+                  🎲 New
+                </button>
+              </div>
+            </div>
           )}
         </main>
       </div>
