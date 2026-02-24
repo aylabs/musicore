@@ -67,6 +67,68 @@ const PRACTICE_SYSTEM_HEIGHT = 200;
 /** Vertical spacing between systems in logical units (matches LayoutView) */
 const PRACTICE_SYSTEM_SPACING = 100;
 
+/**
+ * Compute a tight SVG viewport from actual glyph bounding boxes in the layout.
+ *
+ * Works across all systems (handles multi-row reflow) and adapts to any note
+ * range — no fixed padding that silently clips notes outside the staff.
+ *
+ * Strategy:
+ *  1. Walk every glyph (noteheads, accidentals, beams, clef, time sig…) and
+ *     every ledger line across all systems.
+ *  2. Take the union of all bounding rects → actual content minY / maxY.
+ *  3. Add a 0.5-space hairline margin to avoid antialiasing clip at the edges.
+ */
+function computePracticeViewport(
+  layout: GlobalLayout,
+  fallbackWidth: number,
+): { x: number; y: number; width: number; height: number } {
+  const ups = layout.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
+  const margin = 0.5 * ups; // 10 units — just enough to clear antialiasing
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const system of layout.systems) {
+    for (const sg of system.staff_groups) {
+      for (const stave of sg.staves) {
+        // Staff lines — always include the 5-line band
+        for (const sl of stave.staff_lines) {
+          minY = Math.min(minY, sl.y_position);
+          maxY = Math.max(maxY, sl.y_position);
+        }
+        // Positioned glyphs (noteheads, accidentals, rests, flags, beams …)
+        for (const run of stave.glyph_runs) {
+          for (const g of run.glyphs) {
+            minY = Math.min(minY, g.bounding_box.y);
+            maxY = Math.max(maxY, g.bounding_box.y + g.bounding_box.height);
+          }
+        }
+        // Structural glyphs: clef, key signature, time signature
+        for (const g of stave.structural_glyphs) {
+          minY = Math.min(minY, g.bounding_box.y);
+          maxY = Math.max(maxY, g.bounding_box.y + g.bounding_box.height);
+        }
+        // Ledger lines for notes above / below the staff
+        for (const ll of stave.ledger_lines) {
+          minY = Math.min(minY, ll.y_position);
+          maxY = Math.max(maxY, ll.y_position);
+        }
+      }
+    }
+  }
+
+  // Fallback when layout has no glyphs yet
+  if (!isFinite(minY)) { minY = 0; maxY = 4 * ups; }
+
+  return {
+    x: 0,
+    y: minY - margin,
+    width: layout.total_width > 0 ? layout.total_width : fallbackWidth,
+    height: (maxY - minY) + 2 * margin,
+  };
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface PracticeViewProps {
@@ -253,48 +315,22 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   }, [highlightedSlotIndex, exerciseLayout]);
 
   // ── Build viewport for LayoutRenderer ────────────────────────────────────
-  // Derive a tight viewBox from actual staff-line positions rather than the
-  // system bounding_box (which equals system_height=200 regardless of content).
-  //
-  // The Rust engine places the first staff's top line at staff_lines[0].y_position
-  // and the bottom line at staff_lines[4].y_position. We add generous vertical
-  // padding so the treble-clef curl (which extends above the top line) and any
-  // stems / ledger lines below the bottom line are never clipped.
-  //
-  //   paddingAbove = 2.5 staff spaces  — covers treble-clef top curl
-  //   paddingBelow = 2.5 staff spaces  — covers stems / notes below bottom line
-  //
-  // Result (single treble staff, units_per_space=20):
-  //   topY=0, bottomY=80  →  y=-50, height=180  →  div height=90 CSS px
-  const exerciseViewport = useMemo(() => {
-    const stave = exerciseLayout?.systems?.[0]?.staff_groups?.[0]?.staves?.[0];
-    const topY    = stave?.staff_lines?.[0]?.y_position ?? 0;
-    const bottomY = stave?.staff_lines?.[4]?.y_position ?? (4 * PRACTICE_UNITS_PER_SPACE);
-    const space   = exerciseLayout?.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
-    const padAbove = 2.5 * space;
-    const padBelow = 2.5 * space;
-    return {
-      x: 0,
-      y: topY - padAbove,
-      width: exerciseLayout ? exerciseLayout.total_width : practiceMaxSystemWidth,
-      height: (bottomY - topY) + padAbove + padBelow,
-    };
-  }, [exerciseLayout, practiceMaxSystemWidth]);
+  // computePracticeViewport() scans all glyph bounding boxes across all systems
+  // so the viewBox tightly encloses the actual content — adapts to any octave
+  // range, multi-row reflow, or clef without fragile hardcoded padding.
+  const exerciseViewport = useMemo(
+    () => exerciseLayout
+      ? computePracticeViewport(exerciseLayout, practiceMaxSystemWidth)
+      : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
+    [exerciseLayout, practiceMaxSystemWidth],
+  );
 
-  const responseViewport = useMemo(() => {
-    const stave = responseLayout?.systems?.[0]?.staff_groups?.[0]?.staves?.[0];
-    const topY    = stave?.staff_lines?.[0]?.y_position ?? 0;
-    const bottomY = stave?.staff_lines?.[4]?.y_position ?? (4 * PRACTICE_UNITS_PER_SPACE);
-    const space   = responseLayout?.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
-    const padAbove = 2.5 * space;
-    const padBelow = 2.5 * space;
-    return {
-      x: 0,
-      y: topY - padAbove,
-      width: responseLayout ? responseLayout.total_width : practiceMaxSystemWidth,
-      height: (bottomY - topY) + padAbove + padBelow,
-    };
-  }, [responseLayout, practiceMaxSystemWidth]);
+  const responseViewport = useMemo(
+    () => responseLayout
+      ? computePracticeViewport(responseLayout, practiceMaxSystemWidth)
+      : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
+    [responseLayout, practiceMaxSystemWidth],
+  );
 
   // ── Tempo + config change ────────────────────────────────────────────────
   const handleBpmChange = useCallback(
