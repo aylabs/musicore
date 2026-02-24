@@ -482,7 +482,7 @@
 
 /* ─── Slot highlight ──────────────────────────────────────────────────────── */
 
-/* NotationRenderer applies its own highlight; this provides the container cue */
+/* LayoutRenderer applies its own glyph highlight; this provides the container outline cue */
 .practice-view__staff-renderer--playing {
   outline: 2px solid #1976d2;
   outline-offset: 2px;

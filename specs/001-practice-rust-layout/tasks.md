@@ -90,7 +90,7 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 - [X] T017 Verify SC-001: run `grep -r "NotationLayoutEngine\|NotationRenderer" frontend/src/components/practice/` and confirm zero matches
 - [X] T018 [P] Adjust `LayoutRenderer` container sizing in `frontend/src/components/practice/PracticeView.css` so the staff fills the horizontal scroll area correctly (mirror `LayoutView` container pattern)
-- [ ] T019 Run end-to-end quickstart.md validation: generate 8-note exercise, verify single-system layout, verify highlight sequence, verify last note visible, measure layout computation time
+- [X] T019 Run end-to-end quickstart.md validation: generate 8-note exercise, verify single-system layout, verify highlight sequence, verify last note visible, measure layout computation time
 
 ---
 
