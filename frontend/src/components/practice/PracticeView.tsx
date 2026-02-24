@@ -614,7 +614,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 role="img"
               >
                 {exerciseLayout ? (
-                  <div style={{ width: exerciseLayout.total_width * BASE_SCALE, height: exerciseLayout.total_height * BASE_SCALE, flexShrink: 0 }}>
+                  <div style={{ width: exerciseLayout.total_width * BASE_SCALE, height: exerciseLayout.total_height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
                     <LayoutRenderer
                       layout={exerciseLayout}
                       config={PRACTICE_RENDER_CONFIG}
@@ -677,7 +677,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   {responseLayout ? (
-                    <div style={{ width: responseLayout.total_width * BASE_SCALE, height: responseLayout.total_height * BASE_SCALE, flexShrink: 0 }}>
+                    <div style={{ width: responseLayout.total_width * BASE_SCALE, height: responseLayout.total_height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
                       <LayoutRenderer
                         layout={responseLayout}
                         config={PRACTICE_RENDER_CONFIG}
