@@ -61,8 +61,14 @@ const PRACTICE_RENDER_CONFIG = createDefaultConfig();
 /** A wide-enough viewport width so all practice notes fit in a single scrollable system */
 const PRACTICE_VIEWPORT_WIDTH = 99999;
 
-/** Logical units per staff space — must match LayoutView to get the same glyph scale (20 = Rust engine default) */
+/** Logical units per staff space — must match LayoutView (20 = Rust engine default) */
 const PRACTICE_UNITS_PER_SPACE = 20;
+
+/** Vertical height per system in logical units (matches LayoutView) */
+const PRACTICE_SYSTEM_HEIGHT = 200;
+
+/** Vertical spacing between systems in logical units (matches LayoutView) */
+const PRACTICE_SYSTEM_SPACING = 100;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -148,7 +154,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   useEffect(() => {
     if (!wasmReady) return;
     const input = serializeExerciseToLayoutInput(exercise.notes, effectiveClef);
-    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
+    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
   }, [exercise, effectiveClef, wasmReady]);
 
   // ── sourceToNoteIdMap for LayoutRenderer highlight system (US2) ──────────
@@ -200,7 +206,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       return;
     }
     const input = serializeResponseToLayoutInput(responseNoteInputs, effectiveClef);
-    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
+    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
   }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode]);
 
   // ── Highlighted note IDs for LayoutRenderer (US2) ────────────────────────
