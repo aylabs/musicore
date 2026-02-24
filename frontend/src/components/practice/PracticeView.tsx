@@ -58,9 +58,6 @@ const BASE_SCALE = 0.5;
 /** Shared RenderConfig for all practice staves */
 const PRACTICE_RENDER_CONFIG = createDefaultConfig();
 
-/** A wide-enough viewport width so all practice notes fit in a single scrollable system */
-const PRACTICE_VIEWPORT_WIDTH = 99999;
-
 /** Logical units per staff space — must match LayoutView (20 = Rust engine default) */
 const PRACTICE_UNITS_PER_SPACE = 20;
 
@@ -124,6 +121,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Staff scroll refs (auto-scroll to highlighted note) ──────────────────
   const exScrollRef = useRef<HTMLDivElement | null>(null);
   const respScrollRef = useRef<HTMLDivElement | null>(null);
+  /** Ref on the staff-inner container to measure available width via ResizeObserver */
+  const staffInnerRef = useRef<HTMLDivElement | null>(null);
+  /** Available staff container width in CSS px; drives max_system_width for layout reflow */
+  const [staffContainerWidth, setStaffContainerWidth] = useState(800);
   // ── Step mode refs ────────────────────────────────────────────────────────
   /** Current slot index in step mode */
   const stepIndexRef = useRef(0);
@@ -135,6 +136,25 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stepPenalizedSlotsRef = useRef<Set<number>>(new Set());
   /** setTimeout ID for the currently-active slot timeout (step mode) */
   const stepSlotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Observe staff container width for layout reflow ──────────────────────
+  // staffInnerRef is attached to the exercise staff-inner div (first mount).
+  // When the sidebar collapses / window resizes, the available width changes
+  // and we recompute the layout so notes reflow to fill the container width.
+  // ResizeObserver fires immediately on observe(), seeding the initial value.
+  useEffect(() => {
+    const el = staffInnerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setStaffContainerWidth(w);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  /** Maximum system width in logical units that fits without horizontal scrolling */
+  const practiceMaxSystemWidth = Math.max(200, Math.floor(staffContainerWidth / BASE_SCALE));
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -154,8 +174,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   useEffect(() => {
     if (!wasmReady) return;
     const input = serializeExerciseToLayoutInput(exercise.notes, effectiveClef);
-    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
-  }, [exercise, effectiveClef, wasmReady]);
+    computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
+  }, [exercise, effectiveClef, wasmReady, practiceMaxSystemWidth]);
 
   // ── sourceToNoteIdMap for LayoutRenderer highlight system (US2) ──────────
   const exerciseSourceMap = useMemo(
@@ -206,8 +226,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       return;
     }
     const input = serializeResponseToLayoutInput(responseNoteInputs, effectiveClef);
-    computeLayout(input, { max_system_width: PRACTICE_VIEWPORT_WIDTH, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
-  }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode]);
+    computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
+  }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode, practiceMaxSystemWidth]);
 
   // ── Highlighted note IDs for LayoutRenderer (US2) ────────────────────────
   const highlightedNoteIds = useMemo(
@@ -256,10 +276,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     return {
       x: 0,
       y: topY - padAbove,
-      width: exerciseLayout ? exerciseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
+      width: exerciseLayout ? exerciseLayout.total_width : practiceMaxSystemWidth,
       height: (bottomY - topY) + padAbove + padBelow,
     };
-  }, [exerciseLayout]);
+  }, [exerciseLayout, practiceMaxSystemWidth]);
 
   const responseViewport = useMemo(() => {
     const stave = responseLayout?.systems?.[0]?.staff_groups?.[0]?.staves?.[0];
@@ -271,10 +291,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     return {
       x: 0,
       y: topY - padAbove,
-      width: responseLayout ? responseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
+      width: responseLayout ? responseLayout.total_width : practiceMaxSystemWidth,
       height: (bottomY - topY) + padAbove + padBelow,
     };
-  }, [responseLayout]);
+  }, [responseLayout, practiceMaxSystemWidth]);
 
   // ── Tempo + config change ────────────────────────────────────────────────
   const handleBpmChange = useCallback(
@@ -634,7 +654,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           {/* ── Exercise staff ───────────────────────────────────── */}
           <div className="practice-view__staff-block" data-testid="exercise-staff-block">
             <div className="practice-view__staff-label">Exercise</div>
-            <div className="practice-view__staff-inner">
+            <div className="practice-view__staff-inner" ref={staffInnerRef}>
               <div
                 ref={exScrollRef}
                 className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
@@ -650,6 +670,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                       viewport={exerciseViewport}
                       highlightedNoteIds={highlightedNoteIds}
                       sourceToNoteIdMap={exerciseSourceMap}
+                      hideMeasureNumbers
                     />
                   </div>
                 ) : (
@@ -711,6 +732,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                         layout={responseLayout}
                         config={PRACTICE_RENDER_CONFIG}
                         viewport={responseViewport}
+                        hideMeasureNumbers
                       />
                     </div>
                   ) : (
