@@ -84,7 +84,7 @@ function computePracticeViewport(
   fallbackWidth: number,
 ): { x: number; y: number; width: number; height: number } {
   const ups = layout.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
-  const margin = 0.5 * ups; // 10 units — just enough to clear antialiasing
+  const margin = 2 * ups; // 40 units — comfortable breathing room around extreme notes
 
   let minY = Infinity;
   let maxY = -Infinity;
