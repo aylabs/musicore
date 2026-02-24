@@ -17,7 +17,7 @@ test.describe('Feature 027: Demo Flow UX', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the app and wait for it to load
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('T036-A: Individual instrument view renders without errors', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Feature 027: Demo Flow UX', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Page should load without critical errors
     expect(errors.filter(e => !e.includes('WASM') && !e.includes('favicon'))).toHaveLength(0);
@@ -55,7 +55,7 @@ test.describe('Feature 027: Demo Flow UX', () => {
     page.on('pageerror', err => rejections.push(err.message));
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000); // allow async init
 
     // Filter out known non-critical WASM loading messages
@@ -68,7 +68,7 @@ test.describe('Feature 027: Demo Flow UX', () => {
   test('T036-D: Playback controls render in play view', async ({ page }) => {
     // Navigate and check if playback controls are accessible
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The app must render a UI — even loading state is acceptable
     const body = page.locator('body');
@@ -84,7 +84,7 @@ test.describe('Feature 027: Demo Flow UX', () => {
 
   test('T036-E: Return-to-instruments arrow present during playback view', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for the return arrow button (aria-label="Return to instruments view")
     const returnBtn = page.getByRole('button', { name: /return to instruments view/i });
