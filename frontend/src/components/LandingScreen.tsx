@@ -70,6 +70,8 @@ export interface LandingScreenProps {
   onLoadScore: () => void;
   /** Called when the user activates the Practice action */
   onShowPractice?: () => void;
+  /** Called when the user activates the Instruments action (debug mode only) */
+  onShowInstruments?: () => void;
 }
 
 /**
@@ -83,7 +85,7 @@ export interface LandingScreenProps {
  * - Pauses when the browser tab is hidden (Page Visibility API)
  * - Respects prefers-reduced-motion: position frozen, glyph/color still cycle
  */
-export function LandingScreen({ onLoadScore, onShowPractice }: LandingScreenProps) {
+export function LandingScreen({ onLoadScore, onShowPractice, onShowInstruments }: LandingScreenProps) {
   // Read reduced-motion preference once at mount
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -283,6 +285,11 @@ export function LandingScreen({ onLoadScore, onShowPractice }: LandingScreenProp
         {onShowPractice && (
           <button className="practice-view-btn landing-practice-btn" onClick={onShowPractice}>
             🎹 Practice
+          </button>
+        )}
+        {onShowInstruments && (
+          <button className="landing-instruments-btn" onClick={onShowInstruments}>
+            🎸 Instruments
           </button>
         )}
       </div>
