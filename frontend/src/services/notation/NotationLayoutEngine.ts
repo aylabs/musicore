@@ -695,15 +695,23 @@ export const NotationLayoutEngine = {
     const maxTick = notes.length > 0
       ? Math.max(...notes.map(n => n.start_tick + n.duration_ticks))
       : 0;
-    
-    const totalWidth = config.marginLeft + config.clefWidth + maxTick * config.pixelsPerTick;
-    const totalHeight = config.viewportHeight;
-    
-    // Calculate all layout components
-    const staffLines = this.calculateStaffLines(totalWidth, config);
+
+    // Calculate all layout components (note positions first so we can derive actual width)
     const clefPosition = this.calculateClefPosition(clef as ClefType, config);
     const notePositions = this.calculateNotePositions(notes, clef as ClefType, config, timeSignature);
     const barlines = this.calculateBarlines(timeSignature, maxTick, config);
+
+    // Base width from tick math, but clamp up to the actual last note's rendered x + glyph + trailing margin.
+    // minNoteSpacing enforcement can push notes further right than their tick position, which
+    // would clip the last note if we relied solely on tick math.
+    const tickBasedWidth = config.marginLeft + config.clefWidth + maxTick * config.pixelsPerTick;
+    const lastNotePos = notePositions.length > 0 ? notePositions[notePositions.length - 1] : null;
+    const trailingMargin = config.minNoteSpacing * 2;
+    const lastNoteWidth = lastNotePos ? this.getNoteGlyphWidth(lastNotePos.duration_ticks, config) : 0;
+    const contentBasedWidth = lastNotePos ? lastNotePos.x + lastNoteWidth + trailingMargin : tickBasedWidth;
+    const totalWidth = Math.max(tickBasedWidth, contentBasedWidth);
+    const totalHeight = config.viewportHeight;
+    const staffLines = this.calculateStaffLines(totalWidth, config);
     const ledgerLines = this.calculateLedgerLines(notePositions, config);
     
     // Calculate visible note indices for virtual scrolling (User Story 4 - T052)
