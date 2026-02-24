@@ -527,6 +527,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
+    exScrollRef.current?.scrollTo({ left: 0 });
+    respScrollRef.current?.scrollTo({ left: 0 });
     setPhase('ready');
     // exercise stays the same
   }, [clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
@@ -548,6 +550,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
+    exScrollRef.current?.scrollTo({ left: 0 });
+    respScrollRef.current?.scrollTo({ left: 0 });
     setExercise(generateExercise(bpm, exerciseConfig));
     setPhase('ready');
   }, [bpm, exerciseConfig, clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
