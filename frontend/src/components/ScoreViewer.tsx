@@ -7,12 +7,13 @@ import { usePlayback } from "../services/playback/MusicTimeline";
 import { useFileState } from "../services/state/FileStateContext";
 import { useTempoState } from "../services/state/TempoStateContext";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
+import { MusicXMLImportService } from "../services/import/MusicXMLImportService";
 import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
-import { LoadScoreButton } from "./load-score/LoadScoreButton";
 import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
+import { PRELOADED_SCORES } from "../data/preloadedScores";
 import { LandingScreen } from "./LandingScreen";
 import "./ScoreViewer.css";
 
@@ -86,6 +87,12 @@ export function ScoreViewer({
       // iOS Safari does not support exitFullscreen — CSS fallback handles it
     });
     document.body.classList.remove('fullscreen-play');
+    // Unload the score so ScoreViewer renders the landing page (no score).
+    // setViewMode('individual') is also reset so the next load starts fresh.
+    setScore(null);
+    setScoreId(undefined);
+    setScoreTitle(null);
+    setIsFileSourced(false);
     setViewMode('individual');
   }, [setViewMode]);
 
@@ -254,6 +261,28 @@ export function ScoreViewer({
     
     setSuccessMessage(`Imported ${result.statistics.note_count} notes from ${result.metadata.file_name || 'MusicXML file'}`);
     setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  /**
+   * Debug: auto-load the first preloaded score and open in instruments (individual) view.
+   * Only wired when debugMode=true. Lets developers jump straight to the instruments view
+   * without manually opening the Load Score dialog.
+   */
+  const handleAutoLoadInstruments = async () => {
+    const preset = PRELOADED_SCORES[0]; // Bach — Invention No. 1
+    try {
+      const response = await fetch(preset.path);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const fileName = preset.path.split('/').pop() ?? 'score.mxl';
+      const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
+      const importResult = await new MusicXMLImportService().importFile(file);
+      handleMusicXMLImport(importResult);
+      // Stay in individual (instruments) mode — do NOT switch to layout
+    } catch (err) {
+      console.error('[ScoreViewer] Debug auto-load instruments failed:', err);
+      setError('Debug auto-load failed. Check the console for details.');
+    }
   };
 
   /**
@@ -487,6 +516,18 @@ export function ScoreViewer({
     prevStatusRef.current = playbackState.status;
   }, [playbackState.status]);
 
+  // Pause playback when the tab/PWA is hidden (minimised or switched away).
+  // Uses the Page Visibility API so audio stops immediately on background.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && playbackState.status === 'playing') {
+        playbackState.pause();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [playbackState]);
+
   // Render loading state
   if (loading && !score) {
     return (
@@ -500,24 +541,12 @@ export function ScoreViewer({
   if (!score) {
     return (
       <div className="score-viewer">
-        {debugMode && (
-          <button
-            className="record-view-debug-btn"
-            onClick={onShowRecording}
-            aria-label="Record View"
-          >
-            Record View
-          </button>
-        )}
-        <button
-          className="practice-view-btn"
-          onClick={onShowPractice}
-          aria-label="Practice View"
-        >
-          Practice View
-        </button>
         {/* Feature 001: animated landing hero covers the full viewport */}
-        <LandingScreen onLoadScore={() => setDialogOpen(true)} />
+        <LandingScreen
+          onLoadScore={() => setDialogOpen(true)}
+          onShowPractice={onShowPractice}
+          onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}
+        />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}
         {/* Feature 028: Load Score Dialog */}
@@ -551,12 +580,16 @@ export function ScoreViewer({
             </div>
           </div>
 
-          {/* Feature 010: Import (left) and View Mode Selector (right) on same line */}
+          {/* Feature 010: Back button (left) and View Mode Selector (right) on same line */}
           <div className="score-toolbar">
             <div className="toolbar-left">
-              <LoadScoreButton
-                onClick={() => setDialogOpen(true)}
-              />
+              <button
+                className="score-viewer__back-btn"
+                onClick={handleReturnToView}
+                aria-label="Back to landing page"
+              >
+                ← Back
+              </button>
             </div>
             <div className="toolbar-right">
               {debugMode && (

@@ -170,7 +170,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
     });
 
     // Query for New Score button in landing page
@@ -233,11 +233,11 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
     });
 
-    // Verify Load Score button is present
-    const loadButton = screen.queryByRole("button", { name: /load score/i });
+    // Verify Play Score button is present
+    const loadButton = screen.queryByRole("button", { name: /play score/i });
     expect(loadButton).toBeInTheDocument();
   });
 
@@ -252,11 +252,11 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /load score/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
     });
 
-    // Verify Load Score button is present; Demo button is gone
-    const loadScoreButton = screen.queryByRole("button", { name: /load score/i });
+    // Verify Play Score button is present; Demo button is gone
+    const loadScoreButton = screen.queryByRole("button", { name: /play score/i });
     expect(loadScoreButton).toBeInTheDocument();
     const demoButton = screen.queryByRole("button", { name: /^demo$/i });
     expect(demoButton).not.toBeInTheDocument();

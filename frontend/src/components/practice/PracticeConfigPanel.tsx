@@ -15,6 +15,9 @@ interface PracticeConfigPanelProps {
   bpm: number;
   /** Disable all controls (during countdown / playing) */
   disabled: boolean;
+  /** Whether the sidebar is collapsed to an icon strip */
+  collapsed: boolean;
+  onToggle: () => void;
   onConfigChange: (next: ExerciseConfig) => void;
   onBpmChange: (bpm: number) => void;
 }
@@ -36,6 +39,8 @@ export function PracticeConfigPanel({
   config,
   bpm,
   disabled,
+  collapsed,
+  onToggle,
   onConfigChange,
   onBpmChange,
 }: PracticeConfigPanelProps) {
@@ -48,7 +53,24 @@ export function PracticeConfigPanel({
   }
 
   return (
-    <aside className="practice-config" aria-label="Exercise configuration" data-testid="practice-config-panel">
+    <aside
+      className={`practice-config${collapsed ? ' practice-config--collapsed' : ''}`}
+      aria-label="Exercise configuration"
+      data-testid="practice-config-panel"
+    >
+      {/* ── Toggle button ───────────────────────────────────────── */}
+      <button
+        className="practice-config__toggle"
+        onClick={onToggle}
+        aria-label={collapsed ? 'Open settings' : 'Close settings'}
+        title={collapsed ? 'Open settings' : 'Close settings'}
+      >
+        {collapsed ? '›' : '‹'}
+      </button>
+
+      {/* ── Content (hidden when collapsed) ─────────────────────── */}
+      {!collapsed && (
+      <>
 
       {/* ── Mode ────────────────────────────────────────────────── */}
       <Section title="Mode">
@@ -196,7 +218,8 @@ export function PracticeConfigPanel({
         </div>
         <span className="practice-config__unit">BPM</span>
       </Section>
-
+      </>
+      )}
     </aside>
   );
 }

@@ -7,15 +7,15 @@ import { LoadScoreButton } from './LoadScoreButton';
  * Feature 028 — Load Score Dialog: User Story 1
  */
 describe('LoadScoreButton', () => {
-  it('renders with default label "Load Score"', () => {
+  it('renders with default label "Play Score"', () => {
     render(<LoadScoreButton onClick={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /load score/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /play score/i })).toBeInTheDocument();
   });
 
   it('calls onClick when clicked', () => {
     const onClick = vi.fn();
     render(<LoadScoreButton onClick={onClick} />);
-    fireEvent.click(screen.getByRole('button', { name: /load score/i }));
+    fireEvent.click(screen.getByRole('button', { name: /play score/i }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 

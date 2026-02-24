@@ -175,7 +175,26 @@
   border-radius: 4px;
 }
 
-/* Score toolbar - Import (left) and View Mode Selector (right) on same line */
+/* Back-to-landing button in the instruments toolbar */
+.score-viewer__back-btn {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  font-weight: 600;
+  background: none;
+  color: #555;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.score-viewer__back-btn:hover {
+  background: #f0f0f0;
+  border-color: #aaa;
+}
+
+/* Score toolbar - Back button (left) and View Mode Selector (right) on same line */
 .score-toolbar {
   display: flex;
   justify-content: space-between;

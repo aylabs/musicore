@@ -20,10 +20,10 @@ export function LoadScoreButton({
       className="load-score-button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={ariaLabel ?? 'Load Score'}
+      aria-label={ariaLabel ?? 'Play Score'}
       {...rest}
     >
-      Load Score
+      🎼 Play Score
     </button>
   );
 }
