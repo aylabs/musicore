@@ -233,19 +233,28 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   }, [highlightedSlotIndex, exerciseLayout]);
 
   // ── Build viewport for LayoutRenderer ────────────────────────────────────
-  const exerciseViewport = useMemo(() => ({
-    x: 0,
-    y: 0,
-    width: exerciseLayout ? exerciseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
-    height: exerciseLayout ? exerciseLayout.total_height : 200,
-  }), [exerciseLayout]);
+  // Use the first system's bounding_box so the viewport crops to actual content
+  // (the Rust engine allocates system_height=200 logical units but the staff
+  //  content is ~80 units; using total_height leaves blank space above/below).
+  const exerciseViewport = useMemo(() => {
+    const bb = exerciseLayout?.systems?.[0]?.bounding_box;
+    return {
+      x: 0,
+      y: bb ? bb.y : 0,
+      width: exerciseLayout ? exerciseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
+      height: bb ? bb.height : 200,
+    };
+  }, [exerciseLayout]);
 
-  const responseViewport = useMemo(() => ({
-    x: 0,
-    y: 0,
-    width: responseLayout ? responseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
-    height: responseLayout ? responseLayout.total_height : 200,
-  }), [responseLayout]);
+  const responseViewport = useMemo(() => {
+    const bb = responseLayout?.systems?.[0]?.bounding_box;
+    return {
+      x: 0,
+      y: bb ? bb.y : 0,
+      width: responseLayout ? responseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
+      height: bb ? bb.height : 200,
+    };
+  }, [responseLayout]);
 
   // ── Tempo + config change ────────────────────────────────────────────────
   const handleBpmChange = useCallback(
@@ -614,7 +623,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 role="img"
               >
                 {exerciseLayout ? (
-                  <div style={{ width: exerciseLayout.total_width * BASE_SCALE, height: exerciseLayout.total_height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
+                  <div style={{ width: exerciseLayout.total_width * BASE_SCALE, height: exerciseViewport.height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
                     <LayoutRenderer
                       layout={exerciseLayout}
                       config={PRACTICE_RENDER_CONFIG}
@@ -677,7 +686,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   {responseLayout ? (
-                    <div style={{ width: responseLayout.total_width * BASE_SCALE, height: responseLayout.total_height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
+                    <div style={{ width: responseLayout.total_width * BASE_SCALE, height: responseViewport.height * BASE_SCALE, flexShrink: 0, margin: '0 auto' }}>
                       <LayoutRenderer
                         layout={responseLayout}
                         config={PRACTICE_RENDER_CONFIG}
