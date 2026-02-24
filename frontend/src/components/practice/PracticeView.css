@@ -48,6 +48,53 @@
   font-weight: 600;
   margin: 0;
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Header action buttons ───────────────────────────────────────────────── */
+
+.practice-view__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.practice-view__header-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #1976d2;
+  color: #fff;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.practice-view__header-btn:hover {
+  background: #1565c0;
+}
+
+.practice-view__header-btn--stop {
+  background: #d32f2f;
+}
+
+.practice-view__header-btn--stop:hover {
+  background: #b71c1c;
+}
+
+.practice-view__header-btn--new {
+  background: #388e3c;
+}
+
+.practice-view__header-btn--new:hover {
+  background: #2e7d32;
 }
 
 .practice-view__debug-badge {
@@ -255,6 +302,7 @@
 .practice-view__staff-renderer {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* ─── Staff + tempo side-by-side ──────────────────────────────────────────── */

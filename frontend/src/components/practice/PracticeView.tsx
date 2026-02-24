@@ -117,7 +117,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [stepWrongNote, setStepWrongNote] = useState<Note | null>(null);
   /** Label for the wrong note above the response staff */
   const [stepWrongLabel, setStepWrongLabel] = useState<string>('');
-
+  // ── Staff scroll refs (auto-scroll to highlighted note) ──────────────────
+  const exScrollRef = useRef<HTMLDivElement | null>(null);
+  const respScrollRef = useRef<HTMLDivElement | null>(null);
   // ── Step mode refs ────────────────────────────────────────────────────────
   /** Current slot index in step mode */
   const stepIndexRef = useRef(0);
@@ -217,6 +219,21 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   );
 
   // ── Derive highlighted note ID for exercise staff ────────────────────────
+
+  // ── Auto-scroll staves to keep highlighted note centred ──────────────────
+  //    Runs after exerciseLayout (and responseLayout) are available.
+  useEffect(() => {
+    if (highlightedSlotIndex === null) return;
+    const noteId = `ex-slot-${highlightedSlotIndex}`;
+    const notePos = exerciseLayout.notes.find((n) => n.id === noteId);
+    if (!notePos) return;
+    const scrollToCenter = (el: HTMLDivElement | null) => {
+      if (!el) return;
+      el.scrollTo({ left: Math.max(0, notePos.x - el.clientWidth / 2), behavior: 'smooth' });
+    };
+    scrollToCenter(exScrollRef.current);
+    scrollToCenter(respScrollRef.current);
+  }, [highlightedSlotIndex, exerciseLayout.notes]);
   const highlightedNoteIds = useMemo(
     () =>
       highlightedSlotIndex !== null ? [`ex-slot-${highlightedSlotIndex}`] : [],
@@ -563,6 +580,39 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           ← Back
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
+        {/* Phase-sensitive action buttons */}
+        <div className="practice-view__header-actions">
+          {phase === 'playing' && (
+            <button
+              className="practice-view__header-btn practice-view__header-btn--stop"
+              onClick={handleStop}
+              aria-label="Stop exercise"
+              data-testid="stop-btn"
+            >
+              ■ Stop
+            </button>
+          )}
+          {phase === 'results' && (
+            <>
+              <button
+                className="practice-view__header-btn"
+                onClick={handleTryAgain}
+                aria-label="Try Again"
+                data-testid="try-again-btn"
+              >
+                🔁 Again
+              </button>
+              <button
+                className="practice-view__header-btn practice-view__header-btn--new"
+                onClick={handleNewExercise}
+                aria-label="New Exercise"
+                data-testid="new-exercise-btn"
+              >
+                🎲 New
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* ── Body: sidebar + main ─────────────────────────────────── */}
@@ -608,6 +658,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <div className="practice-view__staff-label">Exercise</div>
             <div className="practice-view__staff-inner">
               <div
+                ref={exScrollRef}
                 className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
                 data-testid="exercise-staff-renderer"
                 aria-label="Exercise notes"
@@ -624,8 +675,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             </div>
           </div>
 
-          {/* ── Controls (ready / countdown / playing) ───────────── */}
-          {phase !== 'results' && (
+          {/* ── Controls (ready / countdown only — Stop lives in header) ── */}
+          {(phase === 'ready' || phase === 'countdown') && (
             <div className="practice-view__controls">
               {phase === 'ready' && (
                 <>
@@ -659,11 +710,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                   </span>
                 </div>
               )}
-              {phase === 'playing' && (
-                <button className="practice-view__stop-btn" onClick={handleStop} aria-label="Stop exercise" data-testid="stop-btn">
-                  ■ Stop
-                </button>
-              )}
             </div>
           )}
 
@@ -672,7 +718,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <div className="practice-view__staff-block" data-testid="response-staff-block">
               <div className="practice-view__staff-label">Your Response</div>
               <div className="practice-view__staff-inner">
-                <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
+                <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   <NotationRenderer
                     layout={responseLayout}
                     highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []}
@@ -692,17 +738,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
           {/* ── Results ──────────────────────────────────────────── */}
           {phase === 'results' && result && (
-            <>
-              <div className="practice-view__controls">
-                <button className="practice-view__play-btn" onClick={handleTryAgain} aria-label="Try Again" data-testid="try-again-btn">
-                  🔁 Try Again
-                </button>
-                <button className="practice-view__play-btn" onClick={handleNewExercise} aria-label="New Exercise" data-testid="new-exercise-btn" style={{ background: '#388e3c' }}>
-                  🎲 New Exercise
-                </button>
-              </div>
-              <ExerciseResultsView result={result} exercise={exercise} />
-            </>
+            <ExerciseResultsView result={result} exercise={exercise} />
           )}
         </main>
       </div>
