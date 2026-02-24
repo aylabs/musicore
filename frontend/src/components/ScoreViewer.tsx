@@ -516,6 +516,18 @@ export function ScoreViewer({
     prevStatusRef.current = playbackState.status;
   }, [playbackState.status]);
 
+  // Pause playback when the tab/PWA is hidden (minimised or switched away).
+  // Uses the Page Visibility API so audio stops immediately on background.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && playbackState.status === 'playing') {
+        playbackState.pause();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [playbackState]);
+
   // Render loading state
   if (loading && !score) {
     return (
