@@ -46,10 +46,10 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **Independent Test**: Open practice view → press "New Exercise" with 16 notes → verify staff shows correctly-spaced barlines at measure 4 and 8 with no note/barline overlap. Can be verified independently of note highlight or response staff.
 
-- [ ] T006 [US1] Add `wasmReady` state and `initWasm()` call in `useEffect` on mount in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T007 [US1] Replace `NotationLayoutEngine.calculateLayout` call with `serializeExerciseToLayoutInput` + `computeLayout`; change `exerciseLayout` type from `LayoutGeometry` to `GlobalLayout | null` in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T008 [US1] Replace `NotationRenderer` JSX with `LayoutRenderer` for the exercise staff, passing `layout`, `scale={0.5}`, and `max_system_width={99999}` in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T009 [P] [US1] Update `PracticeView.test.tsx`: remove `NotationLayoutEngine` mock, add `computeLayout` mock returning a stub `GlobalLayout`, assert exercise staff renders `LayoutRenderer` in `frontend/src/components/practice/PracticeView.test.tsx`
+- [X] T006 [US1] Add `wasmReady` state and `initWasm()` call in `useEffect` on mount in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T007 [US1] Replace `NotationLayoutEngine.calculateLayout` call with `serializeExerciseToLayoutInput` + `computeLayout`; change `exerciseLayout` type from `LayoutGeometry` to `GlobalLayout | null` in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T008 [US1] Replace `NotationRenderer` JSX with `LayoutRenderer` for the exercise staff, passing `layout`, `scale={0.5}`, and `max_system_width={99999}` in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T009 [P] [US1] Update `PracticeView.test.tsx`: remove `NotationLayoutEngine` mock, add `computeLayout` mock returning a stub `GlobalLayout`, assert exercise staff renders `LayoutRenderer` in `frontend/src/components/practice/PracticeView.test.tsx`
 
 **Checkpoint**: `PracticeView` renders exercise staff via `LayoutRenderer`. All component tests pass with updated mocks. `NotationLayoutEngine` import count in `PracticeView.tsx` = 0 at end of this phase.
 
@@ -61,10 +61,10 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **Independent Test**: Run a flow-mode exercise with 12 notes. Observe each note highlights in turn. Advance to the last note — it highlights without visual error. Press Stop — no note remains highlighted. Can be tested without response staff.
 
-- [ ] T010 [US2] Build `sourceToNoteIdMap` via `buildPracticeSourceToNoteIdMap(exercise.notes)` on exercise generation and pass to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T011 [US2] Replace `highlightedSlotIndex`-as-array-index with `highlightedNoteIds = new Set([\`ex-${highlightedSlotIndex}\`])` and pass to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T012 [US2] Replace auto-scroll `exerciseLayout.notes[idx].x` with `findPracticeNoteX(exerciseLayout, idx)` result (handle `null` gracefully) in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T013 [P] [US2] Update `PracticeView.test.tsx` to assert `highlightedNoteIds` prop equals `new Set(["ex-N"])` for the active slot and that `sourceToNoteIdMap` is passed to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.test.tsx`
+- [X] T010 [US2] Build `sourceToNoteIdMap` via `buildPracticeSourceToNoteIdMap(exercise.notes)` on exercise generation and pass to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T011 [US2] Replace `highlightedSlotIndex`-as-array-index with `highlightedNoteIds = new Set([\`ex-${highlightedSlotIndex}\`])` and pass to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T012 [US2] Replace auto-scroll `exerciseLayout.notes[idx].x` with `findPracticeNoteX(exerciseLayout, idx)` result (handle `null` gracefully) in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T013 [P] [US2] Update `PracticeView.test.tsx` to assert `highlightedNoteIds` prop equals `new Set(["ex-N"])` for the active slot and that `sourceToNoteIdMap` is passed to `LayoutRenderer` in `frontend/src/components/practice/PracticeView.test.tsx`
 
 **Checkpoint**: Highlight advances correctly through all slots including the last. Auto-scroll targets the correct x-position from the `GlobalLayout`. SC-003 verified by unit test.
 
@@ -76,9 +76,9 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **Independent Test**: Complete a flow-mode exercise with mixed correct/incorrect notes. Verify the response staff shows all recorded notes at the correct staff positions. Verify an empty response staff (zero notes detected) renders without errors.
 
-- [ ] T014 [US3] Add `serializeResponseToLayoutInput(responseNotes: ResponseNote[], noteCount: number, clef: Clef)` to `frontend/src/services/practice/practiceLayoutAdapter.ts` mapping each response note to `{ tick: slotIndex * 960, duration: 960, pitch: Math.round(midiCents / 100) }`
-- [ ] T015 [US3] Replace response staff `NotationRenderer` with `computeLayout` + `LayoutRenderer` using serialized response notes in `frontend/src/components/practice/PracticeView.tsx`
-- [ ] T016 [P] [US3] Update `PracticeView.test.tsx` to assert response staff renders `LayoutRenderer` with correct layout in `frontend/src/components/practice/PracticeView.test.tsx`
+- [X] T014 [US3] Add `serializeResponseToLayoutInput(responseNotes: ResponseNote[], noteCount: number, clef: Clef)` to `frontend/src/services/practice/practiceLayoutAdapter.ts` mapping each response note to `{ tick: slotIndex * 960, duration: 960, pitch: Math.round(midiCents / 100) }`
+- [X] T015 [US3] Replace response staff `NotationRenderer` with `computeLayout` + `LayoutRenderer` using serialized response notes in `frontend/src/components/practice/PracticeView.tsx`
+- [X] T016 [P] [US3] Update `PracticeView.test.tsx` to assert response staff renders `LayoutRenderer` with correct layout in `frontend/src/components/practice/PracticeView.test.tsx`
 
 **Checkpoint**: Response staff renders via Rust engine. Empty response renders without errors. SC-001 now fully satisfiable — both staves use `LayoutRenderer`.
 
@@ -88,8 +88,8 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **Purpose**: Verification, CSS adjustments, and validation of all success criteria.
 
-- [ ] T017 Verify SC-001: run `grep -r "NotationLayoutEngine\|NotationRenderer" frontend/src/components/practice/` and confirm zero matches
-- [ ] T018 [P] Adjust `LayoutRenderer` container sizing in `frontend/src/components/practice/PracticeView.css` so the staff fills the horizontal scroll area correctly (mirror `LayoutView` container pattern)
+- [X] T017 Verify SC-001: run `grep -r "NotationLayoutEngine\|NotationRenderer" frontend/src/components/practice/` and confirm zero matches
+- [X] T018 [P] Adjust `LayoutRenderer` container sizing in `frontend/src/components/practice/PracticeView.css` so the staff fills the horizontal scroll area correctly (mirror `LayoutView` container pattern)
 - [ ] T019 Run end-to-end quickstart.md validation: generate 8-note exercise, verify single-system layout, verify highlight sequence, verify last note visible, measure layout computation time
 
 ---

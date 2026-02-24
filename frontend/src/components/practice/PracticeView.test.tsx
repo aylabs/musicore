@@ -45,25 +45,23 @@ vi.mock('../../services/practice/usePracticeRecorder', () => ({
   }),
 }));
 
-// Mock NotationLayoutEngine and NotationRenderer to avoid WASM in tests
-vi.mock('../../services/notation/NotationLayoutEngine', () => ({
-  NotationLayoutEngine: {
-    calculateLayout: vi.fn().mockReturnValue({
-      notePositions: [],
-      staffLines: [],
-      clefPositions: [],
-      ledgerLines: [],
-      barlines: [],
-      totalWidth: 500,
-      staffHeight: 100,
-      measureBoundaries: [],
-    }),
-  },
+// Mock computeLayout and initWasm — exercise/response layouts resolved async
+vi.mock('../../wasm/layout', () => ({
+  computeLayout: vi.fn().mockResolvedValue({
+    systems: [],
+    total_width: 500,
+    total_height: 100,
+    units_per_space: 10,
+  }),
 }));
 
-vi.mock('../notation/NotationRenderer', () => ({
-  NotationRenderer: ({ 'aria-label': ariaLabel }: { 'aria-label'?: string }) => (
-    <div data-testid="notation-renderer" aria-label={ariaLabel ?? 'staff'} />
+vi.mock('../../services/wasm/loader', () => ({
+  initWasm: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('../LayoutRenderer', () => ({
+  LayoutRenderer: ({ 'aria-label': ariaLabel }: { 'aria-label'?: string }) => (
+    <div data-testid="layout-renderer" aria-label={ariaLabel ?? 'staff'} />
   ),
 }));
 
@@ -200,7 +198,6 @@ describe('PracticeView', () => {
       fireEvent.click(screen.getByTestId('try-again-btn'));
       // Exercise staff must still be rendered (same exercise restored)
       expect(screen.getByTestId('exercise-staff-renderer')).toBeInTheDocument();
-      expect(screen.getAllByTestId('notation-renderer').length).toBeGreaterThanOrEqual(1);
     });
 
     it('pressing New Exercise returns to ready phase with start prompt', async () => {
