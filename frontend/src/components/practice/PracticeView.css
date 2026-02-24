@@ -300,6 +300,7 @@
 
 .practice-view__staff-renderer {
   overflow-x: auto;
+  overflow-y: hidden; /* prevent spurious 1-px scrollbar from implicit overflow-y:auto */
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
