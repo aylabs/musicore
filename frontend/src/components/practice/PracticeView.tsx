@@ -614,13 +614,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 role="img"
               >
                 {exerciseLayout ? (
-                  <LayoutRenderer
-                    layout={exerciseLayout}
-                    config={PRACTICE_RENDER_CONFIG}
-                    viewport={exerciseViewport}
-                    highlightedNoteIds={highlightedNoteIds}
-                    sourceToNoteIdMap={exerciseSourceMap}
-                  />
+                  <div style={{ width: exerciseLayout.total_width * BASE_SCALE, height: exerciseLayout.total_height * BASE_SCALE, flexShrink: 0 }}>
+                    <LayoutRenderer
+                      layout={exerciseLayout}
+                      config={PRACTICE_RENDER_CONFIG}
+                      viewport={exerciseViewport}
+                      highlightedNoteIds={highlightedNoteIds}
+                      sourceToNoteIdMap={exerciseSourceMap}
+                    />
+                  </div>
                 ) : (
                   <div className="practice-view__staff-loading" aria-live="polite">
                     {wasmReady ? 'Generating…' : 'Loading…'}
@@ -675,11 +677,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   {responseLayout ? (
-                    <LayoutRenderer
-                      layout={responseLayout}
-                      config={PRACTICE_RENDER_CONFIG}
-                      viewport={responseViewport}
-                    />
+                    <div style={{ width: responseLayout.total_width * BASE_SCALE, height: responseLayout.total_height * BASE_SCALE, flexShrink: 0 }}>
+                      <LayoutRenderer
+                        layout={responseLayout}
+                        config={PRACTICE_RENDER_CONFIG}
+                        viewport={responseViewport}
+                      />
+                    </div>
                   ) : (
                     <div className="practice-view__staff-loading" aria-live="polite">…</div>
                   )}
