@@ -175,6 +175,41 @@
 
 ---
 
+## Phase 9: Navigation, UX Polish & Resilience
+
+**Purpose**: Improve landing-page navigation flow, collapsible config panel for mobile, onboarding tips, button rename, and audio-resilience guards.
+
+### T036 — Collapsible config panel
+- [x] T036 Add `collapsed: boolean` and `onToggle: () => void` props to `frontend/src/components/practice/PracticeConfigPanel.tsx`; wrap content in `{!collapsed && ...}`; add `‹`/`›` toggle button; add `.practice-config--collapsed` modifier class in `frontend/src/components/practice/PracticeView.css` (40 px strip, overflow hidden, `transition: width 0.2s ease`); default collapsed on mobile (`window.innerWidth <= 768`) in `frontend/src/components/practice/PracticeView.tsx` via `useState(() => window.innerWidth <= 768)`; fix collapsed strip to use `justify-content: flex-start` at `≤768 px` so toggle button is not hidden off-screen
+
+### T037 — Onboarding tips banner
+- [x] T037 Add `showTips` state to `frontend/src/components/practice/PracticeView.tsx` — initialised from `sessionStorage.getItem('practice-tips-v1-dismissed') !== 'yes'`; render an info banner (`data-testid="tips-banner"`) listing keyboard / microphone proximity / quiet-space advice and an "external microphone improves experience" tip; "Got it!" dismiss button writes the key to `sessionStorage` and hides the banner; CSS `.practice-view__tips` (blue `#e8f4fd` background), `.practice-view__tips-list`, `.practice-view__tips-dismiss` in `frontend/src/components/practice/PracticeView.css`
+
+### T038 — Landing page Practice button + Play Score rename
+- [x] T038 Add `onShowPractice?: () => void` prop to `LandingScreenProps` in `frontend/src/components/LandingScreen.tsx`; render `🎹 Practice` button inside `.landing-actions` alongside the load button; update `.landing-actions` to `flex-direction: row` in `frontend/src/components/LandingScreen.css`; add `.landing-practice-btn` styles (purple palette, same scale as load button); stack to `column` at `≤520 px`; rename `LoadScoreButton` label/aria-label from `"Load Score"` to `"🎼 Play Score"` in `frontend/src/components/load-score/LoadScoreButton.tsx`; update all test selectors from `/load score/i` to `/play score/i` in `frontend/src/components/load-score/LoadScoreButton.test.tsx` and `frontend/src/test/components/ScoreViewer.test.tsx`
+
+### T039 — PracticeView back button navigates to landing page
+- [x] T039 Update `frontend/src/App.tsx` so `PracticeView.onBack` calls `setShowPractice(false)` (was previously falling through to `setShowRecording(false)`), returning the user to `ScoreViewer` which renders the `LandingScreen` when no score is loaded
+
+### T040 — Debug Instruments quick-load button on landing page
+- [x] T040 Add `onShowInstruments?: () => void` prop to `LandingScreenProps` in `frontend/src/components/LandingScreen.tsx`; render `🎸 Instruments` button (orange `.landing-instruments-btn`) when prop is provided; pass `onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}` from `ScoreViewer.tsx`; implement `handleAutoLoadInstruments` in `frontend/src/components/ScoreViewer.tsx` — fetches `PRELOADED_SCORES[0]` (Bach Invention No. 1) via `MusicXMLImportService`, calls `handleMusicXMLImport`, stays in `individual` view mode; remove floating `record-view-debug-btn` from the no-score render path; update `frontend/src/components/recording/RecordingView.test.tsx` selectors from `/record view/i` to `/instruments/i`
+
+### T041 — Play (layout) view back button returns to landing page
+- [x] T041 Update `handleReturnToView` in `frontend/src/components/ScoreViewer.tsx` — in addition to calling `exitFullscreen` and `setViewMode('individual')`, also call `setScore(null)`, `setScoreId(undefined)`, `setScoreTitle(null)`, and `setIsFileSourced(false)` so the component renders the `LandingScreen`; fix `frontend/src/components/ScoreViewer.test.tsx` popstate tests to use synchronous `act(() => { ... })` instead of `await act(async () => { ... })` to prevent timeout caused by the `LandingScreen` `requestAnimationFrame` loop
+
+### T042 — Instruments view toolbar: replace Play Score button with ← Back
+- [x] T042 Replace `<LoadScoreButton>` in the instruments view `toolbar-left` with a `<button className="score-viewer__back-btn">← Back</button>` that calls `handleReturnToView` (navigates back to landing page); remove unused `LoadScoreButton` import from `frontend/src/components/ScoreViewer.tsx`; add `.score-viewer__back-btn` styles to `frontend/src/components/ScoreViewer.css` (ghost button: `background: none`, `border: 1px solid #ccc`, hover `#f0f0f0`)
+
+### T043 — Pause playback when tab / PWA is hidden
+- [x] T043 Add `visibilitychange` `useEffect` to `frontend/src/components/ScoreViewer.tsx` — when `document.hidden` is `true` and `playbackState.status === 'playing'`, call `playbackState.pause()`; cleanup removes the listener on unmount; prevents audio continuing while the app is backgrounded or the PWA is minimised
+
+### T044 — Stop recording when tab / PWA is hidden
+- [x] T044 Add `visibilitychange` `useEffect` to `frontend/src/components/practice/PracticeView.tsx` — when `document.hidden` is `true` and `phase === 'playing'`, call `handleStop()`; stops mic capture and exercise immediately, scores the partial result, transitions to results phase; prevents ambient noise being captured while the user is away
+
+**Checkpoint**: Landing-page flow is consistent (all views navigate back cleanly); config panel is mobile-friendly; onboarding tips shown on first use; audio stops reliably on background/minimise.
+
+---
+
 ## Dependencies
 
 ```
