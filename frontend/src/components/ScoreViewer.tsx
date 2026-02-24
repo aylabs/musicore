@@ -509,15 +509,8 @@ export function ScoreViewer({
             Record View
           </button>
         )}
-        <button
-          className="practice-view-btn"
-          onClick={onShowPractice}
-          aria-label="Practice View"
-        >
-          Practice View
-        </button>
         {/* Feature 001: animated landing hero covers the full viewport */}
-        <LandingScreen onLoadScore={() => setDialogOpen(true)} />
+        <LandingScreen onLoadScore={() => setDialogOpen(true)} onShowPractice={onShowPractice} />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}
         {/* Feature 028: Load Score Dialog */}

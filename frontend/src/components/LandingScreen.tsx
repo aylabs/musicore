@@ -68,6 +68,8 @@ function evalPath(t: number): { x: number; y: number } {
 export interface LandingScreenProps {
   /** Called when the user activates the Load Score action */
   onLoadScore: () => void;
+  /** Called when the user activates the Practice action */
+  onShowPractice?: () => void;
 }
 
 /**
@@ -81,7 +83,7 @@ export interface LandingScreenProps {
  * - Pauses when the browser tab is hidden (Page Visibility API)
  * - Respects prefers-reduced-motion: position frozen, glyph/color still cycle
  */
-export function LandingScreen({ onLoadScore }: LandingScreenProps) {
+export function LandingScreen({ onLoadScore, onShowPractice }: LandingScreenProps) {
   // Read reduced-motion preference once at mount
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -278,6 +280,11 @@ export function LandingScreen({ onLoadScore }: LandingScreenProps) {
       {/* Load score action — stop propagation so button click doesn't toggle pause */}
       <div className="landing-actions" onClick={e => e.stopPropagation()}>
         <LoadScoreButton onClick={onLoadScore} />
+        {onShowPractice && (
+          <button className="practice-view-btn landing-practice-btn" onClick={onShowPractice}>
+            🎹 Practice
+          </button>
+        )}
       </div>
     </div>
   );
