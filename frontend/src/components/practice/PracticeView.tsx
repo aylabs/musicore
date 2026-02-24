@@ -233,26 +233,46 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   }, [highlightedSlotIndex, exerciseLayout]);
 
   // ── Build viewport for LayoutRenderer ────────────────────────────────────
-  // Use the first system's bounding_box so the viewport crops to actual content
-  // (the Rust engine allocates system_height=200 logical units but the staff
-  //  content is ~80 units; using total_height leaves blank space above/below).
+  // Derive a tight viewBox from actual staff-line positions rather than the
+  // system bounding_box (which equals system_height=200 regardless of content).
+  //
+  // The Rust engine places the first staff's top line at staff_lines[0].y_position
+  // and the bottom line at staff_lines[4].y_position. We add generous vertical
+  // padding so the treble-clef curl (which extends above the top line) and any
+  // stems / ledger lines below the bottom line are never clipped.
+  //
+  //   paddingAbove = 2.5 staff spaces  — covers treble-clef top curl
+  //   paddingBelow = 2.5 staff spaces  — covers stems / notes below bottom line
+  //
+  // Result (single treble staff, units_per_space=20):
+  //   topY=0, bottomY=80  →  y=-50, height=180  →  div height=90 CSS px
   const exerciseViewport = useMemo(() => {
-    const bb = exerciseLayout?.systems?.[0]?.bounding_box;
+    const stave = exerciseLayout?.systems?.[0]?.staff_groups?.[0]?.staves?.[0];
+    const topY    = stave?.staff_lines?.[0]?.y_position ?? 0;
+    const bottomY = stave?.staff_lines?.[4]?.y_position ?? (4 * PRACTICE_UNITS_PER_SPACE);
+    const space   = exerciseLayout?.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
+    const padAbove = 2.5 * space;
+    const padBelow = 2.5 * space;
     return {
       x: 0,
-      y: bb ? bb.y : 0,
+      y: topY - padAbove,
       width: exerciseLayout ? exerciseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
-      height: bb ? bb.height : 200,
+      height: (bottomY - topY) + padAbove + padBelow,
     };
   }, [exerciseLayout]);
 
   const responseViewport = useMemo(() => {
-    const bb = responseLayout?.systems?.[0]?.bounding_box;
+    const stave = responseLayout?.systems?.[0]?.staff_groups?.[0]?.staves?.[0];
+    const topY    = stave?.staff_lines?.[0]?.y_position ?? 0;
+    const bottomY = stave?.staff_lines?.[4]?.y_position ?? (4 * PRACTICE_UNITS_PER_SPACE);
+    const space   = responseLayout?.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
+    const padAbove = 2.5 * space;
+    const padBelow = 2.5 * space;
     return {
       x: 0,
-      y: bb ? bb.y : 0,
+      y: topY - padAbove,
       width: responseLayout ? responseLayout.total_width : PRACTICE_VIEWPORT_WIDTH,
-      height: bb ? bb.height : 200,
+      height: (bottomY - topY) + padAbove + padBelow,
     };
   }, [responseLayout]);
 
