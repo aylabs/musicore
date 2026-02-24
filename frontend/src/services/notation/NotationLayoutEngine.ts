@@ -588,6 +588,10 @@ export const NotationLayoutEngine = {
     const ticksPerMeasure = PPQ * (4 / timeSignature.denominator) * timeSignature.numerator;
     
     const barlines: Barline[] = [];
+
+    // Must match the barlineNoteSpacing used in calculateNotePositions so that barlines
+    // are shifted by the same cumulative offset that notes accumulate at each measure boundary.
+    const barlineNoteSpacing = config.minNoteSpacing * 1.5;
     
     // Y coordinates span from top line to bottom line
     const centerY = config.viewportHeight / 2;
@@ -597,8 +601,11 @@ export const NotationLayoutEngine = {
     // Generate barlines at measure boundaries (start at first measure END, not at tick 0)
     let measureNumber = 1;
     for (let tick = ticksPerMeasure; tick <= maxTick; tick += ticksPerMeasure) {
-      // Calculate X position from tick
-      const x = config.marginLeft + config.clefWidth + tick * config.pixelsPerTick;
+      // Barline sits at the tick boundary with the same cumulative offset as notes in the
+      // preceding measure: (measureNumber - 1) * barlineNoteSpacing.
+      // Notes in the NEXT measure carry one more barlineNoteSpacing, creating the visual gap.
+      const x = config.marginLeft + config.clefWidth + tick * config.pixelsPerTick
+        + (measureNumber - 1) * barlineNoteSpacing;
       
       barlines.push({
         id: `barline-${measureNumber}`,
