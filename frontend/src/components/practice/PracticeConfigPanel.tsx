@@ -65,7 +65,7 @@ export function PracticeConfigPanel({
         aria-label={collapsed ? 'Open settings' : 'Close settings'}
         title={collapsed ? 'Open settings' : 'Close settings'}
       >
-        {collapsed ? '⚙' : '✕'}
+        {collapsed ? '›' : '‹'}
       </button>
 
       {/* ── Content (hidden when collapsed) ─────────────────────── */}
