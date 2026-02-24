@@ -21,6 +21,12 @@ export interface ExerciseConfig {
   octaveRange: 1 | 2;
   /** Practice mode: 'flow' = timed play-through; 'step' = wait for correct note each slot */
   mode: 'flow' | 'step';
+  /**
+   * Step mode only. Multiplier applied to the quarter-note duration (60 000 / bpm ms) to
+   * derive the per-slot timeout.  E.g. 4 = the user has 4× the note's duration to press it.
+   * Exceeding the budget counts as a wrong note (slot is penalised, hint turns red).
+   */
+  stepTimeoutMultiplier: number;
 }
 
 export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
@@ -29,6 +35,7 @@ export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
   clef: 'Treble',
   octaveRange: 1,
   mode: 'flow',
+  stepTimeoutMultiplier: 4,
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
