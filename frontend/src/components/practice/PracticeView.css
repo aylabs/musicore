@@ -61,7 +61,6 @@
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .practice-view__header-btn {
