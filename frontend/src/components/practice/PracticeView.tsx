@@ -117,7 +117,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [stepWrongNote, setStepWrongNote] = useState<Note | null>(null);
   /** Label for the wrong note above the response staff */
   const [stepWrongLabel, setStepWrongLabel] = useState<string>('');
-
+  // ── Staff scroll refs (auto-scroll to highlighted note) ──────────────────
+  const exScrollRef = useRef<HTMLDivElement | null>(null);
+  const respScrollRef = useRef<HTMLDivElement | null>(null);
   // ── Step mode refs ────────────────────────────────────────────────────────
   /** Current slot index in step mode */
   const stepIndexRef = useRef(0);
@@ -127,6 +129,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stepLastPlayTimeRef = useRef<number>(0);
   /** Slots that had at least one wrong attempt (each slot penalised once) */
   const stepPenalizedSlotsRef = useRef<Set<number>>(new Set());
+  /** setTimeout ID for the currently-active slot timeout (step mode) */
+  const stepSlotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -215,6 +219,21 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   );
 
   // ── Derive highlighted note ID for exercise staff ────────────────────────
+
+  // ── Auto-scroll staves to keep highlighted note centred ──────────────────
+  //    Runs after exerciseLayout (and responseLayout) are available.
+  useEffect(() => {
+    if (highlightedSlotIndex === null) return;
+    const noteId = `ex-slot-${highlightedSlotIndex}`;
+    const notePos = exerciseLayout.notes.find((n) => n.id === noteId);
+    if (!notePos) return;
+    const scrollToCenter = (el: HTMLDivElement | null) => {
+      if (!el) return;
+      el.scrollTo({ left: Math.max(0, notePos.x - el.clientWidth / 2), behavior: 'smooth' });
+    };
+    scrollToCenter(exScrollRef.current);
+    scrollToCenter(respScrollRef.current);
+  }, [highlightedSlotIndex, exerciseLayout.notes]);
   const highlightedNoteIds = useMemo(
     () =>
       highlightedSlotIndex !== null ? [`ex-slot-${highlightedSlotIndex}`] : [],
@@ -244,6 +263,37 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     countdownTimersRef.current = [];
     setCountdownValue(null);
   }, []);
+
+  // ── Step slot timeout helpers ─────────────────────────────────────────────
+  const clearStepTimeout = useCallback(() => {
+    if (stepSlotTimeoutRef.current !== null) {
+      clearTimeout(stepSlotTimeoutRef.current);
+      stepSlotTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleStepSlotTimeout = useCallback(
+    (stepIdx: number) => {
+      clearStepTimeout();
+      const noteDurationMs = 60_000 / exercise.bpm;
+      const timeoutMs = noteDurationMs * exerciseConfig.stepTimeoutMultiplier;
+      const noteId = `ex-slot-${stepIdx}`;
+      const targetPitch = exercise.notes[stepIdx]?.midiPitch;
+      stepSlotTimeoutRef.current = setTimeout(() => {
+        stepSlotTimeoutRef.current = null;
+        // Penalise only once (wrong note may have already penalised this slot)
+        stepPenalizedSlotsRef.current.add(stepIdx);
+        if (targetPitch !== undefined) {
+          setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetPitch) }));
+          setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
+        }
+        // No response-staff note for a timeout (no pitch was played)
+        setStepWrongNote(null);
+        setStepWrongLabel('');
+      }, timeoutMs);
+    },
+    [clearStepTimeout, exercise.bpm, exercise.notes, exerciseConfig.stepTimeoutMultiplier],
+  );
 
   // ── Stop playback helper ─────────────────────────────────────────────────
   const stopPlayback = useCallback(() => {
@@ -310,13 +360,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Handle Stop (FR-007) ─────────────────────────────────────────────────
   const handleStop = useCallback(() => {
     stopPlayback();
+    clearStepTimeout();
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
     const raw = scoreExercise(exercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setPhase('results');
-  }, [exercise, bpm, stopCapture, stopPlayback]);
+  }, [exercise, bpm, clearStepTimeout, stopCapture, stopPlayback]);
 
   // ── Stop recording when tab/PWA is hidden (minimised or switched away) ──────
   //    Stops active mic capture + exercise to avoid capturing ambient audio
@@ -340,27 +391,36 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     }
   }, [micState]);
 
+  // ── handleStartStep — begin step exercise immediately (no note required) ───
+  const handleStartStep = useCallback(() => {
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    setPhase('playing');
+    setHighlightedSlotIndex(0);
+    stepIndexRef.current = 0;
+    lastStepMidiRef.current = null;
+    stepLastPlayTimeRef.current = Date.now();
+    void ToneAdapter.getInstance().init().then(() => {
+      const adapter = ToneAdapter.getInstance();
+      adapter.setMuted(false);
+      adapter.startTransport();
+      adapter.playNote(exercise.notes[0].midiPitch, 0.6, 0);
+    });
+    scheduleStepSlotTimeout(0);
+  }, [exercise, scheduleStepSlotTimeout]);
+
   // ── Auto-start: first detected pitch triggers the exercise ─────────────────
   useEffect(() => {
     if (phase !== 'ready' || !currentPitch || autoStartedRef.current) return;
-    autoStartedRef.current = true;
 
     if (exerciseConfig.mode === 'step') {
-      // Step mode: skip countdown, enter playing immediately
+      // Step mode: delegate to handleStartStep (also callable via button)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPhase('playing');
-      setHighlightedSlotIndex(0);
-      stepIndexRef.current = 0;
-      lastStepMidiRef.current = null;
-      stepLastPlayTimeRef.current = Date.now();
-      void ToneAdapter.getInstance().init().then(() => {
-        const adapter = ToneAdapter.getInstance();
-        adapter.setMuted(false);
-        adapter.startTransport();
-        adapter.playNote(exercise.notes[0].midiPitch, 0.6, 0);
-      });
+      handleStartStep();
     } else {
       // Flow mode: 3-2-1 countdown
+      autoStartedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase('countdown');
       setCountdownValue(3);
       const t1 = setTimeout(() => setCountdownValue(2), 1000);
@@ -371,7 +431,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       }, 3000);
       countdownTimersRef.current = [t1, t2, t3];
     }
-  }, [currentPitch, phase, exerciseConfig.mode, exercise, handlePlay]);
+  }, [currentPitch, phase, exerciseConfig.mode, handleStartStep, handlePlay]);
 
   // ── Step mode: respond to pitch detections ────────────────────────────────
   useEffect(() => {
@@ -396,6 +456,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#4caf50' }));
       setStepWrongNote(null);
       setStepWrongLabel('');
+      clearStepTimeout();
       // Accumulate on response staff
       const respNote: Note = {
         id: `resp-step-${stepIdx}`,
@@ -432,6 +493,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         const adapter = ToneAdapter.getInstance();
         stepLastPlayTimeRef.current = Date.now();
         adapter.playNote(exercise.notes[nextIdx].midiPitch, 0.6, adapter.getTransportSeconds() + 0.08);
+        scheduleStepSlotTimeout(nextIdx);
       }
     } else {
       // ✗ Wrong note — show target note name as red hint + wrong note in response staff
@@ -446,12 +508,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       });
       setStepWrongLabel(midiToNoteName(detectedMidi));
     }
-  }, [currentPitch, phase, exerciseConfig.mode, exercise]);
+  }, [currentPitch, phase, exerciseConfig.mode, exercise, clearStepTimeout, scheduleStepSlotTimeout]);
 
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
     stopPlayback();
     clearCountdown();
+    clearStepTimeout();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
@@ -464,14 +527,17 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
+    exScrollRef.current?.scrollTo({ left: 0 });
+    respScrollRef.current?.scrollTo({ left: 0 });
     setPhase('ready');
     // exercise stays the same
-  }, [clearCapture, clearCountdown, stopPlayback]);
+  }, [clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
 
   // ── New Exercise (T019) ───────────────────────────────────
   const handleNewExercise = useCallback(() => {
     stopPlayback();
     clearCountdown();
+    clearStepTimeout();
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
@@ -484,19 +550,22 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
     autoStartedRef.current = false;
+    exScrollRef.current?.scrollTo({ left: 0 });
+    respScrollRef.current?.scrollTo({ left: 0 });
     setExercise(generateExercise(bpm, exerciseConfig));
     setPhase('ready');
-  }, [bpm, exerciseConfig, clearCapture, clearCountdown, stopPlayback]);
+  }, [bpm, exerciseConfig, clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
 
   // ── Back button — cleanup on navigate away (T022) ────────────────────────
   const handleBack = useCallback(() => {
     stopPlayback();
     clearCountdown();
+    clearStepTimeout();
     // clearCapture releases captureRef; mic teardown is handled by
     // usePracticeRecorder's own unmount cleanup
     clearCapture();
     onBack();
-  }, [clearCapture, clearCountdown, stopPlayback, onBack]);
+  }, [clearCapture, clearCountdown, clearStepTimeout, stopPlayback, onBack]);
 
   // ── Stopwatch cleanup on unmount ─────────────────────────────────────────
   useEffect(() => {
@@ -515,6 +584,19 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           ← Back
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
+        {/* Phase-sensitive action buttons */}
+        <div className="practice-view__header-actions">
+          {phase === 'playing' && (
+            <button
+              className="practice-view__header-btn practice-view__header-btn--stop"
+              onClick={handleStop}
+              aria-label="Stop exercise"
+              data-testid="stop-btn"
+            >
+              ■ Stop
+            </button>
+          )}
+        </div>
       </header>
 
       {/* ── Body: sidebar + main ─────────────────────────────────── */}
@@ -560,6 +642,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <div className="practice-view__staff-label">Exercise</div>
             <div className="practice-view__staff-inner">
               <div
+                ref={exScrollRef}
                 className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
                 data-testid="exercise-staff-renderer"
                 aria-label="Exercise notes"
@@ -576,17 +659,28 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             </div>
           </div>
 
-          {/* ── Controls (ready / countdown / playing) ───────────── */}
-          {phase !== 'results' && (
+          {/* ── Controls (ready / countdown only — Stop lives in header) ── */}
+          {(phase === 'ready' || phase === 'countdown') && (
             <div className="practice-view__controls">
               {phase === 'ready' && (
-                <p className="practice-view__start-prompt" data-testid="start-prompt" aria-live="polite">
-                  {micState === 'active'
-                    ? exerciseConfig.mode === 'step'
-                      ? '🎹 Play any note to start step-by-step'
-                      : '🎹 Press any note to start'
-                    : '🎹 Waiting for microphone…'}
-                </p>
+                <>
+                  {exerciseConfig.mode === 'step' && micState === 'active' ? (
+                    <button
+                      className="practice-view__play-btn"
+                      onClick={handleStartStep}
+                      aria-label="Start step exercise"
+                      data-testid="start-step-btn"
+                    >
+                      ▶ Start
+                    </button>
+                  ) : (
+                    <p className="practice-view__start-prompt" data-testid="start-prompt" aria-live="polite">
+                      {micState === 'active'
+                        ? '🎹 Press any note to start'
+                        : '🎹 Waiting for microphone…'}
+                    </p>
+                  )}
+                </>
               )}
               {phase === 'countdown' && countdownValue !== null && (
                 <div
@@ -600,20 +694,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                   </span>
                 </div>
               )}
-              {phase === 'playing' && (
-                <button className="practice-view__stop-btn" onClick={handleStop} aria-label="Stop exercise" data-testid="stop-btn">
-                  ■ Stop
-                </button>
-              )}
             </div>
           )}
 
-          {/* ── Response staff ───────────────────────────────────── */}
-          {(phase === 'playing' || phase === 'results') && (
+          {/* ── Response staff (flow mode only — not needed in step mode) ─── */}
+          {(phase === 'playing' || phase === 'results') && exerciseConfig.mode !== 'step' && (
             <div className="practice-view__staff-block" data-testid="response-staff-block">
               <div className="practice-view__staff-label">Your Response</div>
               <div className="practice-view__staff-inner">
-                <div className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
+                <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   <NotationRenderer
                     layout={responseLayout}
                     highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []}
@@ -633,17 +722,27 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
           {/* ── Results ──────────────────────────────────────────── */}
           {phase === 'results' && result && (
-            <>
-              <div className="practice-view__controls">
-                <button className="practice-view__play-btn" onClick={handleTryAgain} aria-label="Try Again" data-testid="try-again-btn">
-                  🔁 Try Again
+            <div className="practice-view__results-row">
+              <ExerciseResultsView result={result} exercise={exercise} />
+              <div className="practice-view__results-actions">
+                <button
+                  className="practice-view__header-btn"
+                  onClick={handleTryAgain}
+                  aria-label="Try Again"
+                  data-testid="try-again-btn"
+                >
+                  🔁 Again
                 </button>
-                <button className="practice-view__play-btn" onClick={handleNewExercise} aria-label="New Exercise" data-testid="new-exercise-btn" style={{ background: '#388e3c' }}>
-                  🎲 New Exercise
+                <button
+                  className="practice-view__header-btn practice-view__header-btn--new"
+                  onClick={handleNewExercise}
+                  aria-label="New Exercise"
+                  data-testid="new-exercise-btn"
+                >
+                  🎲 New
                 </button>
               </div>
-              <ExerciseResultsView result={result} exercise={exercise} />
-            </>
+            </div>
           )}
         </main>
       </div>

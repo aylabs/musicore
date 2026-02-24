@@ -132,7 +132,7 @@ export function PracticeConfigPanel({
             type="range"
             className="practice-config__slider"
             min={1}
-            max={12}
+            max={20}
             step={1}
             value={config.noteCount}
             disabled={disabled || isC4Scale}
@@ -218,6 +218,28 @@ export function PracticeConfigPanel({
         </div>
         <span className="practice-config__unit">BPM</span>
       </Section>
+
+      {/* ── Step timeout multiplier (step mode only) ─────────────── */}
+      {config.mode === 'step' && (
+        <Section title="Timeout">
+          <div className="practice-config__row">
+            <input
+              type="range"
+              className="practice-config__slider"
+              min={1}
+              max={10}
+              step={1}
+              value={config.stepTimeoutMultiplier}
+              disabled={disabled}
+              onChange={(e) => set('stepTimeoutMultiplier', Number(e.target.value))}
+              aria-label="Step timeout multiplier"
+              data-testid="timeout-multiplier-slider"
+            />
+            <span className="practice-config__value">×{config.stepTimeoutMultiplier}</span>
+          </div>
+          <span className="practice-config__unit">× note duration</span>
+        </Section>
+      )}
       </>
       )}
     </aside>
