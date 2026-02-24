@@ -809,4 +809,102 @@ describe('NotationLayoutEngine', () => {
       expect(staffHeight).toBe(48);
     });
   });
+
+  /**
+   * Principle VII Regression: Barline-Note Ordering (commit 41eb168)
+   *
+   * Bug: barlines in multi-measure exercises were computed using raw tick maths
+   * without the cumulative barlineNoteSpacing offset accumulated by
+   * calculateNotePositions at each measure boundary. This caused barlines to
+   * appear BEHIND the notes of the preceding measure for measures > 1.
+   *
+   * Fix: calculateBarlines adds (measureNumber - 1) × barlineNoteSpacing to
+   * each barline x so that the cumulative spacing offsets match.
+   *
+   * This test MUST remain green forever to prevent regression.
+   */
+  describe('Principle VII regression: barline x > last note x in preceding measure', () => {
+    const STAFF_CONFIG = {
+      ...DEFAULT_STAFF_CONFIG,
+      pixelsPerTick: 0.06,
+      minNoteSpacing: 10,
+      viewportWidth: 99999,
+      scrollX: 0,
+    };
+
+    /**
+     * Build a minimal Note[] mirroring how PracticeView constructs exerciseNotes:
+     * each note occupies one quarter-note slot at slotIndex × 960 ticks.
+     */
+    function makeNotes(count: number) {
+      return Array.from({ length: count }, (_, i) => ({
+        id: `ex-slot-${i}`,
+        start_tick: i * 960,
+        duration_ticks: 960,
+        pitch: 60,
+      }));
+    }
+
+    it('first barline x is strictly greater than the last note x in measure 1 (8-note exercise)', () => {
+      // 4/4 time → 4 quarter notes per measure → 8 notes = 2 measures
+      const notes = makeNotes(8);
+      const layout = NotationLayoutEngine.calculateLayout({
+        notes,
+        clef: 'Treble',
+        timeSignature: { numerator: 4, denominator: 4 },
+        config: STAFF_CONFIG,
+      });
+
+      // The barline at the end of measure 1 (between note index 3 and 4)
+      const barline = layout.barlines.find((b) => b.measureNumber === 1);
+      expect(barline).toBeDefined();
+
+      // The last note of measure 1 is at tick 3×960 = 2880 (slot index 3)
+      const lastMeasure1Note = layout.notes.find((n) => n.id === 'ex-slot-3');
+      expect(lastMeasure1Note).toBeDefined();
+
+      // Core invariant: barline must be visually AFTER the last note in the measure
+      expect(barline!.x).toBeGreaterThan(lastMeasure1Note!.x);
+    });
+
+    it('all barline x positions are greater than the last note x in their preceding measure (16-note exercise)', () => {
+      // 4/4 time → 16 notes = 4 measures → 3 barlines
+      const notes = makeNotes(16);
+      const layout = NotationLayoutEngine.calculateLayout({
+        notes,
+        clef: 'Treble',
+        timeSignature: { numerator: 4, denominator: 4 },
+        config: STAFF_CONFIG,
+      });
+
+      // For each barline N, the last note in the preceding measure is at slot (N*4 - 1)
+      for (const barline of layout.barlines) {
+        const lastSlotInPrecedingMeasure = barline.measureNumber * 4 - 1;
+        const lastNote = layout.notes.find((n) => n.id === `ex-slot-${lastSlotInPrecedingMeasure}`);
+        expect(lastNote).toBeDefined();
+        expect(barline.x).toBeGreaterThan(lastNote!.x);
+      }
+    });
+
+    it('no barline x position overlaps the first note of the following measure', () => {
+      // The first note of measure N+1 (slot N*4) must be to the RIGHT of barline N
+      const notes = makeNotes(8);
+      const layout = NotationLayoutEngine.calculateLayout({
+        notes,
+        clef: 'Treble',
+        timeSignature: { numerator: 4, denominator: 4 },
+        config: STAFF_CONFIG,
+      });
+
+      const barline = layout.barlines.find((b) => b.measureNumber === 1);
+      expect(barline).toBeDefined();
+
+      // First note of measure 2 = slot index 4
+      const firstMeasure2Note = layout.notes.find((n) => n.id === 'ex-slot-4');
+      expect(firstMeasure2Note).toBeDefined();
+
+      // Note must be to the right of the barline
+      expect(firstMeasure2Note!.x).toBeGreaterThan(barline!.x);
+    });
+  });
 });

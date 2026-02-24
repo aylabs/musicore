@@ -19,8 +19,8 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **Purpose**: Extend the `ExerciseNote` domain type with a stable `id` field. This change is a prerequisite for all three user stories and has no code risk — it is a pure additive change to an existing interface and its factory functions.
 
-- [ ] T001 Add `id: string` field to `ExerciseNote` interface in `frontend/src/types/practice.ts`
-- [ ] T002 Update `generateExercise()` and `generateC4ScaleExercise()` to assign `id: \`ex-${slotIndex}\`` per note in `frontend/src/services/practice/exerciseGenerator.ts`
+- [X] T001 Add `id: string` field to `ExerciseNote` interface in `frontend/src/types/practice.ts`
+- [X] T002 Update `generateExercise()` and `generateC4ScaleExercise()` to assign `id: \`ex-${slotIndex}\`` per note in `frontend/src/services/practice/exerciseGenerator.ts`
 
 **Checkpoint**: `ExerciseNote` has an `id` field; all exercise generation paths populate it; existing generator unit tests still pass.
 
@@ -32,9 +32,9 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 
 **⚠️ CRITICAL**: Constitution Principle V requires tests written before implementation. Write T003 and T004 before T005.
 
-- [ ] T003 [P] Write Principle VII regression test asserting `barline.x > lastNoteInPriorMeasure.x` for a multi-measure exercise in `frontend/src/services/notation/NotationLayoutEngine.test.ts`
-- [ ] T004 [P] Write unit tests for all three adapter functions (`serializeExerciseToLayoutInput`, `buildPracticeSourceToNoteIdMap`, `findPracticeNoteX`) in `frontend/tests/unit/practiceLayoutAdapter.test.ts`
-- [ ] T005 Implement `practiceLayoutAdapter.ts` with all three functions: `serializeExerciseToLayoutInput(notes, clef)`, `buildPracticeSourceToNoteIdMap(notes)`, `findPracticeNoteX(layout, slotIndex)` in `frontend/src/services/practice/practiceLayoutAdapter.ts`
+- [X] T003 [P] Write Principle VII regression test asserting `barline.x > lastNoteInPriorMeasure.x` for a multi-measure exercise in `frontend/src/services/notation/NotationLayoutEngine.test.ts`
+- [X] T004 [P] Write unit tests for all three adapter functions (`serializeExerciseToLayoutInput`, `buildPracticeSourceToNoteIdMap`, `findPracticeNoteX`) in `frontend/tests/unit/practiceLayoutAdapter.test.ts`
+- [X] T005 Implement `practiceLayoutAdapter.ts` with all three functions: `serializeExerciseToLayoutInput(notes, clef)`, `buildPracticeSourceToNoteIdMap(notes)`, `findPracticeNoteX(layout, slotIndex)` in `frontend/src/services/practice/practiceLayoutAdapter.ts`
 
 **Checkpoint**: T003 test passes (regression protected). T004 tests pass against T005 implementation. `practiceLayoutAdapter.ts` exports all three functions with correct types.
 
