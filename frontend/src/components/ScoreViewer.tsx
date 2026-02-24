@@ -12,7 +12,6 @@ import { ViewModeSelector, type ViewMode } from "./stacked/ViewModeSelector";
 import { LayoutView } from "./layout/LayoutView";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { useNoteHighlight } from "../services/highlight/useNoteHighlight";
-import { LoadScoreButton } from "./load-score/LoadScoreButton";
 import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
 import { PRELOADED_SCORES } from "../data/preloadedScores";
 import { LandingScreen } from "./LandingScreen";
@@ -569,12 +568,16 @@ export function ScoreViewer({
             </div>
           </div>
 
-          {/* Feature 010: Import (left) and View Mode Selector (right) on same line */}
+          {/* Feature 010: Back button (left) and View Mode Selector (right) on same line */}
           <div className="score-toolbar">
             <div className="toolbar-left">
-              <LoadScoreButton
-                onClick={() => setDialogOpen(true)}
-              />
+              <button
+                className="score-viewer__back-btn"
+                onClick={handleReturnToView}
+                aria-label="Back to landing page"
+              >
+                ← Back
+              </button>
             </div>
             <div className="toolbar-right">
               {debugMode && (
