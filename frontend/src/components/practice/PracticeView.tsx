@@ -697,8 +697,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             </div>
           )}
 
-          {/* ── Response staff ───────────────────────────────────── */}
-          {(phase === 'playing' || phase === 'results') && (
+          {/* ── Response staff (flow mode only — not needed in step mode) ─── */}
+          {(phase === 'playing' || phase === 'results') && exerciseConfig.mode !== 'step' && (
             <div className="practice-view__staff-block" data-testid="response-staff-block">
               <div className="practice-view__staff-label">Your Response</div>
               <div className="practice-view__staff-inner">

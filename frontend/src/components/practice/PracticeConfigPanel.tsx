@@ -132,7 +132,7 @@ export function PracticeConfigPanel({
             type="range"
             className="practice-config__slider"
             min={1}
-            max={12}
+            max={20}
             step={1}
             value={config.noteCount}
             disabled={disabled || isC4Scale}

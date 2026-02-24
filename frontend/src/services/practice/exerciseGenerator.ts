@@ -13,7 +13,7 @@ import type { Exercise, ExerciseNote } from '../../types/practice';
 export interface ExerciseConfig {
   /** Note pool selection */
   preset: 'random' | 'c4scale';
-  /** Number of notes in the exercise (1–12) */
+  /** Number of notes in the exercise (1–20) */
   noteCount: number;
   /** Clef determines the note pool range */
   clef: 'Treble' | 'Bass';
