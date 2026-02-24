@@ -318,6 +318,19 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     setPhase('results');
   }, [exercise, bpm, stopCapture, stopPlayback]);
 
+  // ── Stop recording when tab/PWA is hidden (minimised or switched away) ──────
+  //    Stops active mic capture + exercise to avoid capturing ambient audio
+  //    while the user is away and to give them a clean result on return.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && phase === 'playing') {
+        handleStop();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [phase, handleStop]);
+
   // ── Pre-warm ToneAdapter when mic is ready so adapter.init() is instant ────
   //    This eliminates the startMs timing drift that caused early slots to be
   //    missed (adapter.init could take 500 ms+ loading piano samples).
