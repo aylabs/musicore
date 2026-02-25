@@ -50,7 +50,7 @@ import './PracticeView.css';
 const QUARTER_TICKS = 960;
 
 /** Milliseconds to ignore mic input after playing an exercise note (avoids speaker feedback) */
-const STEP_INPUT_DELAY_MS = 450;
+const STEP_INPUT_DELAY_MS = 700;
 
 /** Scale factor: logical layout units → CSS pixels (matches LayoutView BASE_SCALE) */
 const BASE_SCALE = 0.5;
