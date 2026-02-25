@@ -69,3 +69,43 @@ export interface OscilloscopeState {
   /** Latest PCM amplitude values (Float32Array slice), or null when not recording */
   waveform: Float32Array | null;
 }
+
+// ─── MIDI Input types (feature 029-midi-input) ────────────────────────────────
+
+/** A connected MIDI input device */
+export interface MidiDevice {
+  /** Unique port ID assigned by the browser */
+  id: string;
+  /** Human-readable device name; falls back to "Unknown Device" if empty */
+  name: string;
+  /** Manufacturer name; may be empty string */
+  manufacturer: string;
+  /** Current connection state */
+  state: 'connected' | 'disconnected';
+}
+
+/** Active capture source — exactly one is active at any time */
+export type InputSource =
+  | { kind: 'microphone' }
+  | { kind: 'midi'; deviceName: string; deviceId: string };
+
+/** A single MIDI note-on event received from the active MIDI device */
+export interface MidiNoteEvent {
+  /** MIDI note number 0–127 */
+  noteNumber: number;
+  /** Key velocity 1–127 (events with velocity 0 are filtered out — they are note-offs) */
+  velocity: number;
+  /** MIDI channel 1–16; all channels are captured with no filtering */
+  channel: number;
+  /** Milliseconds elapsed since session startTimestamp */
+  timestampMs: number;
+  /** Derived scientific pitch name, e.g. "A4", "C#5" */
+  label: string;
+}
+
+/** A device-level connection lifecycle event */
+export interface MidiConnectionEvent {
+  device: MidiDevice;
+  kind: 'connected' | 'disconnected';
+  timestamp: number;
+}

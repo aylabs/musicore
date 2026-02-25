@@ -20,7 +20,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PracticePhase, ExerciseResult, NoteComparisonStatus } from '../../types/practice';
+import type { PracticePhase, ExerciseResult, NoteComparisonStatus, ResponseNote } from '../../types/practice';
+import { matchRawNotesToSlots } from '../../services/practice/usePracticeRecorder';
+import { useMidiInput } from '../../services/recording/useMidiInput';
+import { InputSourceBadge } from '../recording/InputSourceBadge';
+import type { InputSource, MidiNoteEvent, MidiConnectionEvent, PitchSample } from '../../types/recording';
 import {
   generateExercise,
   type ExerciseConfig,
@@ -171,6 +175,21 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const { micState, micError, currentPitch, liveResponseNotes, startCapture, stopCapture, clearCapture } =
     usePracticeRecorder();
 
+  // ── MIDI input state ─────────────────────────────────────────────────────
+  const [activeSource, setActiveSource] = useState<InputSource>({ kind: 'microphone' });
+  const activeSourceRef = useRef<InputSource>({ kind: 'microphone' });
+  const [midiCurrentPitch, setMidiCurrentPitch] = useState<PitchSample | null>(null);
+  const midiPitchClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flow-mode MIDI capture: raw ResponseNote buffer + live slot display
+  const midiCaptureRef = useRef<ResponseNote[]>([]);
+  const [midiFlowNotes, setMidiFlowNotes] = useState<Array<{ slotIndex: number; midiCents: number }>>([]);
+
+  // Keep activeSourceRef in sync
+  useEffect(() => { activeSourceRef.current = activeSource; }, [activeSource]);
+
+  // Derived: active pitch = MIDI note-on (MIDI mode) or mic detection (mic mode)
+  const activePitch = activeSource.kind === 'midi' ? midiCurrentPitch : currentPitch;
+
   // ── Config sidebar collapse ──────────────────────────────────────────────
   const [configCollapsed, setConfigCollapsed] = useState(() => window.innerWidth <= 768);
 
@@ -207,6 +226,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** setTimeout ID used to clear lastStepMidiRef after the carry-over guard window */
   const stepDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Refs for stable callback access to mutable state
+  const phaseRef = useRef<PracticePhase>(phase);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  const exerciseRef = useRef(exercise);
+  useEffect(() => { exerciseRef.current = exercise; }, [exercise]);
 
   /** Very large system width so the layout engine never compresses note spacing.
    * Each note always gets its natural width (base_spacing=40 + sqrt(dur/960)*40 units),
@@ -242,12 +266,12 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
   const ghostNote = useMemo<{ slotIndex: number; midiPitch: number } | null>(() => {
-    if (exerciseConfig.mode !== 'flow' || phase !== 'playing' || !currentPitch) return null;
+    if (exerciseConfig.mode !== 'flow' || phase !== 'playing' || !activePitch) return null;
     return {
       slotIndex: highlightedSlotIndex ?? 0,
-      midiPitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
+      midiPitch: Math.round(12 * Math.log2(activePitch.hz / 440) + 69),
     };
-  }, [exerciseConfig.mode, phase, currentPitch, highlightedSlotIndex]);
+  }, [exerciseConfig.mode, phase, activePitch, highlightedSlotIndex]);
 
   // ── Response staff notes for WASM layout input (US3) ─────────────────────
   const responseNoteInputs = useMemo<Array<{ slotIndex: number; midiCents: number }>>(() => {
@@ -264,6 +288,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         }));
     }
     // Flow playing: live response notes + ghost
+    if (activeSource.kind === 'midi') {
+      const notes = [...midiFlowNotes];
+      if (ghostNote) notes.push({ slotIndex: ghostNote.slotIndex, midiCents: ghostNote.midiPitch * 100 });
+      return notes;
+    }
     const notes = liveResponseNotes.map((n) => ({
       slotIndex: n.start_tick / QUARTER_TICKS,
       midiCents: n.pitch * 100,
@@ -272,7 +301,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       notes.push({ slotIndex: ghostNote.slotIndex, midiCents: ghostNote.midiPitch * 100 });
     }
     return notes;
-  }, [exerciseConfig.mode, phase, result, liveResponseNotes, ghostNote]);
+  }, [exerciseConfig.mode, phase, result, liveResponseNotes, ghostNote, activeSource.kind, midiFlowNotes]);
 
   // ── Response layout via Rust WASM (US3) ──────────────────────────────────
   useEffect(() => {
@@ -386,6 +415,68 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     adapter.setMuted(false); // restore audio when stopping
   }, []);
 
+  // ── MIDI note-on handler ──────────────────────────────────────────────────
+  const handlePracticeMidiNoteOn = useCallback((event: MidiNoteEvent) => {
+    const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const hz = 440 * Math.pow(2, (event.noteNumber - 69) / 12);
+    const noteClass = names[event.noteNumber % 12];
+    const octave = Math.floor(event.noteNumber / 12) - 1;
+    const pitchSample: PitchSample = { hz, confidence: 1.0, note: noteClass, octave, label: event.label };
+
+    if (midiPitchClearRef.current !== null) clearTimeout(midiPitchClearRef.current);
+    setMidiCurrentPitch(pitchSample);
+    midiPitchClearRef.current = setTimeout(() => {
+      setMidiCurrentPitch(null);
+      midiPitchClearRef.current = null;
+    }, 200);
+
+    // Flow mode: capture to buffer + live display
+    if (activeSourceRef.current.kind !== 'midi' || phaseRef.current !== 'playing') return;
+    const ex = exerciseRef.current;
+    const msPerBeat = 60_000 / ex.bpm;
+    midiCaptureRef.current.push({
+      hz,
+      midiCents: event.noteNumber * 100,
+      onsetMs: event.timestampMs,
+      confidence: event.velocity / 127,
+    });
+    const slotIndex = Math.min(
+      Math.round(event.timestampMs / msPerBeat),
+      ex.notes.length - 1,
+    );
+    setMidiFlowNotes((prev) => [...prev, { slotIndex, midiCents: event.noteNumber * 100 }]);
+  }, []);
+
+  // ── MIDI connection-change handler ────────────────────────────────────────
+  const handlePracticeMidiConnectionChange = useCallback((event: MidiConnectionEvent) => {
+    if (event.kind === 'connected') {
+      if (activeSourceRef.current.kind === 'microphone') {
+        setActiveSource({ kind: 'midi', deviceName: event.device.name, deviceId: event.device.id });
+      }
+    } else if (event.kind === 'disconnected') {
+      if (
+        activeSourceRef.current.kind === 'midi' &&
+        activeSourceRef.current.deviceId === event.device.id
+      ) {
+        setActiveSource({ kind: 'microphone' });
+      }
+    }
+  }, []);
+
+  const { devices: midiDevices } = useMidiInput({
+    onNoteOn: handlePracticeMidiNoteOn,
+    onConnectionChange: handlePracticeMidiConnectionChange,
+  });
+
+  // Auto-select MIDI when a device is present on mount or on first discovery
+  useEffect(() => {
+    if (midiDevices.length > 0 && activeSourceRef.current.kind === 'microphone') {
+      const dev = midiDevices[0];
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveSource({ kind: 'midi', deviceName: dev.name, deviceId: dev.id });
+    }
+  }, [midiDevices]);
+
   // ── Handle Play (T010) ───────────────────────────────────────────────────
   const handlePlay = useCallback(async () => {
     if (phase === 'playing') {
@@ -405,7 +496,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     adapter.setMuted(true);
 
     const startMs = Date.now();
-    startCapture(exercise, startMs);
+    if (activeSourceRef.current.kind === 'microphone') {
+      startCapture(exercise, startMs);
+    } else {
+      // MIDI mode: reset capture buffer (mic not used)
+      midiCaptureRef.current = [];
+      setMidiFlowNotes([]);
+    }
 
     const msPerBeat = 60_000 / exercise.bpm;
     const durationSec = (msPerBeat * 0.85) / 1000;
@@ -429,7 +526,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const finishTimer = setTimeout(() => {
       stopPlayback();
       setHighlightedSlotIndex(null);
-      const { responses, extraneousNotes } = stopCapture();
+      const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
+        ? matchRawNotesToSlots(exerciseRef.current, midiCaptureRef.current)
+        : stopCapture();
       const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
       setResult(exerciseResult);
       setPhase('results');
@@ -448,7 +547,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       stepDebounceTimeoutRef.current = null;
     }
     setHighlightedSlotIndex(null);
-    const { responses, extraneousNotes } = stopCapture();
+    const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
+      ? matchRawNotesToSlots(exercise, midiCaptureRef.current)
+      : stopCapture();
     const raw = scoreExercise(exercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
@@ -498,7 +599,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
 
   // ── Auto-start: first detected pitch triggers the exercise ─────────────────
   useEffect(() => {
-    if (phase !== 'ready' || !currentPitch || autoStartedRef.current) return;
+    if (phase !== 'ready' || !activePitch || autoStartedRef.current) return;
 
     if (exerciseConfig.mode === 'step') {
       // Step mode: delegate to handleStartStep (also callable via button)
@@ -518,15 +619,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       }, 3000);
       countdownTimersRef.current = [t1, t2, t3];
     }
-  }, [currentPitch, phase, exerciseConfig.mode, handleStartStep, handlePlay]);
+  }, [activePitch, phase, exerciseConfig.mode, handleStartStep, handlePlay]);
 
   // ── Step mode: respond to pitch detections ────────────────────────────────
   useEffect(() => {
-    if (exerciseConfig.mode !== 'step' || phase !== 'playing' || !currentPitch) return;
+    if (exerciseConfig.mode !== 'step' || phase !== 'playing' || !activePitch) return;
     // Ignore mic input right after playing a note (guard against speaker feedback)
     if (Date.now() - stepLastPlayTimeRef.current < STEP_INPUT_DELAY_MS) return;
 
-    const detectedMidi = Math.round(12 * Math.log2(currentPitch.hz / 440) + 69);
+    const detectedMidi = Math.round(12 * Math.log2(activePitch.hz / 440) + 69);
     // Debounce: only act on pitch changes
     if (detectedMidi === lastStepMidiRef.current) return;
     lastStepMidiRef.current = detectedMidi;
@@ -586,7 +687,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         color: '#c62828',
       });
     }
-  }, [currentPitch, phase, exerciseConfig.mode, exercise, clearStepTimeout, scheduleStepSlotTimeout]);
+  }, [activePitch, phase, exerciseConfig.mode, exercise, clearStepTimeout, scheduleStepSlotTimeout]);
 
   // ── Try Again (T018) ─────────────────────────────────────────────────────
   const handleTryAgain = useCallback(() => {
@@ -607,6 +708,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     autoStartedRef.current = false;
     exScrollRef.current?.scrollTo({ left: 0 });
     respScrollRef.current?.scrollTo({ left: 0 });
+    midiCaptureRef.current = [];
+    setMidiFlowNotes([]);
     setPhase('ready');
     // exercise stays the same
   }, [clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
@@ -630,6 +733,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     autoStartedRef.current = false;
     exScrollRef.current?.scrollTo({ left: 0 });
     respScrollRef.current?.scrollTo({ left: 0 });
+    midiCaptureRef.current = [];
+    setMidiFlowNotes([]);
     setExercise(generateExercise(bpm, exerciseConfig));
     setPhase('ready');
   }, [bpm, exerciseConfig, clearCapture, clearCountdown, clearStepTimeout, stopPlayback]);
@@ -666,8 +771,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           ← Back
         </button>
         <h1 className="practice-view__title">Practice Exercise</h1>
-        {/* Phase-sensitive action buttons */}
+        {/* Phase-sensitive action buttons + source badge */}
         <div className="practice-view__header-actions">
+          <InputSourceBadge source={activeSource} />
           {phase === 'playing' && (
             <button
               className="practice-view__header-btn practice-view__header-btn--stop"
@@ -765,7 +871,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
             <div className="practice-view__controls">
               {phase === 'ready' && (
                 <>
-                  {exerciseConfig.mode === 'step' && micState === 'active' ? (
+                  {exerciseConfig.mode === 'step' && (activeSource.kind === 'midi' || micState === 'active') ? (
                     <button
                       className="practice-view__play-btn"
                       onClick={handleStartStep}
@@ -776,9 +882,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                     </button>
                   ) : (
                     <p className="practice-view__start-prompt" data-testid="start-prompt" aria-live="polite">
-                      {micState === 'active'
+                      {activeSource.kind === 'midi'
                         ? '🎹 Press any note to start'
-                        : '🎹 Waiting for microphone…'}
+                        : micState === 'active'
+                          ? '🎹 Press any note to start'
+                          : '🎹 Waiting for microphone…'}
                     </p>
                   )}
                 </>
@@ -817,9 +925,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                     <div className="practice-view__staff-loading" aria-live="polite">…</div>
                   )}
                 </div>
-                {phase === 'playing' && currentPitch && exerciseConfig.mode === 'flow' && (
+                {phase === 'playing' && activePitch && exerciseConfig.mode === 'flow' && (
                   <div className="practice-view__pitch-display" aria-live="polite">
-                    Detected: {currentPitch.label} ({currentPitch.hz.toFixed(1)} Hz)
+                    Detected: {activePitch.label} ({activePitch.hz.toFixed(1)} Hz)
                   </div>
                 )}
               </div>

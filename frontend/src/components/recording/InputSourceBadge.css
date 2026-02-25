@@ -1,0 +1,29 @@
+/**
+ * InputSourceBadge.css — styles for the active input source indicator.
+ * Used by InputSourceBadge in both RecordingView and PracticeView.
+ */
+
+.input-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.input-source-badge--microphone {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.input-source-badge--midi {
+  background: #ede7f6;
+  color: #5e35b1;
+  border: 1px solid #b39ddb;
+}
