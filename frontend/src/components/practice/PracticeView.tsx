@@ -317,14 +317,20 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     if (highlightedSlotIndex === null || !exerciseLayout) return;
     const noteX = findPracticeNoteX(exerciseLayout, highlightedSlotIndex);
     if (noteX === null) return;
-    const scrollX = noteX * BASE_SCALE;
+    // Use the same fill-container scale as the rendered div so scroll targets match pixels.
+    const displayScale =
+      exerciseLayout.total_width > 0 && staffContainerWidth > 0
+        ? Math.max(Math.ceil(exerciseLayout.total_width * BASE_SCALE), staffContainerWidth) /
+          exerciseLayout.total_width
+        : BASE_SCALE;
+    const scrollX = noteX * displayScale;
     const scrollToCenter = (el: HTMLDivElement | null) => {
       if (!el) return;
       el.scrollTo({ left: Math.max(0, scrollX - el.clientWidth / 2), behavior: 'smooth' });
     };
     scrollToCenter(exScrollRef.current);
     scrollToCenter(respScrollRef.current);
-  }, [highlightedSlotIndex, exerciseLayout]);
+  }, [highlightedSlotIndex, exerciseLayout, staffContainerWidth]);
 
   // ── Build viewport for LayoutRenderer ────────────────────────────────────
   // computePracticeViewport() scans all glyph bounding boxes across all systems
@@ -342,6 +348,32 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       ? computePracticeViewport(responseLayout, practiceMaxSystemWidth)
       : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
     [responseLayout, practiceMaxSystemWidth],
+  );
+
+  // ── Fill-container display widths ─────────────────────────────────────────
+  // The layout engine never stretches notes beyond their natural minimum spacing,
+  // so few-note exercises produce a narrow staff centred in a wide container.
+  // By always rendering at least staffContainerWidth px, the SVG (width:100%)
+  // scales up to fill the space — giving consistent visual note density across
+  // all note counts. Many-note exercises that exceed the container just scroll.
+  const exerciseDisplayWidth = useMemo(
+    () =>
+      exerciseLayout && exerciseLayout.total_width > 0 && staffContainerWidth > 0
+        ? Math.max(Math.ceil(exerciseLayout.total_width * BASE_SCALE), staffContainerWidth)
+        : exerciseLayout
+          ? Math.ceil(exerciseLayout.total_width * BASE_SCALE)
+          : staffContainerWidth,
+    [exerciseLayout, staffContainerWidth],
+  );
+
+  const responseDisplayWidth = useMemo(
+    () =>
+      responseLayout && responseLayout.total_width > 0 && staffContainerWidth > 0
+        ? Math.max(Math.ceil(responseLayout.total_width * BASE_SCALE), staffContainerWidth)
+        : responseLayout
+          ? Math.ceil(responseLayout.total_width * BASE_SCALE)
+          : staffContainerWidth,
+    [responseLayout, staffContainerWidth],
   );
 
   // ── Tempo + config change ────────────────────────────────────────────────
@@ -748,7 +780,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 role="img"
               >
                 {exerciseLayout ? (
-                  <div style={{ width: Math.ceil(exerciseLayout.total_width * BASE_SCALE), height: Math.ceil(exerciseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                  <div style={{ width: exerciseDisplayWidth, height: exerciseLayout.total_width > 0 ? Math.ceil(exerciseViewport.height * exerciseDisplayWidth / exerciseLayout.total_width) : Math.ceil(exerciseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
                     <LayoutRenderer
                       layout={exerciseLayout}
                       config={PRACTICE_RENDER_CONFIG}
@@ -822,7 +854,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   {responseLayout ? (
-                    <div style={{ width: Math.ceil(responseLayout.total_width * BASE_SCALE), height: Math.ceil(responseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                    <div style={{ width: responseDisplayWidth, height: responseLayout.total_width > 0 ? Math.ceil(responseViewport.height * responseDisplayWidth / responseLayout.total_width) : Math.ceil(responseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
                       <LayoutRenderer
                         layout={responseLayout}
                         config={PRACTICE_RENDER_CONFIG}
