@@ -159,10 +159,15 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             .iter()
             .flat_map(|inst| inst.staves.iter())
             .collect();
+        // `system.bounding_box.width` is the sum of measure widths from compute_measure_width,
+        // which does NOT include the left margin (clef + key/time sigs = ~210 units).
+        // compute_unified_note_positions subtracts unified_left_margin to get available_width,
+        // so we must add it back here — otherwise notes are compressed by a factor of
+        // (measure_width - 210) / measure_width, getting worse as note count decreases.
         let note_positions = compute_unified_note_positions(
             &all_staves,
             &system.tick_range,
-            system.bounding_box.width,
+            system.bounding_box.width + unified_left_margin,
             unified_left_margin,
             &spacing_config,
         );
