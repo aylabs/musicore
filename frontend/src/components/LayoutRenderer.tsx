@@ -52,6 +52,9 @@ export interface LayoutRendererProps {
   /** Loop region: when both pins are active, draws a semi-transparent overlay rect.
    * startTick and endTick are the absolute tick positions of the two pinned notes. */
   loopRegion?: { startTick: number; endTick: number } | null;
+  /** When true, suppresses rendering of measure number labels above each system.
+   * Useful for compact practice staves where vertical space is at a premium. */
+  hideMeasureNumbers?: boolean;
   /** Feature 024: Tick source ref for rAF-driven highlight updates.
    * Must be a ref object (not a value) so the rAF loop reads live tick data
    * even when shouldComponentUpdate blocks React re-renders. */
@@ -549,7 +552,7 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     }
 
     // Render measure number above the system (T011)
-    if (system.measure_number) {
+    if (system.measure_number && !this.props.hideMeasureNumbers) {
       const text = createSVGElement('text');
       text.setAttribute('x', system.measure_number.position.x.toString());
       text.setAttribute('y', system.measure_number.position.y.toString());

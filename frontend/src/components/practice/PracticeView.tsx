@@ -20,7 +20,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Note } from '../../types/score';
 import type { PracticePhase, ExerciseResult, NoteComparisonStatus } from '../../types/practice';
 import {
   generateExercise,
@@ -30,11 +29,19 @@ import {
 import { scoreExercise } from '../../services/practice/exerciseScorer';
 import { usePracticeRecorder } from '../../services/practice/usePracticeRecorder';
 import { ToneAdapter } from '../../services/playback/ToneAdapter';
-import { NotationLayoutEngine } from '../../services/notation/NotationLayoutEngine';
-import { NotationRenderer } from '../notation/NotationRenderer';
-import { DEFAULT_STAFF_CONFIG } from '../../types/notation/config';
+import {
+  serializeExerciseToLayoutInput,
+  buildPracticeSourceToNoteIdMap,
+  findPracticeNoteX,
+  serializeResponseToLayoutInput,
+} from '../../services/practice/practiceLayoutAdapter';
+import { computeLayout } from '../../wasm/layout';
+import { initWasm } from '../../services/wasm/loader';
+import { LayoutRenderer } from '../LayoutRenderer';
+import { createDefaultConfig } from '../../utils/renderUtils';
 import { ExerciseResultsView } from './ExerciseResultsView';
 import { PracticeConfigPanel } from './PracticeConfigPanel';
+import type { GlobalLayout } from '../../wasm/layout';
 import './PracticeView.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -43,22 +50,91 @@ import './PracticeView.css';
 const QUARTER_TICKS = 960;
 
 /** Milliseconds to ignore mic input after playing an exercise note (avoids speaker feedback) */
-const STEP_INPUT_DELAY_MS = 450;
+const STEP_INPUT_DELAY_MS = 700;
+
+/** Scale factor: logical layout units → CSS pixels (matches LayoutView BASE_SCALE) */
+const BASE_SCALE = 0.5;
+
+/** Shared RenderConfig for all practice staves */
+const PRACTICE_RENDER_CONFIG = createDefaultConfig();
+
+/** Logical units per staff space — must match LayoutView (20 = Rust engine default) */
+const PRACTICE_UNITS_PER_SPACE = 20;
+
+/** Vertical height per system in logical units (matches LayoutView) */
+const PRACTICE_SYSTEM_HEIGHT = 200;
+
+/** Vertical spacing between systems in logical units (matches LayoutView) */
+const PRACTICE_SYSTEM_SPACING = 100;
 
 /** Convert MIDI pitch number to human-readable note name, e.g. 60 → "C4" */
 function midiToNoteName(midi: number): string {
-  const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  return `${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const octave = Math.floor(midi / 12) - 1;
+  return `${names[midi % 12]}${octave}`;
 }
 
-/** Staff config: tight spacing matches RecordingStaff */
-const STAFF_CONFIG = {
-  ...DEFAULT_STAFF_CONFIG,
-  pixelsPerTick: 0.06,
-  minNoteSpacing: 10,
-  viewportWidth: 99999,
-  scrollX: 0,
-};
+/**
+ * Compute a tight SVG viewport from actual glyph bounding boxes in the layout.
+ *
+ * Works across all systems (handles multi-row reflow) and adapts to any note
+ * range — no fixed padding that silently clips notes outside the staff.
+ *
+ * Strategy:
+ *  1. Walk every glyph (noteheads, accidentals, beams, clef, time sig…) and
+ *     every ledger line across all systems.
+ *  2. Take the union of all bounding rects → actual content minY / maxY.
+ *  3. Add a 0.5-space hairline margin to avoid antialiasing clip at the edges.
+ */
+function computePracticeViewport(
+  layout: GlobalLayout,
+  fallbackWidth: number,
+): { x: number; y: number; width: number; height: number } {
+  const ups = layout.units_per_space ?? PRACTICE_UNITS_PER_SPACE;
+  const margin = 2 * ups; // 40 units — comfortable breathing room around extreme notes
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const system of layout.systems) {
+    for (const sg of system.staff_groups) {
+      for (const stave of sg.staves) {
+        // Staff lines — always include the 5-line band
+        for (const sl of stave.staff_lines) {
+          minY = Math.min(minY, sl.y_position);
+          maxY = Math.max(maxY, sl.y_position);
+        }
+        // Positioned glyphs (noteheads, accidentals, rests, flags, beams …)
+        for (const run of stave.glyph_runs) {
+          for (const g of run.glyphs) {
+            minY = Math.min(minY, g.bounding_box.y);
+            maxY = Math.max(maxY, g.bounding_box.y + g.bounding_box.height);
+          }
+        }
+        // Structural glyphs: clef, key signature, time signature
+        for (const g of stave.structural_glyphs) {
+          minY = Math.min(minY, g.bounding_box.y);
+          maxY = Math.max(maxY, g.bounding_box.y + g.bounding_box.height);
+        }
+        // Ledger lines for notes above / below the staff
+        for (const ll of stave.ledger_lines) {
+          minY = Math.min(minY, ll.y_position);
+          maxY = Math.max(maxY, ll.y_position);
+        }
+      }
+    }
+  }
+
+  // Fallback when layout has no glyphs yet
+  if (!isFinite(minY)) { minY = 0; maxY = 4 * ups; }
+
+  return {
+    x: 0,
+    y: minY - margin,
+    width: layout.total_width > 0 ? layout.total_width : fallbackWidth,
+    height: (maxY - minY) + 2 * margin,
+  };
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +155,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [highlightedSlotIndex, setHighlightedSlotIndex] = useState<number | null>(null);
   /** Countdown value shown before exercise starts (3, 2, 1, then null) */
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
+
+  // ── WASM layout state ───────────────────────────────────────────────────
+  const [wasmReady, setWasmReady] = useState(false);
+  const [exerciseLayout, setExerciseLayout] = useState<GlobalLayout | null>(null);
+  const [responseLayout, setResponseLayout] = useState<GlobalLayout | null>(null);
+
+  // ── Step mode hint (shown below exercise staff when wrong note / timeout) ──
+  const [stepHint, setStepHint] = useState<{ text: string; color: string } | null>(null);
 
   // ── Effective clef: always from config (c4scale can render in any clef) ─────────
   const effectiveClef = exerciseConfig.clef;
@@ -106,17 +190,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** Holds setTimeout IDs for the 3-2-1 countdown so they can be cancelled */
   const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ── Step mode state ───────────────────────────────────────────────────────
-  /** Labels to show above exercise staff notes: noteId → display string */
-  const [stepExNoteLabels, setStepExNoteLabels] = useState<Record<string, string>>({});
-  /** Fill colours for those labels: noteId → CSS colour */
-  const [stepExNoteColors, setStepExNoteColors] = useState<Record<string, string>>({});
-  /** Notes the user has correctly played in step mode */
-  const [stepResponseNotes, setStepResponseNotes] = useState<Note[]>([]);
-  /** Transient wrong note displayed in response staff (cleared on correct) */
-  const [stepWrongNote, setStepWrongNote] = useState<Note | null>(null);
-  /** Label for the wrong note above the response staff */
-  const [stepWrongLabel, setStepWrongLabel] = useState<string>('');
   // ── Staff scroll refs (auto-scroll to highlighted note) ──────────────────
   const exScrollRef = useRef<HTMLDivElement | null>(null);
   const respScrollRef = useRef<HTMLDivElement | null>(null);
@@ -131,6 +204,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stepPenalizedSlotsRef = useRef<Set<number>>(new Set());
   /** setTimeout ID for the currently-active slot timeout (step mode) */
   const stepSlotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** setTimeout ID used to clear lastStepMidiRef after the carry-over guard window */
+  const stepDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
+  /** Very large system width so the layout engine never compresses note spacing.
+   * Each note always gets its natural width (base_spacing=40 + sqrt(dur/960)*40 units),
+   * producing a staff proportional to note count — same inter-note gap for 4 or 20 notes. */
+  const practiceMaxSystemWidth = 99999;
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -140,104 +221,110 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     };
   }, []);
 
-  // ── Build Note[] for the exercise staff ─────────────────────────────────
-  //    One quarter note per slot, start_tick = slotIndex × QUARTER_TICKS
-  const exerciseNotes = useMemo<Note[]>(
-    () =>
-      exercise.notes.map((en) => ({
-        id: `ex-slot-${en.slotIndex}`,
-        start_tick: en.slotIndex * QUARTER_TICKS,
-        duration_ticks: QUARTER_TICKS,
-        pitch: en.midiPitch,
-      })),
+  // ── WASM init on mount ──────────────────────────────────────────────────
+  useEffect(() => {
+    initWasm().then(() => setWasmReady(true));
+  }, []);
+
+  // ── Exercise layout via Rust WASM (US1) ─────────────────────────────────
+  //    Recompute whenever exercise or clef changes, but only after WASM is ready.
+  useEffect(() => {
+    if (!wasmReady) return;
+    const input = serializeExerciseToLayoutInput(exercise.notes, effectiveClef);
+    computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
+  }, [exercise, effectiveClef, wasmReady]);
+
+  // ── sourceToNoteIdMap for LayoutRenderer highlight system (US2) ──────────
+  const exerciseSourceMap = useMemo(
+    () => buildPracticeSourceToNoteIdMap(exercise.notes),
     [exercise],
   );
 
-  const exerciseLayout = useMemo(
-    () =>
-      NotationLayoutEngine.calculateLayout({
-        notes: exerciseNotes,
-        clef: effectiveClef,
-        timeSignature: { numerator: 4, denominator: 4 },
-        config: STAFF_CONFIG,
-      }),
-    [exerciseNotes, effectiveClef],
-  );
-
   // ── Ghost note: current held pitch shown at the highlighted slot position ────
-  const ghostNote = useMemo<Note | null>(() => {
+  const ghostNote = useMemo<{ slotIndex: number; midiPitch: number } | null>(() => {
     if (exerciseConfig.mode !== 'flow' || phase !== 'playing' || !currentPitch) return null;
-    const slotIndex = highlightedSlotIndex ?? 0;
     return {
-      id: '__practice_ghost__',
-      start_tick: slotIndex * QUARTER_TICKS,
-      duration_ticks: QUARTER_TICKS,
-      pitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
+      slotIndex: highlightedSlotIndex ?? 0,
+      midiPitch: Math.round(12 * Math.log2(currentPitch.hz / 440) + 69),
     };
   }, [exerciseConfig.mode, phase, currentPitch, highlightedSlotIndex]);
 
-  // ── Response staff notes ───────────────────────────────────────────────────
-  //    Step mode:    correctly played notes + transient wrong note.
-  //    Flow playing: sequential liveResponseNotes + ghost.
-  //    Results:      slot-aligned notes from comparisons.
-  const responseStaffNotes = useMemo<Note[]>(() => {
+  // ── Response staff notes for WASM layout input (US3) ─────────────────────
+  const responseNoteInputs = useMemo<Array<{ slotIndex: number; midiCents: number }>>(() => {
     if (exerciseConfig.mode === 'step') {
-      return stepWrongNote ? [...stepResponseNotes, stepWrongNote] : stepResponseNotes;
+      // Step mode: build from scored comparisons when in results, otherwise empty
+      return [];
     }
     if (phase === 'results' && result) {
       return result.comparisons
         .filter((c) => c.response !== null)
         .map((c) => ({
-          id: `resp-slot-${c.target.slotIndex}`,
-          start_tick: c.target.slotIndex * QUARTER_TICKS,
-          duration_ticks: QUARTER_TICKS,
-          pitch: Math.round(c.response!.midiCents / 100),
+          slotIndex: c.target.slotIndex,
+          midiCents: c.response!.midiCents,
         }));
     }
-    return ghostNote ? [...liveResponseNotes, ghostNote] : liveResponseNotes;
-  }, [exerciseConfig.mode, stepResponseNotes, stepWrongNote, phase, result, liveResponseNotes, ghostNote]);
+    // Flow playing: live response notes + ghost
+    const notes = liveResponseNotes.map((n) => ({
+      slotIndex: n.start_tick / QUARTER_TICKS,
+      midiCents: n.pitch * 100,
+    }));
+    if (ghostNote) {
+      notes.push({ slotIndex: ghostNote.slotIndex, midiCents: ghostNote.midiPitch * 100 });
+    }
+    return notes;
+  }, [exerciseConfig.mode, phase, result, liveResponseNotes, ghostNote]);
 
-  // ── Step mode response labels (wrong note label above response staff) ─────────
-  const stepRespNoteLabels = useMemo<Record<string, string>>(() => {
-    if (!stepWrongNote || !stepWrongLabel) return {};
-    return { [stepWrongNote.id]: stepWrongLabel };
-  }, [stepWrongNote, stepWrongLabel]);
-  const stepRespNoteColors = useMemo<Record<string, string>>(() => {
-    if (!stepWrongNote) return {};
-    return { [stepWrongNote.id]: '#f44336' };
-  }, [stepWrongNote]);
+  // ── Response layout via Rust WASM (US3) ──────────────────────────────────
+  useEffect(() => {
+    if (!wasmReady) return;
+    if (exerciseConfig.mode === 'step' || responseNoteInputs.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResponseLayout(null);
+      return;
+    }
+    const input = serializeResponseToLayoutInput(responseNoteInputs, effectiveClef);
+    computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
+  }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode]);
 
-  const responseLayout = useMemo(
+  // ── Highlighted note IDs for LayoutRenderer (US2) ────────────────────────
+  const highlightedNoteIds = useMemo(
     () =>
-      NotationLayoutEngine.calculateLayout({
-        notes: responseStaffNotes,
-        clef: effectiveClef,
-        timeSignature: { numerator: 4, denominator: 4 },
-        config: STAFF_CONFIG,
-      }),
-    [responseStaffNotes, effectiveClef],
+      highlightedSlotIndex !== null
+        ? new Set([`ex-${highlightedSlotIndex}`])
+        : new Set<string>(),
+    [highlightedSlotIndex],
   );
 
-  // ── Derive highlighted note ID for exercise staff ────────────────────────
-
-  // ── Auto-scroll staves to keep highlighted note centred ──────────────────
-  //    Runs after exerciseLayout (and responseLayout) are available.
+  // ── Auto-scroll staves to keep highlighted note centred (US2) ────────────
   useEffect(() => {
-    if (highlightedSlotIndex === null) return;
-    const noteId = `ex-slot-${highlightedSlotIndex}`;
-    const notePos = exerciseLayout.notes.find((n) => n.id === noteId);
-    if (!notePos) return;
+    if (highlightedSlotIndex === null || !exerciseLayout) return;
+    const noteX = findPracticeNoteX(exerciseLayout, highlightedSlotIndex);
+    if (noteX === null) return;
+    const scrollX = noteX * BASE_SCALE;
     const scrollToCenter = (el: HTMLDivElement | null) => {
       if (!el) return;
-      el.scrollTo({ left: Math.max(0, notePos.x - el.clientWidth / 2), behavior: 'smooth' });
+      el.scrollTo({ left: Math.max(0, scrollX - el.clientWidth / 2), behavior: 'smooth' });
     };
     scrollToCenter(exScrollRef.current);
     scrollToCenter(respScrollRef.current);
-  }, [highlightedSlotIndex, exerciseLayout.notes]);
-  const highlightedNoteIds = useMemo(
-    () =>
-      highlightedSlotIndex !== null ? [`ex-slot-${highlightedSlotIndex}`] : [],
-    [highlightedSlotIndex],
+  }, [highlightedSlotIndex, exerciseLayout]);
+
+  // ── Build viewport for LayoutRenderer ────────────────────────────────────
+  // computePracticeViewport() scans all glyph bounding boxes across all systems
+  // so the viewBox tightly encloses the actual content — adapts to any octave
+  // range, multi-row reflow, or clef without fragile hardcoded padding.
+  const exerciseViewport = useMemo(
+    () => exerciseLayout
+      ? computePracticeViewport(exerciseLayout, practiceMaxSystemWidth)
+      : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
+    [exerciseLayout],
+  );
+
+  const responseViewport = useMemo(
+    () => responseLayout
+      ? computePracticeViewport(responseLayout, practiceMaxSystemWidth)
+      : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
+    [responseLayout],
   );
 
   // ── Tempo + config change ────────────────────────────────────────────────
@@ -277,19 +364,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       clearStepTimeout();
       const noteDurationMs = 60_000 / exercise.bpm;
       const timeoutMs = noteDurationMs * exerciseConfig.stepTimeoutMultiplier;
-      const noteId = `ex-slot-${stepIdx}`;
-      const targetPitch = exercise.notes[stepIdx]?.midiPitch;
       stepSlotTimeoutRef.current = setTimeout(() => {
         stepSlotTimeoutRef.current = null;
         // Penalise only once (wrong note may have already penalised this slot)
         stepPenalizedSlotsRef.current.add(stepIdx);
-        if (targetPitch !== undefined) {
-          setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetPitch) }));
-          setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
+        const targetPitch = exercise.notes[stepIdx]?.midiPitch;
+        if (targetPitch != null) {
+          setStepHint({ text: `Expected: ${midiToNoteName(targetPitch)}`, color: '#e65100' });
         }
-        // No response-staff note for a timeout (no pitch was played)
-        setStepWrongNote(null);
-        setStepWrongLabel('');
       }, timeoutMs);
     },
     [clearStepTimeout, exercise.bpm, exercise.notes, exerciseConfig.stepTimeoutMultiplier],
@@ -361,11 +443,16 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const handleStop = useCallback(() => {
     stopPlayback();
     clearStepTimeout();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
     const raw = scoreExercise(exercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
+    setStepHint(null);
     setPhase('results');
   }, [exercise, bpm, clearStepTimeout, stopCapture, stopPlayback]);
 
@@ -447,24 +534,12 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const stepIdx = stepIndexRef.current;
     const targetNote = exercise.notes[stepIdx];
     if (!targetNote) return;
-    const noteId = `ex-slot-${stepIdx}`;
 
     if (detectedMidi === targetNote.midiPitch) {
-      // ✓ Correct note — mark it green, advance
-      const noteName = midiToNoteName(targetNote.midiPitch);
-      setStepExNoteLabels((prev) => ({ ...prev, [noteId]: noteName }));
-      setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#4caf50' }));
-      setStepWrongNote(null);
-      setStepWrongLabel('');
+      // ✓ Correct note — advance
       clearStepTimeout();
-      // Accumulate on response staff
-      const respNote: Note = {
-        id: `resp-step-${stepIdx}`,
-        start_tick: stepIdx * QUARTER_TICKS,
-        duration_ticks: QUARTER_TICKS,
-        pitch: targetNote.midiPitch,
-      };
-      setStepResponseNotes((prev) => [...prev, respNote]);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStepHint(null);
 
       const nextIdx = stepIdx + 1;
       if (nextIdx >= exercise.notes.length) {
@@ -488,7 +563,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         setPhase('results');
       } else {
         stepIndexRef.current = nextIdx;
-        lastStepMidiRef.current = detectedMidi; // keep debounce — prevents lingering resonance triggering wrong on next slot
+        // Block the just-played pitch immediately to prevent it carrying over into
+        // the new slot, then clear the debounce after STEP_INPUT_DELAY_MS so that
+        // back-to-back identical pitches are still detected on the new slot.
+        if (stepDebounceTimeoutRef.current !== null) clearTimeout(stepDebounceTimeoutRef.current);
+        lastStepMidiRef.current = detectedMidi;
+        stepDebounceTimeoutRef.current = setTimeout(() => {
+          lastStepMidiRef.current = null;
+          stepDebounceTimeoutRef.current = null;
+        }, STEP_INPUT_DELAY_MS);
         setHighlightedSlotIndex(nextIdx);
         const adapter = ToneAdapter.getInstance();
         stepLastPlayTimeRef.current = Date.now();
@@ -496,17 +579,12 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         scheduleStepSlotTimeout(nextIdx);
       }
     } else {
-      // ✗ Wrong note — show target note name as red hint + wrong note in response staff
+      // ✗ Wrong note — penalise this slot and show hint
       stepPenalizedSlotsRef.current.add(stepIdx);
-      setStepExNoteLabels((prev) => ({ ...prev, [noteId]: midiToNoteName(targetNote.midiPitch) }));
-      setStepExNoteColors((prev) => ({ ...prev, [noteId]: '#f44336' }));
-      setStepWrongNote({
-        id: 'resp-step-wrong',
-        start_tick: stepIdx * QUARTER_TICKS,
-        duration_ticks: QUARTER_TICKS,
-        pitch: detectedMidi,
+      setStepHint({
+        text: `Expected: ${midiToNoteName(targetNote.midiPitch)} · You played: ${midiToNoteName(detectedMidi)}`,
+        color: '#c62828',
       });
-      setStepWrongLabel(midiToNoteName(detectedMidi));
     }
   }, [currentPitch, phase, exerciseConfig.mode, exercise, clearStepTimeout, scheduleStepSlotTimeout]);
 
@@ -516,13 +594,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCountdown();
     clearStepTimeout();
     clearCapture();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setResult(null);
     setHighlightedSlotIndex(null);
-    setStepExNoteLabels({});
-    setStepExNoteColors({});
-    setStepResponseNotes([]);
-    setStepWrongNote(null);
-    setStepWrongLabel('');
+    setStepHint(null);
     stepIndexRef.current = 0;
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
@@ -539,13 +617,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCountdown();
     clearStepTimeout();
     clearCapture();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setResult(null);
     setHighlightedSlotIndex(null);
-    setStepExNoteLabels({});
-    setStepExNoteColors({});
-    setStepResponseNotes([]);
-    setStepWrongNote(null);
-    setStepWrongLabel('');
+    setStepHint(null);
     stepIndexRef.current = 0;
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
@@ -561,6 +639,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stopPlayback();
     clearCountdown();
     clearStepTimeout();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     // clearCapture releases captureRef; mic teardown is handled by
     // usePracticeRecorder's own unmount cleanup
     clearCapture();
@@ -648,14 +730,33 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 aria-label="Exercise notes"
                 role="img"
               >
-                <NotationRenderer
-                  layout={exerciseLayout}
-                  highlightedNoteIds={highlightedNoteIds}
-                  showClef
-                  noteLabels={stepExNoteLabels}
-                  noteLabelColors={stepExNoteColors}
-                />
+                {exerciseLayout ? (
+                  <div style={{ width: Math.ceil(exerciseLayout.total_width * BASE_SCALE), height: Math.ceil(exerciseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                    <LayoutRenderer
+                      layout={exerciseLayout}
+                      config={PRACTICE_RENDER_CONFIG}
+                      viewport={exerciseViewport}
+                      highlightedNoteIds={highlightedNoteIds}
+                      sourceToNoteIdMap={exerciseSourceMap}
+                      hideMeasureNumbers
+                    />
+                  </div>
+                ) : (
+                  <div className="practice-view__staff-loading" aria-live="polite">
+                    {wasmReady ? 'Generating…' : 'Loading…'}
+                  </div>
+                )}
               </div>
+              {exerciseConfig.mode === 'step' && stepHint && (
+                <div
+                  className="practice-view__step-hint"
+                  style={{ color: stepHint.color }}
+                  aria-live="polite"
+                  data-testid="step-hint"
+                >
+                  {stepHint.text}
+                </div>
+              )}
             </div>
           </div>
 
@@ -703,13 +804,18 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-label">Your Response</div>
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
-                  <NotationRenderer
-                    layout={responseLayout}
-                    highlightedNoteIds={ghostNote ? ['__practice_ghost__'] : []}
-                    showClef
-                    noteLabels={stepRespNoteLabels}
-                    noteLabelColors={stepRespNoteColors}
-                  />
+                  {responseLayout ? (
+                    <div style={{ width: Math.ceil(responseLayout.total_width * BASE_SCALE), height: Math.ceil(responseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                      <LayoutRenderer
+                        layout={responseLayout}
+                        config={PRACTICE_RENDER_CONFIG}
+                        viewport={responseViewport}
+                        hideMeasureNumbers
+                      />
+                    </div>
+                  ) : (
+                    <div className="practice-view__staff-loading" aria-live="polite">…</div>
+                  )}
                 </div>
                 {phase === 'playing' && currentPitch && exerciseConfig.mode === 'flow' && (
                   <div className="practice-view__pitch-display" aria-live="polite">

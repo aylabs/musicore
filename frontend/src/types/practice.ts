@@ -10,6 +10,11 @@
 
 /** One entry in the target exercise sequence. */
 export interface ExerciseNote {
+  /**
+   * Stable layout/highlight identifier for this slot: "ex-{slotIndex}".
+   * Generated at creation time, never mutated. Used by LayoutRenderer for highlight tracking.
+   */
+  id: string;
   /** Slot index: 0-based position in the exercise (0 = first note) */
   slotIndex: number;
   /** Target MIDI pitch (48 = C3 … 60 = C4), ∈ {48,50,52,53,55,57,59,60} */

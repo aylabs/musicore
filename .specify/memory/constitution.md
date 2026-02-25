@@ -1,9 +1,9 @@
 <!--
-SYNC IMPACT REPORT - Constitution v2.4.0
-Generated: 2026-02-15
+SYNC IMPACT REPORT - Constitution v2.5.0
+Generated: 2026-02-24
 
-VERSION CHANGE: 2.3.0 → 2.4.0
-BUMP RATIONALE: MINOR - Added new Principle VII (Regression Prevention) establishing mandatory test creation for all detected errors
+VERSION CHANGE: 2.4.0 → 2.5.0
+BUMP RATIONALE: MINOR - Strengthened Principle VI to explicitly prohibit TypeScript layout engine implementations and enforce exclusive use of the Rust/WASM pipeline
 
 PRINCIPLES STATUS:
   ✓ I. Domain-Driven Design (UNCHANGED)
@@ -11,10 +11,15 @@ PRINCIPLES STATUS:
   ✓ III. Progressive Web Application Architecture (UNCHANGED)
   ✓ IV. Precision & Fidelity (UNCHANGED)
   ✓ V. Test-First Development (UNCHANGED)
-  ✓ VI. Layout Engine Authority (UNCHANGED)
-  + VII. Regression Prevention (NEW) - Every detected error must result in a new test
+  ✓ VI. Layout Engine Authority (UPDATED - explicit prohibition of TypeScript layout engines)
+  ✓ VII. Regression Prevention (UNCHANGED) - Every detected error must result in a new test
 
-NEW PRINCIPLE ADDITIONS:
+PRINCIPLE UPDATES:
+  ~ VI. Layout Engine Authority - Added explicit single-implementation constraint: the Rust/WASM engine is the ONLY permitted layout implementation; TypeScript-side layout engines (coordinate calculations in frontend code) are explicitly prohibited
+      - Closes the loophole where a TypeScript layout engine (NotationLayoutEngine) could technically satisfy "renderer prohibition" while still violating the spirit of layout engine authority
+      - Direct consequence of 001-practice-rust-layout migration discovery
+
+NEW PRINCIPLE ADDITIONS (v2.4.0):
   + VII. Regression Prevention - All bugs, errors, or incorrect behavior discovered (in production, deployment, manual testing, or code review) MUST result in creation of a failing test that reproduces the issue before fixing
       - Test created first, demonstrates the error
       - Fix implemented, test passes
@@ -147,7 +152,7 @@ All features follow strict Test-Driven Development:
 
 The layout engine MUST be the sole authority over spatial geometry, with strict separation from rendering:
 
-- **Single Source of Truth**: Layout engine (backend Rust module) calculates all spatial geometry: positions (x, y coordinates), spacing, bounding boxes, collision results, and element relationships
+- **Single Source of Truth**: The Rust/WASM layout engine (`computeLayout`) is the ONLY permitted layout engine implementation in this codebase. It calculates all spatial geometry: positions (x, y coordinates), spacing, bounding boxes, collision results, and element relationships. There SHALL be exactly one layout engine: the Rust backend module exposed via WASM. TypeScript-side layout engines (coordinate calculations performed in frontend code) are explicitly prohibited, regardless of whether they are labelled as "renderers" or "engines".
 - **Renderer Prohibition**: Renderer (frontend React/SVG components) MUST NOT modify, calculate, or derive logical coordinates, spacing, bounding boxes, or any spatial relationships
 - **Permitted Transforms**: Renderer MAY apply visual transforms (CSS scale, translate, pixel snapping for display sharpness) that do NOT alter logical coordinates exported by layout engine
 - **Hit-Testing Authority**: All hit-testing, collision detection, and spatial queries MUST use geometry provided by layout engine; renderer cannot perform its own spatial calculations

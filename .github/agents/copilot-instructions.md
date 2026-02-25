@@ -56,6 +56,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A — in-memory React state only; no IndexedDB, no backend (001-recording-view)
 - TypeScript 5 / React 18, Node 22 + Vite 6, Vitest 2, @testing-library/react, pitchy (already installed), existing `NotationLayoutEngine` + `NotationRenderer` WASM modules (001-piano-practice)
 - N/A — all state is in-memory, ephemeral (001-piano-practice)
+- TypeScript (strict), React 18, Vite + `computeLayout` / `GlobalLayout` (`wasm/layout.ts`), `LayoutRenderer` (`components/LayoutRenderer.tsx`), `buildSourceToNoteIdMap` pattern from `services/highlight/sourceMapping.ts` (001-practice-rust-layout)
+- N/A — all data is in-memory per practice session (001-practice-rust-layout)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -76,9 +78,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 001-practice-rust-layout: Added TypeScript (strict), React 18, Vite + `computeLayout` / `GlobalLayout` (`wasm/layout.ts`), `LayoutRenderer` (`components/LayoutRenderer.tsx`), `buildSourceToNoteIdMap` pattern from `services/highlight/sourceMapping.ts`
 - 001-piano-practice: Added TypeScript 5 / React 18, Node 22 + Vite 6, Vitest 2, @testing-library/react, pitchy (already installed), existing `NotationLayoutEngine` + `NotationRenderer` WASM modules
 - 001-recording-view: Added TypeScript 5.9 / React 19.2 / Vite 7.x + Web Audio API (`AudioWorklet`, `getUserMedia`), `pitchy` (MPM pitch detection, ~33 kB, zero-dependency), Canvas 2D API
-- 001-landing-redesign: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->

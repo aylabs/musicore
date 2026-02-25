@@ -106,6 +106,7 @@ export function generateExercise(
   const msPerBeat = 60_000 / bpm;
 
   const notes: ExerciseNote[] = Array.from({ length: config.noteCount }, (_, i) => ({
+    id: `ex-${i}`,
     slotIndex: i,
     midiPitch: pool[Math.floor(rand() * pool.length)],
     expectedOnsetMs: i * msPerBeat,
@@ -128,6 +129,7 @@ export function generateC4ScaleExercise(bpm: number = DEFAULT_BPM, noteCount = 8
   const msPerBeat = 60_000 / bpm;
   const num = Math.min(noteCount, pitches.length);
   const notes: ExerciseNote[] = pitches.slice(0, num).map((midiPitch, i) => ({
+    id: `ex-${i}`,
     slotIndex: i,
     midiPitch,
     expectedOnsetMs: i * msPerBeat,
