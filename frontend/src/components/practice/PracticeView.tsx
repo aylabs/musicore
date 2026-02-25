@@ -208,6 +208,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const stepPenalizedSlotsRef = useRef<Set<number>>(new Set());
   /** setTimeout ID for the currently-active slot timeout (step mode) */
   const stepSlotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** setTimeout ID used to clear lastStepMidiRef after the carry-over guard window */
+  const stepDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Observe staff container width for layout reflow ──────────────────────
   // staffInnerRef is attached to the exercise staff-inner div (first mount).
@@ -458,6 +460,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const handleStop = useCallback(() => {
     stopPlayback();
     clearStepTimeout();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setHighlightedSlotIndex(null);
     const { responses, extraneousNotes } = stopCapture();
     const raw = scoreExercise(exercise, responses, extraneousNotes);
@@ -574,10 +580,15 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         setPhase('results');
       } else {
         stepIndexRef.current = nextIdx;
-        // Reset debounce for the new slot so identical consecutive pitches are detected.
-        // Resonance from the just-played note is already suppressed by the
-        // STEP_INPUT_DELAY_MS time-guard at the top of this effect.
-        lastStepMidiRef.current = null;
+        // Block the just-played pitch immediately to prevent it carrying over into
+        // the new slot, then clear the debounce after STEP_INPUT_DELAY_MS so that
+        // back-to-back identical pitches are still detected on the new slot.
+        if (stepDebounceTimeoutRef.current !== null) clearTimeout(stepDebounceTimeoutRef.current);
+        lastStepMidiRef.current = detectedMidi;
+        stepDebounceTimeoutRef.current = setTimeout(() => {
+          lastStepMidiRef.current = null;
+          stepDebounceTimeoutRef.current = null;
+        }, STEP_INPUT_DELAY_MS);
         setHighlightedSlotIndex(nextIdx);
         const adapter = ToneAdapter.getInstance();
         stepLastPlayTimeRef.current = Date.now();
@@ -600,6 +611,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCountdown();
     clearStepTimeout();
     clearCapture();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setResult(null);
     setHighlightedSlotIndex(null);
     setStepHint(null);
@@ -619,6 +634,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCountdown();
     clearStepTimeout();
     clearCapture();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     setResult(null);
     setHighlightedSlotIndex(null);
     setStepHint(null);
@@ -637,6 +656,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     stopPlayback();
     clearCountdown();
     clearStepTimeout();
+    if (stepDebounceTimeoutRef.current !== null) {
+      clearTimeout(stepDebounceTimeoutRef.current);
+      stepDebounceTimeoutRef.current = null;
+    }
     // clearCapture releases captureRef; mic teardown is handled by
     // usePracticeRecorder's own unmount cleanup
     clearCapture();
