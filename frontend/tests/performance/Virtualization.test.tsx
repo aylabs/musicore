@@ -391,6 +391,15 @@ describe('User Story 4: Performance Validation', () => {
     });
 
     it('should not trigger slow frame warnings for normal viewports', () => {
+      // Mock performance.now() so render time appears within frame budget.
+      // This test validates logic (no spurious warnings for normal viewports),
+      // not wall-clock performance — jsdom rendering is inherently slow.
+      let callCount = 0;
+      const perfSpy = vi.spyOn(performance, 'now').mockImplementation(() => {
+        // First call = startTime (0ms), subsequent calls return 5ms elapsed
+        return callCount++ === 0 ? 0 : 5;
+      });
+
       const consoleSpy = vi.spyOn(console, 'warn');
 
       const viewport: Viewport = {
@@ -411,6 +420,7 @@ describe('User Story 4: Performance Validation', () => {
       
       expect(slowFrameWarnings.length).toBe(0);
       consoleSpy.mockRestore();
+      perfSpy.mockRestore();
     });
   });
 
