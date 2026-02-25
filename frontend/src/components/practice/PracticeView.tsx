@@ -193,10 +193,6 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   // ── Staff scroll refs (auto-scroll to highlighted note) ──────────────────
   const exScrollRef = useRef<HTMLDivElement | null>(null);
   const respScrollRef = useRef<HTMLDivElement | null>(null);
-  /** Ref on the staff-inner container to measure available width via ResizeObserver */
-  const staffInnerRef = useRef<HTMLDivElement | null>(null);
-  /** Available staff container width in CSS px; drives max_system_width for layout reflow */
-  const [staffContainerWidth, setStaffContainerWidth] = useState(800);
   // ── Step mode refs ────────────────────────────────────────────────────────
   /** Current slot index in step mode */
   const stepIndexRef = useRef(0);
@@ -211,24 +207,11 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   /** setTimeout ID used to clear lastStepMidiRef after the carry-over guard window */
   const stepDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Observe staff container width for layout reflow ──────────────────────
-  // staffInnerRef is attached to the exercise staff-inner div (first mount).
-  // When the sidebar collapses / window resizes, the available width changes
-  // and we recompute the layout so notes reflow to fill the container width.
-  // ResizeObserver fires immediately on observe(), seeding the initial value.
-  useEffect(() => {
-    const el = staffInnerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setStaffContainerWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
-  /** Maximum system width in logical units that fits without horizontal scrolling */
-  const practiceMaxSystemWidth = Math.max(200, Math.floor(staffContainerWidth / BASE_SCALE));
+  /** Very large system width so the layout engine never compresses note spacing.
+   * Each note always gets its natural width (base_spacing=40 + sqrt(dur/960)*40 units),
+   * producing a staff proportional to note count — same inter-note gap for 4 or 20 notes. */
+  const practiceMaxSystemWidth = 99999;
 
   // ── Native browser fullscreen on mount ───────────────────────────────────
   useEffect(() => {
@@ -249,7 +232,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     if (!wasmReady) return;
     const input = serializeExerciseToLayoutInput(exercise.notes, effectiveClef);
     computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setExerciseLayout);
-  }, [exercise, effectiveClef, wasmReady, practiceMaxSystemWidth]);
+  }, [exercise, effectiveClef, wasmReady]);
 
   // ── sourceToNoteIdMap for LayoutRenderer highlight system (US2) ──────────
   const exerciseSourceMap = useMemo(
@@ -301,7 +284,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     }
     const input = serializeResponseToLayoutInput(responseNoteInputs, effectiveClef);
     computeLayout(input, { max_system_width: practiceMaxSystemWidth, system_height: PRACTICE_SYSTEM_HEIGHT, system_spacing: PRACTICE_SYSTEM_SPACING, units_per_space: PRACTICE_UNITS_PER_SPACE }).then(setResponseLayout);
-  }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode, practiceMaxSystemWidth]);
+  }, [responseNoteInputs, effectiveClef, wasmReady, exerciseConfig.mode]);
 
   // ── Highlighted note IDs for LayoutRenderer (US2) ────────────────────────
   const highlightedNoteIds = useMemo(
@@ -317,20 +300,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     if (highlightedSlotIndex === null || !exerciseLayout) return;
     const noteX = findPracticeNoteX(exerciseLayout, highlightedSlotIndex);
     if (noteX === null) return;
-    // Use the same fill-container scale as the rendered div so scroll targets match pixels.
-    const displayScale =
-      exerciseLayout.total_width > 0 && staffContainerWidth > 0
-        ? Math.max(Math.ceil(exerciseLayout.total_width * BASE_SCALE), staffContainerWidth) /
-          exerciseLayout.total_width
-        : BASE_SCALE;
-    const scrollX = noteX * displayScale;
+    const scrollX = noteX * BASE_SCALE;
     const scrollToCenter = (el: HTMLDivElement | null) => {
       if (!el) return;
       el.scrollTo({ left: Math.max(0, scrollX - el.clientWidth / 2), behavior: 'smooth' });
     };
     scrollToCenter(exScrollRef.current);
     scrollToCenter(respScrollRef.current);
-  }, [highlightedSlotIndex, exerciseLayout, staffContainerWidth]);
+  }, [highlightedSlotIndex, exerciseLayout]);
 
   // ── Build viewport for LayoutRenderer ────────────────────────────────────
   // computePracticeViewport() scans all glyph bounding boxes across all systems
@@ -340,40 +317,14 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     () => exerciseLayout
       ? computePracticeViewport(exerciseLayout, practiceMaxSystemWidth)
       : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
-    [exerciseLayout, practiceMaxSystemWidth],
+    [exerciseLayout],
   );
 
   const responseViewport = useMemo(
     () => responseLayout
       ? computePracticeViewport(responseLayout, practiceMaxSystemWidth)
       : { x: 0, y: -50, width: practiceMaxSystemWidth, height: 180 },
-    [responseLayout, practiceMaxSystemWidth],
-  );
-
-  // ── Fill-container display widths ─────────────────────────────────────────
-  // The layout engine never stretches notes beyond their natural minimum spacing,
-  // so few-note exercises produce a narrow staff centred in a wide container.
-  // By always rendering at least staffContainerWidth px, the SVG (width:100%)
-  // scales up to fill the space — giving consistent visual note density across
-  // all note counts. Many-note exercises that exceed the container just scroll.
-  const exerciseDisplayWidth = useMemo(
-    () =>
-      exerciseLayout && exerciseLayout.total_width > 0 && staffContainerWidth > 0
-        ? Math.max(Math.ceil(exerciseLayout.total_width * BASE_SCALE), staffContainerWidth)
-        : exerciseLayout
-          ? Math.ceil(exerciseLayout.total_width * BASE_SCALE)
-          : staffContainerWidth,
-    [exerciseLayout, staffContainerWidth],
-  );
-
-  const responseDisplayWidth = useMemo(
-    () =>
-      responseLayout && responseLayout.total_width > 0 && staffContainerWidth > 0
-        ? Math.max(Math.ceil(responseLayout.total_width * BASE_SCALE), staffContainerWidth)
-        : responseLayout
-          ? Math.ceil(responseLayout.total_width * BASE_SCALE)
-          : staffContainerWidth,
-    [responseLayout, staffContainerWidth],
+    [responseLayout],
   );
 
   // ── Tempo + config change ────────────────────────────────────────────────
@@ -771,7 +722,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
           {/* ── Exercise staff ───────────────────────────────────── */}
           <div className="practice-view__staff-block" data-testid="exercise-staff-block">
             <div className="practice-view__staff-label">Exercise</div>
-            <div className="practice-view__staff-inner" ref={staffInnerRef}>
+            <div className="practice-view__staff-inner">
               <div
                 ref={exScrollRef}
                 className={`practice-view__staff-renderer${phase === 'playing' ? ' practice-view__staff-renderer--playing' : ''}`}
@@ -780,7 +731,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                 role="img"
               >
                 {exerciseLayout ? (
-                  <div style={{ width: exerciseDisplayWidth, height: exerciseLayout.total_width > 0 ? Math.ceil(exerciseViewport.height * exerciseDisplayWidth / exerciseLayout.total_width) : Math.ceil(exerciseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                  <div style={{ width: Math.ceil(exerciseLayout.total_width * BASE_SCALE), height: Math.ceil(exerciseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
                     <LayoutRenderer
                       layout={exerciseLayout}
                       config={PRACTICE_RENDER_CONFIG}
@@ -854,7 +805,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
               <div className="practice-view__staff-inner">
                 <div ref={respScrollRef} className="practice-view__staff-renderer" aria-label="Your response notes" role="img">
                   {responseLayout ? (
-                    <div style={{ width: responseDisplayWidth, height: responseLayout.total_width > 0 ? Math.ceil(responseViewport.height * responseDisplayWidth / responseLayout.total_width) : Math.ceil(responseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
+                    <div style={{ width: Math.ceil(responseLayout.total_width * BASE_SCALE), height: Math.ceil(responseViewport.height * BASE_SCALE), flexShrink: 0, margin: '0 auto' }}>
                       <LayoutRenderer
                         layout={responseLayout}
                         config={PRACTICE_RENDER_CONFIG}
