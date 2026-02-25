@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://musicore.app/schemas/plugin-manifest.schema.json",
+  "title": "PluginManifest",
+  "description": "Descriptor file (plugin.json) required in every Musicore plugin package.",
+  "type": "object",
+  "required": ["id", "name", "version", "pluginApiVersion", "entryPoint"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique, URL-safe plugin identifier. Used as primary key in the plugin registry.",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "examples": ["virtual-keyboard", "chord-trainer"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name shown in navigation and plugin list.",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Virtual Keyboard", "Chord Trainer"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Plugin version as a SemVer string.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "examples": ["1.0.0", "2.3.1-beta.1"]
+    },
+    "pluginApiVersion": {
+      "type": "string",
+      "description": "Minimum Musicore Plugin API major version required. The importer rejects the plugin if the app's current API version is lower.",
+      "pattern": "^[1-9][0-9]*$",
+      "examples": ["1", "2"]
+    },
+    "entryPoint": {
+      "type": "string",
+      "description": "Relative path inside the ZIP to the plugin's compiled JavaScript entry module.",
+      "minLength": 1,
+      "examples": ["index.js", "dist/plugin.js"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional short description shown in the plugin list.",
+      "maxLength": 256,
+      "examples": ["A virtual piano keyboard that shows notes on the score in real-time."]
+    }
+  }
+}

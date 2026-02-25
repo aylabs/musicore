@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
 import { RecordingView } from './components/recording/RecordingView'
@@ -8,6 +8,13 @@ import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
 import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
+import { BUILTIN_PLUGINS, type BuiltinPluginEntry } from './services/plugins/builtinPlugins'
+import { pluginRegistry } from './services/plugins/PluginRegistry'
+import { PluginView } from './components/plugins/PluginView'
+import { PluginNavEntry } from './components/plugins/PluginNavEntry'
+import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
+import type { PluginContext, PluginManifest } from './plugin-api/index'
+import { ToneAdapter } from './services/playback/ToneAdapter'
 import packageJson from '../package.json'
 import './App.css'
 
@@ -34,6 +41,12 @@ function App() {
   // Feature 001-piano-practice: Practice debug view (?debug=true)
   const [showPractice, setShowPractice] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
+
+  // Feature 030: Plugin navigation state
+  const [allPlugins, setAllPlugins] = useState<BuiltinPluginEntry[]>([])
+  const [activePlugin, setActivePlugin] = useState<string | null>(null)
+  // T025: Show/hide plugin importer dialog
+  const [showImporter, setShowImporter] = useState(false)
   
   // Mobile debug console (eruda) - enable with ?debug=true
   useEffect(() => {
@@ -71,6 +84,108 @@ function App() {
         setWasmError(errorMessage)
         setWasmLoading(false)
       })
+  }, [])
+
+  // Feature 030: Load plugins (builtins + persisted imported plugins) and call init()
+  useEffect(() => {
+    async function loadPlugins() {
+      // Start with built-in plugins (always available, no IndexedDB needed)
+      const entries: BuiltinPluginEntry[] = [...BUILTIN_PLUGINS]
+
+      // Merge persisted imported plugins with placeholder components
+      try {
+        const imported = await pluginRegistry.list()
+        for (const { manifest } of imported) {
+          const pluginName = manifest.name
+          entries.push({
+            manifest: manifest,
+            plugin: {
+              init: () => {},
+              dispose: () => {},
+              Component: () => (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
+                  <p>&#x1F4E6; "{pluginName}" is installed.</p>
+                  <p style={{ fontSize: '0.8em' }}>Reload the app to activate imported plugins.</p>
+                </div>
+              ),
+            },
+          })
+        }
+        if (imported.length > 0) {
+          console.log('[App] Merged', imported.length, 'imported plugin(s) from registry')
+        }
+      } catch (err) {
+        console.warn('[App] Could not load plugin registry:', err)
+      }
+
+      // Initialise each plugin with a PluginContext
+      entries.forEach(({ manifest, plugin }) => {
+        const context: PluginContext = {
+          emitNote: (event) => {
+            // Note events are handled inside the plugin's own view for US1.
+            // Future: wire to WASM layout pipeline.
+            console.debug('[PluginContext] emitNote from', manifest.id, event)
+          },
+          playNote: (event) => {
+            // Delegate audio playback to the host's ToneAdapter (Salamander piano).
+            // Only play if the adapter is already initialised — pre-warm is triggered
+            // by handleSelectPlugin so samples should be loaded before the first
+            // keypress. Skipping while loading prevents notes queueing up and
+            // firing all at once when init finally completes.
+            const adapter = ToneAdapter.getInstance()
+            if (!adapter.isInitialized()) return
+            if (event.type === 'release') {
+              adapter.releaseNote(event.midiNote)
+            } else {
+              adapter.attackNote(event.midiNote, event.velocity ?? 64)
+            }
+          },
+          manifest,
+        }
+        plugin.init(context)
+      })
+
+      setAllPlugins(entries)
+    }
+
+    loadPlugins()
+  }, [])
+
+  // Feature 030: Navigate to a plugin view (clears other view flags)
+  const handleSelectPlugin = useCallback((pluginId: string) => {
+    setActivePlugin(pluginId)
+    setShowRecording(false)
+    setShowPractice(false)
+    setShowDemo(false)
+    // Pre-warm the audio engine as soon as the user navigates to any plugin view.
+    // This starts loading Salamander samples immediately so they are ready by the
+    // time the user presses a key. The gesture of clicking a nav entry satisfies
+    // the browser autoplay policy.
+    ToneAdapter.getInstance().init().catch(() => {})
+  }, [])
+
+  // T024: Handle successful plugin import — add to allPlugins list
+  const handleImportComplete = useCallback((manifest: PluginManifest) => {
+    const pluginName = manifest.name
+    const newEntry: BuiltinPluginEntry = {
+      manifest,
+      plugin: {
+        init: () => {},
+        dispose: () => {},
+        Component: () => (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
+            <p>&#x1F4E6; "{pluginName}" is installed.</p>
+            <p style={{ fontSize: '0.8em' }}>Reload the app to activate imported plugins.</p>
+          </div>
+        ),
+      },
+    }
+    setAllPlugins(prev => {
+      // Avoid duplicates (overwrite scenario replaces old entry)
+      const filtered = prev.filter(p => p.manifest.id !== manifest.id)
+      return [...filtered, newEntry]
+    })
+    setShowImporter(false)
   }, [])
 
   // Show loading state while WASM initializes
@@ -250,13 +365,114 @@ function App() {
                 v{packageJson.version}
               </a>
             </h1>
+            {/* Feature 030: Plugin navigation entries */}
+            {allPlugins.length > 0 && (
+              <nav
+                aria-label="Installed plugins"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  justifyContent: 'center',
+                  marginTop: '8px',
+                  paddingBottom: '4px',
+                }}
+              >
+                {allPlugins.map(({ manifest }) => (
+                  <PluginNavEntry
+                    key={manifest.id}
+                    plugin={manifest}
+                    isActive={activePlugin === manifest.id}
+                    onSelect={() => handleSelectPlugin(manifest.id)}
+                  />
+                ))}
+                {/* T025: Import plugin trigger button */}
+                <button
+                  type="button"
+                  aria-label="Import Plugin"
+                  title="Import Plugin"
+                  onClick={() => setShowImporter(true)}
+                  style={{
+                    minWidth: '44px',
+                    minHeight: '44px',
+                    border: '1px dashed #666',
+                    borderRadius: '6px',
+                    background: 'transparent',
+                    color: '#999',
+                    fontSize: '1.2em',
+                    cursor: 'pointer',
+                    padding: '0 10px',
+                  }}
+                >
+                  +
+                </button>
+              </nav>
+            )}
           </header>
-          <main>
-            <ScoreViewer
-              debugMode={debugMode}
-              onShowRecording={() => setShowRecording(true)}
-              onShowPractice={() => setShowPractice(true)}
+          {/* T024: Plugin importer dialog overlay */}
+          {showImporter && (
+            <PluginImporterDialog
+              onImportComplete={handleImportComplete}
+              onClose={() => setShowImporter(false)}
             />
+          )}
+          <main>
+            {activePlugin ? (
+              (() => {
+                const entry = allPlugins.find(p => p.manifest.id === activePlugin)
+                if (!entry) return null
+                const PluginComponent = entry.plugin.Component
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '6px 12px',
+                        background: '#f5f5f5',
+                        borderBottom: '1px solid #ddd',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActivePlugin(null)}
+                        aria-label="Return to score viewer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: '#fff',
+                          border: '1px solid #bbb',
+                          borderRadius: '6px',
+                          color: '#333',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          padding: '5px 12px',
+                          minHeight: '32px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ← Back
+                      </button>
+                      <span style={{ color: '#666', fontSize: '0.8rem' }}>
+                        {entry.manifest.name}
+                      </span>
+                    </div>
+                    <PluginView plugin={entry.manifest}>
+                      <PluginComponent />
+                    </PluginView>
+                  </div>
+                )
+              })()
+            ) : (
+              <ScoreViewer
+                debugMode={debugMode}
+                onShowRecording={() => { setShowRecording(true); setActivePlugin(null); }}
+                onShowPractice={() => { setShowPractice(true); setActivePlugin(null); }}
+              />
+            )}
           </main>
           <IOSInstallModal />
         </div>

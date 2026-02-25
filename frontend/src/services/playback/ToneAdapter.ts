@@ -25,6 +25,8 @@ export class ToneAdapter {
   private initialized = false;
   private useSampler = true; // Use piano samples for rich sound
   private scheduledEventIds: number[] = []; // Track scheduled Transport events
+  /** Guards against concurrent init() calls creating duplicate Samplers. */
+  private initPromise: Promise<void> | null = null;
 
   /**
    * Private constructor - use getInstance() instead
@@ -70,6 +72,21 @@ export class ToneAdapter {
     if (this.initialized) {
       return; // Sampler/synth already created, nothing else to do
     }
+
+    // Deduplicate concurrent init() calls — only one Sampler/PolySynth ever created.
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    this.initPromise = this._doInit();
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
+    }
+  }
+
+  /** Internal init implementation — called exactly once via the initPromise guard. */
+  private async _doInit(): Promise<void> {
 
     try {
       // Note: We don't start Tone.Transport here - we'll start it fresh each playback
@@ -224,6 +241,44 @@ export class ToneAdapter {
       this.sampler.releaseAll();
     } else if (this.polySynth) {
       this.polySynth.releaseAll();
+    }
+  }
+
+  /**
+   * Immediately attack (note-on) a single MIDI note.
+   * Intended for real-time input (e.g. plugin virtual keyboard).
+   * Uses the Sampler when available, falls back to PolySynth.
+   *
+   * @param pitch - MIDI note number (0–127, where 60 = middle C)
+   * @param velocity - MIDI velocity (0–127, default 64)
+   */
+  public attackNote(pitch: number, velocity = 64): void {
+    if (!this.initialized || (!this.sampler && !this.polySynth)) {
+      console.warn('[ToneAdapter] attackNote: not initialized, call init() first.');
+      return;
+    }
+    const noteName = Tone.Frequency(pitch, 'midi').toNote();
+    const gain = (velocity / 127) * 1.0;
+    if (this.sampler) {
+      this.sampler.triggerAttack(noteName, Tone.now(), gain);
+    } else if (this.polySynth) {
+      this.polySynth.triggerAttack(noteName, Tone.now(), gain);
+    }
+  }
+
+  /**
+   * Immediately release (note-off) a MIDI note that is currently sustained.
+   * Intended for real-time input (e.g. plugin virtual keyboard).
+   *
+   * @param pitch - MIDI note number (0–127)
+   */
+  public releaseNote(pitch: number): void {
+    if (!this.initialized || (!this.sampler && !this.polySynth)) return;
+    const noteName = Tone.Frequency(pitch, 'midi').toNote();
+    if (this.sampler) {
+      this.sampler.triggerRelease(noteName, Tone.now());
+    } else if (this.polySynth) {
+      this.polySynth.triggerRelease(noteName, Tone.now());
     }
   }
 

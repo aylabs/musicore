@@ -7,6 +7,10 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+  // Feature 030: lint-test/ is an intentional ESLint boundary violation fixture.
+  // Exclude it from the global lint run (verify it manually with:
+  //   npx eslint plugins/lint-test/ — expected: 1 no-restricted-imports error).
+  globalIgnores(['plugins/lint-test/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -30,6 +34,21 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/globals': 'off',
+    },
+  },
+  // Feature 030: Plugin API boundary enforcement (T003 / FR-001 / SC-004 / SC-008)
+  // Plugin code may ONLY import from ../../src/plugin-api — all other host internals are forbidden.
+  // Enforcement is static (lint-time); see specs/030-plugin-architecture/research.md R-003.
+  //
+  // NOTE: ESLint 9 flat config requires the simple string-array "patterns" form for
+  // no-restricted-imports. The object form {group, message} is handled by
+  // @typescript-eslint/no-restricted-imports if needed in future.
+  {
+    files: ['plugins/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: ['../../src/components/*', '../../src/services/*', '../../src/pages/*', '../../src/data/*', '../../src/utils/*', '../../src/hooks/*'],
+      }],
     },
   },
 ])

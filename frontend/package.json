@@ -20,6 +20,8 @@
     "ci-check": "npm run build && npm test -- --run --reporter=verbose"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
+    "idb": "^8.0.3",
     "jszip": "^3.10.1",
     "pitchy": "^4.1.0",
     "react": "^19.2.0",
@@ -48,6 +50,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
     "happy-dom": "^20.5.0",
     "husky": "^9.1.7",
