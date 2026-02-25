@@ -184,6 +184,55 @@ type InputSource =
 
 ---
 
+## R-011: ZIP Parsing — Plugin Importer (.zip Upload)
+
+**Decision**: Use **fflate** (`fflate` npm package) for reading user-uploaded `.zip` files in the plugin importer.
+
+**Rationale**:
+
+| | fflate | JSZip | Native (DecompressionStream) |
+|---|---|---|---|
+| Bundle size (min+gzip) | ~8 KB | ~30 KB | 0 KB |
+| API style | Callback + `Uint8Array` / WASM-free | Promise-based, `Blob`/`ArrayBuffer` | Not applicable — no ZIP container support |
+| TypeScript types | Built-in (ships `.d.ts`) | `@types/jszip` (separate) | N/A |
+| Maintenance (2026-02) | Active — v0.8.x, ~2 M weekly DLs | Stale — last release 3.10.1 (2023), declining downloads | N/A |
+| Browser support | All evergreen + IE11 (via polyfill) | IE10+ | Gzip/deflate only — ZIP parsing unsupported |
+
+fflate's `unzip` function accepts a raw `Uint8Array`, iterates entries with their paths and `Uint8Array` contents, and handles both `DEFLATE` and `STORED` entries. Bundle cost is ~8 KB gzip — proportionate for a PWA importer. JSZip is functionally adequate but ~4× larger and no longer actively maintained. Native `DecompressionStream` covers raw deflate/gzip streams but has no concept of a ZIP central directory or entry table — implementing ZIP parsing by hand over it is ~500 LOC and equivalent to shipping a worse JSZip; not feasible.
+
+**Key usage snippet**:
+```ts
+import { unzip } from 'fflate';
+
+async function readPluginZip(file: File): Promise<{ manifest: unknown; assets: Map<string, Uint8Array> }> {
+  const buffer = await file.arrayBuffer();
+  const data = new Uint8Array(buffer);
+
+  return new Promise((resolve, reject) => {
+    unzip(data, (err, files) => {
+      if (err) return reject(err);
+
+      const manifestEntry = files['plugin.json'];
+      if (!manifestEntry) return reject(new Error('plugin.json not found in archive'));
+
+      const manifest = JSON.parse(new TextDecoder().decode(manifestEntry));
+      const assets = new Map(
+        Object.entries(files)
+          .filter(([name]) => name !== 'plugin.json')
+          .map(([name, bytes]) => [name, bytes] as [string, Uint8Array])
+      );
+      resolve({ manifest, assets });
+    });
+  });
+}
+```
+
+**Alternatives considered**:
+- **JSZip**: Familiar API, but ~30 KB gzip, no built-in types, and no significant releases since mid-2023. Rejected on size and maintenance grounds.
+- **Native `DecompressionStream`**: Only decompresses raw deflate/gzip — has no ZIP container (local file headers, central directory, end-of-central-directory record) support. Implementing that manually is equivalent to writing a ZIP library from scratch. Rejected as not feasible.
+
+---
+
 ## Resolved Unknowns Summary
 
 | Unknown | Resolution |
