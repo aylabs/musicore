@@ -481,6 +481,17 @@
   min-height: 1.4rem;
 }
 
+/* ─── Step mode hint (expected vs played note on wrong note / timeout) ──────── */
+
+.practice-view__step-hint {
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 1.4rem;
+  padding: 0.15rem 0;
+  letter-spacing: 0.02em;
+}
+
 /* ─── Slot highlight ──────────────────────────────────────────────────────── */
 
 /* LayoutRenderer applies its own glyph highlight; this provides the container outline cue */

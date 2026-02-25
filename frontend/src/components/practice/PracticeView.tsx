@@ -67,6 +67,13 @@ const PRACTICE_SYSTEM_HEIGHT = 200;
 /** Vertical spacing between systems in logical units (matches LayoutView) */
 const PRACTICE_SYSTEM_SPACING = 100;
 
+/** Convert MIDI pitch number to human-readable note name, e.g. 60 → "C4" */
+function midiToNoteName(midi: number): string {
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const octave = Math.floor(midi / 12) - 1;
+  return `${names[midi % 12]}${octave}`;
+}
+
 /**
  * Compute a tight SVG viewport from actual glyph bounding boxes in the layout.
  *
@@ -153,6 +160,9 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const [wasmReady, setWasmReady] = useState(false);
   const [exerciseLayout, setExerciseLayout] = useState<GlobalLayout | null>(null);
   const [responseLayout, setResponseLayout] = useState<GlobalLayout | null>(null);
+
+  // ── Step mode hint (shown below exercise staff when wrong note / timeout) ──
+  const [stepHint, setStepHint] = useState<{ text: string; color: string } | null>(null);
 
   // ── Effective clef: always from config (c4scale can render in any clef) ─────────
   const effectiveClef = exerciseConfig.clef;
@@ -373,9 +383,13 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         stepSlotTimeoutRef.current = null;
         // Penalise only once (wrong note may have already penalised this slot)
         stepPenalizedSlotsRef.current.add(stepIdx);
+        const targetPitch = exercise.notes[stepIdx]?.midiPitch;
+        if (targetPitch != null) {
+          setStepHint({ text: `Expected: ${midiToNoteName(targetPitch)}`, color: '#e65100' });
+        }
       }, timeoutMs);
     },
-    [clearStepTimeout, exercise.bpm, exerciseConfig.stepTimeoutMultiplier],
+    [clearStepTimeout, exercise.bpm, exercise.notes, exerciseConfig.stepTimeoutMultiplier],
   );
 
   // ── Stop playback helper ─────────────────────────────────────────────────
@@ -449,6 +463,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const raw = scoreExercise(exercise, responses, extraneousNotes);
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
+    setStepHint(null);
     setPhase('results');
   }, [exercise, bpm, clearStepTimeout, stopCapture, stopPlayback]);
 
@@ -534,6 +549,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     if (detectedMidi === targetNote.midiPitch) {
       // ✓ Correct note — advance
       clearStepTimeout();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStepHint(null);
 
       const nextIdx = stepIdx + 1;
       if (nextIdx >= exercise.notes.length) {
@@ -565,8 +582,12 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         scheduleStepSlotTimeout(nextIdx);
       }
     } else {
-      // ✗ Wrong note — penalise this slot
+      // ✗ Wrong note — penalise this slot and show hint
       stepPenalizedSlotsRef.current.add(stepIdx);
+      setStepHint({
+        text: `Expected: ${midiToNoteName(targetNote.midiPitch)} · You played: ${midiToNoteName(detectedMidi)}`,
+        color: '#c62828',
+      });
     }
   }, [currentPitch, phase, exerciseConfig.mode, exercise, clearStepTimeout, scheduleStepSlotTimeout]);
 
@@ -578,6 +599,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    setStepHint(null);
     stepIndexRef.current = 0;
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
@@ -596,6 +618,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     clearCapture();
     setResult(null);
     setHighlightedSlotIndex(null);
+    setStepHint(null);
     stepIndexRef.current = 0;
     stepPenalizedSlotsRef.current = new Set();
     lastStepMidiRef.current = null;
@@ -715,6 +738,16 @@ export function PracticeView({ onBack }: PracticeViewProps) {
                   </div>
                 )}
               </div>
+              {exerciseConfig.mode === 'step' && stepHint && (
+                <div
+                  className="practice-view__step-hint"
+                  style={{ color: stepHint.color }}
+                  aria-live="polite"
+                  data-testid="step-hint"
+                >
+                  {stepHint.text}
+                </div>
+              )}
             </div>
           </div>
 
