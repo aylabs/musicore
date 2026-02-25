@@ -574,7 +574,10 @@ export function PracticeView({ onBack }: PracticeViewProps) {
         setPhase('results');
       } else {
         stepIndexRef.current = nextIdx;
-        lastStepMidiRef.current = detectedMidi; // keep debounce — prevents lingering resonance triggering wrong on next slot
+        // Reset debounce for the new slot so identical consecutive pitches are detected.
+        // Resonance from the just-played note is already suppressed by the
+        // STEP_INPUT_DELAY_MS time-guard at the top of this effect.
+        lastStepMidiRef.current = null;
         setHighlightedSlotIndex(nextIdx);
         const adapter = ToneAdapter.getInstance();
         stepLastPlayTimeRef.current = Date.now();
