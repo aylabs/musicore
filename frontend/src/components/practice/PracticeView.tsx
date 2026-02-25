@@ -534,7 +534,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
         ? matchRawNotesToSlots(exerciseRef.current, midiCaptureRef.current)
         : stopCapture();
-      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
+      const isMidi = activeSourceRef.current.kind === 'midi';
+      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes, { includeTimingScore: isMidi });
       setResult(exerciseResult);
       setPhase('results');
     }, finishMs);
@@ -555,7 +556,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
       ? matchRawNotesToSlots(exercise, midiCaptureRef.current)
       : stopCapture();
-    const raw = scoreExercise(exercise, responses, extraneousNotes);
+    const isMidi = activeSourceRef.current.kind === 'midi';
+    const raw = scoreExercise(exercise, responses, extraneousNotes, { includeTimingScore: isMidi });
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setStepHint(null);
