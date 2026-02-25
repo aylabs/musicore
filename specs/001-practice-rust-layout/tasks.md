@@ -92,6 +92,29 @@ description: "Task list for: Migrate Practice Layout to Rust Layout Engine"
 - [X] T018 [P] Adjust `LayoutRenderer` container sizing in `frontend/src/components/practice/PracticeView.css` so the staff fills the horizontal scroll area correctly (mirror `LayoutView` container pattern)
 - [X] T019 Run end-to-end quickstart.md validation: generate 8-note exercise, verify single-system layout, verify highlight sequence, verify last note visible, measure layout computation time
 
+**Checkpoint**: All success criteria verified. SC-001 confirmed by grep. Staff visually correct in browser.
+
+---
+
+## Phase 7: Post-Release Bug Fixes
+
+**Purpose**: Regressions uncovered after the initial migration commit were diagnosed and resolved. All fixes are on the same branch.
+
+### Step-Mode Input Fixes (`frontend/src/components/practice/PracticeView.tsx`)
+
+- [X] T020 Restore step-mode note name hint strip: add `stepHint` state, `midiToNoteName()` helper, and `.practice-view__step-hint` CSS rule so the note name is shown below the exercise staff on wrong note or timeout (commit `aefa515`)
+- [X] T021 Fix detection of consecutive same-pitch notes: reset `lastStepMidiRef.current` to `null` immediately on slot advance so the same pitch can be recognised again on the next slot (commit `bbfb984`)
+- [X] T022 Prevent note carry-over between slots: on slot advance, set `lastStepMidiRef.current = detectedMidi` immediately to block the ringing note, then clear it after `STEP_INPUT_DELAY_MS` via `stepDebounceTimeoutRef` so the same pitch is open again for the new slot (commit `dd6f262`)
+- [X] T023 Raise `STEP_INPUT_DELAY_MS` from 450 ms to 700 ms to eliminate carry-over artefacts with sustained piano notes (commit `349efa8`)
+
+### Note Spacing Fixes
+
+- [X] T024 Remove layout compression from frontend: set `practiceMaxSystemWidth = 99999` (constant) so the Rust engine never compresses note spacing, and remove the ResizeObserver / `staffContainerWidth` state that was feeding a finite width (commit `498f995`)
+- [X] T025 Fix left-margin accounting in `compute_unified_note_positions` (`backend/src/layout/mod.rs`): pass `system.bounding_box.width + unified_left_margin` instead of `system.bounding_box.width` so the scale factor is computed against the full available width including the clef/key-signature margin (commit `45a3ae2`)
+- [X] T026 Fix `extract_measures` using actual note durations (`backend/src/layout/mod.rs`): replace `HashSet<u32>` (tick positions, hardcoded 480-tick duration) with `HashMap<u32, u32>` (tick → max duration) so `compute_measure_width` receives real durations and produces proportionally correct system widths for all note values (commit `aa2de71`); rebuild WASM artifact
+
+**Checkpoint**: Step-mode hint visible on wrong note and timeout. Consecutive same-pitch notes detected correctly. No note carry-over between slots. Note spacing is uniform (constant 40 CSS px gap) regardless of note count. All 1017 tests pass.
+
 ---
 
 ## Dependencies & Execution Order
@@ -181,7 +204,8 @@ Deliver US1 + US2 together as the minimum shippable slice. After Phases 1–4:
 | Phase 4 (US2 — Highlight) | 4 |
 | Phase 5 (US3 — Response Staff) | 3 |
 | Phase 6 (Polish) | 3 |
-| **Total** | **19** |
+| Phase 7 (Post-Release Bug Fixes) | 7 |
+| **Total** | **26** |
 
 | User Story | Tasks | Parallelizable |
 |---|---|---|

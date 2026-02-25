@@ -500,9 +500,10 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
             if let Some(staves) = instrument["staves"].as_array() {
                 // Collect all unique timing positions across all staves
                 // (treble + bass notes at same tick = one horizontal position)
+                // Map: tick -> max duration at that tick (use max so wider notes win)
                 let mut all_notes_by_measure: std::collections::HashMap<
                     usize,
-                    std::collections::HashSet<u32>,
+                    std::collections::HashMap<u32, u32>,
                 > = std::collections::HashMap::new();
 
                 for staff in staves {
@@ -526,7 +527,7 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
                                         .unwrap_or(0)
                                         as u32;
 
-                                    let _duration = note["duration_ticks"]
+                                    let duration = note["duration_ticks"]
                                         .as_u64()
                                         .or_else(|| note["duration"].as_u64())
                                         .unwrap_or(960)
@@ -535,28 +536,29 @@ fn extract_measures(score: &serde_json::Value) -> Vec<Vec<u32>> {
                                     // Determine which measure this note belongs to (4/4 = 3840 ticks per measure)
                                     let measure_index = (start_tick / 3840) as usize;
 
-                                    // Track unique timing positions (deduplicate simultaneous notes)
-                                    all_notes_by_measure
+                                    // Track tick → duration (keep max duration at each tick position)
+                                    let entry = all_notes_by_measure
                                         .entry(measure_index)
                                         .or_default()
-                                        .insert(start_tick);
+                                        .entry(start_tick)
+                                        .or_insert(0);
+                                    *entry = (*entry).max(duration);
                                 }
                             }
                         }
                     }
                 }
 
-                // Convert unique timing positions to measure durations
-                // For simplicity, assume all notes have the same duration (eighth note = 480 ticks)
-                for (measure_index, timing_positions) in all_notes_by_measure {
+                // Convert tick→duration map to flat duration list for compute_measure_width
+                for (measure_index, tick_durations) in all_notes_by_measure {
                     // Expand measures vector if needed
                     while measures.len() <= measure_index {
                         measures.push(Vec::new());
                     }
 
-                    // Add one duration entry per unique timing position
-                    for _ in 0..timing_positions.len() {
-                        measures[measure_index].push(480); // Eighth note duration
+                    // Add the actual note duration for each unique tick position
+                    for (_tick, dur) in tick_durations {
+                        measures[measure_index].push(dur);
                     }
                 }
             }
