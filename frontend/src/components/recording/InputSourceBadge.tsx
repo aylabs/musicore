@@ -10,6 +10,7 @@
  */
 
 import type { InputSource } from '../../types/recording';
+import './InputSourceBadge.css';
 
 export interface InputSourceBadgeProps {
   /** The currently active input source */

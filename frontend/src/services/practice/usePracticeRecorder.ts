@@ -95,7 +95,7 @@ interface CaptureState {
  * respecting genuine gaps: a note played at beat 4 is 1 full beat away from
  * slot 3, so it falls outside the window and slot 3 stays null (missed).
  */
-function matchRawNotesToSlots(
+export function matchRawNotesToSlots(
   exercise: Exercise,
   rawNotes: ResponseNote[],
 ): { responses: (ResponseNote | null)[]; extraneousNotes: ResponseNote[] } {
