@@ -2,6 +2,19 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Re-export Web MIDI API stubs so test files can import from '../test/mockMidi'
+// (T005 — feature 029-midi-input)
+export {
+  mockMidiSupported,
+  mockMidiUnsupported,
+  createMockMidiAccess,
+  createMockMidiInput,
+  fireMidiNoteOn,
+  fireMidiNoteOff,
+  fireMidiStateChange,
+} from './mockMidi';
+export type { MockMidiInput, MockMidiAccess } from './mockMidi';
+
 // ─── Web Audio API mocks (happy-dom ships no Web Audio support) ───────────────
 
 export interface AudioContextMock {
