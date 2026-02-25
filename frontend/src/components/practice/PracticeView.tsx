@@ -182,6 +182,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
   const midiPitchClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Flow-mode MIDI capture: raw ResponseNote buffer + live slot display
   const midiCaptureRef = useRef<ResponseNote[]>([]);
+  /** Wall-clock ms when the current flow exercise started (Date.now()) — used to compute note onsets */
+  const midiPlayStartRef = useRef<number>(0);
   const [midiFlowNotes, setMidiFlowNotes] = useState<Array<{ slotIndex: number; midiCents: number }>>([]);
 
   // Keep activeSourceRef in sync
@@ -434,14 +436,16 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     if (activeSourceRef.current.kind !== 'midi' || phaseRef.current !== 'playing') return;
     const ex = exerciseRef.current;
     const msPerBeat = 60_000 / ex.bpm;
+    // Use wall-clock offset from play-start (matches expectedOnsetMs which is also Date.now()-based)
+    const onsetMs = Date.now() - midiPlayStartRef.current;
     midiCaptureRef.current.push({
       hz,
       midiCents: event.noteNumber * 100,
-      onsetMs: event.timestampMs,
+      onsetMs,
       confidence: event.velocity / 127,
     });
     const slotIndex = Math.min(
-      Math.round(event.timestampMs / msPerBeat),
+      Math.round(onsetMs / msPerBeat),
       ex.notes.length - 1,
     );
     setMidiFlowNotes((prev) => [...prev, { slotIndex, midiCents: event.noteNumber * 100 }]);
@@ -501,6 +505,7 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     } else {
       // MIDI mode: reset capture buffer (mic not used)
       midiCaptureRef.current = [];
+      midiPlayStartRef.current = Date.now();
       setMidiFlowNotes([]);
     }
 
@@ -529,7 +534,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
       const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
         ? matchRawNotesToSlots(exerciseRef.current, midiCaptureRef.current)
         : stopCapture();
-      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes);
+      const isMidi = activeSourceRef.current.kind === 'midi';
+      const exerciseResult = scoreExercise(exercise, responses, extraneousNotes, { includeTimingScore: isMidi });
       setResult(exerciseResult);
       setPhase('results');
     }, finishMs);
@@ -550,7 +556,8 @@ export function PracticeView({ onBack }: PracticeViewProps) {
     const { responses, extraneousNotes } = activeSourceRef.current.kind === 'midi'
       ? matchRawNotesToSlots(exercise, midiCaptureRef.current)
       : stopCapture();
-    const raw = scoreExercise(exercise, responses, extraneousNotes);
+    const isMidi = activeSourceRef.current.kind === 'midi';
+    const raw = scoreExercise(exercise, responses, extraneousNotes, { includeTimingScore: isMidi });
     const exerciseResult: ExerciseResult = { ...raw, score: Math.round(raw.score * (bpm / 120)) };
     setResult(exerciseResult);
     setStepHint(null);

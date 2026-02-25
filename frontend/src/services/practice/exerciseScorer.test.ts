@@ -197,6 +197,53 @@ describe('scoreExercise', () => {
     });
   });
 
+  describe('includeTimingScore (MIDI mode)', () => {
+    it('score = 50% pitch + 50% timing when all correct', () => {
+      const exercise = makeExercise([60, 62]);
+      const responses: (ResponseNote | null)[] = [
+        makeResponse(60, exercise.notes[0].expectedOnsetMs),
+        makeResponse(62, exercise.notes[1].expectedOnsetMs),
+      ];
+      const result = scoreExercise(exercise, responses, [], { includeTimingScore: true });
+      expect(result.score).toBe(100);
+    });
+
+    it('wrong-timing penalises 50% of score per slot', () => {
+      const exercise = makeExercise([60, 62]);
+      // First slot: correct pitch but late by 500 ms (> TIMING_TOLERANCE_MS 200)
+      // Second slot: perfect
+      const responses: (ResponseNote | null)[] = [
+        makeResponse(60, exercise.notes[0].expectedOnsetMs, { msDrift: 500 }),
+        makeResponse(62, exercise.notes[1].expectedOnsetMs),
+      ];
+      const result = scoreExercise(exercise, responses, [], { includeTimingScore: true });
+      // correctPitchCount=2, correctTimingCount=1, n=2
+      // score = Math.round(50 × 2/2 + 50 × 1/2) = Math.round(50 + 25) = 75
+      expect(result.score).toBe(75);
+      expect(result.comparisons[0].status).toBe('wrong-timing');
+    });
+
+    it('missed note counts as 0 pitch and 0 timing', () => {
+      const exercise = makeExercise([60, 62]);
+      const responses: (ResponseNote | null)[] = [makeResponse(60, exercise.notes[0].expectedOnsetMs), null];
+      const result = scoreExercise(exercise, responses, [], { includeTimingScore: true });
+      // correctPitchCount=1, correctTimingCount=1, n=2
+      // score = Math.round(50 × 1/2 + 50 × 1/2) = 50
+      expect(result.score).toBe(50);
+    });
+
+    it('pitch-only scoring unchanged when includeTimingScore is omitted', () => {
+      const exercise = makeExercise([60, 62]);
+      const responses: (ResponseNote | null)[] = [
+        makeResponse(60, exercise.notes[0].expectedOnsetMs, { msDrift: 500 }),
+        makeResponse(62, exercise.notes[1].expectedOnsetMs),
+      ];
+      // Without flag: wrong-timing gets full pitch credit → score = 100
+      const result = scoreExercise(exercise, responses, []);
+      expect(result.score).toBe(100);
+    });
+  });
+
   describe('responses array length', () => {
     it('handles responses array shorter than notes (treats missing as null)', () => {
       const exercise = makeExercise([60, 62, 64]);

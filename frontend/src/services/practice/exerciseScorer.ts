@@ -6,11 +6,13 @@
  * FR-009: Extraneous notes reduce the score
  * FR-010: Score = 50% pitch accuracy + 50% timing accuracy, normalised 0–100
  *
- * Scoring formula (from data-model.md):
- *   totalSlots     = exercise.notes.length + extraneousNotes.length
- *   pitchScore     = correctPitchCount  / totalSlots
- *   timingScore    = correctTimingCount / totalSlots
- *   score          = Math.round(50 × pitchScore + 50 × timingScore)
+ * Default scoring formula (microphone mode — timing excluded, detection latency
+ * makes timing unreliable):
+ *   score = Math.round(100 × correctPitchCount / notes.length)
+ *
+ * MIDI mode (includeTimingScore: true) — timing is precise enough to penalise:
+ *   score = Math.round(50 × correctPitchCount / notes.length
+ *                    + 50 × correctTimingCount / notes.length)
  */
 
 import type {
@@ -33,15 +35,20 @@ const TIMING_TOLERANCE_MS = 200;
 /**
  * scoreExercise — classify each beat slot and compute the final score.
  *
- * @param exercise        The target exercise (immutable after generation)
- * @param responses       Array of ResponseNotes aligned by usePracticeRecorder;
- *                        length must equal exercise.notes.length; null = missed slot
- * @param extraneousNotes ResponseNotes not matched to any slot (surplus)
+ * @param exercise          The target exercise (immutable after generation)
+ * @param responses         Array of ResponseNotes aligned by usePracticeRecorder;
+ *                          length must equal exercise.notes.length; null = missed slot
+ * @param extraneousNotes   ResponseNotes not matched to any slot (surplus)
+ * @param options.includeTimingScore  When true (MIDI mode), timing accuracy
+ *                          contributes 50% of the score. Default false (mic
+ *                          mode) because mic pitch-detection latency makes
+ *                          timing measurements unreliable.
  */
 export function scoreExercise(
   exercise: Exercise,
   responses: (ResponseNote | null)[],
   extraneousNotes: ResponseNote[],
+  options: { includeTimingScore?: boolean } = {},
 ): ExerciseResult {
   let correctPitchCount = 0;
   let correctTimingCount = 0;
@@ -95,13 +102,14 @@ export function scoreExercise(
     };
   });
 
-  // Scoring formula: pitch accuracy only (0–100).
-  // Timing is shown in the report but not penalised — mic detection is not
-  // accurate enough for timing evaluation. wrong-timing notes already
-  // incremented correctPitchCount above, so they receive full credit.
-  const score = exercise.notes.length > 0
-    ? Math.round(100 * correctPitchCount / exercise.notes.length)
-    : 0;
+  // Scoring formula:
+  //  - Mic mode (default): pitch only — mic detection latency makes timing
+  //    unreliable, so wrong-timing notes receive full credit.
+  //  - MIDI mode (includeTimingScore: true): 50% pitch + 50% timing.
+  const n = exercise.notes.length;
+  const score = n === 0 ? 0 : options.includeTimingScore
+    ? Math.round(50 * correctPitchCount / n + 50 * correctTimingCount / n)
+    : Math.round(100 * correctPitchCount / n);
 
   return {
     comparisons,
