@@ -18,7 +18,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { PluginContext } from '../../src/plugin-api/index';
+import type { PluginContext, PluginNoteEvent } from '../../src/plugin-api/index';
 import './VirtualKeyboard.css';
 
 // ---------------------------------------------------------------------------
@@ -76,8 +76,6 @@ const BLACK_NOTES = NOTES.filter(n => n.isBlack);
 /** Calculate the absolute left position for a black key (in px). */
 function blackKeyLeft(note: NoteDefinition): number {
   // Centre the black key at 65% from the left edge of its preceding white key.
-  // (whiteKeyBefore * whiteKeyWidth) = left edge of the white key
-  // + 0.65 * whiteKeyWidth = the centre point
   return (note.whiteKeyBefore! * WHITE_KEY_WIDTH) + (0.65 * WHITE_KEY_WIDTH);
 }
 
@@ -94,12 +92,37 @@ export interface VirtualKeyboardProps {
 
 export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
   const [pressedKeys, setPressedKeys] = useState<Set<number>>(new Set());
-  const [playedNotes, setPlayedNotes] = useState<{ midi: number; label: string }[]>([]);
+  // Played notes as PluginNoteEvents — fed to the staff viewer.
+  // Notes are appended on key-release so durationMs is always known.
+  const [playedNotes, setPlayedNotes] = useState<PluginNoteEvent[]>([]);
+  // The MIDI note most recently committed to the staff (set on each key release).
+  // Passed to StaffViewer as `highlightedNotes` so only the just-added note is
+  // accented, not all past occurrences of the same pitch.
+  const [lastReleasedMidi, setLastReleasedMidi] = useState<number | null>(null);
+
+  // ------------------------------------------------------------------
 
   // Mirror pressedKeys into a ref so the unmount cleanup can read the latest
   // value without capturing a stale closure.
   const pressedKeysRef = useRef<Set<number>>(new Set());
   useEffect(() => { pressedKeysRef.current = pressedKeys; }, [pressedKeys]);
+
+  // Track when each MIDI key was pressed (midiNote → Date.now()) so we can
+  // calculate durationMs when the key is released.
+  const attackTimestamps = useRef<Map<number, number>>(new Map());
+
+  // --------------------------------------------------------------------------
+  // Touch / mouse dual-source guard
+  //
+  // On mobile browsers, a touchstart fires our touch handler, then — after
+  // ~300 ms — the browser synthesises mousedown/mouseup.  Without this guard,
+  // two notes would be added on every short tap.
+  //
+  // Strategy: record the last touch event time and skip any mouse handler that
+  // fires within 500 ms of it.
+  // --------------------------------------------------------------------------
+  const lastTouchTimeRef = useRef<number>(0);
+  const TOUCH_GUARD_MS = 500;
 
   // On unmount (e.g. Back button): release any notes that are still held down.
   // Without this a sustained note keeps playing after the component is gone.
@@ -113,23 +136,26 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --------------------------------------------------------------------------
+  // Key down / up handlers (shared between touch and mouse)
+  // --------------------------------------------------------------------------
+
   const handleKeyDown = useCallback(
     (note: NoteDefinition) => {
       // Audio playback via Plugin API — host routes through ToneAdapter (Salamander piano)
       context.playNote({ midiNote: note.midi, timestamp: Date.now(), type: 'attack' });
       // Note data to WASM layout pipeline
       context.emitNote({ midiNote: note.midi, timestamp: Date.now() });
+      // Record the attack time for duration calculation on release.
+      attackTimestamps.current.set(note.midi, Date.now());
 
       setPressedKeys(prev => {
         const next = new Set(prev);
         next.add(note.midi);
         return next;
       });
-
-      setPlayedNotes(prev => {
-        const next = [...prev, { midi: note.midi, label: note.label }];
-        return next.length > MAX_DISPLAYED_NOTES ? next.slice(-MAX_DISPLAYED_NOTES) : next;
-      });
+      // Note is NOT appended to playedNotes here — it is appended on release
+      // so that durationMs can be included.
     },
     [context]
   );
@@ -137,6 +163,24 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
   const handleKeyUp = useCallback((midi: number) => {
     // Release the sustained note through the Plugin API
     context.playNote({ midiNote: midi, timestamp: Date.now(), type: 'release' });
+
+    // Calculate how long the key was held.
+    const attackedAt = attackTimestamps.current.get(midi);
+    const durationMs = attackedAt != null ? Date.now() - attackedAt : undefined;
+    attackTimestamps.current.delete(midi);
+
+    // Append to the staff viewer — now with the measured duration.
+    setLastReleasedMidi(midi);
+    setPlayedNotes(prev => {
+      const event: PluginNoteEvent = {
+        midiNote: midi,
+        timestamp: attackedAt ?? Date.now(),
+        durationMs,
+      };
+      const next = [...prev, event];
+      return next.length > MAX_DISPLAYED_NOTES ? next.slice(-MAX_DISPLAYED_NOTES) : next;
+    });
+
     setPressedKeys(prev => {
       const next = new Set(prev);
       next.delete(midi);
@@ -144,27 +188,114 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
     });
   }, [context]);
 
+  // --------------------------------------------------------------------------
+  // Touch handlers
+  //
+  // e.preventDefault() on touchStart:
+  //   - prevents the browser from synthesising mousedown/click events
+  //   - prevents the iOS long-press "Save Image / Copy" callout
+  //   - prevents scrolling while playing individual keys
+  //
+  // e.preventDefault() on touchEnd:
+  //   - suppresses any residual synthetic mouse events (mouseup, click) that
+  //     some browsers still emit even when touchStart was prevented
+  // --------------------------------------------------------------------------
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent, note: NoteDefinition) => {
+      e.preventDefault();
+      lastTouchTimeRef.current = Date.now();
+      handleKeyDown(note);
+    },
+    [handleKeyDown]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent, midi: number) => {
+      e.preventDefault();
+      handleKeyUp(midi);
+    },
+    [handleKeyUp]
+  );
+
+  // --------------------------------------------------------------------------
+  // Mouse handlers — guarded to ignore events synthesised from touch
+  // --------------------------------------------------------------------------
+  const handleMouseDown = useCallback(
+    (note: NoteDefinition) => {
+      if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      handleKeyDown(note);
+    },
+    [handleKeyDown]
+  );
+
+  const handleMouseUp = useCallback(
+    (midi: number) => {
+      if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      handleKeyUp(midi);
+    },
+    [handleKeyUp]
+  );
+
+  const handleMouseLeave = useCallback(
+    (midi: number) => {
+      if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      handleKeyUp(midi);
+    },
+    [handleKeyUp]
+  );
+
+  // --------------------------------------------------------------------------
+  // MIDI hardware keyboard integration
+  //
+  // Subscribes to note events from any connected MIDI device via the Plugin API.
+  // Pressing a physical key simulates the same flow as a mouse/touch press:
+  //   attack  → handleKeyDown (visual highlight + audio + staff note on release)
+  //   release → handleKeyUp   (audio release + note committed to staff)
+  //
+  // Only notes within the keyboard range (C3–B4, MIDI 48–71) are acted on;
+  // out-of-range MIDI notes are ignored rather than clamped.
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    return context.midi.subscribe((event) => {
+      if (event.type === 'release') {
+        handleKeyUp(event.midiNote);
+      } else {
+        const note = NOTES.find(n => n.midi === event.midiNote);
+        if (note) handleKeyDown(note);
+      }
+    });
+  }, [context, handleKeyDown, handleKeyUp]);
+
   const totalWidth = WHITE_NOTES.length * WHITE_KEY_WIDTH;
 
   return (
     <div className="virtual-keyboard">
       <h2 className="virtual-keyboard__title">Virtual Keyboard</h2>
 
-      {/* Note display area — shows chips for each played note */}
-      <div className="virtual-keyboard__staff-area">
-        {playedNotes.length === 0 ? (
-          <span className="virtual-keyboard__note-display--empty">
-            Play a key to see notes here
-          </span>
-        ) : (
-          <div className="virtual-keyboard__note-display">
-            {playedNotes.map((n, i) => (
-              <span key={i} className="virtual-keyboard__note-chip">
-                {n.label}
-              </span>
-            ))}
-          </div>
-        )}
+      {/* Staff header: title + clear button */}
+      <div className="virtual-keyboard__staff-header">
+        <span className="virtual-keyboard__staff-label">Staff</span>
+        <button
+          className="virtual-keyboard__clear-btn"
+          onClick={() => setPlayedNotes([])}
+          aria-label="Clear staff"
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* Staff view — shows played notes as notation above the keyboard */}
+      {/* onContextMenu suppresses the iOS/Android long-press OS menu on the SVG */}
+      <div
+        className="virtual-keyboard__staff-area"
+        onContextMenu={e => e.preventDefault()}
+      >
+        <context.components.StaffViewer
+          notes={playedNotes}
+          highlightedNotes={lastReleasedMidi !== null ? [lastReleasedMidi] : []}
+          clef="Treble"
+          autoScroll
+        />
       </div>
 
       {/* Keyboard (scrollable on narrow screens) */}
@@ -176,11 +307,12 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
               key={note.midi}
               className={`key key--white${pressedKeys.has(note.midi) ? ' key--pressed' : ''}`}
               data-midi={note.midi}
-              onMouseDown={() => handleKeyDown(note)}
-              onMouseUp={() => handleKeyUp(note.midi)}
-              onMouseLeave={() => handleKeyUp(note.midi)}
-              onTouchStart={e => { e.preventDefault(); handleKeyDown(note); }}
-              onTouchEnd={() => handleKeyUp(note.midi)}
+              onMouseDown={() => handleMouseDown(note)}
+              onMouseUp={() => handleMouseUp(note.midi)}
+              onMouseLeave={() => handleMouseLeave(note.midi)}
+              onTouchStart={e => handleTouchStart(e, note)}
+              onTouchEnd={e => handleTouchEnd(e, note.midi)}
+              onContextMenu={e => e.preventDefault()}
               role="button"
               aria-label={note.label}
             >
@@ -195,11 +327,12 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
               className={`key key--black${pressedKeys.has(note.midi) ? ' key--pressed' : ''}`}
               data-midi={note.midi}
               style={{ left: `${blackKeyLeft(note)}px` }}
-              onMouseDown={() => handleKeyDown(note)}
-              onMouseUp={() => handleKeyUp(note.midi)}
-              onMouseLeave={() => handleKeyUp(note.midi)}
-              onTouchStart={e => { e.preventDefault(); handleKeyDown(note); }}
-              onTouchEnd={() => handleKeyUp(note.midi)}
+              onMouseDown={() => handleMouseDown(note)}
+              onMouseUp={() => handleMouseUp(note.midi)}
+              onMouseLeave={() => handleMouseLeave(note.midi)}
+              onTouchStart={e => handleTouchStart(e, note)}
+              onTouchEnd={e => handleTouchEnd(e, note.midi)}
+              onContextMenu={e => e.preventDefault()}
               role="button"
               aria-label={note.label}
             />

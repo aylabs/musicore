@@ -13,6 +13,40 @@
 import type { ComponentType } from 'react';
 
 // ---------------------------------------------------------------------------
+// Staff viewer component props (injected via PluginContext.components)
+// ---------------------------------------------------------------------------
+
+/**
+ * Props for the host-provided StaffViewer component available to plugins via
+ * `context.components.StaffViewer`.  Plugins receive a live React component
+ * that renders a notation staff from their note events — no layout math needed
+ * in plugin code.
+ */
+export interface PluginStaffViewerProps {
+  /**
+   * Ordered list of note events to display on the staff.
+   * Only `type === 'attack'` (or events with no `type`) are shown as notes;
+   * release events are ignored for display purposes.
+   */
+  readonly notes: readonly PluginNoteEvent[];
+  /**
+   * MIDI note numbers to accent on the staff.
+   * Only the **most recent occurrence** of each pitch in the staff is highlighted,
+   * so passing the just-released note cleanly accents the note that was just added.
+   */
+  readonly highlightedNotes?: readonly number[];
+  /** Clef for the staff display (default: 'Treble'). */
+  readonly clef?: 'Treble' | 'Bass';
+  /**
+   * When `true` the staff container scrolls to keep the most recently played
+   * note visible whenever a new note is appended.  The user can still scroll
+   * back manually; the next note event re-enables auto-scroll.
+   * Defaults to `false`.
+   */
+  readonly autoScroll?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Domain events
 // ---------------------------------------------------------------------------
 
@@ -33,6 +67,13 @@ export interface PluginNoteEvent {
    * Defaults to 'attack' when omitted.
    */
   readonly type?: 'attack' | 'release';
+  /**
+   * How long the key was held, in milliseconds.
+   * Only present on attack events whose key has already been released.
+   * `PluginStaffViewer` uses this to render the correct note value
+   * (e.g. 250 ms ≈ eighth note at 120 BPM).
+   */
+  readonly durationMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +120,39 @@ export interface PluginContext {
    * must NOT import Tone.js or Web Audio API directly.
    */
   playNote(event: PluginNoteEvent): void;
-  /** Read-only manifest for this plugin instance. */
+  /**
+   * MIDI hardware keyboard integration.
+   * Subscribe to receive note events from any connected MIDI device.
+   * The callback is invoked with `type: 'attack'` on note-on and
+   * `type: 'release'` on note-off/note-on-with-velocity-0.
+   * When no MIDI device is connected the handler is never called.
+   *
+   * Returns an unsubscribe function — call it in your cleanup:
+   * ```tsx
+   * useEffect(() => context.midi.subscribe(handler), [context]);
+   * ```
+   */
+  readonly midi: {
+    readonly subscribe: (handler: (event: PluginNoteEvent) => void) => () => void;
+  };  /**
+   * Host-provided React components that plugins can embed in their UI.
+   * These components are pre-wired to the host's notation engine and audio
+   * pipeline — plugins must use these instead of importing host internals.
+   */
+  readonly components: {
+    /**
+     * Renders a scrollable music staff from an array of `PluginNoteEvent`s.
+     * Drop it anywhere in your plugin JSX:
+     *
+     * ```tsx
+     * <context.components.StaffViewer
+     *   notes={recordedNotes}
+     *   highlightedNotes={[...pressedKeys]}
+     * />
+     * ```
+     */
+    readonly StaffViewer: ComponentType<PluginStaffViewerProps>;
+  };  /** Read-only manifest for this plugin instance. */
   readonly manifest: Readonly<PluginManifest>;
 }
 
