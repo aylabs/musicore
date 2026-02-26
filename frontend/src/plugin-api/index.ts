@@ -13,6 +13,7 @@ export type {
   PluginNoteEvent,
   PluginManifest,
   PluginContext,
+  PluginStaffViewerProps,
   MusicorePlugin,
 } from './types';
 

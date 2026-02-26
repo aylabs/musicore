@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { MidiDevice, MidiNoteEvent, MidiConnectionEvent } from '../../types/recording';
-import { parseMidiNoteOn } from './midiUtils';
+import { parseMidiNoteOn, parseMidiNoteOff } from './midiUtils';
 
 const MIDI_ACCESS_TIMEOUT_MS = 3000;
 const CONNECT_DEBOUNCE_MS = 300;
@@ -24,6 +24,8 @@ const CONNECT_DEBOUNCE_MS = 300;
 export interface UseMidiInputCallbacks {
   /** Called for every MIDI note-on event (velocity > 0) on any channel */
   onNoteOn: (event: MidiNoteEvent) => void;
+  /** Called for every MIDI note-off event (explicit 0x80 or velocity-0 0x90) */
+  onNoteOff?: (noteNumber: number) => void;
   /** Called when a device connects or disconnects */
   onConnectionChange: (event: MidiConnectionEvent) => void;
   /** Session start timestamp in ms — used for computing session-relative event times */
@@ -103,6 +105,11 @@ export function useMidiInput(callbacks: UseMidiInputCallbacks): UseMidiInputResu
         const note = parseMidiNoteOn(ev.data as Uint8Array, sessionStartMs, ev.timeStamp);
         if (note) {
           callbacksRef.current.onNoteOn(note);
+          return;
+        }
+        const offNote = parseMidiNoteOff(ev.data as Uint8Array);
+        if (offNote !== null && callbacksRef.current.onNoteOff) {
+          callbacksRef.current.onNoteOff(offNote);
         }
       };
     }

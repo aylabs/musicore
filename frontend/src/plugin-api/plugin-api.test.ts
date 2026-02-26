@@ -120,10 +120,15 @@ describe('Plugin API contract', () => {
       const ctx: PluginContext = {
         emitNote: (_event: PluginNoteEvent) => { /* no-op */ },
         playNote: (_event: PluginNoteEvent) => { /* no-op */ },
+        midi: { subscribe: () => () => {} },
+        components: {
+          StaffViewer: () => null,
+        },
         manifest: manifst,
       };
       expect(typeof ctx.emitNote).toBe('function');
       expect(typeof ctx.playNote).toBe('function');
+      expect(typeof ctx.components.StaffViewer).toBe('function');
       expect(ctx.manifest.id).toBe('x');
     });
   });

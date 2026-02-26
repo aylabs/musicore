@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
 import { RecordingView } from './components/recording/RecordingView'
@@ -13,8 +13,10 @@ import { pluginRegistry } from './services/plugins/PluginRegistry'
 import { PluginView } from './components/plugins/PluginView'
 import { PluginNavEntry } from './components/plugins/PluginNavEntry'
 import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
-import type { PluginContext, PluginManifest } from './plugin-api/index'
+import type { PluginContext, PluginManifest, PluginNoteEvent } from './plugin-api/index'
+import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
 import { ToneAdapter } from './services/playback/ToneAdapter'
+import { useMidiInput } from './services/recording/useMidiInput'
 import packageJson from '../package.json'
 import './App.css'
 
@@ -47,6 +49,30 @@ function App() {
   const [activePlugin, setActivePlugin] = useState<string | null>(null)
   // T025: Show/hide plugin importer dialog
   const [showImporter, setShowImporter] = useState(false)
+
+  // Feature 030 / 029: Fan out MIDI hardware events to all subscribed plugins.
+  // A single Set of handlers is shared; each plugin context adds/removes its own.
+  const midiPluginSubscribersRef = useRef<Set<(e: PluginNoteEvent) => void>>(new Set())
+  useMidiInput({
+    onNoteOn: (midiEvent) => {
+      const event: PluginNoteEvent = {
+        midiNote: midiEvent.noteNumber,
+        timestamp: Date.now(),
+        velocity: midiEvent.velocity,
+        type: 'attack',
+      }
+      midiPluginSubscribersRef.current.forEach(h => h(event))
+    },
+    onNoteOff: (noteNumber) => {
+      const event: PluginNoteEvent = {
+        midiNote: noteNumber,
+        timestamp: Date.now(),
+        type: 'release',
+      }
+      midiPluginSubscribersRef.current.forEach(h => h(event))
+    },
+    onConnectionChange: () => {},
+  })
   
   // Mobile debug console (eruda) - enable with ?debug=true
   useEffect(() => {
@@ -139,6 +165,17 @@ function App() {
             } else {
               adapter.attackNote(event.midiNote, event.velocity ?? 64)
             }
+          },
+          components: {
+            // Host-provided notation staff — plugins use this to visualise notes
+            // without importing the layout engine or score types directly.
+            StaffViewer: PluginStaffViewer,
+          },
+          midi: {
+            subscribe: (handler) => {
+              midiPluginSubscribersRef.current.add(handler)
+              return () => { midiPluginSubscribersRef.current.delete(handler) }
+            },
           },
           manifest,
         }

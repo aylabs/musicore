@@ -67,3 +67,23 @@ export function parseMidiNoteOn(
     label: midiNoteToLabel(noteNumber),
   };
 }
+
+/**
+ * Parses a raw MIDI message and returns the note number if it is a note-off event.
+ * Returns null for anything else.
+ *
+ * Note-off is either:
+ *   data[0] & 0xF0 === 0x80  (explicit note-off status byte)
+ *   data[0] & 0xF0 === 0x90 and data[2] === 0  (note-on with velocity 0)
+ */
+export function parseMidiNoteOff(
+  data: Uint8Array,
+): number | null {
+  if (data.length < 3) return null;
+  const statusType = data[0] & 0xf0;
+  const noteNumber = data[1];
+  const velocity = data[2];
+  if (statusType === 0x80) return noteNumber;          // explicit note-off
+  if (statusType === 0x90 && velocity === 0) return noteNumber; // velocity-0 note-on
+  return null;
+}

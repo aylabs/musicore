@@ -28,7 +28,44 @@
   letter-spacing: 0.05em;
 }
 
-/* Staff placeholder shown above the keyboard */
+/* Staff header: label + clear button */
+.virtual-keyboard__staff-header {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.virtual-keyboard__staff-label {
+  color: #a0a0c0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.virtual-keyboard__clear-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e0e0ff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  /* Avoid the OS callout on long-press */
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+.virtual-keyboard__clear-btn:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Staff area (SVG canvas) shown above the keyboard */
 .virtual-keyboard__staff-area {
   width: 100%;
   max-width: 640px;
@@ -43,6 +80,10 @@
   color: #888;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  /* Suppress OS long-press callout on the notation SVG */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* ── Keyboard wrapper (scrollable on narrow screens) ───────────────── */
@@ -76,8 +117,13 @@
   border-radius: 0 0 4px 4px;
   cursor: pointer;
   flex-shrink: 0;
-  /* Prevents context menu on long-press (touch) */
+  /* Prevent text selection and all browser touch UI on keys */
   -webkit-tap-highlight-color: transparent;
+  /* Prevents iOS/Android long-press "Save / Share / Copy" context menu */
+  -webkit-touch-callout: none;
+  /* Disable pan/zoom gestures on individual keys so the browser does not
+     intercept pointers; we handle everything ourselves via onTouchStart/End */
+  touch-action: none;
 }
 
 .key--white {
