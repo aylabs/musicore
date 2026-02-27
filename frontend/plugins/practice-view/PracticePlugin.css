@@ -80,6 +80,8 @@
   background: var(--color-danger-dark, #b71c1c);
 }
 
+
+
 .practice-plugin__header-btn--new {
   background: var(--color-accent, #4f8ef7);
   color: #fff;
@@ -360,11 +362,31 @@
 }
 
 .practice-staff-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-muted, #888);
+}
+
+/* Inline sound toggle next to the Exercise staff label */
+.practice-staff-sound-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: opacity 0.12s;
+  display: flex;
+  align-items: center;
+}
+
+.practice-staff-sound-btn--muted {
+  opacity: 0.35;
 }
 
 .practice-staff-wrapper {

@@ -5,5 +5,6 @@
   "pluginApiVersion": "2",
   "entryPoint": "index.tsx",
   "description": "Piano practice exercise — play along and see your score.",
-  "type": "core"
+  "type": "core",
+  "view": "full-screen"
 }

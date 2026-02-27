@@ -105,6 +105,10 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Sound toggle — muting silences guide notes without affecting user MIDI feedback
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
+
   // Live response notes for display
   const [responseNoteEvents, setResponseNoteEvents] = useState<PluginNoteEvent[]>([]);
   // Absolute timestamp of when the current exercise playback started (for WASM layout)
@@ -485,12 +489,14 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         }, STEP_INPUT_DELAY_MS);
         setHighlightedSlotIndex(nextIdx);
         stepLastPlayTimeRef.current = Date.now();
-        context.playNote({
-          midiNote: ex.notes[nextIdx].midiPitch,
-          timestamp: Date.now(),
-          type: 'attack',
-          durationMs: 600,
-        });
+        if (soundEnabledRef.current) {
+          context.playNote({
+            midiNote: ex.notes[nextIdx].midiPitch,
+            timestamp: Date.now(),
+            type: 'attack',
+            durationMs: 600,
+          });
+        }
         scheduleStepSlotTimeout(nextIdx);
       }
     } else {
@@ -526,7 +532,9 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     setHighlightedSlotIndex(0);
     const firstNote = exerciseRef.current.notes[0];
     if (firstNote) {
-      context.playNote({ midiNote: firstNote.midiPitch, timestamp: Date.now(), type: 'attack', durationMs: 600 });
+      if (soundEnabledRef.current) {
+        context.playNote({ midiNote: firstNote.midiPitch, timestamp: Date.now(), type: 'attack', durationMs: 600 });
+      }
       scheduleStepSlotTimeout(0);
     }
   }, [context, resetOnsetDetection, scheduleStepSlotTimeout]);
@@ -570,7 +578,8 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       // Play exercise guide notes only for MIDI (keyboard produces no sound of
       // its own) and unknown source (manual Play button before first input).
       // In mic mode the real acoustic instrument provides the sound — skip audio.
-      if (inputSourceRef.current !== 'mic') {
+      // Respects soundEnabledRef — muted = no guide notes.
+      if (inputSourceRef.current !== 'mic' && soundEnabledRef.current) {
         currentExercise.notes.forEach((note) => {
           context.playNote({
             midiNote: note.midiPitch,
@@ -727,6 +736,15 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   const handleDismissTips = useCallback(() => {
     sessionStorage.setItem('practice-tips-v1-dismissed', 'yes');
     setShowTips(false);
+  }, []);
+
+  // ── Sound toggle ──────────────────────────────────────────────────────────────
+  const toggleSound = useCallback(() => {
+    setSoundEnabled(prev => {
+      const next = !prev;
+      soundEnabledRef.current = next;
+      return next;
+    });
   }, []);
 
   // ── Highlighted notes ─────────────────────────────────────────────────────────
@@ -968,7 +986,18 @@ export function PracticePlugin({ context }: PracticePluginProps) {
 
           {/* Exercise staff */}
           <div className="practice-staff-block">
-            <div className="practice-staff-label" aria-hidden="true">Exercise</div>
+            <div className="practice-staff-label">
+              <span aria-hidden="true">Exercise</span>
+              <button
+                className={`practice-staff-sound-btn${soundEnabled ? '' : ' practice-staff-sound-btn--muted'}`}
+                onClick={toggleSound}
+                aria-label={soundEnabled ? 'Mute exercise notes' : 'Unmute exercise notes'}
+                aria-pressed={!soundEnabled}
+                title={soundEnabled ? 'Exercise notes sound on — click to mute' : 'Exercise notes muted — click to unmute'}
+              >
+                {soundEnabled ? '🔊' : '🔇'}
+              </button>
+            </div>
             <div className={`practice-staff-wrapper${phase === 'playing' ? ' practice-staff-wrapper--playing' : ''}`}>
               <StaffViewer
                 notes={exerciseNoteEvents}

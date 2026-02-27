@@ -197,6 +197,14 @@ export interface PluginManifest {
    * Defaults to `'common'` when omitted.
    */
   readonly type?: 'core' | 'common';
+  /**
+   * Display mode:
+   * - `'full-screen'` — replaces the entire app viewport (no header, no nav bar).
+   *                     The plugin must provide its own back/close button.
+   * - `'window'`      — renders in a windowed overlay with the host's back-bar.
+   * Defaults to `'window'` when omitted.
+   */
+  readonly view?: 'full-screen' | 'window';
   /** Set by the host: 'builtin' for repo plugins, 'imported' for user-installed. */
   readonly origin: 'builtin' | 'imported';
 }
