@@ -61,6 +61,15 @@
   background: var(--color-border, #e8e8e8);
 }
 
+/* Back/close navigation button — visually distinct from action buttons */
+.practice-plugin__back-btn {
+  margin-right: 0.25rem;
+  color: var(--color-text-secondary, #555);
+}
+.practice-plugin__back-btn:hover {
+  background: var(--color-border, #e0e0e0);
+}
+
 .practice-plugin__header-btn--stop {
   background: var(--color-danger, #e53935);
   color: #fff;

@@ -107,6 +107,34 @@
 
 ---
 
+## Phase 6: Post-Launch Fixes & Improvements
+
+**Purpose**: Bug fixes and UX improvements discovered after the plugin was shipped to production navigation.
+
+### VirtualKeyboard plugin
+
+- [X] T032 [P] Fix drag-over note triggering in `frontend/plugins/virtual-keyboard/VirtualKeyboard.tsx`: add `isMouseHeldRef` boolean ref; add document-level `mouseup` listener to reset it; guard `handleMouseLeave` to only release when button is held; add `handleMouseEnter` that plays a note only when dragging (button down entering a new key) — pure hover remains silent
+- [X] T033 [P] Wire VirtualKeyboard staff viewer to Rust WASM layout engine: add `DEFAULT_BPM = 120` constant; derive `timestampOffset` (first attack note timestamp) and `highlightedNoteIndex` (latest released note index) via `useMemo`; pass `bpm`, `timestampOffset`, and `highlightedNoteIndex` to `context.components.StaffViewer` — activates the WASM path in `PluginStaffViewer`
+
+### Plugin type system
+
+- [X] T034 Add `type?: 'core' | 'common'` field to `PluginManifest` in `frontend/src/plugin-api/types.ts` — `'core'` plugins appear on the Landing Screen as featured launch buttons; `'common'` plugins appear only in the header nav bar
+- [X] T035 [P] Set `"type": "core"` in `frontend/plugins/practice-view/plugin.json`; set `"type": "common"` in `frontend/plugins/virtual-keyboard/plugin.json`
+- [X] T036 [P] Extend `LandingScreen` (`frontend/src/components/LandingScreen.tsx`) with `corePlugins` and `onLaunchPlugin` props; render a styled launch button for each core plugin in the landing actions area; add `.landing-plugin-btn` CSS class in `LandingScreen.css`
+- [X] T037 Thread `corePlugins` and `onLaunchPlugin` through `ScoreViewer` props to `LandingScreen` (`frontend/src/components/ScoreViewer.tsx`)
+- [X] T038 Filter core plugins out of the header nav bar in `frontend/src/App.tsx` — only `type !== 'core'` plugins render `PluginNavEntry` entries; the `+` import button remains visible regardless
+
+### Practice plugin fullscreen mode
+
+- [X] T039 Add `close(): void` to `PluginContext` in `frontend/src/plugin-api/types.ts` — allows core plugins to dismiss themselves from their own UI; add `close: () => setActivePlugin(null)` to each plugin's context object in `App.tsx`; update all PluginContext test stubs in `PracticePlugin.test.tsx` and `plugin-api.test.ts` to include `close: vi.fn()` / `close: () => {}`
+- [X] T040 Skip the host back-bar for `core` plugins in the plugin overlay (`frontend/src/App.tsx`) — only `type !== 'core'` plugins render the "← Back | name" host bar; core plugins receive the full `inset: 0` area
+- [X] T041 Add "← Back" button to `PracticePlugin` header (`frontend/plugins/practice-view/PracticePlugin.tsx`) calling `context.close()`; add `.practice-plugin__back-btn` CSS modifier in `PracticePlugin.css`
+- [X] T042 Apply `body.fullscreen-play` CSS class when a `core` plugin is active (`frontend/src/App.tsx`): add `useEffect` that calls `document.body.classList.toggle('fullscreen-play', isCore)` — reuses the existing fullscreen CSS rules (hide header, remove iOS overflow restrictions, enable pinch-zoom) that the Play Score view already defines
+
+**Checkpoint**: VirtualKeyboard hover bug gone; keyboard staff renders via Rust engine. Practice plugin launches from landing page button; displays without host back-bar; fills the full viewport matching Play Score view. All tests pass.
+
+---
+
 ## Dependencies
 
 ```

@@ -760,6 +760,13 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     <div className="practice-plugin">
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="practice-plugin__header">
+        <button
+          className="practice-plugin__header-btn practice-plugin__back-btn"
+          onClick={() => context.close()}
+          aria-label="Back to main view"
+        >
+          ← Back
+        </button>
         <h1 className="practice-plugin__title">Practice Exercise</h1>
         <div className="practice-plugin__header-actions">
           <span

@@ -188,6 +188,15 @@ export interface PluginManifest {
   readonly pluginApiVersion: string;
   readonly entryPoint: string;
   readonly description?: string;
+  /**
+   * Plugin role:
+   * - `'core'`   — first-class feature; shown as a launch button on the Landing
+   *                Screen so users discover it without loading a score first.
+   * - `'common'` — utility/tool; accessible via the plugin nav bar but not
+   *                featured on the Landing Screen.
+   * Defaults to `'common'` when omitted.
+   */
+  readonly type?: 'core' | 'common';
   /** Set by the host: 'builtin' for repo plugins, 'imported' for user-installed. */
   readonly origin: 'builtin' | 'imported';
 }
@@ -250,6 +259,13 @@ export interface PluginContext {
    * is disposed.
    */
   stopPlayback(): void;
+  /**
+   * Closes (dismisses) this plugin and returns the user to the main app view.
+   * Core plugins that own their full-screen UI should call this instead of
+   * relying on the host's back-button bar, which is not rendered for 'core'
+   * type plugins.
+   */
+  close(): void;
   /**
    * Host-provided React components that plugins can embed in their UI.
    * These components are pre-wired to the host's notation engine and audio

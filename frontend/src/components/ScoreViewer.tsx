@@ -30,6 +30,10 @@ interface ScoreViewerProps {
   debugMode?: boolean;
   /** Called when Record View button is pressed (only relevant when debugMode=true) */
   onShowRecording?: () => void;
+  /** Core plugins to feature on the landing screen (type === 'core'). */
+  corePlugins?: Array<{ id: string; name: string }>;
+  /** Called when the user launches a core plugin from the landing screen. */
+  onLaunchPlugin?: (pluginId: string) => void;
 }
 
 /**
@@ -52,6 +56,8 @@ export function ScoreViewer({
   onViewModeChange: controlledOnViewModeChange,
   debugMode = false,
   onShowRecording,
+  corePlugins,
+  onLaunchPlugin,
 }: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
@@ -542,6 +548,8 @@ export function ScoreViewer({
         <LandingScreen
           onLoadScore={() => setDialogOpen(true)}
           onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}
+          corePlugins={corePlugins}
+          onLaunchPlugin={onLaunchPlugin}
         />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}

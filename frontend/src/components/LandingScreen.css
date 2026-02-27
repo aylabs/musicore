@@ -96,6 +96,24 @@
   }
 }
 
+.landing-plugin-btn {
+  border-radius: 12px;
+  padding: 1.25rem 2.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #5AC481;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(90, 196, 129, 0.45);
+  min-width: unset;
+}
+
+.landing-plugin-btn:hover {
+  background: #3ea864;
+}
+
 .landing-instruments-btn {
   border-radius: 12px;
   padding: 1.25rem 2.5rem;
@@ -120,6 +138,7 @@
     gap: 0.75rem;
   }
   .landing-practice-btn,
+  .landing-plugin-btn,
   .landing-instruments-btn,
   .landing-actions .load-score-button {
     padding: 1rem 2rem !important;

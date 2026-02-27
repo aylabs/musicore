@@ -133,6 +133,7 @@ describe('Plugin API contract', () => {
           onError: () => () => {},
         },
         stopPlayback: () => { /* no-op */ },
+        close: () => { /* no-op */ },
         manifest: manifst,
       };
       expect(typeof ctx.emitNote).toBe('function');
@@ -161,6 +162,7 @@ describe('Plugin API contract', () => {
           onError: (_handler: (e: string) => void) => () => {},
         },
         stopPlayback: () => {},
+        close: () => {},
         manifest,
       };
       expect(typeof ctx.recording.subscribe).toBe('function');
@@ -184,6 +186,7 @@ describe('Plugin API contract', () => {
         components: { StaffViewer: () => null },
         recording: { subscribe: () => () => {}, onError: () => () => {} },
         stopPlayback: () => {},
+        close: () => {},
         manifest,
       };
       expect(typeof ctx.stopPlayback).toBe('function');

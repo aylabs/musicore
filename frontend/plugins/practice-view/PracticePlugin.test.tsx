@@ -46,6 +46,7 @@ function makeMockContext(): PluginContext & {
     emitNote: vi.fn(),
     playNote: vi.fn(),
     stopPlayback: vi.fn(),
+    close: vi.fn(),
     recording: {
       subscribe: vi.fn((handler: (e: PluginPitchEvent) => void) => {
         pitchSubscribers.add(handler);

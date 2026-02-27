@@ -48,6 +48,16 @@ function App() {
   // T025: Show/hide plugin importer dialog
   const [showImporter, setShowImporter] = useState(false)
 
+  // Apply fullscreen-play body class when a core plugin is active so it gets
+  // the same full-viewport treatment as the Play Score view (removes body
+  // overflow restrictions, enables pinch-zoom on iOS/iPad, hides the header).
+  useEffect(() => {
+    const entry = allPlugins.find(p => p.manifest.id === activePlugin)
+    const isCore = entry?.manifest.type === 'core'
+    document.body.classList.toggle('fullscreen-play', isCore)
+    return () => { document.body.classList.remove('fullscreen-play') }
+  }, [activePlugin, allPlugins])
+
   // Feature 030 / 029: Fan out MIDI hardware events to all subscribed plugins.
   // A single Set of handlers is shared; each plugin context adds/removes its own.
   const midiPluginSubscribersRef = useRef<Set<(e: PluginNoteEvent) => void>>(new Set())
@@ -202,6 +212,10 @@ function App() {
             }
             ToneAdapter.getInstance().stopAll()
           },
+          // Dismiss this plugin and return to the main app view.
+          // Core plugins call this from their own UI instead of relying on the
+          // host back-bar (which is hidden for core plugins).
+          close: () => setActivePlugin(null),
           // Feature 031 / R-001: Microphone pitch subscription — delegated to
           // the singleton PluginMicBroadcaster (one shared stream, many subscribers).
           recording: {
@@ -449,7 +463,7 @@ function App() {
                   paddingBottom: '4px',
                 }}
               >
-                {allPlugins.map(({ manifest }) => (
+                {allPlugins.filter(p => p.manifest.type !== 'core').map(({ manifest }) => (
                   <PluginNavEntry
                     key={manifest.id}
                     plugin={manifest}
@@ -492,7 +506,10 @@ function App() {
               <ScoreViewer
                 debugMode={debugMode}
                 onShowRecording={() => { setShowRecording(true); setActivePlugin(null); }}
-
+                corePlugins={allPlugins
+                  .filter(p => p.manifest.type === 'core')
+                  .map(p => ({ id: p.manifest.id, name: p.manifest.name }))}
+                onLaunchPlugin={handleSelectPlugin}
               />
             )}
           </main>
@@ -500,6 +517,7 @@ function App() {
             const entry = allPlugins.find(p => p.manifest.id === activePlugin)
             if (!entry) return null
             const PluginComponent = entry.plugin.Component
+            const isCore = entry.manifest.type === 'core'
             return (
               <div style={{
                 position: 'fixed',
@@ -509,42 +527,46 @@ function App() {
                 zIndex: 50,
                 backgroundColor: '#f5f5f5',
               }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '6px 12px',
-                    background: '#f5f5f5',
-                    borderBottom: '1px solid #ddd',
-                    flexShrink: 0,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setActivePlugin(null)}
-                    aria-label="Return to score viewer"
+                {/* Core plugins own their full UI — skip the host bar so they
+                    get the full inset:0 area. Common plugins keep the host bar. */}
+                {!isCore && (
+                  <div
                     style={{
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      background: '#fff',
-                      border: '1px solid #bbb',
-                      borderRadius: '6px',
-                      color: '#333',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      padding: '5px 12px',
-                      minHeight: '32px',
-                      cursor: 'pointer',
+                      gap: '10px',
+                      padding: '6px 12px',
+                      background: '#f5f5f5',
+                      borderBottom: '1px solid #ddd',
+                      flexShrink: 0,
                     }}
                   >
-                    ← Back
-                  </button>
-                  <span style={{ color: '#666', fontSize: '0.8rem' }}>
-                    {entry.manifest.name}
-                  </span>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setActivePlugin(null)}
+                      aria-label="Return to score viewer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: '#fff',
+                        border: '1px solid #bbb',
+                        borderRadius: '6px',
+                        color: '#333',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        padding: '5px 12px',
+                        minHeight: '32px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ← Back
+                    </button>
+                    <span style={{ color: '#666', fontSize: '0.8rem' }}>
+                      {entry.manifest.name}
+                    </span>
+                  </div>
+                )}
                 <PluginView plugin={entry.manifest}>
                   <PluginComponent />
                 </PluginView>
