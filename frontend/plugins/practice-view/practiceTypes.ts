@@ -4,9 +4,8 @@
  *
  * Self-contained type definitions for the practice-view plugin.
  * NO imports from src/ — all types are defined here.
- * These mirror the host-side types in src/types/practice.ts and
- * src/services/practice/exerciseGenerator.ts but are intentionally
- * independent to satisfy the ESLint import boundary.
+ * Self-contained — intentionally not importing from src/ to respect the
+ * plugin/host ESLint import boundary.
  */
 
 // ─── Exercise configuration ───────────────────────────────────────────────────

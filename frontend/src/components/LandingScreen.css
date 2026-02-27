@@ -75,16 +75,6 @@
   min-width: unset !important;
 }
 
-.landing-practice-btn {
-  border-radius: 12px !important;
-  padding: 1.25rem 2.5rem !important;
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.03em !important;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45) !important;
-  min-width: unset !important;
-}
-
 /* --------------------------------------------------------------------------
    Reduced-motion override
    The glyph/color animation is handled in JS; only the CSS transition
@@ -137,7 +127,6 @@
     flex-direction: column;
     gap: 0.75rem;
   }
-  .landing-practice-btn,
   .landing-plugin-btn,
   .landing-instruments-btn,
   .landing-actions .load-score-button {

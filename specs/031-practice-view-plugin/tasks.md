@@ -135,6 +135,20 @@
 
 ---
 
+## Phase 7: Legacy Practice Code Cleanup
+
+**Purpose**: Remove all host-side practice code that predates the plugin migration. After Phase 4 deleted `PracticeView.tsx` and related services, several orphaned type definitions, CSS rules, and stale UI labels remained. This phase eliminates them.
+
+- [X] T043 Delete `frontend/src/types/practice.ts` — the legacy host-side domain types file (`ExerciseNote`, `Exercise`, `ResponseNote`, `NoteComparison`, `ExerciseResult`, `PracticePhase`) that was never imported after Phase 4 removed `PracticeView.tsx`; plugin-internal equivalents live in `frontend/plugins/practice-view/practiceTypes.ts`
+- [X] T044 [P] Remove orphaned `.practice-view-btn` CSS block (3 rules: base, `:hover`, `:active`) from `frontend/src/components/ScoreViewer.css` — the button that once opened `PracticeView` no longer exists
+- [X] T045 [P] Remove orphaned `.landing-practice-btn` CSS rule from `frontend/src/components/LandingScreen.css` and its entry in the `@media (max-width: 520px)` block — superseded by the generic `.landing-plugin-btn` class added in T036
+- [X] T046 [P] Fix stale back-button label in `frontend/src/components/recording/RecordingView.tsx`: change `"← Practice"` to `"← Back"` — the recording debug view is no longer accessed from a practice view
+- [X] T047 [P] Clean up stale references in two files: (a) `frontend/src/components/recording/InputSourceBadge.css` — remove "PracticeView" from the file-level doc comment; (b) `frontend/plugins/practice-view/practiceTypes.ts` — remove the comment referencing now-deleted `src/types/practice.ts` and `src/services/practice/exerciseGenerator.ts`
+
+**Checkpoint**: `npm run build` and `npm test` pass. Zero references to deleted `src/types/practice.ts`. All legacy `.practice-view-btn` / `.landing-practice-btn` CSS classes gone. `grep -r "PracticeView\|practice-view-btn\|landing-practice-btn" src/` returns no component-code hits.
+
+---
+
 ## Dependencies
 
 ```

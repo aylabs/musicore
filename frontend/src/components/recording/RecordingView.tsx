@@ -154,9 +154,9 @@ export function RecordingView({ onBack }: RecordingViewProps) {
         <button
           className="recording-view__back-btn"
           onClick={onBack}
-          aria-label="← Practice"
+          aria-label="← Back"
         >
-          ← Practice
+          ← Back
         </button>
         <h1 className="recording-view__title">Recording View</h1>
         <span className="recording-view__debug-badge">debug</span>
