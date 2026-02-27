@@ -781,7 +781,6 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         <button
           className="practice-plugin__header-btn practice-plugin__back-btn"
           onClick={() => context.close()}
-          aria-label="Back to main view"
         >
           ← Back
         </button>
