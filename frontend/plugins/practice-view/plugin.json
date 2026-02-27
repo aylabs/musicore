@@ -1,0 +1,8 @@
+{
+  "id": "practice-view",
+  "name": "Practice",
+  "version": "1.0.0",
+  "pluginApiVersion": "2",
+  "entryPoint": "index.tsx",
+  "description": "Piano practice exercise — play along and see your score."
+}

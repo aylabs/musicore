@@ -55,6 +55,8 @@ export interface ScoreViewerProps {
   onSeekAndPlay?: (tick: number) => void;
   /** Current playback status — used to decide tap behaviour */
   playbackStatus?: 'playing' | 'paused' | 'stopped';
+  /** Suppress rendering of measure number labels above each system */
+  hideMeasureNumbers?: boolean;
 }
 
 /**
@@ -700,6 +702,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
                 notes={this.props.notes}
                 pinnedNoteIds={this.props.pinnedNoteIds}
                 loopRegion={this.props.loopRegion}
+                hideMeasureNumbers={this.props.hideMeasureNumbers}
               />
             </div>
           </div>

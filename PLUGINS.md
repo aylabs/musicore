@@ -13,6 +13,7 @@ Plugins extend Musicore with new UI views and interactive musical tools. They ru
 5. [API constraints and ESLint boundary](#api-constraints-and-eslint-boundary)
 6. [Testing your plugin](#testing-your-plugin)
 7. [Reference: Virtual Keyboard plugin](#reference-virtual-keyboard-plugin)
+8. [Reference: Practice View plugin](#reference-practice-view-plugin)
 
 ---
 
@@ -71,8 +72,27 @@ interface PluginContext {
    *
    *   type: 'attack'   — note-on  (default when omitted)
    *   type: 'release'  — note-off (release a sustained note)
+   *   offsetMs         — optional: schedule playback N ms in the future
    */
   playNote(event: PluginNoteEvent): void;
+
+  /**
+   * Cancel all notes scheduled via playNote(offsetMs) and silence
+   * any currently playing notes for this plugin.
+   */
+  stopPlayback(): void;
+
+  /**
+   * Microphone pitch subscription — shares a single getUserMedia stream
+   * across all subscribers (one AudioContext per app lifetime).
+   */
+  readonly recording: PluginRecordingContext;
+
+  /** MIDI hardware note events forwarded by the host. */
+  readonly midi: { subscribe(handler: (e: PluginNoteEvent) => void): () => void };
+
+  /** Host-provided UI components safe for plugins to render. */
+  readonly components: { StaffViewer: React.ComponentType<PluginStaffViewerProps> };
 
   /** Read-only descriptor for this plugin instance. */
   readonly manifest: Readonly<PluginManifest>;
@@ -89,6 +109,8 @@ interface PluginNoteEvent {
   readonly timestamp: number;      // Date.now() at the moment of input.
   readonly velocity?: number;      // 1–127. Defaults to 64 (mezzo-forte).
   readonly type?: 'attack' | 'release'; // Defaults to 'attack'.
+  readonly offsetMs?: number;      // Schedule playback this many ms in the future.
+  readonly durationMs?: number;    // Auto-release after this many ms (optional).
 }
 ```
 
@@ -111,7 +133,7 @@ interface PluginManifest {
 ### `PLUGIN_API_VERSION`
 
 ```typescript
-const PLUGIN_API_VERSION = '1';   // current version
+const PLUGIN_API_VERSION = '2';   // current version
 ```
 
 ---
@@ -250,7 +272,7 @@ The importer rejects ZIPs that fail any of the following checks:
 | `plugin.json` present | ZIP must contain `plugin.json` at root |
 | Valid JSON | `plugin.json` must parse without errors |
 | Required fields | `id`, `name`, `version`, `pluginApiVersion`, `entryPoint` must all be present strings |
-| API version | `pluginApiVersion` must equal `"1"` |
+| API version | `pluginApiVersion` must equal `"2"` |
 | Entry point present | The file named by `entryPoint` must exist in the ZIP |
 | No duplicate ID | If a plugin with the same `id` is already installed, the user is prompted to replace or cancel |
 
@@ -374,3 +396,18 @@ The Virtual Keyboard (`frontend/plugins/virtual-keyboard/`) is the canonical ref
 - `context.emitNote()` to send note data to the WASM layout pipeline
 - `useEffect` unmount cleanup to release held notes when navigating away
 - A full Vitest test suite covering layout, MIDI mapping, and API calls
+
+---
+
+## Reference: Practice View plugin
+
+The Practice View (`frontend/plugins/practice-view/`) is the reference implementation for:
+
+- **Scheduled playback** — `context.playNote({ offsetMs })` fires notes at precise future times
+- **Stop control** — `context.stopPlayback()` cancels all pending scheduled notes
+- **Microphone pitch input** — `context.recording.subscribe(handler)` receives `PluginPitchEvent` objects from the host's shared mic stream
+- **MIDI input** — `context.midi.subscribe(handler)` for hardware keyboard events
+- **StaffViewer** — `context.components.StaffViewer` renders a read-only notation staff inside the plugin without importing the layout engine
+- **Phase state machine** — `ready → countdown → playing → results`
+- **Timer-based countdown** — compatible with `vi.useFakeTimers()` (no async/await)
+- A full Vitest test suite (TDD, 14 tests) covering all user-visible behaviours

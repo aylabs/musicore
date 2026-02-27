@@ -17,7 +17,7 @@
  * Accessibility: ARIA roles + keyboard navigation are out of scope for US1.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { PluginContext, PluginNoteEvent } from '../../src/plugin-api/index';
 import './VirtualKeyboard.css';
 
@@ -35,6 +35,11 @@ interface NoteDefinition {
 }
 
 const WHITE_KEY_WIDTH = 44; // px — meets 44px touch target requirement
+
+// Default BPM used for Rust layout engine tick conversion on free-play staff.
+// Notes are offset relative to the first note's timestamp so the first note
+// always lands on beat 1.  120 BPM is the conventional default tempo.
+const DEFAULT_BPM = 120;
 
 /**
  * Two octaves: C3 (MIDI 48) → B4 (MIDI 71)
@@ -99,6 +104,20 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
   // Passed to StaffViewer as `highlightedNotes` so only the just-added note is
   // accented, not all past occurrences of the same pitch.
   const [lastReleasedMidi, setLastReleasedMidi] = useState<number | null>(null);
+
+  // Timestamp of the first played note — used as the origin for WASM tick
+  // conversion so the initial note always lands at tick 0.
+  const timestampOffset = useMemo(() => {
+    const first = playedNotes.find(e => !e.type || e.type === 'attack');
+    return first ? first.timestamp : 0;
+  }, [playedNotes]);
+
+  // Index of the most recently released note for WASM-path highlighting.
+  // The WASM path uses highlightedNoteIndex (not highlightedNotes pitches).
+  const highlightedNoteIndex = useMemo(() => {
+    const count = playedNotes.filter(e => !e.type || e.type === 'attack').length;
+    return count > 0 ? count - 1 : undefined;
+  }, [playedNotes]);
 
   // ------------------------------------------------------------------
 
@@ -219,10 +238,25 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
 
   // --------------------------------------------------------------------------
   // Mouse handlers — guarded to ignore events synthesised from touch
+  //
+  // isMouseHeldRef tracks whether the primary mouse button is currently down.
+  // This prevents notes from sounding when the cursor merely hovers over keys
+  // without a click, while still allowing intentional slide-playing (drag
+  // across keys with button held).  A document-level mouseup listener resets
+  // the flag when the button is released anywhere outside the keyboard.
   // --------------------------------------------------------------------------
+  const isMouseHeldRef = useRef(false);
+
+  useEffect(() => {
+    const onDocMouseUp = () => { isMouseHeldRef.current = false; };
+    document.addEventListener('mouseup', onDocMouseUp);
+    return () => document.removeEventListener('mouseup', onDocMouseUp);
+  }, []);
+
   const handleMouseDown = useCallback(
     (note: NoteDefinition) => {
       if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      isMouseHeldRef.current = true;
       handleKeyDown(note);
     },
     [handleKeyDown]
@@ -231,17 +265,33 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
   const handleMouseUp = useCallback(
     (midi: number) => {
       if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      isMouseHeldRef.current = false;
       handleKeyUp(midi);
     },
     [handleKeyUp]
   );
 
+  // Only release the note when the cursor leaves while the button is held — a
+  // pure hover-out (button not pressed) means no note was playing from mouse.
   const handleMouseLeave = useCallback(
     (midi: number) => {
       if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      if (!isMouseHeldRef.current) return;
       handleKeyUp(midi);
     },
     [handleKeyUp]
+  );
+
+  // Slide-to-play: when the cursor enters a key while the button is already
+  // held (drag), sound that key.  Pure hover (button up) is silenced by the
+  // isMouseHeldRef guard.
+  const handleMouseEnter = useCallback(
+    (note: NoteDefinition) => {
+      if (Date.now() - lastTouchTimeRef.current < TOUCH_GUARD_MS) return;
+      if (!isMouseHeldRef.current) return;
+      handleKeyDown(note);
+    },
+    [handleKeyDown]
   );
 
   // --------------------------------------------------------------------------
@@ -293,7 +343,10 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
         <context.components.StaffViewer
           notes={playedNotes}
           highlightedNotes={lastReleasedMidi !== null ? [lastReleasedMidi] : []}
+          highlightedNoteIndex={highlightedNoteIndex}
           clef="Treble"
+          bpm={DEFAULT_BPM}
+          timestampOffset={timestampOffset}
           autoScroll
         />
       </div>
@@ -310,6 +363,7 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
               onMouseDown={() => handleMouseDown(note)}
               onMouseUp={() => handleMouseUp(note.midi)}
               onMouseLeave={() => handleMouseLeave(note.midi)}
+              onMouseEnter={() => handleMouseEnter(note)}
               onTouchStart={e => handleTouchStart(e, note)}
               onTouchEnd={e => handleTouchEnd(e, note.midi)}
               onContextMenu={e => e.preventDefault()}
@@ -330,6 +384,7 @@ export function VirtualKeyboard({ context }: VirtualKeyboardProps) {
               onMouseDown={() => handleMouseDown(note)}
               onMouseUp={() => handleMouseUp(note.midi)}
               onMouseLeave={() => handleMouseLeave(note.midi)}
+              onMouseEnter={() => handleMouseEnter(note)}
               onTouchStart={e => handleTouchStart(e, note)}
               onTouchEnd={e => handleTouchEnd(e, note.midi)}
               onContextMenu={e => e.preventDefault()}

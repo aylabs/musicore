@@ -1,9 +1,11 @@
 /**
- * Plugin API contract tests — T006
+ * Plugin API contract tests — T006 (v1) + T002 (v2)
  * Feature 030: Plugin Architecture
+ * Feature 031: Practice View Plugin & Plugin API Recording Extension
  *
  * Verifies the public surface exported from src/plugin-api/index.ts
- * matches the contract defined in specs/030-plugin-architecture/contracts/plugin-api.ts.
+ * matches the contract defined in specs/030-plugin-architecture/contracts/plugin-api.ts
+ * and specs/031-practice-view-plugin/contracts/plugin-api-v2.ts.
  *
  * Constitution Principle V: these tests must exist and be green before
  * any code that consumes the Plugin API is merged.
@@ -16,12 +18,14 @@ import {
   type PluginNoteEvent,
   type PluginContext,
   type MusicorePlugin,
+  type PluginPitchEvent,
+  type PluginRecordingContext,
 } from './index';
 
 describe('Plugin API contract', () => {
   describe('PLUGIN_API_VERSION', () => {
-    it('is the string "1"', () => {
-      expect(PLUGIN_API_VERSION).toBe('1');
+    it('is the string "2" (v2 — adds recording namespace and offsetMs)', () => {
+      expect(PLUGIN_API_VERSION).toBe('2');
     });
 
     it('is a string (not a number)', () => {
@@ -124,12 +128,130 @@ describe('Plugin API contract', () => {
         components: {
           StaffViewer: () => null,
         },
+        recording: {
+          subscribe: () => () => {},
+          onError: () => () => {},
+        },
+        stopPlayback: () => { /* no-op */ },
         manifest: manifst,
       };
       expect(typeof ctx.emitNote).toBe('function');
       expect(typeof ctx.playNote).toBe('function');
       expect(typeof ctx.components.StaffViewer).toBe('function');
       expect(ctx.manifest.id).toBe('x');
+    });
+
+    // v2: recording namespace
+    it('context.recording has subscribe and onError functions (v2)', () => {
+      const manifest: PluginManifest = {
+        id: 'test',
+        name: 'Test',
+        version: '1.0.0',
+        pluginApiVersion: '2',
+        entryPoint: 'index.js',
+        origin: 'builtin',
+      };
+      const ctx: PluginContext = {
+        emitNote: () => {},
+        playNote: () => {},
+        midi: { subscribe: () => () => {} },
+        components: { StaffViewer: () => null },
+        recording: {
+          subscribe: (_handler: (e: PluginPitchEvent) => void) => () => {},
+          onError: (_handler: (e: string) => void) => () => {},
+        },
+        stopPlayback: () => {},
+        manifest,
+      };
+      expect(typeof ctx.recording.subscribe).toBe('function');
+      expect(typeof ctx.recording.onError).toBe('function');
+    });
+
+    // v2: stopPlayback
+    it('context.stopPlayback is a function (v2)', () => {
+      const manifest: PluginManifest = {
+        id: 'test2',
+        name: 'Test2',
+        version: '1.0.0',
+        pluginApiVersion: '2',
+        entryPoint: 'index.js',
+        origin: 'builtin',
+      };
+      const ctx: PluginContext = {
+        emitNote: () => {},
+        playNote: () => {},
+        midi: { subscribe: () => () => {} },
+        components: { StaffViewer: () => null },
+        recording: { subscribe: () => () => {}, onError: () => () => {} },
+        stopPlayback: () => {},
+        manifest,
+      };
+      expect(typeof ctx.stopPlayback).toBe('function');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // v2: PluginPitchEvent
+  // -------------------------------------------------------------------------
+  describe('PluginPitchEvent shape (v2)', () => {
+    it('accepts an object with midiNote, hz, confidence, and timestamp', () => {
+      const event: PluginPitchEvent = {
+        midiNote: 60,
+        hz: 261.63,
+        confidence: 0.95,
+        timestamp: Date.now(),
+      };
+      expect(event.midiNote).toBe(60);
+      expect(typeof event.hz).toBe('number');
+      expect(typeof event.confidence).toBe('number');
+      expect(typeof event.timestamp).toBe('number');
+    });
+
+    it('does not include raw-audio or geometry fields (privacy constraint)', () => {
+      const event: PluginPitchEvent = { midiNote: 60, hz: 261.63, confidence: 0.95, timestamp: 0 };
+      expect('pcm' in event).toBe(false);
+      expect('waveform' in event).toBe('waveform' in event && false);
+      expect('buffer' in event).toBe(false);
+      expect('x' in event).toBe(false);
+      expect('y' in event).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // v2: PluginRecordingContext
+  // -------------------------------------------------------------------------
+  describe('PluginRecordingContext shape (v2)', () => {
+    it('can be constructed with subscribe and onError', () => {
+      const recording: PluginRecordingContext = {
+        subscribe: (_handler) => () => {},
+        onError: (_handler) => () => {},
+      };
+      expect(typeof recording.subscribe).toBe('function');
+      expect(typeof recording.onError).toBe('function');
+    });
+
+    it('subscribe returns an unsubscribe function', () => {
+      const recording: PluginRecordingContext = {
+        subscribe: (_handler) => () => {},
+        onError: (_handler) => () => {},
+      };
+      const unsub = recording.subscribe(() => {});
+      expect(typeof unsub).toBe('function');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // v2: PluginNoteEvent.offsetMs
+  // -------------------------------------------------------------------------
+  describe('PluginNoteEvent.offsetMs (v2)', () => {
+    it('offsetMs is optional (can be omitted)', () => {
+      const event: PluginNoteEvent = { midiNote: 60, timestamp: 0 };
+      expect(event.offsetMs).toBeUndefined();
+    });
+
+    it('offsetMs can be set to a positive number', () => {
+      const event: PluginNoteEvent = { midiNote: 60, timestamp: 0, offsetMs: 500 };
+      expect(event.offsetMs).toBe(500);
     });
   });
 });

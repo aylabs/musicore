@@ -1,13 +1,17 @@
 /**
- * Musicore Plugin API — Types (v1)
- * Feature 030: Plugin Architecture
+ * Musicore Plugin API — Types (v2)
+ * Feature 030: Plugin Architecture (v1 baseline)
+ * Feature 031: Practice View Plugin — adds recording namespace and offsetMs (v2)
  *
  * Defines all public types for the Musicore Plugin API.
- * See specs/030-plugin-architecture/contracts/plugin-api.ts for the canonical contract.
+ * See specs/030-plugin-architecture/contracts/plugin-api.ts for the v1 canonical contract.
+ * See specs/031-practice-view-plugin/contracts/plugin-api-v2.ts for the v2 contract.
  *
  * Constitution Principle VI: PluginNoteEvent carries ONLY musical data (midiNote,
  * timestamp, velocity). No coordinate or layout geometry is permitted here — the
  * WASM engine is the sole authority over all spatial layout.
+ * Privacy constraint (FR-020): PluginPitchEvent carries only pitch metadata —
+ * NO raw PCM, waveform, or audio buffer data may be included.
  */
 
 import type { ComponentType } from 'react';
@@ -44,6 +48,32 @@ export interface PluginStaffViewerProps {
    * Defaults to `false`.
    */
   readonly autoScroll?: boolean;
+  /**
+   * Beats-per-minute of the content being displayed.
+   * When provided, note `timestamp` values (in ms since exercise start) are
+   * converted to tick positions and the staff is rendered via the Rust WASM
+   * layout engine — producing a proper time signature, measure lines, and
+   * engraved note heads.
+   * When omitted (default), notes are laid out sequentially using the lighter
+   * JavaScript layout engine (suitable for live-recorded response staves where
+   * absolute timing is not meaningful).
+   */
+  readonly bpm?: number;
+  /**
+   * When provided, each note's `timestamp` is shifted by `-timestampOffset` before
+   * converting to tick positions. Pass `playStartMs` here for live-recorded response
+   * staves so that `timestamp - timestampOffset` equals the onset in ms from exercise
+   * start (matching the WASM layout's time axis).
+   * Defaults to `0`.
+   */
+  readonly timestampOffset?: number;
+  /**
+   * When provided, the attack-note at this zero-based index is highlighted on the
+   * WASM layout staff. Use this instead of `highlightedNotes` for exercise staves
+   * where the current slot index (not MIDI pitch) determines which note to accent,
+   * avoiding false-positives when the same pitch appears multiple times.
+   */
+  readonly highlightedNoteIndex?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +104,73 @@ export interface PluginNoteEvent {
    * (e.g. 250 ms ≈ eighth note at 120 BPM).
    */
   readonly durationMs?: number;
+  /**
+   * Scheduled playback offset in milliseconds from the moment `playNote` is called.
+   * When > 0, the host defers note-on by this amount using a host-managed timer.
+   * The timer is cancellable via `context.stopPlayback()` (see research.md R-002).
+   * Defaults to 0 (immediate) when absent.
+   *
+   * v2 addition: Feature 031
+   */
+  readonly offsetMs?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Pitch event (v2 — Feature 031)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single microphone pitch detection event dispatched by the host to
+ * subscribed plugins via `context.recording.subscribe`.
+ *
+ * Privacy constraint (FR-020): contains ONLY pitch metadata.
+ * No PCM samples, audio buffers, or raw waveform data may be present.
+ */
+export interface PluginPitchEvent {
+  /** Quantised MIDI note number (0–127). Middle C = 60. */
+  readonly midiNote: number;
+  /** Detected frequency in Hz (e.g. 261.63 for middle C). */
+  readonly hz: number;
+  /** Detection confidence in [0, 1] — values ≥ 0.9 are considered reliable. */
+  readonly confidence: number;
+  /** Epoch timestamp in milliseconds (Date.now()) at detection time. */
+  readonly timestamp: number;
+}
+
+// ---------------------------------------------------------------------------
+// Recording context (v2 — Feature 031)
+// ---------------------------------------------------------------------------
+
+/**
+ * Microphone pitch subscription API injected into plugins via
+ * `context.recording`. The host manages a single shared AudioWorklet stream
+ * (PluginMicBroadcaster) and multiplexes pitch events to all subscribers.
+ *
+ * Usage:
+ * ```tsx
+ * useEffect(() => {
+ *   return context.recording.subscribe((event) => {
+ *     if (phase !== 'playing') return;
+ *     captureRef.current.push(event);
+ *   });
+ * }, [context, phase]);
+ * ```
+ */
+export interface PluginRecordingContext {
+  /**
+   * Subscribe to microphone pitch events.
+   * The host opens the mic on the first subscriber and keeps it warm for
+   * subsequent subscribers (shared stream, one getUserMedia call).
+   * Returns an unsubscribe function — call it in your cleanup.
+   */
+  subscribe(handler: (event: PluginPitchEvent) => void): () => void;
+  /**
+   * Subscribe to microphone error notifications.
+   * If the mic is already in an error state when you subscribe, the handler
+   * is invoked asynchronously (queued microtask) with the current error.
+   * Returns an unsubscribe function.
+   */
+  onError(handler: (error: string) => void): () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +231,26 @@ export interface PluginContext {
    */
   readonly midi: {
     readonly subscribe: (handler: (event: PluginNoteEvent) => void) => () => void;
-  };  /**
+  };
+  /**
+   * Microphone pitch capture subscription API (v2 — Feature 031).
+   * Allows plugins to subscribe to pitch detection events from the host's
+   * shared AudioWorklet mic pipeline. The host opens the mic on first
+   * subscription and releases it when all subscribers unsubscribe.
+   *
+   * Privacy constraint (FR-020): pitch events only — no raw PCM or audio data.
+   */
+  readonly recording: PluginRecordingContext;
+  /**
+   * Stop all scheduled notes for this plugin and silence any sustaining notes.
+   * Cancels all pending `offsetMs` timers registered by this plugin's
+   * `playNote` calls and calls `ToneAdapter.stopAll()` (v2 — Feature 031).
+   *
+   * Use this when the user stops an exercise, navigates away, or the plugin
+   * is disposed.
+   */
+  stopPlayback(): void;
+  /**
    * Host-provided React components that plugins can embed in their UI.
    * These components are pre-wired to the host's notation engine and audio
    * pipeline — plugins must use these instead of importing host internals.
@@ -188,4 +304,4 @@ export interface MusicorePlugin {
 // ---------------------------------------------------------------------------
 
 /** Major version of the currently running Musicore Plugin API. */
-export const PLUGIN_API_VERSION = '1' as const;
+export const PLUGIN_API_VERSION = '2' as const;

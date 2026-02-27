@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RendererDemo } from './pages/RendererDemo'
 import { RecordingView } from './components/recording/RecordingView'
-import { PracticeView } from './components/practice/PracticeView'
 import { OfflineBanner } from './components/OfflineBanner'
 import { IOSInstallModal } from './components/IOSInstallModal'
 import { FileStateProvider } from './services/state/FileStateContext'
@@ -16,6 +15,7 @@ import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
 import type { PluginContext, PluginManifest, PluginNoteEvent } from './plugin-api/index'
 import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
 import { ToneAdapter } from './services/playback/ToneAdapter'
+import { pluginMicBroadcaster } from './services/recording/PluginMicBroadcaster'
 import { useMidiInput } from './services/recording/useMidiInput'
 import packageJson from '../package.json'
 import './App.css'
@@ -40,8 +40,6 @@ function App() {
 
   // Feature 001-recording-view: Recording debug view (?debug=true)
   const [showRecording, setShowRecording] = useState(false)
-  // Feature 001-piano-practice: Practice debug view (?debug=true)
-  const [showPractice, setShowPractice] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
 
   // Feature 030: Plugin navigation state
@@ -53,6 +51,11 @@ function App() {
   // Feature 030 / 029: Fan out MIDI hardware events to all subscribed plugins.
   // A single Set of handlers is shared; each plugin context adds/removes its own.
   const midiPluginSubscribersRef = useRef<Set<(e: PluginNoteEvent) => void>>(new Set())
+
+  // Feature 031: Per-plugin timer registry for offsetMs scheduled playback.
+  // Maps pluginId → Set of pending setTimeout handles so stopPlayback() can
+  // cancel all scheduled notes for a specific plugin without affecting others.
+  const pluginTimersRef = useRef<Map<string, Set<ReturnType<typeof setTimeout>>>>(new Map())
   useMidiInput({
     onNoteOn: (midiEvent) => {
       const event: PluginNoteEvent = {
@@ -162,9 +165,48 @@ function App() {
             if (!adapter.isInitialized()) return
             if (event.type === 'release') {
               adapter.releaseNote(event.midiNote)
+              return
+            }
+            // Feature 031 / R-002: offsetMs — deferred scheduled playback.
+            // Register handles in pluginTimersRef so stopPlayback() can cancel.
+            // Uses attackNote + a release setTimeout instead of Transport.schedule
+            // so notes always play regardless of whether the Tone.js Transport is
+            // running (the Transport is only started by score playback, not plugins).
+            if (event.offsetMs && event.offsetMs > 0) {
+              if (!pluginTimersRef.current.has(manifest.id)) {
+                pluginTimersRef.current.set(manifest.id, new Set())
+              }
+              const timers = pluginTimersRef.current.get(manifest.id)!
+              const duration = event.durationMs ?? 500
+              const attackTimer = setTimeout(() => {
+                timers.delete(attackTimer)
+                adapter.attackNote(event.midiNote, event.velocity ?? 64)
+                const releaseTimer = setTimeout(() => {
+                  timers.delete(releaseTimer)
+                  adapter.releaseNote(event.midiNote)
+                }, duration)
+                timers.add(releaseTimer)
+              }, event.offsetMs)
+              timers.add(attackTimer)
             } else {
               adapter.attackNote(event.midiNote, event.velocity ?? 64)
             }
+          },
+          // Feature 031 / R-003: Cancel all pending scheduled notes for this plugin
+          // and silence any currently playing notes.
+          stopPlayback: () => {
+            const timers = pluginTimersRef.current.get(manifest.id)
+            if (timers) {
+              timers.forEach(clearTimeout)
+              timers.clear()
+            }
+            ToneAdapter.getInstance().stopAll()
+          },
+          // Feature 031 / R-001: Microphone pitch subscription — delegated to
+          // the singleton PluginMicBroadcaster (one shared stream, many subscribers).
+          recording: {
+            subscribe: (handler) => pluginMicBroadcaster.subscribe(handler),
+            onError: (handler) => pluginMicBroadcaster.onError(handler),
           },
           components: {
             // Host-provided notation staff — plugins use this to visualise notes
@@ -192,7 +234,6 @@ function App() {
   const handleSelectPlugin = useCallback((pluginId: string) => {
     setActivePlugin(pluginId)
     setShowRecording(false)
-    setShowPractice(false)
     setShowDemo(false)
     // Pre-warm the audio engine as soon as the user navigates to any plugin view.
     // This starts loading Salamander samples immediately so they are ready by the
@@ -341,14 +382,7 @@ function App() {
   // Feature 001-recording-view: Show RecordingView when navigated to from ScoreViewer
   if (showRecording) {
     return (
-      <RecordingView onBack={() => { setShowRecording(false); setShowPractice(true); }} />
-    )
-  }
-
-  // Feature 001-piano-practice: Show PracticeView when navigated to from ScoreViewer
-  if (showPractice) {
-    return (
-      <PracticeView onBack={() => setShowPractice(false)} />
+      <RecordingView onBack={() => { setShowRecording(false); }} />
     )
   }
 
@@ -454,63 +488,69 @@ function App() {
             />
           )}
           <main>
-            {activePlugin ? (
-              (() => {
-                const entry = allPlugins.find(p => p.manifest.id === activePlugin)
-                if (!entry) return null
-                const PluginComponent = entry.plugin.Component
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '6px 12px',
-                        background: '#f5f5f5',
-                        borderBottom: '1px solid #ddd',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setActivePlugin(null)}
-                        aria-label="Return to score viewer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#fff',
-                          border: '1px solid #bbb',
-                          borderRadius: '6px',
-                          color: '#333',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          padding: '5px 12px',
-                          minHeight: '32px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ← Back
-                      </button>
-                      <span style={{ color: '#666', fontSize: '0.8rem' }}>
-                        {entry.manifest.name}
-                      </span>
-                    </div>
-                    <PluginView plugin={entry.manifest}>
-                      <PluginComponent />
-                    </PluginView>
-                  </div>
-                )
-              })()
-            ) : (
+            {!activePlugin && (
               <ScoreViewer
                 debugMode={debugMode}
                 onShowRecording={() => { setShowRecording(true); setActivePlugin(null); }}
-                onShowPractice={() => { setShowPractice(true); setActivePlugin(null); }}
+
               />
             )}
           </main>
+          {activePlugin && (() => {
+            const entry = allPlugins.find(p => p.manifest.id === activePlugin)
+            if (!entry) return null
+            const PluginComponent = entry.plugin.Component
+            return (
+              <div style={{
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 50,
+                backgroundColor: '#f5f5f5',
+              }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '6px 12px',
+                    background: '#f5f5f5',
+                    borderBottom: '1px solid #ddd',
+                    flexShrink: 0,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActivePlugin(null)}
+                    aria-label="Return to score viewer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#fff',
+                      border: '1px solid #bbb',
+                      borderRadius: '6px',
+                      color: '#333',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      padding: '5px 12px',
+                      minHeight: '32px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <span style={{ color: '#666', fontSize: '0.8rem' }}>
+                    {entry.manifest.name}
+                  </span>
+                </div>
+                <PluginView plugin={entry.manifest}>
+                  <PluginComponent />
+                </PluginView>
+              </div>
+            )
+          })()}
           <IOSInstallModal />
         </div>
       </FileStateProvider>
