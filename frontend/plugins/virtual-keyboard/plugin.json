@@ -4,5 +4,7 @@
   "version": "1.0.0",
   "pluginApiVersion": "1",
   "entryPoint": "index.js",
-  "description": "An interactive piano keyboard that shows played notes on a music staff in real time."
+  "description": "An interactive piano keyboard that shows played notes on a music staff in real time.",
+  "type": "common",
+  "view": "window"
 }

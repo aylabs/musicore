@@ -1,6 +1,7 @@
 /**
- * Musicore Plugin API — public barrel (v1)
- * Feature 030: Plugin Architecture
+ * Musicore Plugin API — public barrel (v2)
+ * Feature 030: Plugin Architecture (v1 baseline)
+ * Feature 031: Practice View Plugin — adds PluginPitchEvent, PluginRecordingContext (v2)
  *
  * THIS IS THE ONLY MODULE plugin code is permitted to import from the host.
  * ESLint enforces this boundary via `no-restricted-imports` scoped to plugins/**.
@@ -15,6 +16,8 @@ export type {
   PluginContext,
   PluginStaffViewerProps,
   MusicorePlugin,
+  PluginPitchEvent,
+  PluginRecordingContext,
 } from './types';
 
 export { PLUGIN_API_VERSION } from './types';

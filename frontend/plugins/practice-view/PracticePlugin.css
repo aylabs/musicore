@@ -1,0 +1,709 @@
+/* PracticePlugin.css — Feature 031: Practice View Plugin
+ *
+ * Self-contained styles for the Practice plugin.
+ * Sidebar + main two-column layout matching original PracticeView.
+ * 44×44 px minimum touch targets. No dependency on host app CSS classes.
+ */
+
+/* ── Root container ───────────────────────────────────────────────────────── */
+
+.practice-plugin {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.practice-plugin__header {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.practice-plugin__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+  color: var(--color-text, #222);
+}
+
+.practice-plugin__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-plugin__header-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--color-border, #d0d0d0);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--color-surface-alt, #f8f8f8);
+  color: var(--color-text, #333);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.practice-plugin__header-btn:hover {
+  background: var(--color-border, #e8e8e8);
+}
+
+/* Back/close navigation button — visually distinct from action buttons */
+.practice-plugin__back-btn {
+  margin-right: 0.25rem;
+  color: var(--color-text-secondary, #555);
+}
+.practice-plugin__back-btn:hover {
+  background: var(--color-border, #e0e0e0);
+}
+
+.practice-plugin__header-btn--stop {
+  background: var(--color-danger, #e53935);
+  color: #fff;
+  border-color: transparent;
+}
+
+.practice-plugin__header-btn--stop:hover {
+  background: var(--color-danger-dark, #b71c1c);
+}
+
+
+
+.practice-plugin__header-btn--new {
+  background: var(--color-accent, #4f8ef7);
+  color: #fff;
+  border-color: transparent;
+}
+
+.practice-plugin__header-btn--new:hover {
+  background: var(--color-accent-dark, #3a7bd5);
+}
+
+/* ── Mic badge ───────────────────────────────────────────────────────────── */
+
+.practice-mic-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-muted, #888);
+  border: 1px solid var(--color-border, #e0e0e0);
+  user-select: none;
+}
+
+.practice-mic-badge--active {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+.practice-mic-badge--error {
+  background: #fde8e8;
+  color: #c62828;
+  border-color: #ef9a9a;
+}
+
+/* ── Tips banner ─────────────────────────────────────────────────────────── */
+
+.practice-plugin__tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: #e8f4fd;
+  border-bottom: 1px solid #bee3f8;
+  flex-shrink: 0;
+}
+
+.practice-plugin__tips-list {
+  flex: 1;
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+  font-size: 0.82rem;
+  color: #1a5276;
+  list-style: disc;
+  line-height: 1.6;
+}
+
+.practice-plugin__tips-list li {
+  margin-bottom: 0.1rem;
+}
+
+.practice-plugin__tips-dismiss {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #7fb3d3;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #fff;
+  color: #1a5276;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.practice-plugin__tips-dismiss:hover {
+  background: #d6eaf8;
+}
+
+/* ── Body: sidebar + main ────────────────────────────────────────────────── */
+
+.practice-plugin__body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.practice-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border, #e0e0e0);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--color-surface-alt, #f9f9f9);
+  transition: width 0.2s ease;
+  box-sizing: border-box;
+}
+
+.practice-sidebar--collapsed {
+  width: 36px;
+  overflow: hidden;
+}
+
+.practice-sidebar__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  color: var(--color-muted, #888);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+}
+
+.practice-sidebar__toggle:focus {
+  outline: none;
+}
+
+.practice-sidebar__toggle:focus-visible {
+  outline: 2px solid var(--color-primary, #646cff);
+  outline-offset: -2px;
+}
+
+.practice-sidebar__toggle:hover {
+  background: var(--color-border, #efefef);
+}
+
+.practice-sidebar__section {
+  padding: 0.6rem 0.875rem;
+  border-bottom: 1px solid #efefef;
+}
+
+.practice-sidebar__section-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted, #999);
+  margin: 0 0 0.35rem 0;
+}
+
+.practice-sidebar__radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  color: var(--color-text, #333);
+  padding: 0.2rem 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.practice-sidebar__radio-label--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.practice-sidebar__radio-label input[type='radio'] {
+  accent-color: var(--color-accent, #4f8ef7);
+  cursor: inherit;
+}
+
+.practice-sidebar__slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.practice-sidebar__slider-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--color-accent, #4f8ef7);
+  cursor: pointer;
+}
+
+.practice-sidebar__slider-row input[type='range']:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.practice-sidebar__slider-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  min-width: 28px;
+  text-align: right;
+  color: var(--color-text, #333);
+}
+
+.practice-sidebar__slider-sublabel {
+  font-size: 0.7rem;
+  color: var(--color-muted, #999);
+  margin: 0.1rem 0 0 0;
+}
+
+.practice-sidebar__select {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--color-border, #d0d0d0);
+  border-radius: 5px;
+  font-size: 0.83rem;
+  background: var(--color-surface, #fff);
+  cursor: pointer;
+  color: var(--color-text, #333);
+}
+
+.practice-sidebar__select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Main area ───────────────────────────────────────────────────────────── */
+
+.practice-plugin__main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.practice-plugin__main--countdown {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+/* ── Mic error banner ────────────────────────────────────────────────────── */
+
+.practice-plugin__mic-error {
+  padding: 0.6rem 0.875rem;
+  border-radius: 8px;
+  background: var(--color-danger-bg, #fde8e8);
+  color: var(--color-danger, #c62828);
+  font-size: 0.85rem;
+  border: 1px solid #ef9a9a;
+}
+
+/* ── Phase: countdown overlay ────────────────────────────────────────────── */
+
+/* ── Phase: countdown overlay ────────────────────────────────────────────── */
+
+.practice-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7rem;
+  font-weight: 800;
+  color: var(--color-accent, #4f8ef7);
+  background: rgba(255, 255, 255, 0.88);
+  z-index: 10;
+  letter-spacing: -0.05em;
+  animation: practice-countdown-pulse 0.6s ease-in-out;
+  border-radius: 8px;
+}
+
+@keyframes practice-countdown-pulse {
+  0%   { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+
+.practice-countdown--go {
+  font-size: 5rem;
+  color: var(--color-success, #4caf50);
+}
+
+/* ── Staff blocks ────────────────────────────────────────────────────────── */
+
+.practice-staff-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.practice-staff-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted, #888);
+}
+
+/* Inline sound toggle next to the Exercise staff label */
+.practice-staff-sound-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: opacity 0.12s;
+  display: flex;
+  align-items: center;
+}
+
+.practice-staff-sound-btn--muted {
+  opacity: 0.35;
+}
+
+.practice-staff-wrapper {
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 80px;
+}
+
+.practice-staff-wrapper--playing {
+  border-color: var(--color-accent, #4f8ef7);
+  box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.18);
+}
+
+/* ── Start prompt / controls ─────────────────────────────────────────────── */
+
+.practice-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.practice-start-prompt {
+  font-size: 1rem;
+  color: var(--color-muted, #666);
+  text-align: center;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-alt, #f8f8f8);
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  margin: 0;
+}
+
+.practice-plugin__play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 120px;
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  background: var(--color-accent, #4f8ef7);
+  color: #fff;
+  user-select: none;
+}
+
+.practice-plugin__play-btn:hover {
+  background: var(--color-accent-dark, #3a7bd5);
+}
+
+.practice-plugin__play-btn:active {
+  transform: scale(0.97);
+}
+
+.practice-plugin__play-btn--new {
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-text, #333);
+  border: 1px solid var(--color-border, #d0d0d0);
+}
+
+.practice-plugin__play-btn--new:hover {
+  background: var(--color-border, #e0e0e0);
+}
+
+/* ── Results panel ───────────────────────────────────────────────────────── */
+
+.practice-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border: 2px solid var(--color-border, #e0e0e0);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+}
+
+.practice-results__score-block {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.practice-results__score-ring {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.practice-results__score-number {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.practice-results__score-label {
+  font-size: 0.85rem;
+  color: var(--color-muted, #888);
+}
+
+.practice-results__score-grade {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* ── Collapsible details ─────────────────────────────────────────────────── */
+
+.practice-results__details {
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.practice-results__details-summary {
+  padding: 0.6rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  background: var(--color-surface-alt, #f5f5f5);
+  color: #222;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.practice-results__details-summary::-webkit-details-marker { display: none; }
+.practice-results__details[open] .practice-results__details-summary::after { content: '∧'; }
+.practice-results__details:not([open]) .practice-results__details-summary::after { content: '∨'; }
+
+/* ── Per-note table ──────────────────────────────────────────────────────── */
+
+.practice-results__table-wrapper {
+  overflow-x: auto;
+}
+
+.practice-results__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.practice-results__table th {
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 2px solid var(--color-border, #e0e0e0);
+  font-size: 0.75rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.practice-results__table td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #f0f0f0);
+  white-space: nowrap;
+  color: #222;
+}
+
+.practice-results__row--correct      { background: #f1f8e9; }
+.practice-results__row--wrong-timing { background: #f1f8e9; }
+.practice-results__row--wrong-pitch  { background: #fff8e1; }
+.practice-results__row--missed       { background: #ffebee; }
+
+.practice-results__status-icon {
+  font-size: 0.85em;
+  vertical-align: middle;
+}
+
+.practice-results__extraneous {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.82rem;
+  color: var(--color-muted, #888);
+  background: var(--color-surface-alt, #f5f5f5);
+  border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.practice-results__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Step mode hint ──────────────────────────────────────────────────────── */
+.practice-step-hint {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: #fff8e1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid #ffe082;
+  margin-top: 0.5rem;
+}
+
+/* ── Legacy button class (kept for backwards compat with tests) ───────────── */
+
+.practice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 80px;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.practice-btn:active { transform: scale(0.97); }
+
+.practice-btn--primary  { background: var(--color-accent, #4f8ef7); color: #fff; }
+.practice-btn--primary:hover { background: var(--color-accent-dark, #3a7bd5); }
+.practice-btn--danger   { background: var(--color-danger, #e53935); color: #fff; }
+.practice-btn--danger:hover { background: var(--color-danger-dark, #b71c1c); }
+.practice-btn--secondary { background: var(--color-surface-alt, #f0f0f0); color: var(--color-text, #333); border: 1px solid var(--color-border, #d0d0d0); }
+.practice-btn--secondary:hover { background: var(--color-border, #e0e0e0); }
+.practice-btn:disabled  { opacity: 0.45; cursor: not-allowed; }
+
+/* ── MIDI badge variant ──────────────────────────────────────────────────── */
+
+.practice-mic-badge--midi {
+  background: #e8f0fe;
+  color: #1a53c0;
+  border-color: #a8c0f8;
+}
+
+/* ── Sidebar sections wrapper (flex-row on mobile) ───────────────────────── */
+
+.practice-sidebar__sections {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Responsive: mobile top-panel config ────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .practice-plugin__body {
+    flex-direction: column;
+  }
+
+  /* Sidebar becomes a horizontal scrollable panel at the top */
+  .practice-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+  }
+
+  .practice-sidebar--collapsed {
+    width: 100%;
+  }
+
+  /* Sections scroll horizontally */
+  .practice-sidebar__sections {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 0.25rem 0;
+    min-width: max-content;
+  }
+
+  .practice-sidebar__section {
+    flex-shrink: 0;
+    min-width: 110px;
+    border-bottom: none;
+    border-right: 1px solid #efefef;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .practice-sidebar__section:last-of-type {
+    border-right: none;
+  }
+
+  /* Slider rows are compact on mobile */
+  .practice-sidebar__slider-row input[type='range'] {
+    width: 80px;
+    flex: none;
+  }
+
+  .practice-plugin__main {
+    padding: 0.75rem;
+  }
+
+  .practice-countdown {
+    font-size: 5rem;
+  }
+
+  .practice-results__score-number {
+    font-size: 2.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .practice-sidebar__section {
+    min-width: 95px;
+  }
+}

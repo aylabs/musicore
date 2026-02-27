@@ -51,6 +51,17 @@ A tablet-native app for interactive scores, designed for practice and performanc
 - **Domain-driven design** - Clean architecture with hexagonal pattern
 - **Test-first development** - 596+ tests ensuring quality
 
+### 🎹 Plugin Architecture
+- **Extensible plugin system** - Add new interactive views via the Plugin API v2
+- **Virtual Keyboard** built-in plugin - Play notes directly in the browser
+- **Practice View** built-in plugin - Piano practice exercise with scoring
+  - **Pitch detection** - Microphone input via Web Audio API (shared stream)
+  - **MIDI input** - Hardware MIDI keyboard support
+  - **Scheduled playback** - `offsetMs` scheduling for exercise note sequences
+  - **Exercise scoring** - Pitch accuracy and timing analysis
+  - **Phase state machine** - Countdown → Playing → Results workflow
+- **Importable plugins** - Third-party plugins distributed as ZIP packages
+
 ---
 
 ## Browser Requirements

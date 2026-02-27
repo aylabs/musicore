@@ -215,6 +215,19 @@ Every error, bug, or incorrect behavior MUST result in a test before being fixed
 - **Feature Branches**: All work happens in `feature/###-short-description` branches
 - **PR Requirements**: Pull requests MUST include tests, pass CI, and update relevant specs
 
+### Documentation Currency
+
+Once all tasks in a spec are implemented, project documentation MUST be updated to reflect any changes introduced:
+
+- **README files**: Update any affected `README.md` (root, `frontend/`, `backend/`) to reflect new features, commands, architecture changes, or removed capabilities
+- **Feature documentation**: Update `FEATURES.md` if the spec adds, modifies, or removes a user-facing feature
+- **Plugin documentation**: Update `PLUGINS.md` if the spec affects plugin API or behavior
+- **Spec documentation**: Mark the spec as completed in the relevant spec directory and ensure `plan.md` and `tasks.md` reflect final implementation state
+- **Architecture docs**: Update any architecture or design documents in `docs/` or `specs/` if structural decisions changed during implementation
+- **Ubiquitous Language**: Update glossaries or domain terminology sections if new concepts were introduced or existing ones refined
+
+**Rationale**: Documentation drift creates a gap between the codebase and its description, misleading future contributors and users. Keeping documentation current as each spec is closed ensures the project remains understandable and onboarding stays accurate. Documentation updates are not optional follow-up work—they are a completion criterion for any spec.
+
 ### Review Process
 
 - **Code Reviews**: All PRs require at least one approval before merge
@@ -245,4 +258,4 @@ This constitution supersedes all other development practices. Amendments require
 
 ---
 
-**Version**: 2.4.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-15
+**Version**: 2.6.0 | **Ratified**: 2026-02-06 | **Last Amended**: 2026-02-26

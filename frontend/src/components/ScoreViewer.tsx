@@ -30,8 +30,10 @@ interface ScoreViewerProps {
   debugMode?: boolean;
   /** Called when Record View button is pressed (only relevant when debugMode=true) */
   onShowRecording?: () => void;
-  /** Called when Practice View button is pressed (only relevant when debugMode=true) */
-  onShowPractice?: () => void;
+  /** Core plugins to feature on the landing screen (type === 'core'). */
+  corePlugins?: Array<{ id: string; name: string }>;
+  /** Called when the user launches a core plugin from the landing screen. */
+  onLaunchPlugin?: (pluginId: string) => void;
 }
 
 /**
@@ -54,7 +56,8 @@ export function ScoreViewer({
   onViewModeChange: controlledOnViewModeChange,
   debugMode = false,
   onShowRecording,
-  onShowPractice,
+  corePlugins,
+  onLaunchPlugin,
 }: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
@@ -544,8 +547,9 @@ export function ScoreViewer({
         {/* Feature 001: animated landing hero covers the full viewport */}
         <LandingScreen
           onLoadScore={() => setDialogOpen(true)}
-          onShowPractice={onShowPractice}
           onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}
+          corePlugins={corePlugins}
+          onLaunchPlugin={onLaunchPlugin}
         />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}
@@ -601,13 +605,6 @@ export function ScoreViewer({
                   Record View
                 </button>
               )}
-              <button
-                className="practice-view-btn"
-                onClick={onShowPractice}
-                aria-label="Practice View"
-              >
-                Practice View
-              </button>
               {score && score.instruments.length > 0 && (
                 <ViewModeSelector
                   currentMode={viewMode}

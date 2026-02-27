@@ -29,6 +29,10 @@ import { NotationRenderer } from '../components/notation/NotationRenderer';
 import { DEFAULT_STAFF_CONFIG } from '../types/notation/config';
 import type { Note, ClefType } from '../types/score';
 import type { PluginNoteEvent, PluginStaffViewerProps } from './types';
+import { computeLayout } from '../wasm/layout';
+import { initWasm } from '../services/wasm/loader';
+import { ScoreViewer } from '../pages/ScoreViewer';
+import type { GlobalLayout } from '../wasm/layout';
 
 // ---------------------------------------------------------------------------
 // MIDI-event → Note conversion
@@ -86,6 +90,76 @@ const VIEWER_WIDTH_FALLBACK = 800;
 // Throttle layout recalculations to every 200 px of scroll (mirrors StaffNotation strategy).
 const SCROLL_THROTTLE = 200;
 
+// Quarter notes in 960 PPQ — matches Rust layout engine expectation.
+const WASM_QUARTER_TICKS = 960;
+
+/**
+ * Convert PluginNoteEvent[] to the ConvertedScore shape expected by computeLayout.
+ * Note timestamps are treated as ms-from-exercise-start; with the given BPM they
+ * are converted to 960 PPQ tick positions for tick-accurate layout.
+ */
+function toConvertedScore(events: readonly PluginNoteEvent[], clef: string, bpm: number, timestampOffset = 0) {
+  const msPerBeat = 60_000 / bpm;
+  const attacks = events.filter(e => !e.type || e.type === 'attack');
+  return {
+    instruments: [{
+      id: 'practice',
+      name: '',
+      staves: [{
+        clef,
+        time_signature: { numerator: 4, denominator: 4 },
+        key_signature: { sharps: 0 },
+        voices: [{
+          notes: attacks.map((e) => ({
+            tick: Math.max(0, Math.round(((e.timestamp - timestampOffset) / msPerBeat) * WASM_QUARTER_TICKS)),
+            duration: Math.max(1, Math.round(((e.durationMs ?? msPerBeat) / msPerBeat) * WASM_QUARTER_TICKS)),
+            pitch: e.midiNote,
+            articulation: null,
+          })),
+        }],
+      }],
+    }],
+    tempo_changes: [],
+    time_signature_changes: [],
+  };
+}
+
+/**
+ * Build sourceToNoteIdMap and pitchToNoteIds from the WASM layout output.
+ * Mirrors the system-local event_index scheme used by buildSourceToNoteIdMap.
+ */
+function buildPluginSourceMap(
+  events: readonly PluginNoteEvent[],
+  layout: GlobalLayout,
+  bpm: number,
+  timestampOffset: number,
+): { sourceToNoteIdMap: Map<string, string>; pitchToNoteIds: Map<number, string[]> } {
+  const sourceToNoteIdMap = new Map<string, string>();
+  const pitchToNoteIds = new Map<number, string[]>();
+  const msPerBeat = 60_000 / bpm;
+  const attacks = events.filter(e => !e.type || e.type === 'attack');
+  const ticks = attacks.map(e =>
+    Math.max(0, Math.round(((e.timestamp - timestampOffset) / msPerBeat) * WASM_QUARTER_TICKS))
+  );
+  for (const system of layout.systems) {
+    const { start_tick, end_tick } = system.tick_range;
+    let localIdx = 0;
+    attacks.forEach((attack, globalIdx) => {
+      const tick = ticks[globalIdx];
+      if (tick >= start_tick && tick < end_tick) {
+        const noteId = `pnote-${globalIdx}-${attack.midiNote}`;
+        const key = `${system.index}/practice/0/0/${localIdx}`;
+        sourceToNoteIdMap.set(key, noteId);
+        const list = pitchToNoteIds.get(attack.midiNote) ?? [];
+        list.push(noteId);
+        pitchToNoteIds.set(attack.midiNote, list);
+        localIdx++;
+      }
+    });
+  }
+  return { sourceToNoteIdMap, pitchToNoteIds };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -113,25 +187,63 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
   highlightedNotes = [],
   clef = 'Treble',
   autoScroll = false,
+  bpm,
+  timestampOffset = 0,
+  highlightedNoteIndex,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // scrollX drives both the layout engine (clipping) and the DOM scroll position.
-  const [scrollX, setScrollX] = useState(0);
+  // ── WASM path hooks (always run — bpm guard is inside the effect) ─────────
+  const [wasmLayout, setWasmLayout] = useState<GlobalLayout | null>(null);
 
-  // Convert PluginNoteEvents → Note models (attack events only).
+  useEffect(() => {
+    if (bpm == null) return;
+    let cancelled = false;
+    (async () => {
+      if (notes.length === 0) {
+        if (!cancelled) setWasmLayout(null);
+        return;
+      }
+      try {
+        await initWasm();
+        const score = toConvertedScore(notes, clef, bpm, timestampOffset);
+        const layout = await computeLayout(score, {
+          max_system_width: 99999,
+          system_height: 200,
+          system_spacing: 0,
+          units_per_space: 20,
+        });
+        if (!cancelled) setWasmLayout(layout);
+      } catch {
+        if (!cancelled) setWasmLayout(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [notes, clef, bpm, timestampOffset]);
+
+  // Build source map + pitch→noteId index for highlighting (WASM path)
+  const { sourceToNoteIdMap: pluginSourceMap } = useMemo(() => {
+    if (bpm == null || wasmLayout == null) {
+      return { sourceToNoteIdMap: new Map<string, string>() };
+    }
+    return buildPluginSourceMap(notes, wasmLayout, bpm, timestampOffset);
+  }, [notes, wasmLayout, bpm, timestampOffset]);
+
+  const highlightedNoteIdsForWasm = useMemo(() => {
+    if (bpm == null || highlightedNoteIndex == null) return undefined;
+    const attacks = notes.filter(e => !e.type || e.type === 'attack');
+    const note = attacks[highlightedNoteIndex];
+    if (!note) return undefined;
+    return new Set([`pnote-${highlightedNoteIndex}-${note.midiNote}`]);
+  }, [notes, bpm, highlightedNoteIndex]);
+
+  // ── JS path hooks (always run — results unused when bpm is set) ───────────
+  const [scrollX, setScrollX] = useState(0);
   const staffNotes = useMemo(() => toNotes(notes), [notes]);
 
-  // Derive highlighted note IDs.
-  // `highlightedNotes` contains MIDI numbers of notes the *caller* wants to
-  // accent (e.g. the note that was just committed to the staff).  We find
-  // the LAST note in staffNotes whose pitch matches any value in the set —
-  // matching only the most recent occurrence avoids lighting up all past
-  // repetitions of the same pitch.
   const highlightedNoteIds = useMemo(() => {
     if (highlightedNotes.length === 0) return [];
     const midiSet = new Set(highlightedNotes);
-    // Walk backwards: only highlight the most-recent note for each MIDI value.
     const seen = new Set<number>();
     const ids: string[] = [];
     for (let i = staffNotes.length - 1; i >= 0; i--) {
@@ -144,7 +256,6 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
     return ids;
   }, [staffNotes, highlightedNotes]);
 
-  // Measure the container's visible width for accurate layout clipping.
   const [viewportWidth, setViewportWidth] = useState(VIEWER_WIDTH_FALLBACK);
   useEffect(() => {
     const el = containerRef.current;
@@ -154,14 +265,12 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
     return () => ro.disconnect();
   }, []);
 
-  // Throttled scrollX for layout recalculation (avoids 60 Hz engine calls).
   const scrollXThrottled = useMemo(
     () => Math.round(scrollX / SCROLL_THROTTLE) * SCROLL_THROTTLE,
     [scrollX],
   );
 
-  // Calculate layout geometry with the notation engine.
-  const layout = useMemo(() => {
+  const jsLayout = useMemo(() => {
     return NotationLayoutEngine.calculateLayout({
       notes: staffNotes,
       clef: clef as ClefType,
@@ -175,14 +284,6 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
     });
   }, [staffNotes, clef, viewportWidth, scrollXThrottled]);
 
-  // Auto-scroll: after every new note is appended, scroll the container so
-  // the newest note is fully visible at the right edge.
-  //
-  // Two rAF calls are required:
-  //   1st rAF – browser has committed layout/style but not yet painted
-  //   2nd rAF – browser has painted; SVG has its final scrollWidth
-  // Without the double-rAF the SVG may not have expanded yet and the scroll
-  // falls short by exactly one note width.
   useEffect(() => {
     if (!autoScroll || !containerRef.current) return;
     const el = containerRef.current;
@@ -198,13 +299,49 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
     };
-  // staffNotes.length is the correct dependency: fire only when a note is added.
   }, [staffNotes.length, autoScroll]);
 
-  // Keep scrollX state in sync when the user manually scrolls.
   const handleScroll = () => {
     if (containerRef.current) setScrollX(containerRef.current.scrollLeft);
   };
+
+  // ── Conditional rendering ─────────────────────────────────────────────────
+  if (bpm != null) {
+    if (wasmLayout == null) {
+      return (
+        <div
+          data-testid="plugin-staff-viewer"
+          style={{
+            height: 100,
+            border: '1px solid #e0e0e0',
+            borderRadius: 4,
+            backgroundColor: '#ffffff',
+            marginBottom: 12,
+          }}
+        />
+      );
+    }
+    return (
+      <div
+        data-testid="plugin-staff-viewer"
+        style={{
+          width: '100%',
+          overflow: 'hidden',
+          border: '1px solid #e0e0e0',
+          borderRadius: 4,
+          backgroundColor: '#ffffff',
+          marginBottom: 12,
+        }}
+      >
+        <ScoreViewer
+          layout={wasmLayout}
+          hideMeasureNumbers
+          highlightedNoteIds={highlightedNoteIdsForWasm}
+          sourceToNoteIdMap={pluginSourceMap}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -221,7 +358,7 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
       }}
     >
       <NotationRenderer
-        layout={layout}
+        layout={jsLayout}
         highlightedNoteIds={highlightedNoteIds}
       />
     </div>

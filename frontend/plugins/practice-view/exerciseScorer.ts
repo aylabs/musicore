@@ -1,51 +1,72 @@
 /**
- * exerciseScorer.ts — Beat-slot alignment and scoring for the Piano Practice feature.
+ * exerciseScorer.ts — Plugin-internal beat-slot scoring
+ * Feature 031: Practice View Plugin
  *
- * Feature: 001-piano-practice (T014)
- * FR-008: Correct = pitch within ±50 cents AND timing within ±200 ms
- * FR-009: Extraneous notes reduce the score
- * FR-010: Score = 50% pitch accuracy + 50% timing accuracy, normalised 0–100
+ * Adapted from src/services/practice/exerciseScorer.ts.
+ * Imports ONLY from ./practiceTypes — no src/ imports permitted (ESLint boundary).
  *
- * Default scoring formula (microphone mode — timing excluded, detection latency
- * makes timing unreliable):
- *   score = Math.round(100 × correctPitchCount / notes.length)
- *
- * MIDI mode (includeTimingScore: true) — timing is precise enough to penalise:
- *   score = Math.round(50 × correctPitchCount / notes.length
- *                    + 50 × correctTimingCount / notes.length)
+ * Exports:
+ * - scoreCapture(exercise, rawNotes, options?) → ExerciseResult
+ *   Accepts ResponseNote[] directly (pre-converted from PluginPitchEvent or MIDI).
+ * - scoreExercise(exercise, responses, extraneousNotes, options?) → ExerciseResult
+ *   Accepts pre-slotted responses + extraneous list (used internally by scoreCapture).
  */
 
 import type {
-  Exercise,
+  PracticeExercise,
   ResponseNote,
   NoteComparison,
   NoteComparisonStatus,
   ExerciseResult,
-} from '../../types/practice';
+} from './practiceTypes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Pitch match threshold in cents (FR-008, Clarification Q1) */
+/** Pitch match threshold in cents (FR-008) */
 const PITCH_TOLERANCE_CENTS = 50;
 /** Timing match window in ms (FR-006, FR-008) */
 const TIMING_TOLERANCE_MS = 200;
 
+// ─── Slot matcher ─────────────────────────────────────────────────────────────
+
+/**
+ * matchRawNotesToSlots — pairs recorded notes to exercise slots by nearest timing.
+ * Imported from the companion module to avoid duplication.
+ */
+import { matchRawNotesToSlots } from './matchRawNotesToSlots';
+
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * scoreCapture — the primary entry point for the plugin.
+ *
+ * Takes raw response notes (already converted from PluginPitchEvent or MIDI)
+ * and an exercise, then matches notes to slots and computes the final score.
+ *
+ * @param exercise   The target exercise (immutable after generation)
+ * @param rawNotes   All ResponseNotes collected during the exercise
+ * @param options    includeTimingScore: true = MIDI mode (timing matters)
+ */
+export function scoreCapture(
+  exercise: PracticeExercise,
+  rawNotes: ResponseNote[],
+  options: { includeTimingScore?: boolean } = {},
+): ExerciseResult {
+  const { responses, extraneousNotes } = matchRawNotesToSlots(exercise, rawNotes);
+  return scoreExercise(exercise, responses, extraneousNotes, options);
+}
 
 /**
  * scoreExercise — classify each beat slot and compute the final score.
  *
- * @param exercise          The target exercise (immutable after generation)
- * @param responses         Array of ResponseNotes aligned by usePracticeRecorder;
- *                          length must equal exercise.notes.length; null = missed slot
- * @param extraneousNotes   ResponseNotes not matched to any slot (surplus)
+ * @param exercise          The target exercise
+ * @param responses         Per-slot response array (null = missed slot)
+ * @param extraneousNotes   ResponseNotes not matched to any slot
  * @param options.includeTimingScore  When true (MIDI mode), timing accuracy
- *                          contributes 50% of the score. Default false (mic
- *                          mode) because mic pitch-detection latency makes
- *                          timing measurements unreliable.
+ *                          contributes 50% of the score. Default false (mic mode).
  */
 export function scoreExercise(
-  exercise: Exercise,
+  exercise: PracticeExercise,
   responses: (ResponseNote | null)[],
   extraneousNotes: ResponseNote[],
   options: { includeTimingScore?: boolean } = {},
@@ -66,12 +87,10 @@ export function scoreExercise(
       };
     }
 
-    // Pitch deviation: |detectedMidiCents − targetMidi × 100|
     const targetMidiCents = target.midiPitch * 100;
     const pitchDeviationCents = Math.abs(response.midiCents - targetMidiCents);
     const pitchOk = pitchDeviationCents <= PITCH_TOLERANCE_CENTS;
 
-    // Timing deviation: |response.onsetMs − target.expectedOnsetMs|
     const timingDeviationMs = Math.abs(response.onsetMs - target.expectedOnsetMs);
     const timingOk = timingDeviationMs <= TIMING_TOLERANCE_MS;
 
@@ -81,15 +100,12 @@ export function scoreExercise(
       correctPitchCount++;
       correctTimingCount++;
     } else if (pitchOk && !timingOk) {
-      // Pitch is correct but note fell outside the timing window
       status = 'wrong-timing';
       correctPitchCount++;
     } else if (!pitchOk && timingOk) {
-      // Responded in the right window but wrong pitch
       status = 'wrong-pitch';
       correctTimingCount++;
     } else {
-      // Both wrong — classify as wrong-pitch (most informative for the student)
       status = 'wrong-pitch';
     }
 
@@ -102,10 +118,6 @@ export function scoreExercise(
     };
   });
 
-  // Scoring formula:
-  //  - Mic mode (default): pitch only — mic detection latency makes timing
-  //    unreliable, so wrong-timing notes receive full credit.
-  //  - MIDI mode (includeTimingScore: true): 50% pitch + 50% timing.
   const n = exercise.notes.length;
   const score = n === 0 ? 0 : options.includeTimingScore
     ? Math.round(50 * correctPitchCount / n + 50 * correctTimingCount / n)

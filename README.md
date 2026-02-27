@@ -166,7 +166,6 @@ musicore/
 │   │   │   └── ErrorBoundary.tsx  # Error handling (NEW - Feature 017)
 │   │   ├── pages/          # Page components
 │   │   │   ├── ScoreViewer.tsx    # Interactive viewer (NEW - Feature 017)
-│   │   │   └── RendererDemo.tsx   # Demo page (NEW - Feature 017)
 │   │   ├── services/       # WASM integration, storage
 │   │   ├── types/          # TypeScript types
 │   │   ├── utils/          # Layout utilities (Feature 016 & 017)

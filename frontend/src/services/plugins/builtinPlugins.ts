@@ -11,6 +11,8 @@
 import type { PluginManifest, MusicorePlugin } from '../../plugin-api/index';
 import virtualKeyboardPlugin from '../../../plugins/virtual-keyboard/index';
 import virtualKeyboardManifestJson from '../../../plugins/virtual-keyboard/plugin.json';
+import practiceViewPlugin from '../../../plugins/practice-view/index';
+import practiceViewManifestJson from '../../../plugins/practice-view/plugin.json';
 
 export interface BuiltinPluginEntry {
   manifest: PluginManifest;
@@ -28,5 +30,12 @@ export const BUILTIN_PLUGINS: BuiltinPluginEntry[] = [
       origin: 'builtin' as const,
     },
     plugin: virtualKeyboardPlugin,
+  },
+  {
+    manifest: {
+      ...(practiceViewManifestJson as Omit<PluginManifest, 'origin'>),
+      origin: 'builtin' as const,
+    },
+    plugin: practiceViewPlugin,
   },
 ];

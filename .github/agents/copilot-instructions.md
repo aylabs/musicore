@@ -61,6 +61,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - TypeScript 5.9 / React 19.2 / Vite 7.x + Web MIDI API (`navigator.requestMIDIAccess` — no npm library), existing `useAudioRecorder` hook pattern (029-midi-input)
 - TypeScript 5.x, React 18, Vite + React 18 (error boundary API), `fflate` (ZIP extraction, ~8 KB gz), `idb` v8 (IndexedDB, ~1.7 KB gz), ESLint flat config (`no-restricted-imports`) (030-plugin-architecture)
 - IndexedDB (plugin registry — manifests + asset blobs; persists across PWA sessions) (030-plugin-architecture)
+- TypeScript 5.x, React 18 + Vite (bundler), Vitest + React Testing Library (tests), ToneAdapter (audio scheduling), AudioWorklet + `pitchDetection.ts` (mic pitch), `fflate` / `idb` (plugin infrastructure from 030, unchanged), ESLint flat config `no-restricted-imports` (plugin boundary enforcement) (031-practice-view-plugin)
+- N/A — no new persistence; existing plugin registry (IndexedDB via `idb`) used unchanged (031-practice-view-plugin)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -81,9 +83,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 031-practice-view-plugin: Added TypeScript 5.x, React 18 + Vite (bundler), Vitest + React Testing Library (tests), ToneAdapter (audio scheduling), AudioWorklet + `pitchDetection.ts` (mic pitch), `fflate` / `idb` (plugin infrastructure from 030, unchanged), ESLint flat config `no-restricted-imports` (plugin boundary enforcement)
 - 030-plugin-architecture: Added TypeScript 5.x, React 18, Vite + React 18 (error boundary API), `fflate` (ZIP extraction, ~8 KB gz), `idb` v8 (IndexedDB, ~1.7 KB gz), ESLint flat config (`no-restricted-imports`)
 - 029-midi-input: Added TypeScript 5.9 / React 19.2 / Vite 7.x + Web MIDI API (`navigator.requestMIDIAccess` — no npm library), existing `useAudioRecorder` hook pattern
-- 001-practice-rust-layout: Added TypeScript (strict), React 18, Vite + `computeLayout` / `GlobalLayout` (`wasm/layout.ts`), `LayoutRenderer` (`components/LayoutRenderer.tsx`), `buildSourceToNoteIdMap` pattern from `services/highlight/sourceMapping.ts`
 
 
 <!-- MANUAL ADDITIONS START -->
