@@ -34,3 +34,8 @@ release/
 test-results/
 playwright-report/
 *-analysis.txt
+
+# External plugins (maintained in a separate private repository)
+plugins-external/
+# Built plugin ZIPs (build artifacts from plugins-external/)
+*.zip

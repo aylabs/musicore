@@ -1,0 +1,10 @@
+{
+  "id": "virtual-keyboard-pro",
+  "name": "Virtual Keyboard Pro",
+  "version": "1.0.0",
+  "pluginApiVersion": "2",
+  "entryPoint": "index.js",
+  "description": "An enhanced interactive piano keyboard with three-octave range, octave shifting, and note label toggle. Played notes are shown on a music staff in real time.",
+  "type": "common",
+  "view": "window"
+}
