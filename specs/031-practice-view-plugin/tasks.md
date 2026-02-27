@@ -149,6 +149,20 @@
 
 ---
 
+## Phase 8: UX Refinements & General Cleanup
+
+**Purpose**: Post-ship UX polish for the Practice plugin (sound toggle, fullscreen mode) and removal of dead developer-only pages.
+
+- [X] T048 [P] Add sound-toggle button to `frontend/plugins/practice-view/PracticePlugin.tsx`: add `soundEnabled` state and `soundEnabledRef`; add `toggleSound` callback; gate the three exercise guide-note `context.playNote` calls (flow mode and both step-mode paths) behind `soundEnabledRef.current`; render a `🔊`/`🔇` emoji button inline with the Exercise staff label using className `practice-staff-sound-btn`; update `PracticePlugin.css` with `.practice-staff-sound-btn` (background: none, inline flex) and `--muted` opacity modifier; update `.practice-staff-label` to flex row — user MIDI feedback must NOT be gated, only guide notes
+- [X] T049 [P] Add `view?: 'full-screen' | 'window'` field to `PluginManifest` in `frontend/src/plugin-api/types.ts`; set `"view": "full-screen"` in `frontend/plugins/practice-view/plugin.json` and `"view": "window"` in `frontend/plugins/virtual-keyboard/plugin.json`; change all fullscreen checks in `frontend/src/App.tsx` from `type === 'core'` to `view === 'full-screen'` — separates display mode (`view`) from placement (`type`)
+- [X] T050 [P] Integrate browser native Fullscreen API for `view: 'full-screen'` plugins in `frontend/src/App.tsx`: call `document.documentElement.requestFullscreen?.().catch(() => {})` inside `handleSelectPlugin` when the selected plugin has `view: 'full-screen'` (must be called in user-gesture / onClick context); update `context.close` to call `document.exitFullscreen?.().catch(() => {})` before `setActivePlugin(null)`; add `document.exitFullscreen?.().catch(() => {})` to the `useEffect` cleanup for `body.fullscreen-play` as safety net — iOS Safari fallback handled by existing CSS `body.fullscreen-play` class
+- [X] T051 [P] Fix config collapse toggle button in `frontend/plugins/practice-view/PracticePlugin.css`: change `.practice-sidebar__toggle` from `width: 100%; min-height: 36px` to fixed `width: 36px; height: 36px; flex-shrink: 0` so the button is the same size whether the sidebar is expanded or collapsed; add `outline: none` on `:focus` and restore ring only on `:focus-visible`; remove the mobile `@media` override that re-applied `width: 100%` to the toggle
+- [X] T052 [P] Delete `frontend/src/pages/RendererDemo.tsx` and remove all references from `frontend/src/App.tsx`: remove `import { RendererDemo }`, `showDemo` state, the `?demo=true` URL check in the startup `useEffect`, `setShowDemo(false)` in `handleSelectPlugin`, and the `if (showDemo)` early-return render block; remove the stale `RendererDemo.tsx` entry from `README.md`
+
+**Checkpoint**: `npm run build` and `npm test` pass (1131 tests). Exercise guide notes are muted/unmuted via the speaker button. Practice plugin enters browser native fullscreen on launch and exits correctly on close. Config toggle button is a fixed 36×36 px square in both states with no blue focus ring on click. No references to `RendererDemo` remain in source files.
+
+---
+
 ## Dependencies
 
 ```

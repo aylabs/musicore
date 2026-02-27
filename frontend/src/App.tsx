@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
-import { RendererDemo } from './pages/RendererDemo'
 import { RecordingView } from './components/recording/RecordingView'
 import { OfflineBanner } from './components/OfflineBanner'
 import { IOSInstallModal } from './components/IOSInstallModal'
@@ -29,15 +28,11 @@ import './App.css'
  * Feature 008: Added TempoStateProvider for tempo change support
  * Feature 011: Added WASM music engine initialization
  * Feature 013: Added onboarding with demo music on first run
- * Feature 017: Added RendererDemo route (access with ?demo=true)
  */
 function App() {
   const [wasmLoading, setWasmLoading] = useState(true)
   const [wasmError, setWasmError] = useState<string | null>(null)
   
-  // Feature 017: Check URL for demo mode (?demo=true)
-  const [showDemo, setShowDemo] = useState(false)
-
   // Feature 001-recording-view: Recording debug view (?debug=true)
   const [showRecording, setShowRecording] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
@@ -102,12 +97,6 @@ function App() {
       });
     }
     
-    // Feature 017: Check for demo mode
-    if (urlParams.get('demo') === 'true') {
-      console.log('[App] Demo mode enabled - showing RendererDemo');
-      setShowDemo(true);
-    }
-
     // Feature 001-recording-view: Enable debug mode flag for Record View button
     if (urlParams.get('debug') === 'true') {
       setDebugMode(true);
@@ -256,7 +245,6 @@ function App() {
   const handleSelectPlugin = useCallback((pluginId: string) => {
     setActivePlugin(pluginId)
     setShowRecording(false)
-    setShowDemo(false)
     // Apply fullscreen-play immediately (synchronous, before React re-render) so
     // that even if ScoreViewer's unmount cleanup removes the class afterwards,
     // the useEffect below will re-add it on the next commit.
@@ -441,34 +429,6 @@ function App() {
     }
   }
 
-  // Feature 017: Show RendererDemo if ?demo=true parameter is present
-  if (showDemo) {
-    return (
-      <div className="app">
-        <header className="app-header">
-          <h1>
-            Musicore - Layout Renderer Demo{' '}
-            <a 
-              href="/"
-              style={{ 
-                fontSize: '0.5em', 
-                color: '#999', 
-                fontWeight: 'normal',
-                textDecoration: 'none',
-                marginLeft: '1rem'
-              }}
-            >
-              ← Back to App
-            </a>
-          </h1>
-        </header>
-        <main>
-          <RendererDemo />
-        </main>
-      </div>
-    )
-  }
-  
   return (
     <TempoStateProvider>
       <FileStateProvider>

@@ -195,8 +195,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
   background: none;
   border: none;
   border-bottom: 1px solid var(--color-border, #e0e0e0);
@@ -205,6 +206,15 @@
   cursor: pointer;
   transition: background 0.12s;
   user-select: none;
+}
+
+.practice-sidebar__toggle:focus {
+  outline: none;
+}
+
+.practice-sidebar__toggle:focus-visible {
+  outline: 2px solid var(--color-primary, #646cff);
+  outline-offset: -2px;
 }
 
 .practice-sidebar__toggle:hover {
@@ -651,12 +661,6 @@
 
   .practice-sidebar--collapsed {
     width: 100%;
-  }
-
-  /* Toggle spans full width on mobile */
-  .practice-sidebar__toggle {
-    width: 100%;
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
   }
 
   /* Sections scroll horizontally */
