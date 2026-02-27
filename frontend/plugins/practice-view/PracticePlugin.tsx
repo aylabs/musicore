@@ -775,7 +775,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="practice-plugin">
+    <div className="practice-plugin" data-testid="practice-view">
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="practice-plugin__header">
         <button
