@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import * as _ReactNS from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RecordingView } from './components/recording/RecordingView'
 import { OfflineBanner } from './components/OfflineBanner'
@@ -11,13 +12,18 @@ import { pluginRegistry } from './services/plugins/PluginRegistry'
 import { PluginView } from './components/plugins/PluginView'
 import { PluginNavEntry } from './components/plugins/PluginNavEntry'
 import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
-import type { PluginContext, PluginManifest, PluginNoteEvent } from './plugin-api/index'
+import type { PluginContext, PluginNoteEvent, MusicorePlugin } from './plugin-api/index'
 import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
 import { ToneAdapter } from './services/playback/ToneAdapter'
 import { pluginMicBroadcaster } from './services/recording/PluginMicBroadcaster'
 import { useMidiInput } from './services/recording/useMidiInput'
 import packageJson from '../package.json'
 import './App.css'
+
+// Expose the host's React instance on window so imported plugins loaded as Blob
+// URL ESM modules can share it via their react-shim.js alias (avoids the
+// "Cannot read properties of null (reading 'useState')" dual-React error).
+;(window as unknown as Record<string, unknown>).__MUSICORE_REACT__ = _ReactNS
 
 /**
  * Musicore - Music Score Editor
@@ -42,6 +48,8 @@ function App() {
   const [activePlugin, setActivePlugin] = useState<string | null>(null)
   // T025: Show/hide plugin importer dialog
   const [showImporter, setShowImporter] = useState(false)
+  // Feature 030: Increment to re-run loadPlugins (e.g. after a new plugin is imported)
+  const [pluginsVersion, setPluginsVersion] = useState(0)
 
   // When a core plugin is active, apply fullscreen-play body class.
   // This is required for iOS Safari where `overflow-x: hidden` on the body
@@ -124,27 +132,39 @@ function App() {
       // Start with built-in plugins (always available, no IndexedDB needed)
       const entries: BuiltinPluginEntry[] = [...BUILTIN_PLUGINS]
 
-      // Merge persisted imported plugins with placeholder components
+      // Load persisted imported plugins dynamically from IndexedDB
       try {
         const imported = await pluginRegistry.list()
         for (const { manifest } of imported) {
-          const pluginName = manifest.name
-          entries.push({
-            manifest: manifest,
-            plugin: {
+          let plugin: MusicorePlugin
+          try {
+            const assets = await pluginRegistry.getAssets(manifest.id)
+            const entryAsset = assets.find(a => a.name === manifest.entryPoint)
+            if (!entryAsset) throw new Error(`Entry point "${manifest.entryPoint}" not found in stored assets`)
+            const blob = new Blob([entryAsset.data], { type: 'application/javascript' })
+            const blobUrl = URL.createObjectURL(blob)
+            const mod = await import(/* @vite-ignore */ blobUrl)
+            URL.revokeObjectURL(blobUrl)
+            plugin = mod.default as MusicorePlugin
+            console.log(`[App] Loaded imported plugin "${manifest.id}" from IndexedDB`)
+          } catch (loadErr) {
+            console.error(`[App] Failed to load plugin "${manifest.id}":`, loadErr)
+            const pluginName = manifest.name
+            plugin = {
               init: () => {},
               dispose: () => {},
               Component: () => (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
-                  <p>&#x1F4E6; "{pluginName}" is installed.</p>
-                  <p style={{ fontSize: '0.8em' }}>Reload the app to activate imported plugins.</p>
+                  <p>&#x26A0;&#xFE0F; Failed to load &ldquo;{pluginName}&rdquo;.</p>
+                  <p style={{ fontSize: '0.8em' }}>Check the browser console for details.</p>
                 </div>
               ),
-            },
-          })
+            }
+          }
+          entries.push({ manifest, plugin })
         }
         if (imported.length > 0) {
-          console.log('[App] Merged', imported.length, 'imported plugin(s) from registry')
+          console.log('[App] Loaded', imported.length, 'imported plugin(s) from registry')
         }
       } catch (err) {
         console.warn('[App] Could not load plugin registry:', err)
@@ -239,7 +259,7 @@ function App() {
     }
 
     loadPlugins()
-  }, [])
+  }, [pluginsVersion])
 
   // Feature 030: Navigate to a plugin view (clears other view flags)
   const handleSelectPlugin = useCallback((pluginId: string) => {
@@ -262,28 +282,11 @@ function App() {
     ToneAdapter.getInstance().init().catch(() => {})
   }, [allPlugins])
 
-  // T024: Handle successful plugin import — add to allPlugins list
-  const handleImportComplete = useCallback((manifest: PluginManifest) => {
-    const pluginName = manifest.name
-    const newEntry: BuiltinPluginEntry = {
-      manifest,
-      plugin: {
-        init: () => {},
-        dispose: () => {},
-        Component: () => (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
-            <p>&#x1F4E6; "{pluginName}" is installed.</p>
-            <p style={{ fontSize: '0.8em' }}>Reload the app to activate imported plugins.</p>
-          </div>
-        ),
-      },
-    }
-    setAllPlugins(prev => {
-      // Avoid duplicates (overwrite scenario replaces old entry)
-      const filtered = prev.filter(p => p.manifest.id !== manifest.id)
-      return [...filtered, newEntry]
-    })
+  // T024: Handle successful plugin import — close the dialog and re-run loadPlugins
+  // to dynamically load the newly installed module from IndexedDB.
+  const handleImportComplete = useCallback(() => {
     setShowImporter(false)
+    setPluginsVersion(v => v + 1)
   }, [])
 
   // Show loading state while WASM initializes

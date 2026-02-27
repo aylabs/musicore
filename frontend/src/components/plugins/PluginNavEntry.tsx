@@ -53,7 +53,7 @@ const styles = {
     background: 'rgba(255,255,255,0.9)',
     color: '#4a0080',
     fontWeight: '700' as const,
-    borderColor: 'rgba(255,255,255,0.9)',
+    border: '1px solid rgba(255,255,255,0.9)',
   },
   badge: {
     fontSize: '0.7rem',

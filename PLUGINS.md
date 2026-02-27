@@ -14,6 +14,7 @@ Plugins extend Musicore with new UI views and interactive musical tools. They ru
 6. [Testing your plugin](#testing-your-plugin)
 7. [Reference: Virtual Keyboard plugin](#reference-virtual-keyboard-plugin)
 8. [Reference: Practice View plugin](#reference-practice-view-plugin)
+9. [Reference: Virtual Keyboard Pro (importable plugin)](#reference-virtual-keyboard-pro-importable-plugin)
 
 ---
 
@@ -411,3 +412,74 @@ The Practice View (`frontend/plugins/practice-view/`) is the reference implement
 - **Phase state machine** — `ready → countdown → playing → results`
 - **Timer-based countdown** — compatible with `vi.useFakeTimers()` (no async/await)
 - A full Vitest test suite (TDD, 14 tests) covering all user-visible behaviours
+
+---
+
+## Reference: Virtual Keyboard Pro (importable plugin)
+
+The Virtual Keyboard Pro (`plugins-external/virtual-keyboard-pro/`) is the canonical example of a **standalone importable plugin** — it lives outside `frontend/`, has its own `package.json` and build tooling, and is distributed as `virtual-keyboard-pro.zip`.
+
+### Why it's a useful reference
+
+- **Standalone project** — own `package.json`, `tsconfig.json`, `vitest.config.ts`; no Vite integration
+- **esbuild compilation** — single `build.sh` compiles TSX → `dist/index.js` and merges CSS inline
+- **CSS injection** — styles are appended to `<head>` at runtime via a self-invoking function in the bundle (needed because no Vite CSS pipeline is available for imported plugins)
+- **Full Plugin API v2** — uses `playNote`, `emitNote`, `midi.subscribe`, `StaffViewer`; does NOT use `stopPlayback` or `recording`
+- **24 Vitest tests** covering all four user stories (US1–US4) using a mock `PluginContext`
+- **Three-octave layout** — `BASE_NOTES` array (36 notes) + `octaveOffset` useMemo shift pattern
+
+### Source layout
+
+```
+plugins-external/virtual-keyboard-pro/
+  package.json               # dev deps: esbuild, typescript, vitest, @testing-library/react
+  tsconfig.json              # standalone — references ../frontend/src/plugin-api/index.ts
+  vite.config.ts             # vitest config (jsdom env, globals, setupFiles)
+  vitest.setup.ts            # @testing-library/jest-dom setup
+  build.sh                   # esbuild → dist/index.js + CSS injection → ZIP
+  scripts/inject-css.mjs     # CSS merger helper used by build.sh
+  plugin.json                # manifest (id=virtual-keyboard-pro, pluginApiVersion="2")
+  README.md                  # user-facing installation guide (included in ZIP)
+  index.tsx                  # MusicorePlugin default export
+  VirtualKeyboardPro.tsx     # main React component (~350 lines)
+  VirtualKeyboardPro.css     # styles (compiled into index.js at build time)
+  VirtualKeyboardPro.test.tsx # 24 Vitest tests (US1–US4)
+```
+
+### Build and distribute
+
+```bash
+cd plugins-external/virtual-keyboard-pro
+npm install           # first time only
+npm test              # run 24 Vitest tests
+npm run build         # produces virtual-keyboard-pro.zip at repo root
+```
+
+The produced `virtual-keyboard-pro.zip` (≈5 KB) can be imported directly via the Musicore host importer:
+
+**Settings → Plugins → Import Plugin → select `virtual-keyboard-pro.zip`**
+
+### Key implementation patterns
+
+```tsx
+// Octave shift: shift the full 3-octave BASE_NOTES array by ±12 semi-tones
+const visibleNotes = useMemo(
+  () => BASE_NOTES.map(n => resolveNote(n, octaveOffset)),
+  [octaveOffset]
+);
+
+// MIDI subscription — re-subscribe when visible range changes
+useEffect(() => {
+  return context.midi.subscribe((event) => {
+    if (event.type === 'release') {
+      handleKeyUp(event.midiNote);
+    } else {
+      const note = visibleNotes.find(n => n.midi === event.midiNote);
+      if (note) handleKeyDown(note);
+    }
+  });
+}, [context, visibleNotes]);
+
+// Empty staff on load — notes=[] renders clef + time signature only
+<context.components.StaffViewer notes={playedNotes} clef="Treble" bpm={120} ... />
+```
