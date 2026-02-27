@@ -116,8 +116,8 @@
 - [ ] T033 Regression check: with Virtual Keyboard Pro imported, navigate to the built-in "Virtual Keyboard" plugin and verify it still plays notes, shows staff, and has no regressions (SC-009 / FR-005)
 - [x] T034 [P] Update `PLUGINS.md` in repo root: add Virtual Keyboard Pro to the importable plugin reference section; document `plugins-external/virtual-keyboard-pro/` as the example importable plugin source
 - [x] T035 Add `plugins-external/` and `*.zip` to `.gitignore` so the private external-plugin workspace and build artifacts are never committed to this repository
-- [ ] T036 Commit all changes on branch `032-virtual-keyboard-pro`: `.gitignore`, `PLUGINS.md`, `frontend/src/App.tsx` (dynamic plugin loading + window React exposure), `frontend/src/components/plugins/PluginNavEntry.tsx` (border fix), and `specs/032-virtual-keyboard-pro/` directory
-- [ ] T037 Push branch `032-virtual-keyboard-pro` to origin and open a pull request targeting `main` with a summary of the feature and the post-implementation fixes
+- [x] T036 Commit all changes on branch `032-virtual-keyboard-pro`: `.gitignore`, `PLUGINS.md`, `frontend/src/App.tsx` (dynamic plugin loading + window React exposure), `frontend/src/components/plugins/PluginNavEntry.tsx` (border fix), and `specs/032-virtual-keyboard-pro/` directory
+- [x] T037 Push branch `032-virtual-keyboard-pro` to origin and open a pull request targeting `main` with a summary of the feature and the post-implementation fixes
 
 ---
 
