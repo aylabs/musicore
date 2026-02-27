@@ -70,12 +70,13 @@ A user wants to practise a specific section. They long-press a note — a green 
 
 **Acceptance Scenarios**:
 
-1. **Given** no pins are set, **When** the user long-presses a note, **Then** a green pin marker appears on that note and the playback position seeks to it if not playing.
-2. **Given** one pin is set, **When** the user long-presses the same pinned note, **Then** the pin is removed.
-3. **Given** one pin is set, **When** the user long-presses a different note, **Then** a loop region is created between the two ticks (ordered) and the region overlay is displayed.
-4. **Given** a loop region is active, **When** the user long-presses anywhere inside the region, **Then** both pins are cleared and the overlay is removed.
-5. **Given** a single pin is set (no region), **When** the user presses Stop, **Then** the playback position resets to the pinned tick.
-6. **Given** a loop region is active during playback, **When** playback reaches the region's end tick, **Then** playback immediately wraps to the region's start tick.
+1. **Given** no pins are set and playback is stopped or paused, **When** the user long-presses a note, **Then** a green pin marker appears on that note and the playback position seeks to the pinned tick.
+2. **Given** no pins are set and playback is active, **When** the user long-presses a note, **Then** the pin is set silently without interrupting playback; the next Stop or loop-wrap will respect the pinned tick.
+3. **Given** one pin is set, **When** the user long-presses the same pinned note, **Then** the pin is removed.
+4. **Given** one pin is set, **When** the user long-presses a different note, **Then** a loop region is created between the two ticks (ordered) and the region overlay is displayed; playback is not interrupted if active.
+5. **Given** a loop region is active, **When** the user long-presses anywhere inside the region, **Then** both pins are cleared and the overlay is removed.
+6. **Given** a single pin is set (no region), **When** the user presses Stop, **Then** the playback position resets to the pinned tick.
+7. **Given** a loop region is active during playback, **When** playback reaches the region's end tick, **Then** playback immediately wraps to the region's start tick.
 
 ---
 
@@ -131,6 +132,8 @@ A user can adjust the playback tempo using the tempo control in the toolbar. The
 - What happens if the device denies file access permissions? → A user-friendly message is shown; the preloaded library remains accessible.
 - What happens when the loop region start tick equals the end tick? → Treated as unpin, not loop creation.
 - What happens when the user presses Back while playback is in progress? → Playback stops and audio resources are released before the plugin closes.
+- What happens when the score selection screen is open and the user wants to exit? → The Back button is not shown on the selection screen; the plugin can only be exited once a score has been loaded and the Back button becomes visible.
+- What happens when the user reopens the plugin after a previous session? → Always shows the score selection screen; no score is auto-loaded.
 - What happens when WASM is still initialising? → A loading indicator is shown; all controls are disabled until rendering is ready.
 - What happens if the score contains multiple tempo changes? → The toolbar reflects the tempo at the current playback tick, updating as playback passes each change marker.
 
@@ -141,13 +144,13 @@ A user can adjust the playback tempo using the tempo control in the toolbar. The
 ### Functional Requirements
 
 - **FR-001**: The Play Score plugin MUST be registered as a `type: 'core'`, `view: 'full-screen'` builtin plugin, appearing as a launch button on the app landing screen.
-- **FR-002**: The plugin MUST fill the entire viewport when open — no app header, no nav bar; the plugin provides its own toolbar with a "← Back" button that calls `context.close()`.
+- **FR-002**: The plugin MUST fill the entire viewport when open — no app header, no nav bar; the plugin provides its own toolbar with a "← Back" button that calls `context.close()`. The Back button MUST be hidden while the score selection screen is shown (no score loaded); it appears only after a score has been successfully loaded.
 - **FR-003**: On first open (no score loaded), the plugin MUST show a score selection screen listing all preloaded scores by display name.
 - **FR-004**: The plugin MUST render scores using the Rust WASM layout engine and the existing rendering path — no alternative renderer may be introduced.
 - **FR-005**: The plugin MUST provide a top toolbar containing: Back button, score title, Play/Pause toggle button, Stop button, elapsed timer, and Tempo control.
 - **FR-006**: A single tap on the score canvas (not on a note) MUST toggle playback between playing and paused.
 - **FR-007**: A short tap on a rendered note MUST seek the playback position to that note's tick.
-- **FR-008**: A long press (≥ 500 ms) on a note MUST implement pin/loop logic: no pins → set start pin; one pin on same note → unpin; one pin on different note → create loop region; inside active loop region → clear region.
+- **FR-008**: A long press (≥ 500 ms) on a note MUST implement pin/loop logic: no pins → set start pin; one pin on same note → unpin; one pin on different note → create loop region; inside active loop region → clear region. When playback is active, pin/region changes MUST be applied silently without interrupting playback; seek only applies when playback is stopped or paused.
 - **FR-009**: An active loop region MUST cause playback to wrap to the region's start tick when the end tick is reached.
 - **FR-010**: A "back to start" button MUST be accessible at the bottom of the score area; tapping it seeks to tick 0, or the pinned start tick if one is set.
 - **FR-011**: The Stop button MUST reset the playback position to the pinned start tick (if set) or to tick 0.
@@ -184,8 +187,22 @@ A user can adjust the playback tempo using the tempo control in the toolbar. The
 ## Assumptions
 
 - The existing `PluginContext` API (`playNote`, `stopPlayback`, `components.StaffViewer`, `close`, `midi`) will need to be extended for this feature. New capabilities needed include: score loading, tick-seek, playback-status subscription, loop region control, and a full score renderer component. These extensions will be defined in a Plugin API v3 contract during the foundational phase.
+- These API v3 extensions are in-scope for feature 033 and will be developed in a dedicated foundational phase before the plugin implementation begins — matching the pattern used in 031 (practice-view-plugin v2 API).
 - The `PRELOADED_SCORES` manifest and score files remain bundled with the app and served from the same base URL.
 - Long-press detection threshold (≥ 500 ms) matches the current ScoreViewer implementation and is acceptable to users.
 - The existing `ScoreViewer.tsx` is retained in the codebase during transition and removed in a follow-up feature once the plugin fully replaces it.
+- The plugin does NOT persist the last-used score between sessions; every plugin open begins at the score selection screen.
 - `context.components.StaffViewer` will be supplemented by a new host-provided `context.components.ScoreRenderer` component that accepts a full parsed score document, since the current `StaffViewer` interface is scoped to single-staff notation snippets used by the Practice and VirtualKeyboard plugins.
+
+---
+
+## Clarifications
+
+### Session 2026-02-27
+
+- Q: What gesture does "large tap on a note" mean — long press (≥ 500 ms), force touch, or double-tap? → A: Long press ≥ 500 ms — same as current ScoreViewer; works on all devices.
+- Q: Are Plugin API v3 extensions in-scope for 033 or extracted to a separate feature? → A: In-scope for 033 — foundational phase adds v3 API, then plugin is built on top (same pattern as 031).
+- Q: When the user long-presses a note during active playback, does playback interrupt or continue? → A: Playback continues uninterrupted — pin/region is set silently; seek only applies when not playing; next Stop or loop-wrap respects the new pin.
+- Q: Should the Back button be visible on the score selection screen (before a score is loaded)? → A: Hidden — Back only appears after a score is loaded; the selection screen has no back navigation.
+- Q: Should reopening the plugin auto-reload the last-used score? → A: No — always show the score selection screen; no session persistence.
 
