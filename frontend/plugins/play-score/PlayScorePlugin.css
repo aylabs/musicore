@@ -18,13 +18,18 @@
   height: 100%;
   padding: 24px 16px;
   overflow-y: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.play-score__selection-screen h2 {
-  margin: 0 0 16px;
-  font-size: 1.25rem;
+.play-score__section-label {
+  margin: 0 0 8px 4px;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: #333;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
 }
 
 .play-score__score-list {
@@ -33,33 +38,49 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .play-score__score-item {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 14px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  background: #fafafa;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   font-size: 0.95rem;
-  color: #333;
-  min-height: 48px;
-  transition: background 0.15s, border-color 0.15s;
+  color: #222;
+  text-align: left;
+  min-height: 50px;
+  transition: background 0.12s;
+}
+
+.play-score__score-list li:last-child .play-score__score-item {
+  border-bottom: none;
 }
 
 .play-score__score-item:hover,
-.play-score__score-item:focus {
+.play-score__score-item:focus-visible {
   background: #f0f4ff;
-  border-color: #4a90e2;
   outline: none;
+}
+
+.play-score__score-item-separator {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .play-score__score-item--file {
   color: #555;
-  border-style: dashed;
+  font-style: italic;
 }
 
 /* Player screen */

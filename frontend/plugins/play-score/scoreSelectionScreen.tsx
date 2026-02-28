@@ -33,13 +33,13 @@ export function ScoreSelectionScreen({ catalogue, onSelectScore, onLoadFile }: S
 
   return (
     <div className="play-score__selection-screen">
-      <h2 className="play-score__selection-title">Select a Score</h2>
+      <p className="play-score__section-label">PRELOADED SCORES</p>
 
-      <ul className="play-score__catalogue-list" role="list">
+      <ul className="play-score__score-list" role="list">
         {catalogue.map(entry => (
-          <li key={entry.id} className="play-score__catalogue-item">
+          <li key={entry.id}>
             <button
-              className="play-score__catalogue-btn"
+              className="play-score__score-item"
               onClick={() => onSelectScore(entry.id)}
             >
               {entry.displayName}
@@ -47,10 +47,11 @@ export function ScoreSelectionScreen({ catalogue, onSelectScore, onLoadFile }: S
           </li>
         ))}
 
-        {/* US6 (T025): Load from file — file input wired here, handler fills out in T025 */}
-        <li className="play-score__catalogue-item play-score__catalogue-item--load-file">
+        <li className="play-score__score-item-separator" role="separator" />
+
+        <li>
           <button
-            className="play-score__catalogue-btn play-score__catalogue-btn--load-file"
+            className="play-score__score-item play-score__score-item--file"
             onClick={() => fileInputRef.current?.click()}
           >
             📁 Load from file…
