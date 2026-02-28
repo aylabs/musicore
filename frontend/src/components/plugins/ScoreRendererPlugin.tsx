@@ -126,11 +126,14 @@ export function ScoreRendererPlugin({
             onNoteLongPress(tick ?? 0, noteId);
           }}
           onSeekAndPlay={(tick: number) => {
-            // Short-tap far from current position triggers seek-from-LayoutView.
-            // Map to onNoteShortTap with null noteId is not allowed by the type,
-            // so we use seekToTick semantics: just seek via onNoteShortTap with
-            // an empty string noteId (the plugin ignores noteId for seekToTick).
+            // Short-tap while paused/stopped: seek to tapped position AND resume.
+            // onSeekAndPlay is only triggered when not playing (pages/ScoreViewer
+            // calls onTogglePlayback→pause when playing, then returns early).
+            // 1. Seek to the tapped tick.
             onNoteShortTap(tick, '');
+            // 2. Resume playback — onCanvasTap toggles play/pause, and since
+            //    this path is only reached when not playing, it will always play().
+            onCanvasTap();
           }}
         />
       </div>
