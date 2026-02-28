@@ -142,7 +142,14 @@ export function ScoreRendererPlugin({
       {/* FR-010: Back to start button at the bottom of the score area */}
       <button
         style={styles.returnToStartButton}
-        onClick={onReturnToStart}
+        onClick={() => {
+          // Seek audio back to start
+          onReturnToStart();
+          // Scroll the score wrapper back to the top
+          if (layoutWrapperRef.current) {
+            layoutWrapperRef.current.scrollTop = 0;
+          }
+        }}
         aria-label="Return to start"
         title="Return to start"
       >
@@ -200,5 +207,8 @@ const styles = {
     cursor: 'pointer',
     textAlign: 'center' as const,
     letterSpacing: '0.03em',
+    userSelect: 'none' as const,
+    WebkitUserSelect: 'none' as const,
+    WebkitTapHighlightColor: 'transparent',
   },
 } as const;
