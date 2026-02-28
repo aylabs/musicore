@@ -210,6 +210,166 @@ export interface PluginManifest {
 }
 
 // ---------------------------------------------------------------------------
+// v3 types — Score Player namespace (Feature 033)
+// ---------------------------------------------------------------------------
+
+/**
+ * A score entry from the app's bundled preloaded catalogue.
+ * Returned by context.scorePlayer.getCatalogue().
+ *
+ * Note: `path` is intentionally absent. The host resolves file paths
+ * internally so plugins cannot hardcode score paths (FR-013).
+ */
+export interface PluginPreloadedScore {
+  /** Stable string identifier, e.g. "bach-invention-1" */
+  readonly id: string;
+  /** User-visible display name, e.g. "Bach — Invention No. 1" */
+  readonly displayName: string;
+}
+
+/**
+ * Input to context.scorePlayer.loadScore().
+ * Either a catalogue entry (by id) or a user-provided File object.
+ */
+export type ScoreLoadSource =
+  | { readonly kind: 'catalogue'; readonly catalogueId: string }
+  | { readonly kind: 'file';      readonly file: File };
+
+/**
+ * Lifecycle states of the score player.
+ */
+export type PluginPlaybackStatus =
+  | 'idle'     // no score loaded
+  | 'loading'  // loadScore() in flight
+  | 'ready'    // score loaded, stopped
+  | 'playing'  // audio running
+  | 'paused'   // audio frozen at currentTick
+  | 'error';   // load or playback failure
+
+/**
+ * Snapshot of playback state pushed to plugin subscribers.
+ * Delivered by context.scorePlayer.subscribe() whenever fields change.
+ */
+export interface ScorePlayerState {
+  readonly status: PluginPlaybackStatus;
+  /** Current playback position in 960-PPQ integer ticks. */
+  readonly currentTick: number;
+  /** Total score duration in ticks; 0 when idle or loading. */
+  readonly totalDurationTicks: number;
+  /**
+   * Set of note IDs that should visually be highlighted.
+   * Stable reference when content unchanged (Principle VI: opaque IDs only).
+   */
+  readonly highlightedNoteIds: ReadonlySet<string>;
+  /**
+   * Effective playback tempo in BPM (originalBpm × tempoMultiplier).
+   * 0 when no score is loaded.
+   */
+  readonly bpm: number;
+  /** Display title from score metadata; null until a score is loaded. */
+  readonly title: string | null;
+  /** Error message; non-null when status === 'error'. */
+  readonly error: string | null;
+}
+
+/**
+ * Score player context injected into plugins via context.scorePlayer.
+ * v3 extension enabling score loading, playback control, and subscriptions.
+ * For v2 plugins this namespace is injected as a no-op stub.
+ */
+export interface PluginScorePlayerContext {
+  // ─── Discovery ────────────────────────────────────────────────────────────
+
+  /** Returns all scores in the app's bundled preloaded catalogue (stable). */
+  getCatalogue(): ReadonlyArray<PluginPreloadedScore>;
+
+  // ─── Loading ──────────────────────────────────────────────────────────────
+
+  /**
+   * Load a score from the catalogue or a user-provided File.
+   * Errors are surfaced via ScorePlayerState.error; never throws.
+   */
+  loadScore(source: ScoreLoadSource): Promise<void>;
+
+  // ─── Playback controls ────────────────────────────────────────────────────
+
+  /** Start or resume playback. No-op if already playing. */
+  play(): Promise<void>;
+  /** Freeze playback at currentTick. No-op if already paused/stopped. */
+  pause(): void;
+  /**
+   * Stop playback and reset position to pinnedStartTick (if set) or tick 0.
+   * Status transitions to 'ready'.
+   */
+  stop(): void;
+  /**
+   * Seek to an absolute tick position.
+   * If playing, continues from the new position immediately.
+   */
+  seekToTick(tick: number): void;
+
+  // ─── Pin / loop control ───────────────────────────────────────────────────
+
+  /** Set the loop-start pin tick. Pass null to unpin. */
+  setPinnedStart(tick: number | null): void;
+
+  /** Set the loop-end tick. Pass null to remove the loop end. */
+  setLoopEnd(tick: number | null): void;
+
+  // ─── Tempo ────────────────────────────────────────────────────────────────
+
+  /**
+   * Set the tempo multiplier in the range [0.5, 2.0].
+   * Effective BPM = scoreBpm × multiplier; clamped by host.
+   */
+  setTempoMultiplier(multiplier: number): void;
+
+  // ─── State subscription ───────────────────────────────────────────────────
+
+  /**
+   * Subscribe to ScorePlayerState snapshots.
+   * Handler is called synchronously once with the current state, then on each change.
+   * Returns an unsubscribe function.
+   */
+  subscribe(handler: (state: ScorePlayerState) => void): () => void;
+
+  /**
+   * Read the current playback tick WITHOUT triggering re-renders.
+   * Sourced from the host's 60 Hz rAF loop.
+   */
+  getCurrentTickLive(): number;
+}
+
+/**
+ * Props for the host-provided ScoreRenderer component (v3).
+ * Available to plugins via `context.components.ScoreRenderer`.
+ *
+ * The component renders a full interactive score, handling all geometry,
+ * long-press detection (≥500 ms), hit-testing, and SVG rendering.
+ *
+ * GEOMETRY CONSTRAINT (Principle VI): Props carry ONLY tick values and
+ * opaque note ID strings — no coordinates cross the plugin API boundary.
+ */
+export interface PluginScoreRendererProps {
+  /** Current playback tick for note cursor positioning. */
+  currentTick: number;
+  /** Set of note IDs to visually highlight (currently playing notes). */
+  highlightedNoteIds: ReadonlySet<string>;
+  /** Active loop region overlay; null when no loop region is set. */
+  loopRegion: { readonly startTick: number; readonly endTick: number } | null;
+  /** Note IDs carrying a pin marker (green indicator). 0–2 IDs. */
+  pinnedNoteIds: ReadonlySet<string>;
+  /** Short tap (< 500 ms, drift < 15 px) on a note — seek intent. */
+  onNoteShortTap: (tick: number, noteId: string) => void;
+  /** Long press (≥ 500 ms) on a note or canvas — pin/loop intent. */
+  onNoteLongPress: (tick: number, noteId: string | null) => void;
+  /** Short tap on canvas background — toggle play/pause intent. */
+  onCanvasTap: () => void;
+  /** "Back to start" button at the bottom of the score — seek-to-start intent. */
+  onReturnToStart: () => void;
+}
+
+// ---------------------------------------------------------------------------
 // Plugin context
 // ---------------------------------------------------------------------------
 
@@ -292,7 +452,30 @@ export interface PluginContext {
      * ```
      */
     readonly StaffViewer: ComponentType<PluginStaffViewerProps>;
-  };  /** Read-only manifest for this plugin instance. */
+    /**
+     * Host-provided React component that renders a full interactive score (v3).
+     * Wraps the WASM layout engine rendering pipeline.
+     *
+     * Handles internally:
+     *  - Score layout via computeLayout() (Rust/WASM, Principle VI)
+     *  - Long-press detection (500 ms timeout + 15 px drift guard)
+     *  - Note hit-testing (nearest-note DOM scan)
+     *  - Loop region overlay rendering
+     *  - Pin marker rendering
+     *  - Return-to-start button at the bottom of the score (FR-010)
+     *  - Auto-scroll to keep current tick visible
+     */
+    readonly ScoreRenderer: ComponentType<PluginScoreRendererProps>;
+  };
+  /**
+   * Score player context — the primary v3 extension (Feature 033).
+   * Provides score loading, playback control, pin/loop management,
+   * tempo control, and state subscriptions.
+   *
+   * For v2 plugins this namespace is injected as a no-op stub.
+   */
+  readonly scorePlayer: PluginScorePlayerContext;
+  /** Read-only manifest for this plugin instance. */
   readonly manifest: Readonly<PluginManifest>;
 }
 
@@ -328,4 +511,4 @@ export interface MusicorePlugin {
 // ---------------------------------------------------------------------------
 
 /** Major version of the currently running Musicore Plugin API. */
-export const PLUGIN_API_VERSION = '2' as const;
+export const PLUGIN_API_VERSION = '3' as const;

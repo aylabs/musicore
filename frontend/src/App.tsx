@@ -9,11 +9,12 @@ import { TempoStateProvider } from './services/state/TempoStateContext'
 import { initWasm } from './services/wasm/loader'
 import { BUILTIN_PLUGINS, type BuiltinPluginEntry } from './services/plugins/builtinPlugins'
 import { pluginRegistry } from './services/plugins/PluginRegistry'
-import { PluginView } from './components/plugins/PluginView'
+import { PluginView, V3PluginWrapper, createBoundScoreRenderer, type V3ProxyRefs } from './components/plugins/PluginView'
 import { PluginNavEntry } from './components/plugins/PluginNavEntry'
 import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
 import type { PluginContext, PluginNoteEvent, MusicorePlugin } from './plugin-api/index'
 import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
+import { createNoOpScorePlayer, createScorePlayerProxy } from './plugin-api/scorePlayerContext'
 import { ToneAdapter } from './services/playback/ToneAdapter'
 import { pluginMicBroadcaster } from './services/recording/PluginMicBroadcaster'
 import { useMidiInput } from './services/recording/useMidiInput'
@@ -73,6 +74,11 @@ function App() {
   // Maps pluginId → Set of pending setTimeout handles so stopPlayback() can
   // cancel all scheduled notes for a specific plugin without affecting others.
   const pluginTimersRef = useRef<Map<string, Set<ReturnType<typeof setTimeout>>>>(new Map())
+
+  // T006 / Feature 033: Per-plugin proxy refs for v3 context injection.
+  // scorePlayerRef: populated by V3PluginWrapper with the real hook-backed API.
+  // internalRef: populated by V3PluginWrapper with bridge.internal for BoundScoreRenderer.
+  const v3ProxyRefsMap = useRef<Map<string, V3ProxyRefs>>(new Map())
   useMidiInput({
     onNoteOn: (midiEvent) => {
       const event: PluginNoteEvent = {
@@ -172,6 +178,16 @@ function App() {
 
       // Initialise each plugin with a PluginContext
       entries.forEach(({ manifest, plugin }) => {
+        // T006 / Feature 033: Create proxy refs for v3 plugins.
+        // scorePlayerRef starts as noOp; V3PluginWrapper replaces it with the
+        // real hook-backed API on first render.
+        const scorePlayerRef: { current: ReturnType<typeof createNoOpScorePlayer> } = {
+          current: createNoOpScorePlayer(),
+        };
+        const internalRef: V3ProxyRefs['internalRef'] = { current: null };
+        v3ProxyRefsMap.current.set(manifest.id, { scorePlayerRef, internalRef });
+        const BoundScoreRenderer = createBoundScoreRenderer(internalRef);
+
         const context: PluginContext = {
           emitNote: (event) => {
             // Note events are handled inside the plugin's own view for US1.
@@ -243,7 +259,15 @@ function App() {
             // Host-provided notation staff — plugins use this to visualise notes
             // without importing the layout engine or score types directly.
             StaffViewer: PluginStaffViewer,
+            // Host-provided score renderer (v3). Backed by proxy — the real
+            // ScoreRendererPlugin implementation is wired by V3PluginWrapper
+            // after the bridge hook is called inside TempoStateProvider.
+            ScoreRenderer: BoundScoreRenderer,
           },
+          // v3 score player — proxy that delegates to hook-backed implementation
+          // once V3PluginWrapper sets scorePlayerRef.current = bridge.api.
+          // v2 plugins: noOp stub is visible but never called (no play-score UI).
+          scorePlayer: createScorePlayerProxy(scorePlayerRef),
           midi: {
             subscribe: (handler) => {
               midiPluginSubscribersRef.current.add(handler)
@@ -415,7 +439,10 @@ function App() {
     const coreEntry = allPlugins.find(p => p.manifest.id === activePlugin)
     if (coreEntry?.manifest.view === 'full-screen') {
       const FullScreenComponent = coreEntry.plugin.Component
-      return (
+      const isV3 = coreEntry.manifest.pluginApiVersion === '3'
+      const proxyRefs = v3ProxyRefsMap.current.get(coreEntry.manifest.id)
+
+      const innerContent = (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -424,11 +451,24 @@ function App() {
           background: '#fff',
           zIndex: 100,
         }}>
-          <PluginView plugin={coreEntry.manifest}>
-            <FullScreenComponent />
-          </PluginView>
+          {isV3 && proxyRefs ? (
+            // v3: V3PluginWrapper calls useScorePlayerBridge() and keeps proxy refs current.
+            // Must be inside TempoStateProvider (added below).
+            <V3PluginWrapper plugin={coreEntry.manifest} proxyRefs={proxyRefs}>
+              <FullScreenComponent />
+            </V3PluginWrapper>
+          ) : (
+            // v2: plain error boundary, no hook-based context injection needed.
+            <PluginView plugin={coreEntry.manifest}>
+              <FullScreenComponent />
+            </PluginView>
+          )}
         </div>
       )
+
+      // v3 plugins need TempoStateProvider for useScorePlayerBridge (→ useTempoState).
+      // v2 plugins don't use TempoState so we skip the provider for backward compat.
+      return isV3 ? <TempoStateProvider>{innerContent}</TempoStateProvider> : innerContent
     }
   }
 

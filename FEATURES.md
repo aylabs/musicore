@@ -89,5 +89,24 @@ See [README.md](README.md) for development setup and architecture details.
 
 ---
 
+## Play Score Plugin (Core Plugin — Feature 033)
+
+The **Play Score** plugin is a built-in full-screen plugin that lets users load, browse, and play back musical scores using Plugin API v3.
+
+### Capabilities
+
+- **Score catalogue**: Browse and open any of the 6 bundled pre-loaded scores with a single tap
+- **File loading**: Import `.mxl`, `.xml`, or `.musicxml` files directly from the device
+- **Playback controls**: Play, Pause, Stop, and a live elapsed-time display (`mm:ss`)
+- **Canvas tap**: Tap the score to toggle play/pause without the toolbar
+- **Note seeking**: Short-tap a note to seek playback to that tick
+- **Pin & loop**: Long-press a note to set a loop start pin; long-press a second note to create a loop region; long-press inside the loop to clear it
+- **Return to start**: Dedicated button seeks to tick 0 (or to the pinned loop start if set)
+- **Tempo control**: Slider adjusts playback speed from 0.5× to 2.0×
+- **WASM loading state**: All controls are disabled while the audio engine initialises
+- **Audio teardown**: All audio stops automatically when the plugin is closed or the page navigates away (SC-005)
+
+---
+
 **Version**: 1.0 (Read-Only Viewer)  
-**Updated**: February 11, 2026
+**Updated**: February 2026

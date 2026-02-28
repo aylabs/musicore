@@ -290,6 +290,7 @@ export function LandingScreen({ onLoadScore, onShowInstruments, corePlugins, onL
         {corePlugins && corePlugins.length > 0 && onLaunchPlugin && corePlugins.map(p => (
           <button
             key={p.id}
+            data-testid={`plugin-launch-${p.id}`}
             className="landing-plugin-btn"
             onClick={() => onLaunchPlugin(p.id)}
           >

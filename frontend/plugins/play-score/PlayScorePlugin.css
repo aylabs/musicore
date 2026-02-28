@@ -1,0 +1,158 @@
+/**
+ * Play Score Plugin — Styles
+ * Feature 033: Play Score Plugin
+ */
+
+.play-score-plugin {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.play-score__selection-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.play-score__selection-screen h2 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.play-score__score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.play-score__score-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fafafa;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #333;
+  min-height: 48px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.play-score__score-item:hover,
+.play-score__score-item:focus {
+  background: #f0f4ff;
+  border-color: #4a90e2;
+  outline: none;
+}
+
+.play-score__score-item--file {
+  color: #555;
+  border-style: dashed;
+}
+
+/* Player screen */
+
+.play-score__player {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.play-score__score-area {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* Loading / error states */
+
+.play-score__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.play-score__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #cc0000;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Toolbar */
+
+.play-score__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.play-score__toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #333;
+  padding: 0 12px;
+}
+
+.play-score__toolbar button:hover {
+  background: #f0f0f0;
+}
+
+.play-score__toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.play-score__timer {
+  font-size: 0.85rem;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+}
+
+.play-score__score-title {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #444;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 8px;
+}
+
+.play-score__back-btn {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+}
