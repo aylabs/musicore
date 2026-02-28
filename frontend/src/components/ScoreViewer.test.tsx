@@ -124,7 +124,8 @@ describe('Instruments view', () => {
   it('shows the score header with tempo and time signature', async () => {
     await renderWithScore();
     await waitFor(() => {
-      expect(screen.getByText(/120 BPM/i)).toBeInTheDocument();
+      const bpmElements = screen.getAllByText(/120 BPM/i);
+      expect(bpmElements.length).toBeGreaterThan(0);
       expect(screen.getByText(/4\/4/i)).toBeInTheDocument();
     });
   });

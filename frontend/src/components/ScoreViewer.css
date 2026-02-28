@@ -322,3 +322,83 @@
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
+
+/* ── Inline playback controls bar (instruments view) ────────────────────── */
+
+.score-playback-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.playback-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.playback-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.playback-btn--play {
+  background: #4caf50;
+  color: #fff;
+}
+
+.playback-btn--play:hover:not(:disabled) {
+  background: #43a047;
+}
+
+.playback-btn--pause {
+  background: #ff9800;
+  color: #fff;
+}
+
+.playback-btn--pause:hover {
+  background: #fb8c00;
+}
+
+.playback-btn--stop {
+  background: #f44336;
+  color: #fff;
+}
+
+.playback-btn--stop:hover:not(:disabled) {
+  background: #e53935;
+}
+
+.playback-tempo {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.playback-error {
+  margin-left: 8px;
+  font-size: 0.8rem;
+  color: #f44336;
+}
+
+/* Load Score button in instruments view toolbar */
+.score-viewer__load-btn {
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.score-viewer__load-btn:hover {
+  background: #f0f0f0;
+}

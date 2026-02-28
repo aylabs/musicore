@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import type { Score } from "../types/score";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { Score, Note } from "../types/score";
 import { InstrumentList } from "./InstrumentList";
 import { useFileState } from "../services/state/FileStateContext";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
@@ -8,6 +8,8 @@ import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
 import { PRELOADED_SCORES } from "../data/preloadedScores";
 import { LandingScreen } from "./LandingScreen";
+import { usePlayback } from "../services/playback/MusicTimeline";
+import { useTempoState } from "../services/state/TempoStateContext";
 import "./ScoreViewer.css";
 
 interface ScoreViewerProps {
@@ -68,6 +70,46 @@ export function ScoreViewer({
     setScoreTitle(null);
     setIsFileSourced(false);
   }, []);
+
+  // ── Playback ─────────────────────────────────────────────────────────────────
+
+  /** Flatten all notes from voice 0 of every staff (mirrors LayoutView). */
+  const allNotes = useMemo((): Note[] => {
+    if (!score) return [];
+    const notes: Note[] = [];
+    for (const instrument of score.instruments) {
+      for (const staff of instrument.staves) {
+        const firstVoice = staff.voices[0];
+        if (firstVoice) notes.push(...firstVoice.interval_events);
+      }
+    }
+    return notes;
+  }, [score]);
+
+  const initialTempo = (() => {
+    if (!score) return 120;
+    for (const event of score.global_structural_events) {
+      if ("Tempo" in event && event.Tempo.tick === 0) return event.Tempo.bpm;
+    }
+    return 120;
+  })();
+
+  const playbackState = usePlayback(allNotes, initialTempo);
+  const { tempoState } = useTempoState();
+
+  // Pause when the browser tab is hidden.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && playbackState.status === 'playing') playbackState.pause();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [playbackState]);
+
+  // Stop playback when the score is unloaded.
+  useEffect(() => {
+    if (!score) playbackState.resetPlayback();
+  }, [score]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Load a score by ID.
@@ -153,17 +195,6 @@ export function ScoreViewer({
     setDialogOpen(false);
   };
 
-  /** Get BPM at tick 0 for display in the score header. */
-  const getInitialTempo = (): number => {
-    if (!score) return 120;
-    for (const event of score.global_structural_events) {
-      if ("Tempo" in event && event.Tempo.tick === 0) {
-        return event.Tempo.bpm;
-      }
-    }
-    return 120;
-  };
-
   /** Get time signature string at tick 0 for display in the score header. */
   const getInitialTimeSignature = (): string => {
     if (!score) return "4/4";
@@ -216,7 +247,7 @@ export function ScoreViewer({
         </h1>
         <div className="score-info">
           <span className="score-id">ID: {score.id}</span>
-          <span className="tempo">Tempo: {getInitialTempo()} BPM</span>
+          <span className="tempo">Tempo: {initialTempo} BPM</span>
           <span className="time-sig">Time: {getInitialTimeSignature()}</span>
         </div>
       </div>
@@ -251,6 +282,38 @@ export function ScoreViewer({
         </div>
       </div>
 
+      {/* Playback controls */}
+      <div className="score-playback-bar">
+        {playbackState.status === 'playing' ? (
+          <button className="playback-btn playback-btn--pause" onClick={playbackState.pause} aria-label="Pause">
+            ⏸ Pause
+          </button>
+        ) : (
+          <button
+            className="playback-btn playback-btn--play"
+            onClick={() => { playbackState.play(); }}
+            disabled={allNotes.length === 0}
+            aria-label="Play"
+          >
+            ▶ Play
+          </button>
+        )}
+        <button
+          className="playback-btn playback-btn--stop"
+          onClick={playbackState.stop}
+          disabled={playbackState.status === 'stopped'}
+          aria-label="Stop"
+        >
+          ⏹ Stop
+        </button>
+        <span className="playback-tempo">
+          {Math.round(initialTempo * tempoState.tempoMultiplier)} BPM
+        </span>
+        {playbackState.error && (
+          <span className="playback-error">{playbackState.error}</span>
+        )}
+      </div>
+
       {error && <div className="error">{error}</div>}
       {successMessage && <div className="success-message">{successMessage}</div>}
 
@@ -262,6 +325,10 @@ export function ScoreViewer({
         <InstrumentList
           instruments={score.instruments}
           scoreId={scoreId}
+          currentTick={playbackState.currentTick}
+          playbackStatus={playbackState.status}
+          onSeekToTick={playbackState.seekToTick}
+          onUnpinStartTick={playbackState.unpinStartTick}
           onUpdate={(id) => {
             if (id) {
               loadScore(id);

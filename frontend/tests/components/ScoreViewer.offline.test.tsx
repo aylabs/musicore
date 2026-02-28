@@ -57,9 +57,14 @@ vi.mock('../../src/services/state/FileStateContext', () => ({
 // Mock tempo state hook
 vi.mock('../../src/services/state/TempoStateContext', () => ({
   useTempoState: () => ({
-    tempo: 120,
-    setTempo: vi.fn(),
+    tempoState: { tempoMultiplier: 1.0, originalTempo: 120, effectiveTempo: 120 },
+    setTempoMultiplier: vi.fn(),
+    adjustTempo: vi.fn(),
+    resetTempo: vi.fn(),
+    getEffectiveTempo: () => 120,
+    setOriginalTempo: vi.fn(),
   }),
+  TempoStateProvider: ({ children }: { children: unknown }) => children,
 }));
 
 // Mock usePlayback hook
@@ -69,16 +74,23 @@ vi.mock('../../src/services/playback/MusicTimeline', () => ({
     pause: vi.fn(),
     stop: vi.fn(),
     seekToTick: vi.fn(),
+    unpinStartTick: vi.fn(),
+    setPinnedStart: vi.fn(),
+    setLoopEnd: vi.fn(),
+    resetPlayback: vi.fn(),
+    status: 'stopped',
+    currentTick: 0,
+    totalDurationTicks: 0,
+    error: null,
+    tickSource: { currentTick: 0 },
+    tickSourceRef: { current: { currentTick: 0 } },
     playbackState: { currentTick: 0 },
   }),
 }));
 
 // Mock useNoteHighlight hook
 vi.mock('../../src/services/highlight/useNoteHighlight', () => ({
-  useNoteHighlight: () => ({
-    highlightedNoteIds: new Set(),
-    allNotes: [],
-  }),
+  useNoteHighlight: () => new Set<string>(),
 }));
 
 // Mock demoLoaderService
