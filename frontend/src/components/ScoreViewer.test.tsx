@@ -1,23 +1,18 @@
 /**
- * Feature 027: Demo Flow UX
- * ScoreViewer component tests — User Story 1: Full-Screen Play View
+ * ScoreViewer component tests.
  *
- * Constitution V (tests before implementation):
- *   T004 — requestFullscreen called when entering layout viewMode
- *   T005 — return arrow calls exitFullscreen + pauses playback
- *   T006 — popstate event switches viewMode to 'individual' + exitFullscreen
+ * Feature 033: Play Score Plugin removed the legacy full-screen play view from
+ * this component. T004/T005/T006/T012 (viewMode, fullscreen, popstate, note-seek)
+ * tests were deleted alongside the removed code.
  *
- * Constitution VII (failing test before fix):
- *   T012 — handleNoteClick seeks without calling play()
- *
- * All tests in this file FAIL before their corresponding implementation tasks.
- * After implementation they must PASS without modification.
- *
- * @see specs/027-demo-flow-ux/tasks.md T004, T005, T006, T012
+ * Remaining surface tested here:
+ *   - Landing screen renders when no score is loaded
+ *   - Instruments view renders when a score is loaded
+ *   - Back button returns to landing page
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ScoreViewer } from './ScoreViewer';
 import { FileStateProvider } from '../services/state/FileStateContext';
@@ -25,16 +20,6 @@ import { TempoStateProvider } from '../services/state/TempoStateContext';
 import type { Score } from '../types/score';
 
 // ─── Module mocks ──────────────────────────────────────────────────────────
-
-vi.mock('../services/wasm/loader', () => ({
-  initWasm: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock('../services/wasm/music-engine', () => ({
-  parseScore: vi.fn(),
-  addInstrument: vi.fn(),
-  getScore: vi.fn(),
-}));
 
 vi.mock('../services/storage/local-storage', () => ({
   loadScoreFromIndexedDB: vi.fn().mockResolvedValue(null),
@@ -49,39 +34,8 @@ vi.mock('../services/score-api', () => ({
   },
 }));
 
-vi.mock('../services/onboarding/demoLoader', () => ({
-  demoLoaderService: {
-    shouldLoadDemo: vi.fn().mockReturnValue(false),
-    loadDemo: vi.fn(),
-    markDemoLoaded: vi.fn(),
-  },
-}));
-
-/** Mock playback state — play is a spy so we can assert it is/isn't called */
-const mockPlay = vi.fn().mockResolvedValue(undefined);
-const mockPause = vi.fn();
-const mockStop = vi.fn();
-const mockSeekToTick = vi.fn();
-
-vi.mock('../services/playback/MusicTimeline', () => ({
-  usePlayback: vi.fn(() => ({
-    status: 'stopped',
-    currentTick: 0,
-    totalDurationTicks: 480,
-    error: null,
-    tickSource: { currentTick: 0 },
-    tickSourceRef: { current: { currentTick: 0 } },
-    play: mockPlay,
-    pause: mockPause,
-    stop: mockStop,
-    seekToTick: mockSeekToTick,
-    unpinStartTick: vi.fn(),
-  })),
-}));
-
 // ─── Test helpers ──────────────────────────────────────────────────────────
 
-/** Minimal valid Score fixture with one instrument containing one note */
 const makeScore = (overrides: Partial<Score> = {}): Score => ({
   id: 'test-score-id',
   title: null,
@@ -96,21 +50,7 @@ const makeScore = (overrides: Partial<Score> = {}): Score => ({
           voices: [
             {
               id: 'voice-1',
-              interval_events: [
-                {
-                  id: 'note-1',
-                  pitch: { step: 'C', octave: 4, alter: null },
-                  duration_ticks: 480,
-                  start_tick: 0,
-                  note_type: 'quarter',
-                  beam_type: null,
-                  chord_symbol: null,
-                  tie_start: false,
-                  tie_end: false,
-                  rest: false,
-                  dot: false,
-                },
-              ],
+              interval_events: [],
             },
           ],
         },
@@ -133,239 +73,79 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Full-Screen API setup ─────────────────────────────────────────────────
-
-/** Mock requestFullscreen / exitFullscreen on the real DOM elements */
-let mockRequestFullscreen: ReturnType<typeof vi.fn>;
-let mockExitFullscreen: ReturnType<typeof vi.fn>;
-
 beforeEach(() => {
   vi.clearAllMocks();
-
-  mockRequestFullscreen = vi.fn().mockResolvedValue(undefined);
-  mockExitFullscreen = vi.fn().mockResolvedValue(undefined);
-
-  // Attach to document.documentElement (used by the implementation)
-  Object.defineProperty(document.documentElement, 'requestFullscreen', {
-    value: mockRequestFullscreen,
-    writable: true,
-    configurable: true,
-  });
-  Object.defineProperty(document, 'exitFullscreen', {
-    value: mockExitFullscreen,
-    writable: true,
-    configurable: true,
-  });
-
-  // history.pushState — JSDOM supports it; spy to detect calls
-  vi.spyOn(window.history, 'pushState');
 });
 
-afterEach(() => {
-  // Remove any popstate listeners tests may have left
-  window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-});
+// ─── Landing screen ────────────────────────────────────────────────────────
 
-// ─── Shared: load score helper ──────────────────────────────────────────────
-
-async function renderWithScore(
-  viewMode: 'individual' | 'layout' = 'layout',
-  onViewModeChange = vi.fn(),
-) {
-  const { loadScoreFromIndexedDB } = await import('../services/storage/local-storage');
-  vi.mocked(loadScoreFromIndexedDB).mockResolvedValue(makeScore());
-
-  const utils = render(
-    <TestWrapper>
-      <ScoreViewer
-        scoreId="test-score-id"
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-      />
-    </TestWrapper>,
-  );
-
-  // Wait for async score load
-  await waitFor(() => {
-    expect(loadScoreFromIndexedDB).toHaveBeenCalledWith('test-score-id');
+describe('Landing screen', () => {
+  it('renders the landing screen when no score is loaded', () => {
+    render(
+      <TestWrapper>
+        <ScoreViewer />
+      </TestWrapper>,
+    );
+    // LandingScreen renders with its root testid
+    expect(screen.getByTestId('landing-screen')).toBeInTheDocument();
   });
 
-  return { ...utils, onViewModeChange };
-}
+  it('renders core plugin launch buttons passed via corePlugins', () => {
+    render(
+      <TestWrapper>
+        <ScoreViewer
+          corePlugins={[{ id: 'play-score', name: 'Play Score', icon: '🎼' }]}
+          onLaunchPlugin={vi.fn()}
+        />
+      </TestWrapper>,
+    );
+    expect(screen.getByTestId('plugin-launch-play-score')).toBeInTheDocument();
+  });
+});
 
-// =============================================================================
-// T004: fullscreen-play body class applied when entering layout viewMode
-// Implementation: T007 — useEffect adds body class; requestFullscreen is called
-// from user-gesture click handlers (ViewModeSelector / demo button), NOT from
-// the useEffect, because browsers reject requestFullscreen outside a user gesture.
-// =============================================================================
+// ─── Instruments view ──────────────────────────────────────────────────────
 
-describe('[T004] US1: entering layout viewMode calls requestFullscreen', () => {
-  it('adds fullscreen-play body class when viewMode is layout', async () => {
-    await renderWithScore('layout');
+describe('Instruments view', () => {
+  async function renderWithScore() {
+    const { loadScoreFromIndexedDB } = await import('../services/storage/local-storage');
+    vi.mocked(loadScoreFromIndexedDB).mockResolvedValue(makeScore());
 
-    // The useEffect still applies the body class which hides the app header.
+    render(
+      <TestWrapper>
+        <ScoreViewer scoreId="test-score-id" />
+      </TestWrapper>,
+    );
+
     await waitFor(() => {
-      expect(document.body.classList.contains('fullscreen-play')).toBe(true);
+      expect(loadScoreFromIndexedDB).toHaveBeenCalledWith('test-score-id');
     });
-  });
+  }
 
-  it('history.pushState is called to enable back-gesture detection', async () => {
-    await renderWithScore('layout');
-
-    // After T008 is implemented, pushState({view:'layout'}) is called when entering
-    // layout mode so the browser back button / swipe triggers popstate.
+  it('shows the score header with tempo and time signature', async () => {
+    await renderWithScore();
     await waitFor(() => {
-      expect(window.history.pushState).toHaveBeenCalledWith(
-        expect.objectContaining({ view: 'layout' }),
-        expect.any(String),
-        expect.anything(),
-      );
+      expect(screen.getByText(/120 BPM/i)).toBeInTheDocument();
+      expect(screen.getByText(/4\/4/i)).toBeInTheDocument();
     });
   });
 
-  it('does NOT call requestFullscreen when viewMode is individual', async () => {
-    await renderWithScore('individual');
-
-    // Individual view must never request full-screen
-    await new Promise(r => setTimeout(r, 50));
-    expect(mockRequestFullscreen).not.toHaveBeenCalled();
-  });
-});
-
-// =============================================================================
-// T005: return arrow button calls exitFullscreen + pauses playback
-// Implementation: T009 — add onReturnToView prop + return arrow button
-// FAILS before T009 (button does not exist), PASSES after T009
-// =============================================================================
-
-describe('[T005] US1: return arrow calls exitFullscreen and pauses playback', () => {
-  it('renders a return-to-instruments arrow button in layout/compact mode', async () => {
-    await renderWithScore('layout');
-
-    // After T009/T026, a "←" / "Return to Instruments" button is wired to
-    // onReturnToView. Before T009 this button does not exist → test fails.
-    const returnBtn = await screen.findByRole('button', { name: /return.*(instrument|view)|←|back/i });
-    expect(returnBtn).toBeInTheDocument();
-  });
-
-  it('clicking return arrow calls exitFullscreen', async () => {
-    const user = userEvent.setup();
-    await renderWithScore('layout');
-
-    const returnBtn = await screen.findByRole('button', { name: /return.*(instrument|view)|←|back/i });
-    await user.click(returnBtn);
-
-    expect(mockExitFullscreen).toHaveBeenCalledTimes(1);
-  });
-
-  it('clicking return arrow pauses playback (calls pause, does not stop)', async () => {
-    const user = userEvent.setup();
-    await renderWithScore('layout');
-
-    const returnBtn = await screen.findByRole('button', { name: /return.*(instrument|view)|←|back/i });
-    await user.click(returnBtn);
-
-    expect(mockPause).toHaveBeenCalledTimes(1);
-    expect(mockStop).not.toHaveBeenCalled();
-  });
-
-  it('clicking return arrow switches viewMode to individual', async () => {
-    const user = userEvent.setup();
-    const onViewModeChange = vi.fn();
-    await renderWithScore('layout', onViewModeChange);
-
-    const returnBtn = await screen.findByRole('button', { name: /return.*(instrument|view)|←|back/i });
-    await user.click(returnBtn);
-
-    expect(onViewModeChange).toHaveBeenCalledWith('individual');
-  });
-});
-
-// =============================================================================
-// T006: popstate event switches viewMode to 'individual' + calls exitFullscreen
-// Implementation: T008 — add popstate listener in ScoreViewer
-// FAILS before T008 (popstate has no effect), PASSES after T008
-// =============================================================================
-
-describe('[T006] US1: popstate event triggers back-navigation', () => {
-  it('fires onViewModeChange("individual") when popstate event is dispatched', async () => {
-    const onViewModeChange = vi.fn();
-    await renderWithScore('layout', onViewModeChange);
-
-    // Simulate browser back button / swipe
-    // Use synchronous act to avoid awaiting the LandingScreen rAF loop
-    act(() => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+  it('shows a Back button to return to the landing page', async () => {
+    await renderWithScore();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
     });
-
-    // handleReturnToView calls onViewModeChange('individual') synchronously
-    expect(onViewModeChange).toHaveBeenCalledWith('individual');
   });
 
-  it('calls exitFullscreen when popstate event is dispatched', async () => {
-    await renderWithScore('layout');
-
-    // Use synchronous act to avoid awaiting the LandingScreen rAF loop
-    act(() => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-    });
-
-    expect(mockExitFullscreen).toHaveBeenCalledTimes(1);
-  });
-
-  it('popstate listener is cleaned up when ScoreViewer unmounts', async () => {
-    const onViewModeChange = vi.fn();
-    const { unmount } = await renderWithScore('layout', onViewModeChange);
-
-    unmount();
-    onViewModeChange.mockClear();
-
-    // After unmount, popstate must NOT trigger viewMode changes
-    await act(async () => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-    });
-
-    expect(onViewModeChange).not.toHaveBeenCalled();
-  });
-});
-
-// =============================================================================
-// T012: handleNoteClick seeks without calling play()
-// Implementation: T015 — remove play() from handleNoteClick
-// FAILS before T015 (play() is called after 50ms setTimeout), PASSES after T015
-// =============================================================================
-
-describe('[T012] US2: note click seeks without auto-play', () => {
-  it('clicking a note calls seekToTick but does NOT call play()', async () => {
+  it('Back button click returns to landing page', async () => {
     const user = userEvent.setup();
-    await renderWithScore('layout');
+    await renderWithScore();
 
-    mockSeekToTick.mockClear();
-    mockPlay.mockClear();
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await user.click(screen.getByRole('button', { name: /back/i }));
 
-    const svgEl = document.querySelector('svg');
-    if (svgEl) {
-      // Inject a fake notehead element with the known note-id from fixtures
-      const fakeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      fakeText.dataset.noteId = 'note-1';
-      svgEl.appendChild(fakeText);
-
-      await user.click(fakeText);
-
-      // seekToTick is synchronous — should be called immediately
-      expect(mockSeekToTick).toHaveBeenCalledWith(0); // note-1 has start_tick=0
-
-      // Wait past the 50ms setTimeout that the OLD handleNoteClick uses to call play()
-      // After T015 the setTimeout + play() call is removed, so play must never fire.
-      await new Promise(r => setTimeout(r, 150));
-      expect(mockPlay).not.toHaveBeenCalled();
-
-      fakeText.remove();
-    } else {
-      // No SVG in DOM (e.g. score not in layout mode visually) — skip DOM part
-      // Contract: play() must not have been called
-      expect(mockPlay).not.toHaveBeenCalled();
-    }
+    // After clicking Back, the landing screen should appear
+    await waitFor(() => {
+      expect(screen.getByTestId('landing-screen')).toBeInTheDocument();
+    });
   });
 });
