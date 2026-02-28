@@ -170,7 +170,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
+      expect(screen.getByTestId('landing-screen')).toBeInTheDocument();
     });
 
     // Query for New Score button in landing page
@@ -223,7 +223,7 @@ describe("ScoreViewer - Editing UI Removal", () => {
   });
 
   /**
-   * Test: Load Score button should still render (functionality preserved, Feature 028)
+   * Test: Landing page renders with landing-screen testid (Feature 028 moved to Play Score plugin)
    */
   it("should still render Import button", async () => {
     render(
@@ -233,16 +233,17 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
+      expect(screen.getByTestId('landing-screen')).toBeInTheDocument();
     });
 
-    // Verify Play Score button is present
-    const loadButton = screen.queryByRole("button", { name: /play score/i });
-    expect(loadButton).toBeInTheDocument();
+    // LoadScoreButton removed — Play Score plugin (033) handles score loading.
+    // Verify no legacy "New Score" button leaked in.
+    const newScoreButton = screen.queryByRole('button', { name: /^new score$/i });
+    expect(newScoreButton).not.toBeInTheDocument();
   });
 
   /**
-   * Test: Load Score button should render on landing page (Feature 028)
+   * Test: Demo button should NOT render on landing page (Feature 028 moved to Play Score plugin)
    */
   it("should still render Demo button on landing page", async () => {
     render(
@@ -252,12 +253,10 @@ describe("ScoreViewer - Editing UI Removal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /play score/i })).toBeInTheDocument();
+      expect(screen.getByTestId('landing-screen')).toBeInTheDocument();
     });
 
-    // Verify Play Score button is present; Demo button is gone
-    const loadScoreButton = screen.queryByRole("button", { name: /play score/i });
-    expect(loadScoreButton).toBeInTheDocument();
+    // Verify the old Demo button is gone
     const demoButton = screen.queryByRole("button", { name: /^demo$/i });
     expect(demoButton).not.toBeInTheDocument();
   });

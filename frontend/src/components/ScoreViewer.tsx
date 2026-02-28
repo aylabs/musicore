@@ -5,7 +5,7 @@ import { useFileState } from "../services/state/FileStateContext";
 import type { ImportResult } from "../services/import/MusicXMLImportService";
 import { MusicXMLImportService } from "../services/import/MusicXMLImportService";
 import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
-import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
+
 import { PRELOADED_SCORES } from "../data/preloadedScores";
 import { LandingScreen } from "./LandingScreen";
 import "./ScoreViewer.css";
@@ -55,7 +55,6 @@ export function ScoreViewer({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [skipNextLoad, setSkipNextLoad] = useState(false);
   const [isFileSourced, setIsFileSourced] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [scoreTitle, setScoreTitle] = useState<string | null>(null);
 
   // File state management (Feature 004 - Score File Persistence)
@@ -147,12 +146,6 @@ export function ScoreViewer({
     }
   };
 
-  /** Handle import completion from the Load Score dialog (Feature 028). */
-  const handleDialogImportComplete = (result: ImportResult) => {
-    handleMusicXMLImport(result);
-    setDialogOpen(false);
-  };
-
   /** Get BPM at tick 0 for display in the score header. */
   const getInitialTempo = (): number => {
     if (!score) return 120;
@@ -192,18 +185,12 @@ export function ScoreViewer({
     return (
       <div className="score-viewer">
         <LandingScreen
-          onLoadScore={() => setDialogOpen(true)}
           onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}
           corePlugins={corePlugins}
           onLaunchPlugin={onLaunchPlugin}
         />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}
-        <LoadScoreDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          onImportComplete={handleDialogImportComplete}
-        />
       </div>
     );
   }
@@ -275,11 +262,6 @@ export function ScoreViewer({
         />
       )}
 
-      <LoadScoreDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onImportComplete={handleDialogImportComplete}
-      />
     </div>
   );
 }
