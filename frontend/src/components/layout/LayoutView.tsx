@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import React from 'react';
 import type { Score, GlobalStructuralEvent, StaffStructuralEvent, Note } from '../../types/score';
 import type { PlaybackStatus, ITickSource } from '../../types/playback';
 import { ScoreViewer, LABEL_MARGIN } from '../../pages/ScoreViewer';
@@ -71,6 +72,12 @@ interface LayoutViewProps {
   onSeekAndPlay?: (tick: number) => void;
   /** Loop region: when both pins are set, overlay rect + rAF loop-back */
   loopRegion?: { startTick: number; endTick: number } | null;
+  /**
+   * When the score is inside an overflow:auto container (e.g. plugin view),
+   * pass a ref to that container so ScoreViewer can drive scroll on it
+   * instead of window.
+   */
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -171,7 +178,7 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   };
 }
 
-export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playbackStatus, onNoteClick, selectedNoteId, tickSourceRef, allNotes, pinnedNoteIds, pinnedNoteId, onPin, onSeekAndPlay, loopRegion }: LayoutViewProps) {
+export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playbackStatus, onNoteClick, selectedNoteId, tickSourceRef, allNotes, pinnedNoteIds, pinnedNoteId, onPin, onSeekAndPlay, loopRegion, scrollContainerRef }: LayoutViewProps) {
   const [layout, setLayout] = useState<GlobalLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -328,6 +335,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playba
         onPin={onPin}
         onSeekAndPlay={onSeekAndPlay}
         loopRegion={loopRegion}
+        scrollContainerRef={scrollContainerRef}
       />
     </div>
   );

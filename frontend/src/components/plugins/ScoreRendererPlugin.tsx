@@ -13,7 +13,7 @@
  *   - Renders a "back to start" button at the bottom of the score area (FR-010)
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { LayoutView } from '../layout/LayoutView';
 import type { PluginScoreRendererProps } from '../../plugin-api/types';
 import type { Note, Score } from '../../types/score';
@@ -91,6 +91,10 @@ export function ScoreRendererPlugin({
     ? [...pinnedNoteIds][0]
     : null;
 
+  // Ref to the scrollable wrapper — passed to LayoutView so ScoreViewer
+  // drives scroll on this element instead of window.
+  const layoutWrapperRef = useRef<HTMLDivElement>(null);
+
   // ─── Loading placeholder ─────────────────────────────────────────────────
 
   if (!score) {
@@ -105,16 +109,7 @@ export function ScoreRendererPlugin({
 
   return (
     <div style={styles.container} onContextMenu={e => e.preventDefault()}>
-      <div
-        style={styles.layoutViewWrapper}
-        onScroll={() => {
-          // ScoreViewer listens to window.scroll to compute its viewport.
-          // In the plugin embedding the scroll happens on this div, not the page,
-          // so we forward a synthetic window scroll event so ScoreViewer's
-          // updateViewport() fires and re-renders the newly visible systems.
-          window.dispatchEvent(new Event('scroll'));
-        }}
-      >
+      <div ref={layoutWrapperRef} style={styles.layoutViewWrapper}>
         <LayoutView
           score={score}
           allNotes={allNotes}
@@ -124,6 +119,7 @@ export function ScoreRendererPlugin({
           pinnedNoteId={pinnedNoteId}
           loopRegion={loopRegion}
           playbackStatus={playbackStatus}
+          scrollContainerRef={layoutWrapperRef}
           onTogglePlayback={onCanvasTap}
           onNoteClick={(noteId: string) => {
             const tick = noteIdToTick.get(noteId) ?? 0;
