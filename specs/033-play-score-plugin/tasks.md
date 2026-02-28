@@ -147,6 +147,20 @@
 - [X] T00 [P] Verify SC-004 TypeScript compilation: confirm removing `ScoreViewer.tsx` from host routes (without deleting the file) does not introduce any TypeScript errors; run `npx tsc --noEmit` in `frontend/` and confirm clean
 - [X] T00 [P] Update `FEATURES.md`: document Play Score Plugin as a core feature; update `PLUGINS.md`: document `play-score` plugin (id, API version, capabilities, full-screen mode, score sources)
 
+## Phase 11: Legacy Play Score View Removal
+
+**Purpose**: Remove the pre-plugin legacy play-score path that lived inside `ScoreViewer.tsx` (the old `viewMode === 'layout'` branch with embedded `PlaybackControls`, `ViewModeSelector`, and `LayoutView`). The Play Score plugin now owns all score-playback entry points; the instruments view retains independent playback controls.
+
+- [X] T033 [P] Delete `frontend/src/components/stacked/` directory: `ViewModeSelector.tsx`, `ViewModeSelector.css`, `ViewModeSelector.test.tsx` — no longer needed now that Play Score plugin owns the full-screen layout view
+- [X] T034 [P] Delete `frontend/src/components/playback/` directory: `PlaybackControls.tsx/css/test`, `PlaybackTimer.tsx/css`, `TempoControl.tsx/css/test` — superseded by `playbackToolbar.tsx` in the Play Score plugin
+- [X] T035 [P] Delete `frontend/tests/components/PlaybackControls.returnToStart.test.tsx` — test for deleted component
+- [X] T036 Rewrite `frontend/src/components/ScoreViewer.tsx` (724 → ~240 lines): strip `viewMode` state/effects, `usePlayback`, `useNoteHighlight`, `useTempoState`, `PlaybackControls`, `LayoutView`, fullscreen management, popstate listener, pin/loop state, `allNotes`, `handlePin`, `createNewScore`; retain landing screen render, instruments list view, score load/import logic, Back button, debug mode
+- [X] T037 Rewrite `frontend/src/components/ScoreViewer.test.tsx` (372 → ~160 lines): remove T004/T005/T006/T012 legacy layout-view tests; add 5 smoke tests for landing screen and instruments view
+- [X] T038 Remove legacy `LoadScoreButton` from landing page: delete `onLoadScore` prop and `<LoadScoreButton>` from `frontend/src/components/LandingScreen.tsx`; remove `LoadScoreDialog` plumbing from the landing-screen render path in `ScoreViewer.tsx`; the Play Score plugin now owns all score-loading entry points from the landing screen
+- [X] T039 Restore `LoadScoreDialog` in instruments view: add "Load Score" toolbar button and re-wire `LoadScoreDialog` inside the instruments-view render path of `ScoreViewer.tsx` so users can change scores without leaving the view
+- [X] T040 Restore inline playback controls in instruments view: re-add `usePlayback`, `useTempoState` hooks and `allNotes` useMemo; add `.score-playback-bar` with Play/Pause/Stop buttons and live BPM display; pass `currentTick`, `playbackStatus`, `onSeekToTick`, `onUnpinStartTick` to `InstrumentList` so note highlighting and seek-on-click work; add CSS in `frontend/src/components/ScoreViewer.css`
+- [X] T041 [P] Fix broken test mocks after Phase 11 removals: update `tests/components/ScoreViewer.offline.test.tsx` (add `resetPlayback`, full `PlaybackState` shape, correct `tempoState.tempoMultiplier`, `useNoteHighlight` returns `Set`); update `src/test/components/ScoreViewer.test.tsx` (remove stale `onLoadScore` prop); update `src/test/components/LandingScreen.test.tsx` (remove `onLoadScore={vi.fn()}` from all renders); all 1136 tests pass
+
 ---
 
 ## Dependencies & Execution Order
