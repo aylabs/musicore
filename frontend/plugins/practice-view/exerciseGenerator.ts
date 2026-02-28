@@ -68,18 +68,28 @@ function mulberry32(seed: number): () => number {
 /**
  * Generate a practice exercise from the given config.
  * When config.preset === 'c4scale', delegates to generateC4ScaleExercise.
+ * When config.preset === 'score', delegates to generateScoreExercise using
+ * the supplied scorePitches (returns an empty exercise when pitches are absent).
  *
- * @param bpm    Tempo in beats per minute (default 80)
- * @param config Exercise configuration (default: 8 random Treble-1 notes)
- * @param seed   Optional seed for deterministic output (useful in tests)
+ * @param bpm          Tempo in beats per minute (default 80)
+ * @param config       Exercise configuration (default: 8 random Treble-1 notes)
+ * @param seed         Optional seed for deterministic output (useful in tests)
+ * @param scorePitches Pitches extracted from the loaded score (required for 'score' preset)
  */
 export function generateExercise(
   bpm: number = DEFAULT_BPM,
   config: ExerciseConfig = DEFAULT_EXERCISE_CONFIG,
   seed?: number,
+  scorePitches?: ReadonlyArray<{ midiPitch: number }>,
 ): PracticeExercise {
   if (config.preset === 'c4scale') {
     return generateC4ScaleExercise(bpm, config.noteCount, config.clef);
+  }
+  if (config.preset === 'score') {
+    if (!scorePitches || scorePitches.length === 0) {
+      return { notes: [], bpm };
+    }
+    return generateScoreExercise(bpm, scorePitches, config.noteCount);
   }
 
   const poolKey = `${config.clef}-${config.octaveRange}`;
@@ -115,6 +125,31 @@ export function generateC4ScaleExercise(
     id: `ex-${i}`,
     slotIndex: i,
     midiPitch,
+    expectedOnsetMs: i * msPerBeat,
+  }));
+  return { notes, bpm };
+}
+
+/**
+ * Build a practice exercise from pitches extracted from a loaded score.
+ * Selects up to `noteCount` pitches from the beginning of the `pitches` array.
+ * If `pitches.length < noteCount` the exercise is clamped to `pitches.length`.
+ *
+ * @param bpm       Tempo in beats per minute
+ * @param pitches   Ordered pitch list (e.g. from extractPracticeNotes)
+ * @param noteCount Maximum number of notes to include in the exercise
+ */
+export function generateScoreExercise(
+  bpm: number,
+  pitches: ReadonlyArray<{ midiPitch: number }>,
+  noteCount: number,
+): PracticeExercise {
+  const msPerBeat = 60_000 / bpm;
+  const num = Math.min(noteCount, pitches.length);
+  const notes: ExerciseNote[] = pitches.slice(0, num).map((p, i) => ({
+    id: `ex-${i}`,
+    slotIndex: i,
+    midiPitch: p.midiPitch,
     expectedOnsetMs: i * msPerBeat,
   }));
   return { notes, bpm };

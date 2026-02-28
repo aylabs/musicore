@@ -16,7 +16,7 @@ export type PracticeMode = 'flow' | 'step';
 /** Exercise configuration for generating a practice set */
 export interface ExerciseConfig {
   /** Note pool selection */
-  preset: 'random' | 'c4scale';
+  preset: 'random' | 'c4scale' | 'score';
   /** Number of notes in the exercise (1–20) */
   noteCount: number;
   /** Clef determines the note pool range */

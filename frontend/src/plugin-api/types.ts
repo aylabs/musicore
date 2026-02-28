@@ -1,11 +1,15 @@
 /**
- * Musicore Plugin API — Types (v2)
+ * Musicore Plugin API — Types (v4)
  * Feature 030: Plugin Architecture (v1 baseline)
  * Feature 031: Practice View Plugin — adds recording namespace and offsetMs (v2)
+ * Feature 033: Play Score Plugin — adds scorePlayer namespace, ScoreRenderer component (v3)
+ * Feature 034: Practice from Score — adds PluginScorePitches, extractPracticeNotes,
+ *              PluginScoreSelectorProps, ScoreSelector component (v4)
  *
  * Defines all public types for the Musicore Plugin API.
  * See specs/030-plugin-architecture/contracts/plugin-api.ts for the v1 canonical contract.
  * See specs/031-practice-view-plugin/contracts/plugin-api-v2.ts for the v2 contract.
+ * See specs/034-practice-from-score/contracts/plugin-api-v4.ts for the v4 canonical contract.
  *
  * Constitution Principle VI: PluginNoteEvent carries ONLY musical data (midiNote,
  * timestamp, velocity). No coordinate or layout geometry is permitted here — the
@@ -216,6 +220,82 @@ export interface PluginManifest {
 }
 
 // ---------------------------------------------------------------------------
+// v4 types — Practice from Score (Feature 034)
+// ---------------------------------------------------------------------------
+
+/**
+ * Flat ordered list of MIDI pitches extracted by the host from the currently-loaded score.
+ * Returned by context.scorePlayer.extractPracticeNotes().
+ *
+ * GEOMETRY CONSTRAINT (Principle VI): Contains ONLY MIDI integers, a clef string,
+ * a count, and a title. No coordinates or spatial data cross the plugin API boundary.
+ *
+ * Extraction rules applied by the host (plugin receives results only):
+ *   - Source: instruments[0].staves[0].voices[0] (first instrument, topmost staff, first voice)
+ *   - Rests (notes without pitch) are skipped
+ *   - Chords: maximum pitch across simultaneous notes at the same start_tick is kept
+ *   - Note durations are discarded; all exercise notes are treated as quarter notes
+ *   - Result is capped to maxCount; totalAvailable reflects the pre-cap count
+ */
+export interface PluginScorePitches {
+  /**
+   * Ordered MIDI pitches extracted from the source score.
+   * Length: min(maxCount, totalAvailable).
+   */
+  readonly notes: ReadonlyArray<{ readonly midiPitch: number }>;
+  /**
+   * Total pitched notes available in the source voice, before the maxCount cap.
+   * Use this to cap the exercise Notes slider maximum (FR-006).
+   */
+  readonly totalAvailable: number;
+  /**
+   * Clef of the source score's topmost staff.
+   * Normalised to 'Treble' | 'Bass'; unusual clefs (Alto, Tenor) are mapped to 'Treble'.
+   */
+  readonly clef: 'Treble' | 'Bass';
+  /** Display title from score metadata; null if absent in the file. */
+  readonly title: string | null;
+}
+
+/**
+ * Props for the host-provided ScoreSelector component (v4).
+ * Available to plugins via context.components.ScoreSelector.
+ *
+ * Renders a score selection UI with a preloaded catalogue list and a
+ * "Load from file" option. The host owns all file-picking, error display,
+ * and loading state — the plugin receives resolved events only.
+ */
+export interface PluginScoreSelectorProps {
+  /** Catalogue entries from context.scorePlayer.getCatalogue(). */
+  catalogue: ReadonlyArray<PluginPreloadedScore>;
+  /**
+   * When true, shows a loading indicator inside the dialog.
+   * Set this while scorePlayerState.status === 'loading'.
+   */
+  isLoading?: boolean;
+  /**
+   * Error message to display inside the dialog.
+   * Set this from scorePlayerState.error when status === 'error'.
+   */
+  error?: string | null;
+  /**
+   * Called when the user selects a preloaded score.
+   * Plugin should call context.scorePlayer.loadScore({ kind: 'catalogue', catalogueId }).
+   */
+  onSelectScore: (catalogueId: string) => void;
+  /**
+   * Called with the user-selected File when they choose "Load from file".
+   * Plugin should call context.scorePlayer.loadScore({ kind: 'file', file }).
+   */
+  onLoadFile: (file: File) => void;
+  /**
+   * Called when the user explicitly cancels the dialog without selecting a score.
+   * Plugin is responsible for reverting preset or keeping the existing score.
+   */
+  onCancel: () => void;
+}
+
+// ---------------------------------------------------------------------------
 // v3 types — Score Player namespace (Feature 033)
 // ---------------------------------------------------------------------------
 
@@ -344,6 +424,26 @@ export interface PluginScorePlayerContext {
    * Sourced from the host's 60 Hz rAF loop.
    */
   getCurrentTickLive(): number;
+
+  // ─── v4 addition ─────────────────────────────────────────────────────────
+
+  /**
+   * Extract a flat ordered list of MIDI pitches from the currently-loaded score.
+   *
+   * MUST only be called when scorePlayerState.status === 'ready'.
+   * Returns null if status is not 'ready' (no score loaded, loading, or error).
+   *
+   * Extraction rules (applied by host — plugin receives results only):
+   *   - Source: instruments[0].staves[0].voices[0]
+   *   - Rests skipped (events without a valid pitch)
+   *   - Chords: only the highest pitch (max midiNote) retained per start_tick
+   *   - Note durations discarded (all notes treated as quarter notes)
+   *   - Result capped to maxCount; totalAvailable reflects pre-cap count
+   *   - Clef derived from instruments[0].staves[0].active_clef
+   *
+   * @param maxCount Maximum number of pitches to include in `notes`.
+   */
+  extractPracticeNotes(maxCount: number): PluginScorePitches | null;
 }
 
 /**
@@ -472,6 +572,26 @@ export interface PluginContext {
      *  - Auto-scroll to keep current tick visible
      */
     readonly ScoreRenderer: ComponentType<PluginScoreRendererProps>;
+    /**
+     * Host-provided React component that renders a score selection overlay (v4).
+     * Presents the preloaded catalogue list and a "Load from file" option.
+     * The host owns all file-picking, error display, and loading state.
+     *
+     * Typical usage in Practice plugin:
+     * ```tsx
+     * {showScoreSelector && (
+     *   <context.components.ScoreSelector
+     *     catalogue={context.scorePlayer.getCatalogue()}
+     *     isLoading={scorePlayerState.status === 'loading'}
+     *     error={scorePlayerState.error}
+     *     onSelectScore={id => context.scorePlayer.loadScore({ kind: 'catalogue', catalogueId: id })}
+     *     onLoadFile={file => context.scorePlayer.loadScore({ kind: 'file', file })}
+     *     onCancel={handleSelectorCancel}
+     *   />
+     * )}
+     * ```
+     */
+    readonly ScoreSelector: ComponentType<PluginScoreSelectorProps>;
   };
   /**
    * Score player context — the primary v3 extension (Feature 033).
@@ -517,4 +637,4 @@ export interface MusicorePlugin {
 // ---------------------------------------------------------------------------
 
 /** Major version of the currently running Musicore Plugin API. */
-export const PLUGIN_API_VERSION = '3' as const;
+export const PLUGIN_API_VERSION = '4' as const;

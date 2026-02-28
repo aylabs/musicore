@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import React, { type ReactNode } from 'react';
 import { TempoStateProvider } from '../services/state/TempoStateContext';
-import { useScorePlayerContext } from './scorePlayerContext';
+import { useScorePlayerContext, createNoOpScorePlayer } from './scorePlayerContext';
 import { PRELOADED_SCORES } from '../data/preloadedScores';
 
 // ---------------------------------------------------------------------------
@@ -537,11 +537,158 @@ describe('useScorePlayerContext', () => {
       });
     });
   });
+  // ─── extractPracticeNotes (v4 — Feature 034) ────────────────────────────────────────────
+
+  describe('extractPracticeNotes() — T002', () => {
+    it('returns null when status is idle (no score loaded)', () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      // No score loaded — status is 'idle'
+      expect(result.current.extractPracticeNotes(8)).toBeNull();
+    });
+
+    it('returns a PluginScorePitches object after score is loaded (status ready)', async () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      await act(async () => {
+        await result.current.loadScore({ kind: 'catalogue', catalogueId: 'bach-invention-1' });
+      });
+
+      const pitches = result.current.extractPracticeNotes(8);
+      expect(pitches).not.toBeNull();
+    });
+
+    it('notes.length === maxCount when score has more notes than maxCount', async () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      // Mock score has 2 notes in interval_events; to test maxCount < totalAvailable
+      // we set up a mock that returns enough notes.
+      const manyNotesMock = {
+        ...mockScore,
+        instruments: [
+          {
+            ...mockScore.instruments[0],
+            staves: [
+              {
+                ...mockScore.instruments[0].staves[0],
+                voices: [
+                  {
+                    id: 'v1',
+                    interval_events: Array.from({ length: 20 }, (_, i) => ({
+                      id: `n${i}`,
+                      start_tick: i * 960,
+                      duration_ticks: 960,
+                      pitch: 60 + (i % 12),
+                    })),
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      mockImportFile.mockResolvedValueOnce({
+        ...mockImportResult,
+        score: manyNotesMock,
+        metadata: { format: 'MusicXML', work_title: 'Many Notes', file_name: 'many.mxl' },
+      });
+
+      await act(async () => {
+        await result.current.loadScore({ kind: 'catalogue', catalogueId: 'bach-invention-1' });
+      });
+
+      const pitches = result.current.extractPracticeNotes(5);
+      expect(pitches).not.toBeNull();
+      expect(pitches!.notes).toHaveLength(5);
+    });
+
+    it('totalAvailable reflects pre-cap count (consistent across different maxCount calls)', async () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      const manyNotesMock = {
+        ...mockScore,
+        instruments: [
+          {
+            ...mockScore.instruments[0],
+            staves: [
+              {
+                ...mockScore.instruments[0].staves[0],
+                voices: [
+                  {
+                    id: 'v1',
+                    interval_events: Array.from({ length: 10 }, (_, i) => ({
+                      id: `n${i}`,
+                      start_tick: i * 960,
+                      duration_ticks: 960,
+                      pitch: 60 + i,
+                    })),
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      mockImportFile.mockResolvedValueOnce({
+        ...mockImportResult,
+        score: manyNotesMock,
+        metadata: { format: 'MusicXML', work_title: 'Ten Notes', file_name: 'ten.mxl' },
+      });
+
+      await act(async () => {
+        await result.current.loadScore({ kind: 'catalogue', catalogueId: 'bach-invention-1' });
+      });
+
+      const small = result.current.extractPracticeNotes(2);
+      const large = result.current.extractPracticeNotes(100);
+
+      expect(small).not.toBeNull();
+      expect(large).not.toBeNull();
+      // totalAvailable is the same for both calls (pre-cap count)
+      expect(small!.totalAvailable).toBe(large!.totalAvailable);
+      expect(small!.totalAvailable).toBe(10);
+    });
+
+    it('clef is either \'Treble\' or \'Bass\'', async () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      await act(async () => {
+        await result.current.loadScore({ kind: 'catalogue', catalogueId: 'bach-invention-1' });
+      });
+
+      const pitches = result.current.extractPracticeNotes(8);
+      expect(pitches).not.toBeNull();
+      expect(['Treble', 'Bass']).toContain(pitches!.clef);
+    });
+
+    it('each note in notes array has a numeric midiPitch property', async () => {
+      const { result } = renderHook(() => useScorePlayerContext(), { wrapper });
+
+      await act(async () => {
+        await result.current.loadScore({ kind: 'catalogue', catalogueId: 'bach-invention-1' });
+      });
+
+      const pitches = result.current.extractPracticeNotes(8);
+      expect(pitches).not.toBeNull();
+      pitches!.notes.forEach((n) => {
+        expect(typeof n.midiPitch).toBe('number');
+        expect(n.midiPitch).toBeGreaterThanOrEqual(0);
+        expect(n.midiPitch).toBeLessThanOrEqual(127);
+      });
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
-// Helpers
+// createNoOpScorePlayer — v4 stub (T002)
 // ---------------------------------------------------------------------------
+
+describe('createNoOpScorePlayer() — v4', () => {
+  it('extractPracticeNotes returns null', () => {
+    const stub = createNoOpScorePlayer();
+    expect(stub.extractPracticeNotes(8)).toBeNull();
+  });
+});
 
 /**
  * Get the current ScorePlayerState by calling subscribe and capturing the

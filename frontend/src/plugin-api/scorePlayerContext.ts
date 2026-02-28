@@ -23,7 +23,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { PluginScorePlayerContext, PluginPreloadedScore, ScoreLoadSource, ScorePlayerState } from './types';
+import type { PluginScorePlayerContext, PluginPreloadedScore, ScoreLoadSource, ScorePlayerState, PluginScorePitches } from './types';
 import { usePlayback } from '../services/playback/MusicTimeline';
 import type { PlaybackStatus, ITickSource } from '../types/playback';
 import { useTempoState } from '../services/state/TempoStateContext';
@@ -108,6 +108,51 @@ function extractTempo(score: Score): number {
     }
   }
   return 120;
+}
+
+/**
+ * Extract pitched notes for the practice exercise from a Score.
+ *
+ * Rules (from spec clarifications + FR-004):
+ *   1. Source: instruments[0].staves[0].voices[0] (first instrument, topmost staff, first voice)
+ *   2. Group by start_tick; keep max pitch per tick (chord reduction — top note of chord)
+ *   3. Sort ascending by tick → ordered pitch sequence
+ *   4. Clef: read from instruments[0].staves[0].active_clef; normalise to 'Treble' | 'Bass'
+ *      (Alto/Tenor → 'Treble' fallback, per R-003)
+ *   5. Cap to maxCount; report totalAvailable before cap
+ */
+function extractPracticeNotesFromScore(
+  score: Score,
+  maxCount: number,
+): PluginScorePitches {
+  const instrument = score.instruments[0];
+  const staff = instrument?.staves[0];
+  const voice = staff?.voices[0];
+  const events = voice?.interval_events ?? [];
+
+  // Group by start_tick; retain max pitch per tick (chord dedup)
+  const tickMap = new Map<number, number>();
+  for (const note of events) {
+    // Note.pitch is always a number (no rests in interval_events type)
+    const existing = tickMap.get(note.start_tick);
+    if (existing === undefined || note.pitch > existing) {
+      tickMap.set(note.start_tick, note.pitch);
+    }
+  }
+
+  // Sort by tick → ordered pitch sequence
+  const allPitches = [...tickMap.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, midiPitch]) => ({ midiPitch }));
+
+  const totalAvailable = allPitches.length;
+  const notes = allPitches.slice(0, maxCount);
+
+  // Clef normalisation: Treble (G) and Bass (F) pass through; Alto/Tenor → Treble fallback
+  const rawClef = staff?.active_clef ?? 'Treble';
+  const clef: 'Treble' | 'Bass' = rawClef === 'Bass' ? 'Bass' : 'Treble';
+
+  return { notes, totalAvailable, clef, title: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +361,19 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
     return playbackState.tickSourceRef.current.currentTick;
   }, [playbackState.tickSourceRef]);
 
+  // ─── extractPracticeNotes (v4) ──────────────────────────────────────────────────────
+
+  const extractPracticeNotes = useCallback(
+    (maxCount: number): PluginScorePitches | null => {
+      // Only available when a score is fully loaded
+      if (pluginStatus !== 'ready' || !score) return null;
+      const result = extractPracticeNotesFromScore(score, maxCount);
+      // Include the display title from the loaded score metadata
+      return { ...result, title };
+    },
+    [pluginStatus, score, title],
+  );
+
   // ─── Return the bridge object ─────────────────────────────────────────────
 
   const api = useMemo((): PluginScorePlayerContext => ({
@@ -330,6 +388,7 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
     setTempoMultiplier: setTempoMultiplierCb,
     subscribe,
     getCurrentTickLive,
+    extractPracticeNotes,
   }), [
     getCatalogue,
     loadScore,
@@ -342,6 +401,7 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
     setTempoMultiplierCb,
     subscribe,
     getCurrentTickLive,
+    extractPracticeNotes,
   ]);
 
   const internal = useMemo((): ScorePlayerInternal => ({
@@ -407,6 +467,7 @@ export function createNoOpScorePlayer(): PluginScorePlayerContext {
       return () => {};
     },
     getCurrentTickLive: () => 0,
+    extractPracticeNotes: (_maxCount: number) => null,
   };
 }
 
@@ -439,5 +500,6 @@ export function createScorePlayerProxy(
     setTempoMultiplier: (...args) => proxyRef.current.setTempoMultiplier(...args),
     subscribe: (...args) => proxyRef.current.subscribe(...args),
     getCurrentTickLive: (...args) => proxyRef.current.getCurrentTickLive(...args),
+    extractPracticeNotes: (...args) => proxyRef.current.extractPracticeNotes(...args),
   };
 }
