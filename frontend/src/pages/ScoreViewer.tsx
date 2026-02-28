@@ -798,7 +798,13 @@ const styles = {
     color: '#000000',
   },
   container: {
-    flex: 1,
+    // No flex: 1 here — let content height (totalHeight px child) determine size.
+    // flex:1 was using the flex-allocated height (= viewport height) and the
+    // totalHeight child overflowed visually via overflow:visible, which works
+    // for page-scroll (documentElement tracks overflow) but NOT for an embedded
+    // overflow:auto container (scrollHeight = clientHeight → no scroll).
+    // Without flex, containerRef grows to totalHeight, wrapperRef follows,
+    // and the scroll container's scrollHeight = totalHeight → scrolling works.
     overflow: 'visible' as const, // Use global browser scrollbar for both axes
     position: 'relative' as const,
   },
