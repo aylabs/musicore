@@ -762,7 +762,13 @@ const styles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column' as const,
-    height: '100%',
+    // minHeight rather than height so the wrapper grows to the full score height
+    // when embedded in an overflow:auto container (plugin mode). With height:100%
+    // the wrapper is capped at the container height, the inner totalHeight div
+    // overflows but never contributes to the scroll container's scrollHeight,
+    // so the container appears un-scrollable. minHeight:100% means the wrapper
+    // is at least as tall as the container but expands to full score height.
+    minHeight: '100%',
     width: '100%',
   },
   controls: {
