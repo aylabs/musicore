@@ -94,7 +94,7 @@
 
 .play-score__score-area {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
 }
 

@@ -126,26 +126,21 @@ export function ScoreRendererPlugin({
             onNoteShortTap(tick, noteId);
           }}
           onPin={(tick: number | null, noteId: string | null) => {
-            // Map LayoutView.onPin → plugin.onNoteLongPress
-            // tick=null means "unpin all" from LayoutView; use 0 as sentinel tick
             onNoteLongPress(tick ?? 0, noteId);
           }}
           onSeekAndPlay={(tick: number) => {
-            // Tap while paused/stopped: seek to the nearest note's tick.
-            // The two-tap state machine in PlayScorePlugin decides whether this
-            // is a first tap (seek+arm) or second tap (seek+play).
             onNoteShortTap(tick, '');
           }}
         />
       </div>
 
-      {/* FR-010: Back to start button at the bottom of the score area */}
+      {/* FR-010: Back to start — outside the scroll wrapper so it stays visible
+          at the bottom of the container. play-score__score-area is overflow:hidden
+          so layoutWrapperRef is the only scroll container; scrollTop=0 works. */}
       <button
         style={styles.returnToStartButton}
         onClick={() => {
-          // Seek audio back to start
           onReturnToStart();
-          // Scroll the score wrapper back to the top
           if (layoutWrapperRef.current) {
             layoutWrapperRef.current.scrollTop = 0;
           }
