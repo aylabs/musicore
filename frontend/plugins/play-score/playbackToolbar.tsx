@@ -53,6 +53,7 @@ export function PlaybackToolbar({
   scoreTitle,
   status,
   currentTick,
+  totalDurationTicks,
   bpm,
   onBack,
   onPlay,
@@ -64,18 +65,20 @@ export function PlaybackToolbar({
   const isPlaying = status === 'playing';
   const isActive = status === 'playing' || status === 'paused' || status === 'ready';
   const elapsedSeconds = ticksToElapsedSeconds(currentTick, bpm);
+  const totalSeconds = ticksToElapsedSeconds(totalDurationTicks, bpm);
   const elapsedFormatted = formatElapsedTime(elapsedSeconds);
+  const totalFormatted = totalDurationTicks > 0 ? formatElapsedTime(totalSeconds) : null;
 
   return (
     <div className="play-score__toolbar" role="toolbar" aria-label="Playback controls">
-      {/* Back button — shown in player view */}
+      {/* Back button — icon only, compact */}
       {showBack && (
         <button
           className="play-score__toolbar-btn play-score__toolbar-btn--back"
           onClick={onBack}
           aria-label="Back"
         >
-          ← Back
+          ←
         </button>
       )}
 
@@ -112,19 +115,20 @@ export function PlaybackToolbar({
         aria-label="Stop"
         disabled={!isActive}
       >
-        ⏹ Stop
+        ■ Stop
       </button>
 
-      {/* Elapsed timer */}
+      {/* Elapsed / total timer */}
       <span className="play-score__toolbar-timer" aria-label="Elapsed time">
-        {elapsedFormatted}
+        <span className="play-score__toolbar-timer-elapsed">{elapsedFormatted}</span>
+        {totalFormatted && (
+          <span className="play-score__toolbar-timer-total"> / {totalFormatted}</span>
+        )}
       </span>
 
-      {/* Tempo control (T027 — placeholder for now) */}
+      {/* Tempo control */}
       <div className="play-score__toolbar-tempo">
-        <label htmlFor="play-score-tempo" className="play-score__toolbar-tempo-label">
-          {Math.round(tempoMultiplier * 100)}%
-        </label>
+        <span className="play-score__toolbar-tempo-label">TEMPO</span>
         <input
           id="play-score-tempo"
           type="range"
@@ -137,7 +141,9 @@ export function PlaybackToolbar({
           className="play-score__toolbar-tempo-slider"
           disabled={status === 'loading'}
         />
-        <span className="play-score__toolbar-bpm">{bpm > 0 ? `${bpm} BPM` : ''}</span>
+        {bpm > 0 && (
+          <span className="play-score__toolbar-bpm">{bpm}</span>
+        )}
       </div>
     </div>
   );
