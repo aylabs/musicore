@@ -76,6 +76,17 @@ export function PlayScorePlugin({ context }: PlayScorePluginProps) {
   const [loopEndPin, setLoopEndPin] = useState<PinState | null>(null);
   const [tempoMultiplier, setTempoMultiplier] = useState(1.0);
 
+  // Two-tap state: first tap seeks (arms play), second tap resumes.
+  const [pendingPlay, setPendingPlay] = useState(false);
+
+  // Clear pendingPlay whenever playback leaves the 'paused' state
+  // (resumed → 'playing', reset → 'ready'/'idle', error, etc.).
+  useEffect(() => {
+    if (playerState.status !== 'paused') {
+      setPendingPlay(false);
+    }
+  }, [playerState.status]);
+
   // T021: Derive pinnedNoteIds and loopRegion from pin state
   const pinnedNoteIds = useMemo<ReadonlySet<string>>(() => {
     const ids = new Set<string>();
@@ -117,10 +128,26 @@ export function PlayScorePlugin({ context }: PlayScorePluginProps) {
     context.scorePlayer.setTempoMultiplier(m);
   }, [context.scorePlayer]);
 
-  // US3 (wired in T018): seek by note tap
+  // US3 (wired in T018): two-tap seek-then-play state machine.
+  //   First tap while paused  → seek (highlight the note), arm pendingPlay.
+  //   Second tap while paused → seek to new position and resume playback.
+  //   Tap while playing       → seek only (mid-playback note navigation).
   const handleNoteShortTap = useCallback((tick: number) => {
+    if (playerState.status !== 'playing') {
+      context.scorePlayer.seekToTick(tick);
+      if (pendingPlay) {
+        // Second tap: resume from newly seeked position.
+        context.scorePlayer.play();
+        // pendingPlay will be cleared by the useEffect once status → 'playing'.
+      } else {
+        // First tap: arm the play trigger.
+        setPendingPlay(true);
+      }
+      return;
+    }
+    // Playing: seek without interrupting playback.
     context.scorePlayer.seekToTick(tick);
-  }, [context.scorePlayer]);
+  }, [context.scorePlayer, playerState.status, pendingPlay]);
 
   // US4 (wired in T020): pin/loop long-press state machine
   const handleNoteLongPress = useCallback((tick: number, noteId: string | null) => {

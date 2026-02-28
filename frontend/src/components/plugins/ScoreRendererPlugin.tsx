@@ -126,14 +126,10 @@ export function ScoreRendererPlugin({
             onNoteLongPress(tick ?? 0, noteId);
           }}
           onSeekAndPlay={(tick: number) => {
-            // Short-tap while paused/stopped: seek to tapped position AND resume.
-            // onSeekAndPlay is only triggered when not playing (pages/ScoreViewer
-            // calls onTogglePlayback→pause when playing, then returns early).
-            // 1. Seek to the tapped tick.
+            // Tap while paused/stopped: seek to the nearest note's tick.
+            // The two-tap state machine in PlayScorePlugin decides whether this
+            // is a first tap (seek+arm) or second tap (seek+play).
             onNoteShortTap(tick, '');
-            // 2. Resume playback — onCanvasTap toggles play/pause, and since
-            //    this path is only reached when not playing, it will always play().
-            onCanvasTap();
           }}
         />
       </div>
@@ -169,6 +165,10 @@ const styles = {
     flex: 1,
     minHeight: 0,
     overflow: 'auto',
+    // Suppress the OS blue tap-highlight and text-selection box on the score canvas.
+    userSelect: 'none' as const,
+    WebkitUserSelect: 'none' as const,
+    WebkitTapHighlightColor: 'transparent',
   },
   placeholder: {
     flex: 1,
