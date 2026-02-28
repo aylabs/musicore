@@ -104,7 +104,7 @@ export function ScoreRendererPlugin({
   // ─── Full score renderer ──────────────────────────────────────────────────
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} onContextMenu={e => e.preventDefault()}>
       <div style={styles.layoutViewWrapper}>
         <LayoutView
           score={score}
