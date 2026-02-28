@@ -459,6 +459,61 @@ The produced `virtual-keyboard-pro.zip` (≈5 KB) can be imported directly via t
 
 **Settings → Plugins → Import Plugin → select `virtual-keyboard-pro.zip`**
 
+---
+
+## Built-in Core Plugins
+
+### `play-score` — Play Score
+
+| Field | Value |
+|-------|-------|
+| **ID** | `play-score` |
+| **Name** | Play Score |
+| **Version** | 1.0.0 |
+| **Plugin API Version** | 3 |
+| **Type** | `core` |
+| **View** | `full-screen` |
+| **Entry point** | `index.tsx` |
+
+#### Description
+
+Load and play scores from the built-in library or from a local file. Supports standard playback, note-tap seeking, pin/loop regions, tempo adjustment, and full audio teardown on exit.
+
+#### Score Sources
+
+- **Catalogue** — 6 pre-loaded `.mxl` scores bundled with the app
+- **File** — user-supplied `.mxl` / `.xml` / `.musicxml` files from the device file picker
+
+#### Context Requirements (Plugin API v3)
+
+| Context Key | Usage |
+|-------------|-------|
+| `scorePlayer.getCatalogue()` | Populate selection screen |
+| `scorePlayer.loadScore(source)` | Load catalogue or file score |
+| `scorePlayer.subscribe(handler)` | React to state changes (status, tick, BPM) |
+| `scorePlayer.play/pause/stop` | Playback control |
+| `scorePlayer.seekToTick(tick)` | Note tap + return-to-start |
+| `scorePlayer.setPinnedStart(tick\|null)` | Pin loop start |
+| `scorePlayer.setLoopEnd(tick\|null)` | Pin loop end |
+| `scorePlayer.setTempoMultiplier(m)` | Tempo control |
+| `components.ScoreRenderer` | Host-provided score rendering component |
+| `context.close()` | Return to landing screen via Back button |
+| `context.stopPlayback()` | Used in teardown effect on unmount |
+
+#### Event Flow
+
+```
+Landing screen
+  → tap [plugin-launch-play-score]
+  → ScoreSelectionScreen (selection)
+      → tap score entry   → PlayScorePlugin (player)
+      → tap Load from file → file picker → PlayScorePlugin (player)
+  → PlayScorePlugin (player)
+      → tap Back          → context.close()  → Landing screen
+```
+
+---
+
 ### Key implementation patterns
 
 ```tsx

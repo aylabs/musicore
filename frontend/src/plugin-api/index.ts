@@ -1,7 +1,8 @@
 /**
- * Musicore Plugin API — public barrel (v2)
+ * Musicore Plugin API — public barrel (v3)
  * Feature 030: Plugin Architecture (v1 baseline)
  * Feature 031: Practice View Plugin — adds PluginPitchEvent, PluginRecordingContext (v2)
+ * Feature 033: Play Score Plugin — adds scorePlayer namespace + ScoreRenderer (v3)
  *
  * THIS IS THE ONLY MODULE plugin code is permitted to import from the host.
  * ESLint enforces this boundary via `no-restricted-imports` scoped to plugins/**.
@@ -18,6 +19,13 @@ export type {
   MusicorePlugin,
   PluginPitchEvent,
   PluginRecordingContext,
+  // v3 additions (Feature 033)
+  PluginPreloadedScore,
+  ScoreLoadSource,
+  PluginPlaybackStatus,
+  ScorePlayerState,
+  PluginScorePlayerContext,
+  PluginScoreRendererProps,
 } from './types';
 
 export { PLUGIN_API_VERSION } from './types';

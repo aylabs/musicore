@@ -13,6 +13,8 @@ import virtualKeyboardPlugin from '../../../plugins/virtual-keyboard/index';
 import virtualKeyboardManifestJson from '../../../plugins/virtual-keyboard/plugin.json';
 import practiceViewPlugin from '../../../plugins/practice-view/index';
 import practiceViewManifestJson from '../../../plugins/practice-view/plugin.json';
+import playScorePlugin from '../../../plugins/play-score/index';
+import playScoreManifestJson from '../../../plugins/play-score/plugin.json';
 
 export interface BuiltinPluginEntry {
   manifest: PluginManifest;
@@ -37,5 +39,13 @@ export const BUILTIN_PLUGINS: BuiltinPluginEntry[] = [
       origin: 'builtin' as const,
     },
     plugin: practiceViewPlugin,
+  },
+  // T012 / Feature 033: Play Score core plugin (Plugin API v3)
+  {
+    manifest: {
+      ...(playScoreManifestJson as Omit<PluginManifest, 'origin'>),
+      origin: 'builtin' as const,
+    },
+    plugin: playScorePlugin,
   },
 ];

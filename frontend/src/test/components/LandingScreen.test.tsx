@@ -82,7 +82,7 @@ afterEach(() => {
  */
 describe('LandingScreen', () => {
   it('T001: renders without crashing', () => {
-    expect(() => render(<LandingScreen onLoadScore={vi.fn()} />)).not.toThrow();
+    expect(() => render(<LandingScreen />)).not.toThrow();
   });
 
   /**
@@ -90,7 +90,7 @@ describe('LandingScreen', () => {
    * FR-001: 100vw × 100vh, position: fixed
    */
   it('T002: container has landing-screen class covering full viewport', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const container = screen.getByTestId('landing-screen');
     expect(container).toBeInTheDocument();
     expect(container).toHaveAttribute('role', 'region');
@@ -101,7 +101,7 @@ describe('LandingScreen', () => {
    * FR-002: one animated note symbol displayed
    */
   it('T003: a note glyph element is rendered on mount', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
     expect(note).toBeInTheDocument();
     // Should contain a non-empty text node (Bravura Unicode)
@@ -114,7 +114,7 @@ describe('LandingScreen', () => {
    * FR-004: note changes symbol every second
    */
   it('T004: glyph character changes after 1 second', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
     const initialGlyph = note.textContent;
 
@@ -134,7 +134,7 @@ describe('LandingScreen', () => {
    * FR-006: color and glyph change on the same 1-second tick
    */
   it('T005: note color changes simultaneously with glyph at 1-second tick', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
     const initialColor = (note as HTMLElement).style.color;
 
@@ -155,7 +155,7 @@ describe('LandingScreen', () => {
    * FR-005: symbol after each change differs from preceding one
    */
   it('T006: no two consecutive seconds show the same glyph', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
     const glyphs: string[] = [note.textContent ?? ''];
 
@@ -179,7 +179,7 @@ describe('LandingScreen', () => {
    */
   it('T007: clicking the screen pauses the animation; clicking again resumes it', async () => {
     const user = userEvent.setup({ advanceTimers: (ms) => advanceTime(ms) });
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const screen_ = screen.getByTestId('landing-screen');
     const note = screen.getByTestId('landing-note');
 
@@ -210,7 +210,7 @@ describe('LandingScreen', () => {
    */
   it('T008: with prefers-reduced-motion, note position does not change', () => {
     mockMatchMedia(true); // Enable reduced-motion BEFORE render
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
 
     const initialLeft = (note as HTMLElement).style.left;
@@ -230,7 +230,7 @@ describe('LandingScreen', () => {
    */
   it('T009: with prefers-reduced-motion, glyph still changes every second', () => {
     mockMatchMedia(true);
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
     const initial = note.textContent;
 
@@ -246,7 +246,7 @@ describe('LandingScreen', () => {
    * FR-008: rAF loop pauses on hidden tab, elapsed does not advance
    */
   it('T010: elapsed time does not advance when document is hidden', () => {
-    render(<LandingScreen onLoadScore={vi.fn()} />);
+    render(<LandingScreen />);
     const note = screen.getByTestId('landing-note');
 
     // Let 0.5s pass with tab visible (no glyph change yet)

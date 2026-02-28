@@ -1,0 +1,256 @@
+/**
+ * Play Score Plugin — Styles
+ * Feature 033: Play Score Plugin
+ */
+
+.play-score-plugin {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.play-score__selection-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 16px;
+  overflow-y: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.play-score__section-label {
+  margin: 0 0 8px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.play-score__score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.play-score__score-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #222;
+  text-align: left;
+  min-height: 50px;
+  transition: background 0.12s;
+}
+
+.play-score__score-list li:last-child .play-score__score-item {
+  border-bottom: none;
+}
+
+.play-score__score-item:hover,
+.play-score__score-item:focus-visible {
+  background: #f0f4ff;
+  outline: none;
+}
+
+.play-score__score-item-separator {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.play-score__score-item--file {
+  color: #555;
+  font-style: italic;
+}
+
+/* Player screen */
+
+.play-score__player {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.play-score__score-area {
+  flex: 1;
+  /* Must be a flex container so children (ScoreRendererPlugin) can use flex:1
+     to receive a definite height. Without display:flex, the children grow to
+     their content height (full score), get clipped by overflow:hidden, and
+     the inner overflow:auto wrapper never gets a scrollbar. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Loading / error states */
+
+.play-score__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.play-score__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #cc0000;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Toolbar */
+
+.play-score__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+/* Base button */
+.play-score__toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 14px;
+  white-space: nowrap;
+  transition: filter 0.12s, opacity 0.12s;
+  color: #fff;
+}
+
+.play-score__toolbar-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.play-score__toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Back — compact icon button */
+.play-score__toolbar-btn--back {
+  background: #4a4a5a;
+  min-width: 40px;
+  padding: 0 10px;
+  font-size: 1rem;
+}
+
+/* Play — green */
+.play-score__toolbar-btn--play {
+  background: #22c55e;
+}
+
+/* Pause — amber */
+.play-score__toolbar-btn--pause {
+  background: #f59e0b;
+}
+
+/* Stop — coral/red */
+.play-score__toolbar-btn--stop {
+  background: #ef4444;
+}
+
+/* Score title */
+.play-score__toolbar-title {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 4px;
+}
+
+/* Timer */
+.play-score__toolbar-timer {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.play-score__toolbar-timer-elapsed {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.play-score__toolbar-timer-total {
+  color: #888;
+}
+
+/* Tempo */
+.play-score__toolbar-tempo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.play-score__toolbar-tempo-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #888;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.play-score__toolbar-tempo-slider {
+  flex: 1;
+  min-width: 60px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.play-score__toolbar-tempo-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.play-score__toolbar-bpm {
+  font-size: 0.75rem;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+}

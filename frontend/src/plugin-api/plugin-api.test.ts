@@ -24,8 +24,8 @@ import {
 
 describe('Plugin API contract', () => {
   describe('PLUGIN_API_VERSION', () => {
-    it('is the string "2" (v2 — adds recording namespace and offsetMs)', () => {
-      expect(PLUGIN_API_VERSION).toBe('2');
+    it('is the string "3" (v3 — adds scorePlayer, ScoreRenderer, preloaded score catalogue)', () => {
+      expect(PLUGIN_API_VERSION).toBe('3');
     });
 
     it('is a string (not a number)', () => {

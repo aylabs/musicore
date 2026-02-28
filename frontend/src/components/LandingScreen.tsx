@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { LoadScoreButton } from './load-score/LoadScoreButton';
 import { SMUFL_CODEPOINTS } from '../types/notation/config';
 import './LandingScreen.css';
 
@@ -66,15 +65,13 @@ function evalPath(t: number): { x: number; y: number } {
 // ---------------------------------------------------------------------------
 
 export interface LandingScreenProps {
-  /** Called when the user activates the Load Score action */
-  onLoadScore: () => void;
   /** Called when the user activates the Instruments action (debug mode only) */
   onShowInstruments?: () => void;
   /**
    * Core plugins to feature as launch buttons on the landing screen.
    * Only plugins with `type === 'core'` in their manifest should be included.
    */
-  corePlugins?: Array<{ id: string; name: string }>;
+  corePlugins?: Array<{ id: string; name: string; icon?: string }>;
   /** Called when the user taps a core plugin launch button. */
   onLaunchPlugin?: (pluginId: string) => void;
 }
@@ -90,7 +87,7 @@ export interface LandingScreenProps {
  * - Pauses when the browser tab is hidden (Page Visibility API)
  * - Respects prefers-reduced-motion: position frozen, glyph/color still cycle
  */
-export function LandingScreen({ onLoadScore, onShowInstruments, corePlugins, onLaunchPlugin }: LandingScreenProps) {
+export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }: LandingScreenProps) {
   // Read reduced-motion preference once at mount
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -286,14 +283,14 @@ export function LandingScreen({ onLoadScore, onShowInstruments, corePlugins, onL
 
       {/* Load score action — stop propagation so button click doesn't toggle pause */}
       <div className="landing-actions" onClick={e => e.stopPropagation()}>
-        <LoadScoreButton onClick={onLoadScore} />
         {corePlugins && corePlugins.length > 0 && onLaunchPlugin && corePlugins.map(p => (
           <button
             key={p.id}
+            data-testid={`plugin-launch-${p.id}`}
             className="landing-plugin-btn"
             onClick={() => onLaunchPlugin(p.id)}
           >
-            🎹 {p.name}
+            {p.icon ? `${p.icon} ` : ''}{p.name}
           </button>
         ))}
         {onShowInstruments && (

@@ -57,6 +57,13 @@ export interface ScoreViewerProps {
   playbackStatus?: 'playing' | 'paused' | 'stopped';
   /** Suppress rendering of measure number labels above each system */
   hideMeasureNumbers?: boolean;
+  /**
+   * Optional scroll container element. When provided, ScoreViewer listens
+   * to this element's scroll events and drives scrollTo() on it instead of
+   * using window. Required when the score is embedded inside an overflow:auto
+   * wrapper (e.g. the play-score plugin) rather than a full-page scroll layout.
+   */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -199,7 +206,12 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Uses window scroll since container has overflow:visible (page scrollbar)
    */
   componentDidMount(): void {
-    window.addEventListener('scroll', this.handleScroll, { passive: true });
+    const scrollEl = this.props.scrollContainerRef?.current;
+    if (scrollEl) {
+      scrollEl.addEventListener('scroll', this.handleScroll, { passive: true });
+    } else {
+      window.addEventListener('scroll', this.handleScroll, { passive: true });
+    }
     this.updateViewport();
   }
 
@@ -207,7 +219,12 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * Cleanup scroll event listener
    */
   componentWillUnmount(): void {
-    window.removeEventListener('scroll', this.handleScroll);
+    const scrollEl = this.props.scrollContainerRef?.current;
+    if (scrollEl) {
+      scrollEl.removeEventListener('scroll', this.handleScroll);
+    } else {
+      window.removeEventListener('scroll', this.handleScroll);
+    }
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer);
     }
@@ -460,8 +477,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
 
     // Compute effective scroll offset: how many pixels of the container
     // are above the viewport. containerRect.top is negative when scrolled past.
-    const containerRect = container.getBoundingClientRect();
-    const scrollTop = Math.max(0, -containerRect.top);
+    const scrollEl = this.props.scrollContainerRef?.current;
+    const scrollTop = scrollEl
+      ? scrollEl.scrollTop
+      : Math.max(0, -container.getBoundingClientRect().top);
 
     // Feature 024 (T027): Skip viewport update if scroll delta is negligible
     if (Math.abs(scrollTop - this.lastAppliedScrollTop) < ScoreViewer.SCROLL_THRESHOLD) {
@@ -469,7 +488,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
     this.lastAppliedScrollTop = scrollTop;
 
-    const clientHeight = window.innerHeight;
+    const clientHeight = scrollEl ? scrollEl.clientHeight : window.innerHeight;
 
     // Calculate viewport in logical units
     // renderScale affects the visible area: higher scale = smaller viewport
@@ -556,12 +575,14 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     const container = this.containerRef.current;
     if (!container) return;
 
+    const scrollEl = this.props.scrollContainerRef?.current;
+    const viewportHeight = scrollEl ? scrollEl.clientHeight : window.innerHeight;
     const containerRect = container.getBoundingClientRect();
+    const scrollElRect = scrollEl ? scrollEl.getBoundingClientRect() : { top: 0 };
     
-    // Calculate where the system currently is relative to the viewport
-    const systemViewportTop = containerRect.top + systemTopPx;
+    // Calculate where the system currently is relative to the visible area
+    const systemViewportTop = (containerRect.top - scrollElRect.top) + systemTopPx;
     const systemViewportBottom = systemViewportTop + systemHeight;
-    const viewportHeight = window.innerHeight;
 
     // Check if system is already well-visible (within 15%-85% of viewport)
     const topThreshold = viewportHeight * 0.15;
@@ -585,49 +606,71 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     this.lastAutoScrollSystemIndex = targetSystemIndex;
     this.autoScrollTargetSystemIndex = targetSystemIndex;
 
-    // Calculate target page scroll: position system ~20% from viewport top
-    const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
-    const containerTopInPage = containerRect.top + currentPageScroll;
-    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    const targetScroll = Math.min(
-      Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2),
-      maxScroll
-    );
+    // Calculate target scroll position: system ~20% from top of the visible area
+    if (scrollEl) {
+      // Container-scroll path: use scrollEl.scrollTop directly
+      const currentScroll = scrollEl.scrollTop;
+      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+      const targetScroll = Math.min(Math.max(0, systemTopPx - viewportHeight * 0.2), maxScroll);
+      const distance = targetScroll - currentScroll;
+      if (Math.abs(distance) < 2) return;
 
-    // Cancel any in-progress animation (different target system)
-    if (this.autoScrollAnimationId !== null) {
-      cancelAnimationFrame(this.autoScrollAnimationId);
-      this.autoScrollAnimationId = null;
-    }
-
-    // Animate scroll with ease-out curve over 400ms for smooth feel
-    const startScroll = window.scrollY;
-    const distance = targetScroll - startScroll;
-
-    // Skip if distance is negligible
-    if (Math.abs(distance) < 2) return;
-
-    const duration = 400; // ms — shorter for tighter tracking
-    const startTime = performance.now();
-
-    const animateScroll = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Ease-out cubic: decelerates smoothly
-      const eased = 1 - Math.pow(1 - progress, 3);
-
-      window.scrollTo(0, startScroll + distance * eased);
-
-      if (progress < 1) {
-        this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
-      } else {
+      // Cancel any in-progress animation
+      if (this.autoScrollAnimationId !== null) {
+        cancelAnimationFrame(this.autoScrollAnimationId);
         this.autoScrollAnimationId = null;
-        this.autoScrollTargetSystemIndex = -1;
       }
-    };
 
-    this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+      const duration = 400;
+      const startTime = performance.now();
+      const animateScroll = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        scrollEl.scrollTop = currentScroll + distance * eased;
+        if (progress < 1) {
+          this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+        } else {
+          this.autoScrollAnimationId = null;
+          this.autoScrollTargetSystemIndex = -1;
+        }
+      };
+      this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+    } else {
+      // Page-scroll path: original window-based logic
+      const currentPageScroll = window.scrollY || document.documentElement.scrollTop;
+      const containerTopInPage = containerRect.top + currentPageScroll;
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const targetScroll = Math.min(
+        Math.max(0, containerTopInPage + systemTopPx - viewportHeight * 0.2),
+        maxScroll
+      );
+
+      if (this.autoScrollAnimationId !== null) {
+        cancelAnimationFrame(this.autoScrollAnimationId);
+        this.autoScrollAnimationId = null;
+      }
+
+      const startScroll = window.scrollY;
+      const distance = targetScroll - startScroll;
+      if (Math.abs(distance) < 2) return;
+
+      const duration = 400;
+      const startTime = performance.now();
+      const animateScroll = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        window.scrollTo(0, startScroll + distance * eased);
+        if (progress < 1) {
+          this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+        } else {
+          this.autoScrollAnimationId = null;
+          this.autoScrollTargetSystemIndex = -1;
+        }
+      };
+      this.autoScrollAnimationId = requestAnimationFrame(animateScroll);
+    }
   }
 
   /**
@@ -719,7 +762,13 @@ const styles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column' as const,
-    height: '100%',
+    // minHeight rather than height so the wrapper grows to the full score height
+    // when embedded in an overflow:auto container (plugin mode). With height:100%
+    // the wrapper is capped at the container height, the inner totalHeight div
+    // overflows but never contributes to the scroll container's scrollHeight,
+    // so the container appears un-scrollable. minHeight:100% means the wrapper
+    // is at least as tall as the container but expands to full score height.
+    minHeight: '100%',
     width: '100%',
   },
   controls: {
@@ -749,7 +798,13 @@ const styles = {
     color: '#000000',
   },
   container: {
-    flex: 1,
+    // No flex: 1 here — let content height (totalHeight px child) determine size.
+    // flex:1 was using the flex-allocated height (= viewport height) and the
+    // totalHeight child overflowed visually via overflow:visible, which works
+    // for page-scroll (documentElement tracks overflow) but NOT for an embedded
+    // overflow:auto container (scrollHeight = clientHeight → no scroll).
+    // Without flex, containerRef grows to totalHeight, wrapperRef follows,
+    // and the scroll container's scrollHeight = totalHeight → scrolling works.
     overflow: 'visible' as const, // Use global browser scrollbar for both axes
     position: 'relative' as const,
   },

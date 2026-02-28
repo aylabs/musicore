@@ -63,6 +63,10 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - IndexedDB (plugin registry — manifests + asset blobs; persists across PWA sessions) (030-plugin-architecture)
 - TypeScript 5.x, React 18 + Vite (bundler), Vitest + React Testing Library (tests), ToneAdapter (audio scheduling), AudioWorklet + `pitchDetection.ts` (mic pitch), `fflate` / `idb` (plugin infrastructure from 030, unchanged), ESLint flat config `no-restricted-imports` (plugin boundary enforcement) (031-practice-view-plugin)
 - N/A — no new persistence; existing plugin registry (IndexedDB via `idb`) used unchanged (031-practice-view-plugin)
+- TypeScript 5 + React 19 (JSX; same stack as existing plugins) + Plugin API v2 (`frontend/src/plugin-api/index.ts`); esbuild (bundler → single ESM `index.js`); bash `zip` (packaging); Vitest + `@testing-library/react` (tests) (032-virtual-keyboard-pro)
+- None — plugin state is session-only; ZIP persistence handled by host IndexedDB (032-virtual-keyboard-pro)
+- TypeScript 5 (React 18), Rust stable + wasm-pack (WASM; no new Rust changes in this feature) + React 18, Vite, wasm-pack/wasm-bindgen, Tone.js (audio), Vitest + React Testing Library, Playwrigh (033-play-score-plugin)
+- N/A — scores are bundled static assets (6 MXL files); `<input type="file">` for user scores; no database (033-play-score-plugin)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -83,9 +87,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
-- 031-practice-view-plugin: Added TypeScript 5.x, React 18 + Vite (bundler), Vitest + React Testing Library (tests), ToneAdapter (audio scheduling), AudioWorklet + `pitchDetection.ts` (mic pitch), `fflate` / `idb` (plugin infrastructure from 030, unchanged), ESLint flat config `no-restricted-imports` (plugin boundary enforcement)
-- 030-plugin-architecture: Added TypeScript 5.x, React 18, Vite + React 18 (error boundary API), `fflate` (ZIP extraction, ~8 KB gz), `idb` v8 (IndexedDB, ~1.7 KB gz), ESLint flat config (`no-restricted-imports`)
-- 029-midi-input: Added TypeScript 5.9 / React 19.2 / Vite 7.x + Web MIDI API (`navigator.requestMIDIAccess` — no npm library), existing `useAudioRecorder` hook pattern
+- 033-play-score-plugin: Added TypeScript 5 (React 18), Rust stable + wasm-pack (WASM; no new Rust changes in this feature) + React 18, Vite, wasm-pack/wasm-bindgen, Tone.js (audio), Vitest + React Testing Library, Playwrigh
+- 033-play-score-plugin: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+- 032-virtual-keyboard-pro: Added TypeScript 5 + React 19 (JSX; same stack as existing plugins) + Plugin API v2 (`frontend/src/plugin-api/index.ts`); esbuild (bundler → single ESM `index.js`); bash `zip` (packaging); Vitest + `@testing-library/react` (tests)
 
 
 <!-- MANUAL ADDITIONS START -->
