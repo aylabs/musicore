@@ -105,7 +105,16 @@ export function ScoreRendererPlugin({
 
   return (
     <div style={styles.container} onContextMenu={e => e.preventDefault()}>
-      <div style={styles.layoutViewWrapper}>
+      <div
+        style={styles.layoutViewWrapper}
+        onScroll={() => {
+          // ScoreViewer listens to window.scroll to compute its viewport.
+          // In the plugin embedding the scroll happens on this div, not the page,
+          // so we forward a synthetic window scroll event so ScoreViewer's
+          // updateViewport() fires and re-renders the newly visible systems.
+          window.dispatchEvent(new Event('scroll'));
+        }}
+      >
         <LayoutView
           score={score}
           allNotes={allNotes}
