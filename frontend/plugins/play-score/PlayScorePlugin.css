@@ -94,6 +94,12 @@
 
 .play-score__score-area {
   flex: 1;
+  /* Must be a flex container so children (ScoreRendererPlugin) can use flex:1
+     to receive a definite height. Without display:flex, the children grow to
+     their content height (full score), get clipped by overflow:hidden, and
+     the inner overflow:auto wrapper never gets a scrollbar. */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
 }
