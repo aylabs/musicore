@@ -136,7 +136,11 @@ export function PlaybackToolbar({
           max={2.0}
           step={0.05}
           value={tempoMultiplier}
-          onChange={e => onTempoChange(parseFloat(e.target.value))}
+          onChange={e => {
+            const raw = parseFloat(e.target.value);
+            // Snap to 100% when within one step (±0.05) of 1.0
+            onTempoChange(Math.abs(raw - 1.0) <= 0.05 ? 1.0 : raw);
+          }}
           aria-label="Tempo"
           className="play-score__toolbar-tempo-slider"
           disabled={status === 'loading'}
