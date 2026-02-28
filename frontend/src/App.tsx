@@ -552,7 +552,7 @@ function App() {
                 onShowRecording={() => { setShowRecording(true); setActivePlugin(null); }}
                 corePlugins={allPlugins
                   .filter(p => p.manifest.type === 'core')
-                  .map(p => ({ id: p.manifest.id, name: p.manifest.name }))}
+                  .map(p => ({ id: p.manifest.id, name: p.manifest.name, icon: p.manifest.icon }))}
                 onLaunchPlugin={handleSelectPlugin}
               />
             )}

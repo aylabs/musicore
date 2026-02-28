@@ -205,6 +205,12 @@ export interface PluginManifest {
    * Defaults to `'window'` when omitted.
    */
   readonly view?: 'full-screen' | 'window';
+  /**
+   * Optional emoji or single character used as the plugin's icon.
+   * Displayed on the Landing Screen launch button and any other plugin entry points.
+   * Example: '𝄞' (treble clef), '🎹' (keyboard).
+   */
+  readonly icon?: string;
   /** Set by the host: 'builtin' for repo plugins, 'imported' for user-installed. */
   readonly origin: 'builtin' | 'imported';
 }

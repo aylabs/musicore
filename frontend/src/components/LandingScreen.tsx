@@ -74,7 +74,7 @@ export interface LandingScreenProps {
    * Core plugins to feature as launch buttons on the landing screen.
    * Only plugins with `type === 'core'` in their manifest should be included.
    */
-  corePlugins?: Array<{ id: string; name: string }>;
+  corePlugins?: Array<{ id: string; name: string; icon?: string }>;
   /** Called when the user taps a core plugin launch button. */
   onLaunchPlugin?: (pluginId: string) => void;
 }
@@ -294,7 +294,7 @@ export function LandingScreen({ onLoadScore, onShowInstruments, corePlugins, onL
             className="landing-plugin-btn"
             onClick={() => onLaunchPlugin(p.id)}
           >
-            🎹 {p.name}
+            {p.icon ? `${p.icon} ` : ''}{p.name}
           </button>
         ))}
         {onShowInstruments && (

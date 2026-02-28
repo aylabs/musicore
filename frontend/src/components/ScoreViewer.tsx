@@ -31,7 +31,7 @@ interface ScoreViewerProps {
   /** Called when Record View button is pressed (only relevant when debugMode=true) */
   onShowRecording?: () => void;
   /** Core plugins to feature on the landing screen (type === 'core'). */
-  corePlugins?: Array<{ id: string; name: string }>;
+  corePlugins?: Array<{ id: string; name: string; icon?: string }>;
   /** Called when the user launches a core plugin from the landing screen. */
   onLaunchPlugin?: (pluginId: string) => void;
 }
