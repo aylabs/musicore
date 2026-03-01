@@ -13,11 +13,10 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // The local dev server uses a self-signed HTTPS cert (required for
-    // getUserMedia on LAN / Android).  ignoreHTTPSErrors lets Playwright
-    // navigate the site without certificate errors.
-    baseURL: 'https://localhost:5173',
-    ignoreHTTPSErrors: true,
+    // PLAYWRIGHT_TEST=1 makes vite.config.ts skip basicSsl so the dev server
+    // starts on plain HTTP – no TLS cert issues for Playwright's webServer
+    // health-check or for page.goto().
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -30,15 +29,13 @@ export default defineConfig({
     },
   ],
 
-  // No webServer block here: start the dev server manually in a separate
-  // terminal with `npm run dev` before running `npm run test:e2e` or
-  // `npm run test:e2e:ui`.
-  //
-  // Reason: Playwright's webServer health-check does NOT honour
-  // ignoreHTTPSErrors, so it rejects the self-signed TLS cert that the
-  // local Vite server uses (required for getUserMedia on LAN), causing
-  // Playwright UI to hang indefinitely at "Loading…".
-  //
-  // CI is unaffected – it uses playwright.config.prod.ts which runs
-  // `vite preview` (plain HTTP) against a pre-built dist/.
+  // PLAYWRIGHT_TEST=1 disables basicSsl in vite.config.ts so the server
+  // starts on plain HTTP.  reuseExistingServer lets you keep a Playwright-
+  // started server alive across multiple test runs locally.
+  webServer: {
+    command: 'PLAYWRIGHT_TEST=1 npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
 });

@@ -6,9 +6,12 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
   // HTTPS is only needed for local dev (getUserMedia requires a secure context
-  // on LAN / Android). Disable for `vite preview` and CI so that Playwright
-  // can reach the server over plain HTTP without timing out.
-  const useHttps = command === 'serve' && !process.env.CI;
+  // on LAN / Android). Disable for:
+  //   - `vite preview` (used by CI / playwright.config.prod.ts)
+  //   - CI builds
+  //   - Playwright dev runs (PLAYWRIGHT_TEST=1) so the webServer health-check
+  //     can reach the server over plain HTTP without TLS cert issues.
+  const useHttps = command === 'serve' && !process.env.CI && !process.env.PLAYWRIGHT_TEST;
 
   return {
   // Base path for GitHub Pages deployment
