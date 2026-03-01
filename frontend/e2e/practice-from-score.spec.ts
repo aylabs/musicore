@@ -49,6 +49,8 @@ async function openPractice(page: Page) {
  * score to finish loading (real .mxl fetch + WASM parse).
  */
 async function loadBeethovenScore(page: Page) {
+  // Open the config panel by switching to Custom level
+  await page.getByLabel(/complexity level/i).selectOption('custom');
   await page.getByRole('radio', { name: SCORE_RADIO }).click();
   // Dialog opens synchronously on radio click; allow up to 15 s for CI rendering
   await expect(page.locator(SCORE_DIALOG)).toBeVisible({ timeout: 15_000 });
@@ -98,6 +100,9 @@ test.describe('SC-002: Cache preserved on preset switch', () => {
 test.describe('SC-003: Existing preset regressions', () => {
   test('Random preset exercise starts normally', async ({ page }) => {
     await openPractice(page);
+    // Select High complexity level -- uses random preset + flow mode (with countdown)
+    const levelSel = page.getByLabel(/complexity level/i);
+    await levelSel.selectOption('high');
     await expect(page.getByRole('radio', { name: RANDOM_RADIO })).toBeChecked({ timeout: 5_000 });
 
     await page.locator(PLAY_BTN).click();
@@ -111,11 +116,13 @@ test.describe('SC-003: Existing preset regressions', () => {
 
   test('C4 Scale preset exercise starts normally', async ({ page }) => {
     await openPractice(page);
+    // Open config panel via Custom to access preset selector
+    await page.getByLabel(/complexity level/i).selectOption('custom');
     await page.getByRole('radio', { name: C4_RADIO }).click();
 
     await page.locator(PLAY_BTN).click();
+    // C4 Scale uses step mode -- no countdown, goes straight to playing
     await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.practice-countdown')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 30_000 });
   });
 });
@@ -140,6 +147,8 @@ test.describe('SC-004: Notes slider max matches totalAvailable', () => {
 test.describe('SC-005: Score selector file-upload UI', () => {
   test('score selector contains a file-upload control and cancel works', async ({ page }) => {
     await openPractice(page);
+    // Open config panel via Custom to access preset selector
+    await page.getByLabel(/complexity level/i).selectOption('custom');
     await page.getByRole('radio', { name: SCORE_RADIO }).click();
     await expect(page.locator(SCORE_DIALOG)).toBeVisible();
 

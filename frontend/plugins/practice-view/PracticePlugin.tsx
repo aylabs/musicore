@@ -861,7 +861,6 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     setPhase('ready');
     phaseRef.current = 'ready';
     setComplexityLevel(level);
-    setSidebarCollapsed(true);
     localStorage.setItem(COMPLEXITY_LEVEL_STORAGE_KEY, level);
   }, [context, resetOnsetDetection, clearStepTimeout]);
 
@@ -875,17 +874,17 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     applyComplexityLevel(level);
   }, [applyComplexityLevel]);
 
-  // ── Auto-expand sidebar when custom level is active ────────────────────────
+  // ── Sidebar: only visible in Custom mode, hidden during exercise ──────────
   useEffect(() => {
-    if (complexityLevel === null) setSidebarCollapsed(false);
-  }, [complexityLevel]);
-
-  // ── Collapse sidebar when exercise starts ─────────────────────────────────
-  useEffect(() => {
-    if (phase === 'playing' || phase === 'countdown') {
+    if (complexityLevel === null) {
+      // Custom mode: open when idle, collapse during exercise
+      if (phase !== 'playing' && phase !== 'countdown') setSidebarCollapsed(false);
+      else setSidebarCollapsed(true);
+    } else {
+      // Preset level: always hidden
       setSidebarCollapsed(true);
     }
-  }, [phase]);
+  }, [complexityLevel, phase]);
 
   // ── Mute staff speaker whenever mic is actively recording ───────────────
   useEffect(() => {
@@ -1213,9 +1212,14 @@ export function PracticePlugin({ context }: PracticePluginProps) {
           {/* Controls: ready phase */}
           {phase === 'ready' && (
             <div className="practice-controls">
-              <p className="practice-start-prompt" aria-live="polite">
+              <button
+                className="practice-start-prompt"
+                data-testid="practice-play-btn"
+                aria-label="Start exercise"
+                onClick={() => config.mode === 'step' ? handleStartStep() : handlePlay()}
+              >
                 🎹 Press any note to start
-              </p>
+              </button>
             </div>
           )}
 

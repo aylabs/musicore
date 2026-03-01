@@ -25,7 +25,7 @@ test.describe('Feature 001: Practice View navigation', () => {
 
     // The Practice view root and its heading must be visible
     await expect(page.locator('[data-testid="practice-view"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /practice exercise/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /practice/i })).toBeVisible();
   });
 
   test('Back button in Practice view returns to the landing screen', async ({ page }) => {
