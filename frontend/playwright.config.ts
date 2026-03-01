@@ -26,12 +26,13 @@ export default defineConfig({
     },
   ],
 
-  // Start dev server before tests
+  // Start dev server before tests.
+  // CI=1 disables the self-signed HTTPS cert in vite.config.ts so Playwright
+  // can reach the server over plain HTTP (baseURL above uses http://).
   webServer: {
-    command: 'cd frontend && PLAYWRIGHT_TEST=1 npm run dev',
+    command: 'CI=1 npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
-    cwd: '..',  // Run from repo root
   },
 });
