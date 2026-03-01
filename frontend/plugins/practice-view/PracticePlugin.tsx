@@ -753,14 +753,11 @@ export function PracticePlugin({ context }: PracticePluginProps) {
 
   // ── Config helpers — use refs to avoid stale closures ──────────────────────
   const updateConfig = useCallback((patch: Partial<ExerciseConfig>) => {
-    // Compute next config synchronously so we can use it for side-effects below
-    setConfig(prev => {
-      const next = { ...prev, ...patch };
-      configRef.current = next;
-      return next;
-    });
-    // Side-effects that depend on the new config value — run outside the updater
+    // Compute next BEFORE calling setConfig so the ref and side-effects both
+    // see the same value — avoids a race where the outer scope reads a stale ref.
     const next = { ...configRef.current, ...patch };
+    configRef.current = next;
+    setConfig(next);
     if (phaseRef.current === 'ready') {
       if (next.preset === 'score') {
         // Open selector when switching to score with no cached pitches
@@ -858,6 +855,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
               className="practice-plugin__header-btn practice-plugin__header-btn--stop"
               onClick={handleStop}
               aria-label="Stop exercise"
+              data-testid="practice-stop-btn"
             >
               ■ Stop
             </button>
@@ -1101,6 +1099,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 className="practice-plugin__play-btn"
                 onClick={config.mode === 'step' ? handleStartStep : handlePlay}
                 aria-label="Play exercise"
+                data-testid="practice-play-btn"
               >
                 ▶ Play
               </button>

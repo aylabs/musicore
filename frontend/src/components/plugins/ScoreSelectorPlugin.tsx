@@ -42,6 +42,7 @@ export function ScoreSelectorPlugin({
       role="dialog"
       aria-modal="true"
       aria-label="Select a Score"
+      data-testid="score-selector-dialog"
     >
       <div className="score-selector-panel">
         {/* Header */}
@@ -73,21 +74,15 @@ export function ScoreSelectorPlugin({
         ) : (
           <ul className="score-selector-list" role="listbox" aria-label="Preloaded scores">
             {catalogue.map((entry) => (
-              <li
-                key={entry.id}
-                role="option"
-                aria-selected={false}
-                className="score-selector-item"
-                onClick={() => onSelectScore(entry.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelectScore(entry.id);
-                  }
-                }}
-                tabIndex={0}
-              >
-                {entry.displayName}
+              <li key={entry.id} role="none" className="score-selector-item">
+                <button
+                  type="button"
+                  className="score-selector-item__btn"
+                  aria-label={entry.displayName}
+                  onClick={() => onSelectScore(entry.id)}
+                >
+                  {entry.displayName}
+                </button>
               </li>
             ))}
           </ul>
