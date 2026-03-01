@@ -692,7 +692,7 @@
   }
 
   .practice-sidebar--collapsed {
-    width: 100%;
+    display: none;
   }
 
   /* Sections scroll horizontally */
