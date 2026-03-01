@@ -11,9 +11,13 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  
+
   use: {
-    baseURL: 'http://localhost:5173',
+    // The local dev server uses a self-signed HTTPS cert (required for
+    // getUserMedia on LAN / Android).  ignoreHTTPSErrors lets Playwright
+    // navigate the site without certificate errors.
+    baseURL: 'https://localhost:5173',
+    ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -26,13 +30,14 @@ export default defineConfig({
     },
   ],
 
-  // Start dev server before tests.
-  // CI=1 disables the self-signed HTTPS cert in vite.config.ts so Playwright
-  // can reach the server over plain HTTP (baseURL above uses http://).
+  // Start dev server before tests if it isn't already running.
+  // reuseExistingServer: true lets you keep `npm run dev` open in another
+  // terminal and re-run tests without waiting for Vite to restart.
   webServer: {
-    command: 'CI=1 npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run dev',
+    url: 'https://localhost:5173',
+    reuseExistingServer: true,
+    ignoreHTTPSErrors: true,
     timeout: 120000,
   },
 });
