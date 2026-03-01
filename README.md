@@ -121,6 +121,12 @@ npm run dev
 # Runs on http://localhost:5173
 ```
 
+**Enable Git hooks** (one-time, run from repo root):
+```bash
+git config core.hooksPath .githooks
+```
+This wires up the pre-commit (type-check + lint) and pre-push (Rust tests + build + unit tests + E2E) hooks stored in [`.githooks/`](.githooks/).
+
 **Build WASM Module:**
 ```bash
 cd backend
