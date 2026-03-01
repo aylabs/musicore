@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PluginContext, PluginPitchEvent, PluginNoteEvent } from '../../src/plugin-api/index';
+import type { PluginContext, PluginPitchEvent, PluginNoteEvent, PluginScorePitches, ScorePlayerState } from '../../src/plugin-api/index';
 import type {
   PracticePhase,
   PracticeExercise,
@@ -21,7 +21,7 @@ import type {
   ResponseNote,
   NoteComparisonStatus,
 } from './practiceTypes';
-import { generateExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
+import { generateExercise, generateScoreExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
 import { scoreCapture } from './exerciseScorer';
 import './PracticePlugin.css';
 
@@ -98,6 +98,15 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   // ── Mic state ────────────────────────────────────────────────────────────────
   const [micActive, setMicActive] = useState<boolean | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+
+  // ── Score preset state ────────────────────────────────────────────────────────
+  const [scorePitches, setScorePitches] = useState<PluginScorePitches | null>(null);
+  const [showScoreSelector, setShowScoreSelector] = useState(false);
+  const [scorePlayerState, setScorePlayerState] = useState<ScorePlayerState>({
+    status: 'idle', currentTick: 0, totalDurationTicks: 0,
+    highlightedNoteIds: new Set<string>(), bpm: 0, title: null, error: null,
+  });
+  const scorePitchesRef = useRef<PluginScorePitches | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [showTips, setShowTips] = useState(
@@ -176,6 +185,30 @@ export function PracticePlugin({ context }: PracticePluginProps) {
 
   // Stable ref to handlePlay — lets MIDI subscription auto-start without stale closure
   const handlePlayRef = useRef<() => void>(() => {});
+
+  // ── ScorePlayer subscription ──────────────────────────────────────────────────
+  // Delivers state snapshots into React state so downstream effects can react.
+  useEffect(() => {
+    return context.scorePlayer.subscribe((state: ScorePlayerState) => {
+      setScorePlayerState(state);
+    });
+  }, [context.scorePlayer]);
+
+  // When scorePlayerState transitions to 'ready' while the Score preset is active,
+  // extract the practice notes.  This effect runs AFTER the host has committed its
+  // own state (pluginStatus, score), so extractPracticeNotes returns valid data.
+  useEffect(() => {
+    if (scorePlayerState.status === 'ready' && configRef.current.preset === 'score') {
+      const pitches = context.scorePlayer.extractPracticeNotes(configRef.current.noteCount);
+      if (pitches) {
+        scorePitchesRef.current = pitches;
+        setScorePitches(pitches);
+        setShowScoreSelector(false);
+        setExercise(generateScoreExercise(bpmRef.current, pitches.notes, configRef.current.noteCount));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scorePlayerState.status, context.scorePlayer]);
 
   // ── Web MIDI device presence watcher ─────────────────────────────────────────
   // Uses navigator.requestMIDIAccess (browser API, not a host import) to detect
@@ -707,28 +740,51 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     autoStartedRef.current = false;
     if (stepSlotTimeoutRef.current !== null) { clearTimeout(stepSlotTimeoutRef.current); stepSlotTimeoutRef.current = null; }
     if (stepDebounceTimeoutRef.current !== null) { clearTimeout(stepDebounceTimeoutRef.current); stepDebounceTimeoutRef.current = null; }
-    setExercise(generateExercise(bpmRef.current, configRef.current));
+    setExercise(
+      configRef.current.preset === 'score' && scorePitchesRef.current
+        ? generateScoreExercise(bpmRef.current, scorePitchesRef.current.notes, configRef.current.noteCount)
+        : configRef.current.preset !== 'score'
+          ? generateExercise(bpmRef.current, configRef.current)
+          : { notes: [], bpm: bpmRef.current },
+    );
     setPhase('ready');
     phaseRef.current = 'ready';
   }, [resetOnsetDetection]);
 
   // ── Config helpers — use refs to avoid stale closures ──────────────────────
   const updateConfig = useCallback((patch: Partial<ExerciseConfig>) => {
-    setConfig(prev => {
-      const next = { ...prev, ...patch };
-      configRef.current = next;
-      if (phaseRef.current === 'ready') {
+    // Compute next BEFORE calling setConfig so the ref and side-effects both
+    // see the same value — avoids a race where the outer scope reads a stale ref.
+    const next = { ...configRef.current, ...patch };
+    configRef.current = next;
+    setConfig(next);
+    if (phaseRef.current === 'ready') {
+      if (next.preset === 'score') {
+        // Open selector when switching to score with no cached pitches
+        if (!scorePitchesRef.current && patch.preset === 'score') {
+          setShowScoreSelector(true);
+        }
+        // Regenerate from cached pitches if available
+        if (scorePitchesRef.current) {
+          setExercise(generateScoreExercise(bpmRef.current, scorePitchesRef.current.notes, next.noteCount));
+        } else {
+          setExercise({ notes: [], bpm: bpmRef.current });
+        }
+      } else {
         setExercise(generateExercise(bpmRef.current, next));
       }
-      return next;
-    });
+    }
   }, []);
 
   const handleBpmChange = useCallback((v: number) => {
     setBpmValue(v);
     bpmRef.current = v;
     if (phaseRef.current === 'ready') {
-      setExercise(generateExercise(v, configRef.current));
+      if (configRef.current.preset === 'score' && scorePitchesRef.current) {
+        setExercise(generateScoreExercise(v, scorePitchesRef.current.notes, configRef.current.noteCount));
+      } else if (configRef.current.preset !== 'score') {
+        setExercise(generateExercise(v, configRef.current));
+      }
     }
   }, []);
 
@@ -756,7 +812,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   }, [phase, responseNoteEvents]);
 
   const isDisabled = phase === 'playing' || phase === 'countdown';
-  const { StaffViewer } = context.components;
+  const { StaffViewer, ScoreSelector } = context.components;
 
   // ── Input source badge ────────────────────────────────────────────────────────
   const inputBadgeClass = [
@@ -799,6 +855,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
               className="practice-plugin__header-btn practice-plugin__header-btn--stop"
               onClick={handleStop}
               aria-label="Stop exercise"
+              data-testid="practice-stop-btn"
             >
               ■ Stop
             </button>
@@ -862,7 +919,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
               {/* SCORE */}
               <div className="practice-sidebar__section">
                 <p className="practice-sidebar__section-title">Score</p>
-                {([['random', 'Random'], ['c4scale', 'C4 Scale (debug)']] as [ExerciseConfig['preset'], string][]).map(([v, label]) => (
+                {([['random', 'Random'], ['c4scale', 'C4 Scale (debug)'], ['score', 'Score']] as [ExerciseConfig['preset'], string][]).map(([v, label]) => (
                   <label
                     key={v}
                     className={`practice-sidebar__radio-label${isDisabled ? ' practice-sidebar__radio-label--disabled' : ''}`}
@@ -878,6 +935,16 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                     {label}
                   </label>
                 ))}
+                {config.preset === 'score' && scorePitches !== null && (
+                  <button
+                    className="practice-sidebar__change-score-btn"
+                    disabled={isDisabled}
+                    aria-label="Change score"
+                    onClick={() => setShowScoreSelector(true)}
+                  >
+                    Change score
+                  </button>
+                )}
               </div>
 
               {/* NOTES */}
@@ -887,7 +954,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                   <input
                     type="range"
                     min={2}
-                    max={20}
+                    max={config.preset === 'score' && scorePitches ? scorePitches.totalAvailable : 20}
                     step={1}
                     value={config.noteCount}
                     disabled={isDisabled}
@@ -904,19 +971,23 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 {(['Treble', 'Bass'] as const).map((c) => (
                   <label
                     key={c}
-                    className={`practice-sidebar__radio-label${isDisabled ? ' practice-sidebar__radio-label--disabled' : ''}`}
+                    className={`practice-sidebar__radio-label${(isDisabled || config.preset === 'score') ? ' practice-sidebar__radio-label--disabled' : ''}`}
                   >
                     <input
                       type="radio"
                       name="practice-clef"
                       value={c}
                       checked={config.clef === c}
-                      disabled={isDisabled}
+                      disabled={isDisabled || config.preset === 'score'}
+                      aria-disabled={config.preset === 'score'}
                       onChange={() => updateConfig({ clef: c })}
                     />
                     {c}
                   </label>
                 ))}
+                {config.preset === 'score' && (
+                  <span className="practice-score-disabled-label">Set by score</span>
+                )}
               </div>
 
               {/* OCTAVES */}
@@ -925,19 +996,23 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 {([1, 2] as const).map((o) => (
                   <label
                     key={o}
-                    className={`practice-sidebar__radio-label${isDisabled ? ' practice-sidebar__radio-label--disabled' : ''}`}
+                    className={`practice-sidebar__radio-label${(isDisabled || config.preset === 'score') ? ' practice-sidebar__radio-label--disabled' : ''}`}
                   >
                     <input
                       type="radio"
                       name="practice-octaves"
                       value={o}
                       checked={config.octaveRange === o}
-                      disabled={isDisabled}
+                      disabled={isDisabled || config.preset === 'score'}
+                      aria-disabled={config.preset === 'score'}
                       onChange={() => updateConfig({ octaveRange: o })}
                     />
                     {o === 1 ? '1 oct.' : '2 oct.'}
                   </label>
                 ))}
+                {config.preset === 'score' && (
+                  <span className="practice-score-disabled-label">Set by score</span>
+                )}
               </div>
 
               {/* TEMPO */}
@@ -1024,6 +1099,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 className="practice-plugin__play-btn"
                 onClick={config.mode === 'step' ? handleStartStep : handlePlay}
                 aria-label="Play exercise"
+                data-testid="practice-play-btn"
               >
                 ▶ Play
               </button>
@@ -1174,6 +1250,28 @@ export function PracticePlugin({ context }: PracticePluginProps) {
           )}
         </main>
       </div>
+
+      {/* ── ScoreSelector overlay ─────────────────────────────────────────── */}
+      {showScoreSelector && config.preset === 'score' && (
+        <ScoreSelector
+          catalogue={context.scorePlayer.getCatalogue()}
+          isLoading={scorePlayerState.status === 'loading'}
+          error={scorePlayerState.error}
+          onSelectScore={(catalogueId) => {
+            context.scorePlayer.loadScore({ kind: 'catalogue', catalogueId });
+          }}
+          onLoadFile={(file) => {
+            context.scorePlayer.loadScore({ kind: 'file', file });
+          }}
+          onCancel={() => {
+            setShowScoreSelector(false);
+            if (!scorePitchesRef.current) {
+              // No score loaded yet — revert to random preset
+              updateConfig({ preset: 'random' });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

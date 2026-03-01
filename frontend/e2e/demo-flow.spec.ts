@@ -30,8 +30,15 @@ test.describe('Feature 027: Demo Flow UX', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Page should load without critical errors
-    expect(errors.filter(e => !e.includes('WASM') && !e.includes('favicon'))).toHaveLength(0);
+    // Page should load without critical errors.
+    // 'Service worker' errors are excluded because Playwright blocks SW
+    // registration (serviceWorkers: 'block' in playwright.config.prod.ts)
+    // which causes VitePWA's registration code to log a non-fatal error.
+    expect(
+      errors.filter(
+        e => !e.includes('WASM') && !e.includes('favicon') && !e.includes('Service worker'),
+      ),
+    ).toHaveLength(0);
   });
 
   test('T036-B: Instruments view → Play view navigation', async ({ page }) => {

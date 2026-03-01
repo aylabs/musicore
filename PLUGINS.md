@@ -411,7 +411,13 @@ The Practice View (`frontend/plugins/practice-view/`) is the reference implement
 - **StaffViewer** — `context.components.StaffViewer` renders a read-only notation staff inside the plugin without importing the layout engine
 - **Phase state machine** — `ready → countdown → playing → results`
 - **Timer-based countdown** — compatible with `vi.useFakeTimers()` (no async/await)
-- A full Vitest test suite (TDD, 14 tests) covering all user-visible behaviours
+- **Score preset (v2, Feature 034)** — requires **Plugin API v4**:
+  - `context.scorePlayer.extractPracticeNotes(maxCount)` → `PluginScorePitches`
+  - `context.components.ScoreSelector` — host-owned overlay for catalogue / file loading
+  - Clef and octave are derived from the loaded score; controls disabled in Score mode
+  - `generateScoreExercise(bpm, pitches, noteCount)` — plugin-internal factory
+  - Preset caching: `scorePitches` preserved across preset switches
+- A full Vitest test suite covering all user-visible behaviours (US1–US3)
 
 ---
 

@@ -26,8 +26,90 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import type { PluginContext, PluginPitchEvent, PluginNoteEvent } from '../../src/plugin-api/index';
+import type {
+  PluginContext,
+  PluginPitchEvent,
+  PluginNoteEvent,
+  PluginScorePlayerContext,
+  PluginScoreSelectorProps,
+} from '../../src/plugin-api/index';
 import { PracticePlugin } from './PracticePlugin';
+
+// ─── Mock ScorePlayer factory ──────────────────────────────────────────────
+
+type MockScorePlayerState = { status: 'idle' | 'loading' | 'ready' | 'error'; currentTick: number; totalDurationTicks: number; highlightedNoteIds: ReadonlySet<string>; bpm: number; title: string | null; error: string | null };
+
+const MOCK_CATALOGUE: ReadonlyArray<{ id: string; displayName: string }> = [
+  { id: 'beethoven', displayName: 'Beethoven Für Elise' },
+  { id: 'chopin',    displayName: 'Chopin Nocturne'     },
+];
+
+const MOCK_PITCHES = {
+  notes: [{ midiPitch: 60 }, { midiPitch: 62 }, { midiPitch: 64 }] as ReadonlyArray<{ midiPitch: number }>,
+  totalAvailable: 3,
+  clef: 'Treble' as const,
+  title: 'Beethoven Für Elise',
+};
+
+function makeMockScorePlayer(): PluginScorePlayerContext & { _notify: (state: MockScorePlayerState) => void } {
+  const subscribers = new Set<(state: MockScorePlayerState) => void>();
+  let currentState: MockScorePlayerState = { status: 'idle', currentTick: 0, totalDurationTicks: 0, highlightedNoteIds: new Set<string>(), bpm: 0, title: null, error: null };
+
+  const notify = (state: MockScorePlayerState) => {
+    currentState = state;
+    subscribers.forEach(h => h(state));
+  };
+
+  return {
+    getCatalogue: vi.fn(() => MOCK_CATALOGUE as unknown as ReadonlyArray<import('../../src/plugin-api/index').PluginPreloadedScore>),
+    subscribe: vi.fn((handler: (state: MockScorePlayerState) => void) => {
+      subscribers.add(handler);
+      handler(currentState); // Immediately deliver current state
+      return () => subscribers.delete(handler);
+    }),
+    loadScore: vi.fn((_ref: unknown) => {
+      notify({ ...currentState, status: 'loading', error: null });
+      return Promise.resolve();
+    }),
+    play: vi.fn(() => Promise.resolve()),
+    pause: vi.fn(),
+    stop: vi.fn(),
+    seek: vi.fn(),
+    setTempo: vi.fn(),
+    extractPracticeNotes: vi.fn((_maxCount: number) => MOCK_PITCHES),
+    _notify: notify,
+  };
+}
+
+// ─── Mock ScoreSelector component ─────────────────────────────────────────────
+
+function MockScoreSelector({ onSelectScore, onLoadFile, onCancel, catalogue, isLoading, error }: PluginScoreSelectorProps) {
+  return (
+    <div data-testid="score-selector-dialog" role="dialog" aria-label="Select score">
+      {error && <div data-testid="score-selector-error">{error}</div>}
+      {isLoading && <div data-testid="score-selector-loading">Loading…</div>}
+      <ul>
+        {(catalogue ?? []).map((item) => (
+          <li key={item.id}>
+            <button onClick={() => onSelectScore(item.id)}>{item.displayName}</button>
+          </li>
+        ))}
+      </ul>
+      <label>
+        Load from file
+        <input
+          type="file"
+          data-testid="score-selector-file-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onLoadFile?.(file);
+          }}
+        />
+      </label>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
 
 // ─── Mock PluginContext factory ────────────────────────────────────────────────
 
@@ -35,12 +117,13 @@ import { PracticePlugin } from './PracticePlugin';
  * Create a minimal PluginContext mock with spy functions.
  * All capabilities come from context — no src/ imports.
  */
-function makeMockContext(): PluginContext & {
+function makeMockContext(overrides?: { scorePlayer?: PluginScorePlayerContext & { _notify: (s: MockScorePlayerState) => void } }): PluginContext & {
   _pitchSubscribers: Set<(e: PluginPitchEvent) => void>;
   _midiSubscribers: Set<(e: PluginNoteEvent) => void>;
 } {
   const pitchSubscribers = new Set<(e: PluginPitchEvent) => void>();
   const midiSubscribers = new Set<(e: PluginNoteEvent) => void>();
+  const scorePlayer = overrides?.scorePlayer ?? makeMockScorePlayer();
 
   return {
     emitNote: vi.fn(),
@@ -60,17 +143,19 @@ function makeMockContext(): PluginContext & {
         return () => midiSubscribers.delete(handler);
       }),
     },
+    scorePlayer,
     components: {
       // Minimal StaffViewer stub: renders a div with accessible role
       StaffViewer: ({ clef }: { clef?: string; notes?: PluginNoteEvent[]; highlightedNotes?: number[] }) => (
         <div data-testid="staff-viewer" data-clef={clef ?? 'Treble'} role="img" aria-label="staff" />
       ),
+      ScoreSelector: MockScoreSelector,
     },
     manifest: {
       id: 'practice-view',
       name: 'Practice',
       version: '1.0.0',
-      pluginApiVersion: '2',
+      pluginApiVersion: '4',
       entryPoint: 'index.tsx',
       origin: 'builtin',
     } as const,
@@ -337,6 +422,359 @@ describe('PracticePlugin', () => {
 
       // stopPlayback should have been called
       expect(ctx.stopPlayback).toHaveBeenCalled();
+    });
+  });
+
+  // ── (l) Score preset — US1 ────────────────────────────────────────────────
+
+  describe('Score preset (US1 — T007)', () => {
+    it('renders three preset options: Random, C4 Scale, and Score', () => {
+      const ctx = makeMockContext();
+      render(<PracticePlugin context={ctx} />);
+
+      // All three radio options must be present in the preset selector
+      expect(screen.getByRole('radio', { name: /random/i })).toBeDefined();
+      expect(screen.getByRole('radio', { name: /c4 scale/i })).toBeDefined();
+      expect(screen.getByRole('radio', { name: /score/i })).toBeDefined();
+    });
+
+    it('selecting Score with no scorePitches makes ScoreSelector visible', async () => {
+      const ctx = makeMockContext();
+      render(<PracticePlugin context={ctx} />);
+
+      // ScoreSelector must NOT be open initially
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+
+      // Click the Score radio button
+      await act(async () => {
+        fireEvent.click(screen.getByRole('radio', { name: /score/i }));
+      });
+
+      // ScoreSelector overlay must now be visible
+      expect(screen.getByTestId('score-selector-dialog')).toBeDefined();
+    });
+
+    it('after loadScore resolves and extractPracticeNotes returns pitches the exercise populates', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Select Score preset → dialog opens
+      await act(async () => {
+        fireEvent.click(screen.getByRole('radio', { name: /score/i }));
+      });
+
+      // Click on a catalogue item — triggers onSelectScore → loadScore
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /beethoven/i }));
+      });
+
+      // Notify subscribers that score is now 'ready'
+      await act(async () => {
+        spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null });
+      });
+
+      // extractPracticeNotes should have been called
+      expect(spPlayer.extractPracticeNotes).toHaveBeenCalled();
+
+      // StaffViewer (exercise) should be in document (exercise populated)
+      expect(screen.getAllByTestId('staff-viewer').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('Notes slider max equals scorePitches.totalAvailable when Score preset active', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Select Score → pick score → mark ready
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Find the Notes count slider
+      const slider = screen.queryByRole('slider', { name: /note/i })
+        ?? screen.queryByDisplayValue(String(MOCK_PITCHES.totalAvailable));
+
+      if (slider) {
+        expect(Number((slider as HTMLInputElement).max)).toBe(MOCK_PITCHES.totalAvailable);
+      } else {
+        // If slider isn't found by those queries, check any range input
+        const sliders = document.querySelectorAll('input[type="range"]');
+        const noteSlider = Array.from(sliders).find(s =>
+          Number((s as HTMLInputElement).max) === MOCK_PITCHES.totalAvailable
+        );
+        expect(noteSlider).toBeDefined();
+      }
+    });
+
+    it('clef and octave controls are disabled when Score preset is active', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Clef control (radio group) should be disabled
+      const clefRadios = document.querySelectorAll('input[name="practice-clef"]');
+      if (clefRadios.length > 0) {
+        clefRadios.forEach(r => expect((r as HTMLInputElement).disabled).toBe(true));
+      }
+
+      // Octave control should be disabled
+      const octaveRadios = document.querySelectorAll('input[name="practice-octaves"]');
+      if (octaveRadios.length > 0) {
+        octaveRadios.forEach(r => expect((r as HTMLInputElement).disabled).toBe(true));
+      }
+
+      // At least clef controls must exist in the DOM
+      expect(clefRadios.length).toBeGreaterThan(0);
+    });
+
+    it('"Set by score" disabled label is visible when Score preset is active', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      expect(screen.getAllByText(/set by score/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('"Change score" button is present when Score preset is active with a loaded score', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      expect(screen.getByRole('button', { name: /change score/i })).toBeDefined();
+    });
+
+    it('"Change score" button is disabled during countdown and playing phases', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load score
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Start exercise — enters countdown
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /play/i })); });
+
+      const changeScoreBtn = screen.getByRole('button', { name: /change score/i }) as HTMLButtonElement;
+      expect(changeScoreBtn.disabled).toBe(true);
+
+      // Advance to playing phase
+      await act(async () => { vi.advanceTimersByTime(4000); });
+
+      const changeScoreBtnPlaying = screen.getByRole('button', { name: /change score/i }) as HTMLButtonElement;
+      expect(changeScoreBtnPlaying.disabled).toBe(true);
+    });
+
+    it('"Change score" click reopens ScoreSelector overlay', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load score and dismiss dialog
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Dialog should be gone now (dismissed after score selection)
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+
+      // Click "Change score"
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /change score/i }));
+      });
+
+      // ScoreSelector must reopen
+      expect(screen.getByTestId('score-selector-dialog')).toBeDefined();
+    });
+  });
+
+  // ── (m) Score preset — US2 (error handling + cancel) ───────────────────────
+
+  describe('Score preset US2 — error handling and cancel (T013)', () => {
+    it('onLoadFile triggers loadScore with kind=file', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Open selector
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+
+      const fileInput = screen.getByTestId('score-selector-file-input') as HTMLInputElement;
+      const mockFile = new File(['<score/>'], 'test.mxl', { type: 'application/octet-stream' });
+
+      // Simulate file selection
+      await act(async () => {
+        Object.defineProperty(fileInput, 'files', { value: [mockFile], configurable: true });
+        fireEvent.change(fileInput);
+      });
+
+      expect(spPlayer.loadScore).toHaveBeenCalledWith({ kind: 'file', file: mockFile });
+    });
+
+    it('scorePlayerState.error is passed to ScoreSelector as error prop', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Open the selector
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+
+      // Notify error
+      await act(async () => {
+        spPlayer._notify({ status: 'error', currentTick: 0, totalDurationTicks: 0, highlightedNoteIds: new Set<string>(), bpm: 0, title: null, error: 'Invalid MXL' });
+      });
+
+      // Error should be shown inside the selector
+      expect(screen.getByTestId('score-selector-error').textContent).toContain('Invalid MXL');
+    });
+
+    it('error state does NOT clear previously cached scorePitches', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load score successfully
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // "Change score" should still be present (scorePitches cached)
+      expect(screen.getByRole('button', { name: /change score/i })).toBeDefined();
+
+      // Now trigger an error (e.g. user tried to load a different file and it failed)
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /change score/i }));
+      });
+      await act(async () => {
+        spPlayer._notify({ status: 'error', currentTick: 0, totalDurationTicks: 0, highlightedNoteIds: new Set<string>(), bpm: 0, title: null, error: 'Corrupt file' });
+      });
+
+      // Notes slider max should still reflect the cached pitches' totalAvailable
+      const sliders = document.querySelectorAll('input[type="range"]');
+      const hasScoreMax = Array.from(sliders).some(s =>
+        Number((s as HTMLInputElement).max) === MOCK_PITCHES.totalAvailable
+      );
+      expect(hasScoreMax).toBe(true);
+    });
+
+    it('cancel with no score loaded reverts preset to random', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Select Score → dialog opens (no score loaded)
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      expect(screen.getByTestId('score-selector-dialog')).toBeDefined();
+
+      // Click Cancel
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      });
+
+      // Dialog should be gone
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+
+      // Preset should have reverted to random
+      const randomRadio = screen.getByRole('radio', { name: /random/i }) as HTMLInputElement;
+      expect(randomRadio.checked).toBe(true);
+    });
+
+    it('cancel after score is loaded closes dialog without changing preset', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load score
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Reopen selector via "Change score"
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /change score/i })); });
+
+      // Click Cancel
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /cancel/i })); });
+
+      // Dialog gone, preset still Score
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+      const scoreRadio = screen.getByRole('radio', { name: /score/i }) as HTMLInputElement;
+      expect(scoreRadio.checked).toBe(true);
+    });
+  });
+
+  // ── (n) Score preset — US3 (preset caching) ────────────────────────────────
+
+  describe('Score preset US3 — preset switching caching (T015)', () => {
+    it('scorePitches is preserved when switching away from Score preset', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load a score
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Switch to Random preset
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /random/i })); });
+
+      // Notes slider max should NOT be the score's totalAvailable
+      // (it should revert to the default max=20 for random)
+      const sliders = document.querySelectorAll('input[type="range"]');
+      const notesSlider = Array.from(sliders).find(s => {
+        const max = Number((s as HTMLInputElement).max);
+        return max === 20 || max === MOCK_PITCHES.totalAvailable;
+      }) as HTMLInputElement | undefined;
+      // After switching away, no score-max slider; but the cached pitches don't disappear
+      // Verify by switching back — no dialog
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+
+      // Dialog must NOT open because cache is still present
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+      void notesSlider; // suppress unused warning
+    });
+
+    it('switching back to Score with cached pitches does NOT open ScoreSelector', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // Load a score
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
+      await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
+
+      // Switch away and back
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /random/i })); });
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+
+      // No dialog — cached pitches are used immediately
+      expect(screen.queryByTestId('score-selector-dialog')).toBeNull();
+    });
+
+    it('switching to Score with null cache opens ScoreSelector', async () => {
+      const spPlayer = makeMockScorePlayer();
+      const ctx = makeMockContext({ scorePlayer: spPlayer });
+      render(<PracticePlugin context={ctx} />);
+
+      // No score loaded yet — selecting Score should open the dialog
+      await act(async () => { fireEvent.click(screen.getByRole('radio', { name: /score/i })); });
+
+      expect(screen.getByTestId('score-selector-dialog')).toBeDefined();
     });
   });
 });

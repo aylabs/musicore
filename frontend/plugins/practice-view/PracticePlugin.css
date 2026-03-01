@@ -707,3 +707,42 @@
     min-width: 95px;
   }
 }
+
+/* ── Feature 034: Score preset controls ── */
+
+.practice-score-disabled-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #888);
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+.practice-control--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.practice-sidebar__change-score-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  transition: opacity 0.15s;
+}
+
+.practice-sidebar__change-score-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.practice-sidebar__change-score-btn:not(:disabled):hover {
+  opacity: 0.75;
+}

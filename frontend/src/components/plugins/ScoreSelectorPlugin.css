@@ -1,0 +1,158 @@
+/**
+ * ScoreSelectorPlugin.css — Score Selector overlay styles
+ * Feature 034: Practice from Score
+ */
+
+/* ── Overlay backdrop ───────────────────────────────────────────────────── */
+.score-selector-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+.score-selector-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.score-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.score-selector-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.score-selector-cancel {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.score-selector-cancel:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+/* ── Error message ──────────────────────────────────────────────────────── */
+.score-selector-error {
+  margin: 0.75rem 1.25rem 0;
+  padding: 0.5rem 0.75rem;
+  background: #fff3f3;
+  border: 1px solid #ffcccc;
+  border-radius: 6px;
+  color: #c62828;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+/* ── Loading ────────────────────────────────────────────────────────────── */
+.score-selector-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.25rem;
+  color: #555;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.score-selector-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: score-selector-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes score-selector-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Catalogue list ─────────────────────────────────────────────────────── */
+.score-selector-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.score-selector-item {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  color: #1a1a2e;
+  cursor: pointer;
+  transition: background 0.12s;
+  outline: none;
+}
+
+.score-selector-item:hover,
+.score-selector-item:focus {
+  background: #e8f0fe;
+}
+
+.score-selector-item:active {
+  background: #c5d8fc;
+}
+
+/* ── Load from file row ─────────────────────────────────────────────────── */
+.score-selector-file-row {
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.score-selector-file-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: #f5f7ff;
+  border: 1.5px dashed #9ca8d6;
+  border-radius: 8px;
+  color: #1a3c8f;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.score-selector-file-btn:hover {
+  background: #eaefff;
+  border-color: #4a6cf7;
+}
+
+.score-selector-file-btn:active {
+  background: #d9e3ff;
+}

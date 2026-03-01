@@ -12,6 +12,7 @@ import { pluginRegistry } from './services/plugins/PluginRegistry'
 import { PluginView, V3PluginWrapper, createBoundScoreRenderer, type V3ProxyRefs } from './components/plugins/PluginView'
 import { PluginNavEntry } from './components/plugins/PluginNavEntry'
 import { PluginImporterDialog } from './components/plugins/PluginImporterDialog'
+import { ScoreSelectorPlugin } from './components/plugins/ScoreSelectorPlugin'
 import type { PluginContext, PluginNoteEvent, MusicorePlugin } from './plugin-api/index'
 import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
 import { createNoOpScorePlayer, createScorePlayerProxy } from './plugin-api/scorePlayerContext'
@@ -263,6 +264,9 @@ function App() {
             // ScoreRendererPlugin implementation is wired by V3PluginWrapper
             // after the bridge hook is called inside TempoStateProvider.
             ScoreRenderer: BoundScoreRenderer,
+            // Host-provided score selection dialog (v4 — Feature 034).
+            // Renders the preloaded catalogue + "Load from file" option.
+            ScoreSelector: ScoreSelectorPlugin,
           },
           // v3 score player — proxy that delegates to hook-backed implementation
           // once V3PluginWrapper sets scorePlayerRef.current = bridge.api.
@@ -439,7 +443,7 @@ function App() {
     const coreEntry = allPlugins.find(p => p.manifest.id === activePlugin)
     if (coreEntry?.manifest.view === 'full-screen') {
       const FullScreenComponent = coreEntry.plugin.Component
-      const isV3 = coreEntry.manifest.pluginApiVersion === '3'
+      const isV3 = Number(coreEntry.manifest.pluginApiVersion) >= 3
       const proxyRefs = v3ProxyRefsMap.current.get(coreEntry.manifest.id)
 
       const innerContent = (

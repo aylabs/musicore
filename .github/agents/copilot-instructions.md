@@ -67,6 +67,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - None — plugin state is session-only; ZIP persistence handled by host IndexedDB (032-virtual-keyboard-pro)
 - TypeScript 5 (React 18), Rust stable + wasm-pack (WASM; no new Rust changes in this feature) + React 18, Vite, wasm-pack/wasm-bindgen, Tone.js (audio), Vitest + React Testing Library, Playwrigh (033-play-score-plugin)
 - N/A — scores are bundled static assets (6 MXL files); `<input type="file">` for user scores; no database (033-play-score-plugin)
+- TypeScript 5 (React 18), Rust stable + wasm-pack (no new Rust changes) + React 18, Vite, Vitest + React Testing Library, Playwrigh (034-practice-from-score)
+- N/A — preloaded scores are bundled static assets; `<input type="file">` for user files; no database (034-practice-from-score)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -87,9 +89,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 034-practice-from-score: Added TypeScript 5 (React 18), Rust stable + wasm-pack (no new Rust changes) + React 18, Vite, Vitest + React Testing Library, Playwrigh
 - 033-play-score-plugin: Added TypeScript 5 (React 18), Rust stable + wasm-pack (WASM; no new Rust changes in this feature) + React 18, Vite, wasm-pack/wasm-bindgen, Tone.js (audio), Vitest + React Testing Library, Playwrigh
 - 033-play-score-plugin: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 032-virtual-keyboard-pro: Added TypeScript 5 + React 19 (JSX; same stack as existing plugins) + Plugin API v2 (`frontend/src/plugin-api/index.ts`); esbuild (bundler → single ESM `index.js`); bash `zip` (packaging); Vitest + `@testing-library/react` (tests)
 
 
 <!-- MANUAL ADDITIONS START -->
