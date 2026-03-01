@@ -1,0 +1,176 @@
+/**
+ * PracticeVirtualKeyboard.css — Feature 001: Virtual Keyboard in Practice View
+ *
+ * Layout: [Oct◀ btn] [scrollable keyboard] [Oct▶ btn]
+ * The octave buttons sit flush on the left and right of the keyboard row,
+ * stretching to the full key height.  The range label is visually hidden but
+ * available to screen readers and unit tests.
+ *
+ * Touch targets: white keys ≥44×100 px, black keys ≥26×66 px, octave buttons 44×full-height.
+ * Constitution §III: tablet-first, touch-friendly, 44 px minimum targets.
+ */
+
+/* ── Outer container ──────────────────────────────────────────────────────── */
+
+.practice-vkb {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 4px 4px 8px;
+  background: var(--color-surface, #fff);
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  gap: 4px;
+}
+
+/* ── Visually-hidden range label (screen-reader + unit-test accessible) ───── */
+
+.practice-vkb__range-label--sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Octave shift buttons (left / right of keyboard) ─────────────────────── */
+
+.practice-vkb__octave-btn {
+  width: 44px;
+  min-width: 44px;           /* 44 px touch target */
+  flex-shrink: 0;
+  align-self: stretch;       /* fills keyboard height automatically */
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #ccc);
+  background: var(--color-surface-alt, #f5f5f5);
+  color: var(--color-text, #333);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.practice-vkb__octave-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover, #ebebeb);
+}
+
+.practice-vkb__octave-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Keyboard scroll container ────────────────────────────────────────────── */
+
+.practice-vkb__scroll {
+  flex: 1;
+  min-width: 0;              /* allow shrinking inside flex row */
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  /* Centre the keyboard when it is narrower than the available panel width.
+     `safe center` degrades to `start` when content overflows, so the left
+     edge is never hidden behind the scroll boundary on any browser. */
+  display: flex;
+  justify-content: safe center;
+  align-items: flex-start;
+}
+
+/* ── Key container ────────────────────────────────────────────────────────── */
+
+.practice-vkb__keyboard {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  height: 100px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* ── Key base ─────────────────────────────────────────────────────────────── */
+
+.practice-vkb__key {
+  position: relative;
+  box-sizing: border-box;
+  border-radius: 0 0 4px 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+/* ── White keys ───────────────────────────────────────────────────────────── */
+
+.practice-vkb__key--white {
+  width: 44px;
+  min-width: 44px;           /* 44 px touch target */
+  height: 100px;
+  background: #f8f8f8;
+  border: 1px solid #bbb;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 5px;
+  font-size: 0.58rem;
+  color: #666;
+  font-family: monospace;
+}
+
+.practice-vkb__key--white:active,
+.practice-vkb__key--white.practice-vkb__key--pressed {
+  background: #b8d4ff;
+  border-color: #5599ee;
+  color: #3366cc;
+}
+
+/* ── Black keys ───────────────────────────────────────────────────────────── */
+
+.practice-vkb__key--black {
+  position: absolute;
+  top: 0;
+  width: 26px;
+  height: 66px;              /* ≥44 px */
+  background: #222;
+  border: 1px solid #111;
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+  /* translateX(-50%) centres the key exactly on its `left` position,
+     which is the boundary between the two neighbouring white keys. */
+  transform: translateX(-50%);
+}
+
+.practice-vkb__key--black:active,
+.practice-vkb__key--black.practice-vkb__key--pressed {
+  background: #1a4fcf;
+  border-color: #0033aa;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .practice-vkb__key--white {
+    width: 38px;
+    min-width: 38px;
+    height: 88px;
+  }
+  .practice-vkb__key--black {
+    width: 22px;
+    height: 58px;
+  }
+  .practice-vkb__keyboard {
+    height: 88px;
+  }
+}

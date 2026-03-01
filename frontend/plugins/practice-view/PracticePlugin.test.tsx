@@ -355,11 +355,11 @@ describe('PracticePlugin', () => {
       // Advance well past the exercise duration (countdown 3s + exercise up to ~10s + buffer)
       await act(async () => { vi.advanceTimersByTime(20_000); });
 
-      // Should show some kind of results (score, try again, new exercise buttons)
-      const tryAgainOrScore = screen.queryByRole('button', { name: /try again/i })
-        ?? screen.queryByText(/score/i)
-        ?? screen.queryByText(/result/i);
-      expect(tryAgainOrScore).not.toBeNull();
+      // Should show results — the Retry button is now in the toolbar (data-testid="practice-retry-btn")
+      const retryBtn = screen.queryByTestId('practice-retry-btn')
+        ?? screen.queryByRole('button', { name: /retry/i })
+        ?? screen.queryByRole('region', { name: /exercise results/i });
+      expect(retryBtn).not.toBeNull();
     });
   });
 

@@ -86,6 +86,16 @@
 
 
 
+.practice-plugin__header-btn--retry {
+  background: var(--color-warning, #f57f17);
+  color: #fff;
+  border-color: transparent;
+}
+
+.practice-plugin__header-btn--retry:hover {
+  background: var(--color-warning-dark, #e65100);
+}
+
 .practice-plugin__header-btn--new {
   background: var(--color-accent, #4f8ef7);
   color: #fff;
@@ -829,4 +839,59 @@
   opacity: 0.75;
   font-weight: 400;
   margin-top: 0.15rem;
+}
+
+/* ── Virtual keyboard toggle button (Feature 001 — T011) ──────────────────── */
+
+.practice-plugin__vkb-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-muted, #666);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.practice-plugin__vkb-toggle:hover {
+  background: var(--color-surface-hover, #e4e4e4);
+}
+
+/* Active state — indicates virtual keyboard is open (FR-011) */
+.practice-plugin__vkb-toggle--active {
+  background: var(--color-accent, #4a90d9);
+  color: #fff;
+  border-color: var(--color-accent, #4a90d9);
+}
+
+.practice-plugin__vkb-toggle--active:hover {
+  background: var(--color-accent-dark, #3a7bd5);
+  border-color: var(--color-accent-dark, #3a7bd5);
+}
+
+/* Suspended Mic/MIDI badge state — shown when virtual keyboard is active (FR-004, T023) */
+.practice-mic-badge--suspended {
+  opacity: 0.45;
+  background: var(--color-surface-alt, #f0f0f0);
+  color: var(--color-muted, #888);
+  border-color: var(--color-border, #e0e0e0);
+}
+
+/* Virtual keyboard slide-up panel at the bottom of the Practice view (FR-002, T011) */
+.practice-plugin__vkb-panel {
+  border-top: 1px solid var(--color-border, #ddd);
+  padding: 8px 0 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  background: var(--color-surface, #fff);
 }

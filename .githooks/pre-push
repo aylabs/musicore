@@ -1,0 +1,77 @@
+#!/bin/sh
+# Pre-push hook - Full build validation before pushing to remote
+
+echo "🚀 Running pre-push validation..."
+
+# Only run on pushes to main or feature branches
+current_branch=$(git symbolic-ref --short HEAD)
+
+if [ "$current_branch" = "main" ] || echo "$current_branch" | grep -qE '^[0-9]+-'; then
+  echo "📦 Running full build check for branch: $current_branch"
+  
+  # Run Rust tests
+  echo "  - Running Rust tests..."
+  rust_output=$(cd backend && cargo test 2>&1)
+  rust_exit=$?
+  if [ $rust_exit -ne 0 ]; then
+    echo ""
+    echo "❌ Rust tests failed!"
+    echo "$rust_output"
+    echo ""
+    echo "Tip: Fix errors or use 'git push --no-verify' to skip this check."
+    exit 1
+  fi
+  # Summarise all test binaries: sum up passed/failed counts across all "test result:" lines
+  passed=$(echo "$rust_output" | grep -E "^test result" | grep -oE "[0-9]+ passed" | awk -F' ' '{s+=$1} END {print s+0}')
+  failed=$(echo "$rust_output" | grep -E "^test result" | grep -oE "[0-9]+ failed" | awk -F' ' '{s+=$1} END {print s+0}')
+  echo "  test result: ok. $passed passed; $failed failed (across all modules)"
+
+  cd frontend
+  
+  # Run full TypeScript build (with VITE_BASE so the E2E tests can reuse it)
+  echo "  - Type checking and building..."
+  if ! VITE_BASE=/musicore/ npm run build > /dev/null 2>&1; then
+    echo ""
+    echo "❌ Build failed! TypeScript errors detected."
+    echo "Run 'cd frontend && npm run build' to see details."
+    echo ""
+    echo "Tip: Fix errors or use 'git push --no-verify' to skip this check."
+    exit 1
+  fi
+  
+  # Run tests
+  echo "  - Running tests..."
+  if ! npm test -- --run > /dev/null 2>&1; then
+    echo ""
+    echo "⚠️  Some tests failed. Review test output:"
+    echo "Run 'cd frontend && npm test' to see details."
+    echo ""
+    echo "Tip: Use 'git push --no-verify' to skip if tests are expected to fail."
+    exit 1
+  fi
+
+  # Run E2E tests (reuse the build already produced above)
+  echo "  - Running E2E tests..."
+  # Kill any stale preview server so Playwright's webServer starts fresh
+  lsof -i :4173 -t 2>/dev/null | xargs kill -9 2>/dev/null || true
+  if ! npx playwright test --config playwright.config.prod.ts --reporter=list > /tmp/e2e-prepush.log 2>&1; then
+    echo ""
+    echo "❌ E2E tests failed! Output:"
+    tail -40 /tmp/e2e-prepush.log
+    echo ""
+    echo "Run 'cd frontend && npm run e2e' to reproduce locally."
+    echo "Tip: Use 'git push --no-verify' to skip if this is expected."
+    exit 1
+  fi
+  e2e_passed=$(grep -c ' ✓ ' /tmp/e2e-prepush.log 2>/dev/null || echo 0)
+  echo "  E2E: ${e2e_passed} tests passed"
+
+  cd ..
+  
+  echo "✅ Build and tests passed"
+else
+  echo "ℹ️  Skipping validation for branch: $current_branch"
+fi
+
+echo "✅ Pre-push validation passed"
+exit 0

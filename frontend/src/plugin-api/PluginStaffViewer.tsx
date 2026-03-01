@@ -326,7 +326,8 @@ export const PluginStaffViewer: React.FC<PluginStaffViewerProps> = ({
         data-testid="plugin-staff-viewer"
         style={{
           width: '100%',
-          overflow: 'hidden',
+          overflowX: 'auto',
+          overflowY: 'hidden',
           border: '1px solid #e0e0e0',
           borderRadius: 4,
           backgroundColor: '#ffffff',

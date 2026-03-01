@@ -71,6 +71,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A — preloaded scores are bundled static assets; `<input type="file">` for user files; no database (034-practice-from-score)
 - TypeScript 5.9, React 19, Vite 7 + Vitest 4, Playwright 1.58 — no new npm packages required (001-practice-complexity-levels)
 - `localStorage` key `practice-complexity-level-v1` (browser, cross-restart) (001-practice-complexity-levels)
+- TypeScript 5.x, React 18 + React, Plugin API v4 (`context.playNote`, `context.midi.subscribe`, `context.recording.subscribe`), Vitest (unit), Playwright (e2e) (001-practice-virtual-keyboard)
+- N/A — toggle state is session-only, no persistence (FR-009) (001-practice-virtual-keyboard)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -91,9 +93,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 001-practice-virtual-keyboard: Added TypeScript 5.x, React 18 + React, Plugin API v4 (`context.playNote`, `context.midi.subscribe`, `context.recording.subscribe`), Vitest (unit), Playwright (e2e)
 - 001-practice-complexity-levels: Added TypeScript 5.9, React 19, Vite 7 + Vitest 4, Playwright 1.58 — no new npm packages required
 - 001-practice-complexity-levels: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 034-practice-from-score: Added TypeScript 5 (React 18), Rust stable + wasm-pack (no new Rust changes) + React 18, Vite, Vitest + React Testing Library, Playwrigh
 
 
 <!-- MANUAL ADDITIONS START -->
