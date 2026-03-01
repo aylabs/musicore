@@ -30,14 +30,15 @@ export default defineConfig({
     },
   ],
 
-  // Start dev server before tests if it isn't already running.
-  // reuseExistingServer: true lets you keep `npm run dev` open in another
-  // terminal and re-run tests without waiting for Vite to restart.
-  webServer: {
-    command: 'npm run dev',
-    url: 'https://localhost:5173',
-    reuseExistingServer: true,
-    ignoreHTTPSErrors: true,
-    timeout: 120000,
-  },
+  // No webServer block here: start the dev server manually in a separate
+  // terminal with `npm run dev` before running `npm run test:e2e` or
+  // `npm run test:e2e:ui`.
+  //
+  // Reason: Playwright's webServer health-check does NOT honour
+  // ignoreHTTPSErrors, so it rejects the self-signed TLS cert that the
+  // local Vite server uses (required for getUserMedia on LAN), causing
+  // Playwright UI to hang indefinitely at "Loading…".
+  //
+  // CI is unaffected – it uses playwright.config.prod.ts which runs
+  // `vite preview` (plain HTTP) against a pre-built dist/.
 });
