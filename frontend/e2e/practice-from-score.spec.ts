@@ -12,8 +12,10 @@
  * files and WASM parsing.  No network stubs -- the full loading pipeline is
  * exercised end-to-end.
  *
- * test.slow() is used because CI machines may need extra time for WASM
- * initialisation, real .mxl download + parsing, and setTimeout-based countdown.
+ * All assertions use explicit timeouts rather than test.slow() to avoid
+ * interaction effects between the tripled action-timeout and Playwright's
+ * default expectation timeout.  Long-running steps (WASM parse, 3.5 s
+ * countdown) have generous explicit timeouts.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -39,7 +41,7 @@ async function openPractice(page: Page) {
   await page.goto('/');
   await page.waitForLoadState('domcontentloaded');
   await page.getByRole('button', { name: PRACTICE_BTN }).click();
-  await expect(page.locator(PRACTICE_VIEW)).toBeVisible();
+  await expect(page.locator(PRACTICE_VIEW)).toBeVisible({ timeout: 15_000 });
 }
 
 /**
@@ -48,9 +50,11 @@ async function openPractice(page: Page) {
  */
 async function loadBeethovenScore(page: Page) {
   await page.getByRole('radio', { name: SCORE_RADIO }).click();
-  await expect(page.locator(SCORE_DIALOG)).toBeVisible();
-  await page.getByRole('button', { name: BEETHOVEN_TXT }).click();
-  // Real WASM parsing -- give it generous time on slow CI machines
+  // Dialog opens synchronously on radio click; allow up to 15 s for CI rendering
+  await expect(page.locator(SCORE_DIALOG)).toBeVisible({ timeout: 15_000 });
+  // Use getByText to match the catalogue button text (proven pattern)
+  await page.getByText(BEETHOVEN_TXT).click();
+  // Real WASM parsing -- give generous time on slow CI machines
   await expect(page.locator(SCORE_DIALOG)).not.toBeVisible({ timeout: 30_000 });
 }
 
@@ -58,17 +62,16 @@ async function loadBeethovenScore(page: Page) {
 
 test.describe('SC-001: Score preset basic flow', () => {
   test('select Score preset -> dialog -> pick score -> exercise staff populates', async ({ page }) => {
-    test.slow(); // triple the default 30 s timeout
     await openPractice(page);
     await loadBeethovenScore(page);
 
     // Exercise staff should render with the loaded score notes
     await expect(page.locator(STAFF_VIEWER).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(PLAY_BTN)).toBeVisible();
+    await expect(page.locator(PLAY_BTN)).toBeVisible({ timeout: 10_000 });
 
     // Start exercise -- countdown (~3.5 s) then playing
     await page.locator(PLAY_BTN).click();
-    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 30_000 });
   });
 });
@@ -77,7 +80,6 @@ test.describe('SC-001: Score preset basic flow', () => {
 
 test.describe('SC-002: Cache preserved on preset switch', () => {
   test('switch to Random and back -- no dialog opens', async ({ page }) => {
-    test.slow();
     await openPractice(page);
     await loadBeethovenScore(page);
 
@@ -86,8 +88,8 @@ test.describe('SC-002: Cache preserved on preset switch', () => {
     await page.getByRole('radio', { name: SCORE_RADIO }).click();
 
     // Dialog must NOT reopen (cached pitches still present)
-    await expect(page.locator(SCORE_DIALOG)).not.toBeVisible();
-    await expect(page.getByRole('button', { name: CHANGE_SCORE })).toBeVisible();
+    await expect(page.locator(SCORE_DIALOG)).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: CHANGE_SCORE })).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -95,24 +97,25 @@ test.describe('SC-002: Cache preserved on preset switch', () => {
 
 test.describe('SC-003: Existing preset regressions', () => {
   test('Random preset exercise starts normally', async ({ page }) => {
-    test.slow();
     await openPractice(page);
-    await expect(page.getByRole('radio', { name: RANDOM_RADIO })).toBeChecked();
+    await expect(page.getByRole('radio', { name: RANDOM_RADIO })).toBeChecked({ timeout: 5_000 });
 
     await page.locator(PLAY_BTN).click();
-    // Play button disappears during countdown
-    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 5_000 });
+    // Play button disappears as soon as countdown starts
+    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
+    // Countdown overlay is visible during the 3.5 s countdown phase
+    await expect(page.locator('.practice-countdown')).toBeVisible({ timeout: 5_000 });
     // Stop button appears once playing phase starts (after ~3.5 s countdown)
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 30_000 });
   });
 
   test('C4 Scale preset exercise starts normally', async ({ page }) => {
-    test.slow();
     await openPractice(page);
     await page.getByRole('radio', { name: C4_RADIO }).click();
 
     await page.locator(PLAY_BTN).click();
-    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.practice-countdown')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 30_000 });
   });
 });
@@ -121,7 +124,6 @@ test.describe('SC-003: Existing preset regressions', () => {
 
 test.describe('SC-004: Notes slider max matches totalAvailable', () => {
   test('Notes slider max reflects score pitch count', async ({ page }) => {
-    test.slow();
     await openPractice(page);
     await loadBeethovenScore(page);
 
