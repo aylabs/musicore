@@ -61,6 +61,7 @@ A tablet-native app for interactive scores, designed for practice and performanc
   - **Exercise scoring** - Pitch accuracy and timing analysis
   - **Phase state machine** - Countdown → Playing → Results workflow
   - **Score preset** (Feature 034) - Practice from any loaded score; clef and octave determined automatically from score data; "Change score" button; cached pitches preserved across preset switches
+  - **Complexity levels** (Feature 001) - One-click Low / Mid / High presets configure the exercise automatically: Low = C major scale, 8 notes, Treble, 40 BPM; Mid = random, 16 notes, Treble, 80 BPM; High = random, 20 notes, Bass, 100 BPM; selection persists across sessions via localStorage; Advanced parameters can still be adjusted manually (clears the level badge)
 - **Importable plugins** - Third-party plugins distributed as ZIP packages
 
 ---

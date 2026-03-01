@@ -1,9 +1,10 @@
 /**
- * exerciseGenerator.test.ts — T009
+ * exerciseGenerator.test.ts — T009 / T002
  * Feature 034: Practice from Score
+ * Feature 001: Practice Complexity Levels
  *
- * Contract tests for generateScoreExercise().
- * MUST be written FAILING before T010 implements the function.
+ * Contract tests for generateScoreExercise() and COMPLEXITY_PRESETS.
+ * MUST be written FAILING before T010 / T003 implements the function.
  * Constitution Principle V: Test-First Development.
  *
  * ESLint boundary: no src/ imports.
@@ -11,6 +12,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { generateScoreExercise } from './exerciseGenerator';
+import { COMPLEXITY_PRESETS, COMPLEXITY_LEVEL_STORAGE_KEY } from './practiceTypes';
 
 // ─── generateScoreExercise ────────────────────────────────────────────────────
 
@@ -75,5 +77,60 @@ describe('generateScoreExercise()', () => {
     const exercise = generateScoreExercise(80, samplePitches, 1);
     expect(exercise.notes).toHaveLength(1);
     expect(exercise.notes[0].midiPitch).toBe(samplePitches[0].midiPitch);
+  });
+});
+
+// ─── COMPLEXITY_PRESETS ───────────────────────────────────────────────────────
+
+describe('COMPLEXITY_PRESETS', () => {
+  it('exports the three levels: low, mid, high', () => {
+    expect(COMPLEXITY_PRESETS).toHaveProperty('low');
+    expect(COMPLEXITY_PRESETS).toHaveProperty('mid');
+    expect(COMPLEXITY_PRESETS).toHaveProperty('high');
+  });
+
+  it('low preset: preset=c4scale, noteCount=8, clef=Treble, octaveRange=1, bpm=40, mode=step', () => {
+    const { bpm, config } = COMPLEXITY_PRESETS['low'];
+    expect(bpm).toBe(40);
+    expect(config.preset).toBe('c4scale');
+    expect(config.noteCount).toBe(8);
+    expect(config.clef).toBe('Treble');
+    expect(config.octaveRange).toBe(1);
+    expect(config.mode).toBe('step');
+  });
+
+  it('mid preset: preset=random, noteCount=16, clef=Treble, octaveRange=1, bpm=80, mode=step', () => {
+    const { bpm, config } = COMPLEXITY_PRESETS['mid'];
+    expect(bpm).toBe(80);
+    expect(config.preset).toBe('random');
+    expect(config.noteCount).toBe(16);
+    expect(config.clef).toBe('Treble');
+    expect(config.octaveRange).toBe(1);
+    expect(config.mode).toBe('step');
+  });
+
+  it('high preset: preset=random, noteCount=20, clef=Bass, octaveRange=2, bpm=100, mode=flow', () => {
+    const { bpm, config } = COMPLEXITY_PRESETS['high'];
+    expect(bpm).toBe(100);
+    expect(config.preset).toBe('random');
+    expect(config.noteCount).toBe(20);
+    expect(config.clef).toBe('Bass');
+    expect(config.octaveRange).toBe(2);
+    expect(config.mode).toBe('flow');
+  });
+
+  it('each preset has a description string', () => {
+    for (const level of ['low', 'mid', 'high'] as const) {
+      expect(typeof COMPLEXITY_PRESETS[level].description).toBe('string');
+      expect(COMPLEXITY_PRESETS[level].description.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── COMPLEXITY_LEVEL_STORAGE_KEY ─────────────────────────────────────────────
+
+describe('COMPLEXITY_LEVEL_STORAGE_KEY', () => {
+  it('equals practice-complexity-level-v1', () => {
+    expect(COMPLEXITY_LEVEL_STORAGE_KEY).toBe('practice-complexity-level-v1');
   });
 });

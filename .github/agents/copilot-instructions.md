@@ -69,6 +69,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A — scores are bundled static assets (6 MXL files); `<input type="file">` for user scores; no database (033-play-score-plugin)
 - TypeScript 5 (React 18), Rust stable + wasm-pack (no new Rust changes) + React 18, Vite, Vitest + React Testing Library, Playwrigh (034-practice-from-score)
 - N/A — preloaded scores are bundled static assets; `<input type="file">` for user files; no database (034-practice-from-score)
+- TypeScript 5.9, React 19, Vite 7 + Vitest 4, Playwright 1.58 — no new npm packages required (001-practice-complexity-levels)
+- `localStorage` key `practice-complexity-level-v1` (browser, cross-restart) (001-practice-complexity-levels)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -89,9 +91,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 001-practice-complexity-levels: Added TypeScript 5.9, React 19, Vite 7 + Vitest 4, Playwright 1.58 — no new npm packages required
+- 001-practice-complexity-levels: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 034-practice-from-score: Added TypeScript 5 (React 18), Rust stable + wasm-pack (no new Rust changes) + React 18, Vite, Vitest + React Testing Library, Playwrigh
-- 033-play-score-plugin: Added TypeScript 5 (React 18), Rust stable + wasm-pack (WASM; no new Rust changes in this feature) + React 18, Vite, wasm-pack/wasm-bindgen, Tone.js (audio), Vitest + React Testing Library, Playwrigh
-- 033-play-score-plugin: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->
