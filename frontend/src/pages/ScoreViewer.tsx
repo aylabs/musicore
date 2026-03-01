@@ -252,8 +252,12 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
       this.setState({ config });
     }
     
-    // Update viewport when layout changes (new score loaded)
+    // Update viewport when layout changes (new score loaded / note count changed).
+    // Reset lastAppliedScrollTop so the SCROLL_THRESHOLD guard in updateViewport()
+    // does not short-circuit the update when scrollTop hasn't moved — otherwise
+    // viewport.width stays locked to the previous layout's total_width.
     if (prevProps.layout !== this.props.layout && this.props.layout) {
+      this.lastAppliedScrollTop = -Infinity;
       this.updateViewport();
     }
 

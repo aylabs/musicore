@@ -27,6 +27,7 @@ import { COMPLEXITY_PRESETS, COMPLEXITY_LEVEL_STORAGE_KEY } from './practiceType
 import { generateExercise, generateScoreExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
 import { scoreCapture } from './exerciseScorer';
 import './PracticePlugin.css';
+import { PracticeVirtualKeyboard } from './PracticeVirtualKeyboard';
 
 // ─── Hz/MIDI helpers ──────────────────────────────────────────────────────────
 
@@ -96,10 +97,18 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   const [stepHint, setStepHint] = useState<{ text: string; color: string } | null>(null);
 
   // ── Input source ──────────────────────────────────────────────────────────────
-  // 'midi' when MIDI keyboard is detected, 'mic' when microphone provides input.
+  // 'midi' when MIDI keyboard is detected, 'mic' when microphone provides input,
+  // 'virtual-keyboard' when the on-screen keyboard panel is open (Feature 001).
   // MIDI takes priority: once a MIDI note is received, mic events are ignored for scoring.
-  const [inputSource, setInputSource] = useState<'midi' | 'mic' | null>(null);
-  const inputSourceRef = useRef<'midi' | 'mic' | null>(null);
+  const [inputSource, setInputSource] = useState<'midi' | 'mic' | 'virtual-keyboard' | null>(null);
+  const inputSourceRef = useRef<'midi' | 'mic' | 'virtual-keyboard' | null>(null);
+
+  // ── Virtual keyboard panel state (Feature 001) ────────────────────────────────
+  // virtualKeyboardOpen tracks panel visibility; closing it restores the previous
+  // physical source. No persistence — resets to false on every plugin mount (FR-009).
+  const [virtualKeyboardOpen, setVirtualKeyboardOpen] = useState(false);
+  /** Saves the physical input source in use before the virtual keyboard was opened. */
+  const prevPhysicalSourceRef = useRef<'midi' | 'mic' | null>(null);
 
   // ── Mic state ────────────────────────────────────────────────────────────────
   const [micActive, setMicActive] = useState<boolean | null>(null);
@@ -141,6 +150,8 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   );
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
+  /** Ref on the exercise staff block — used for step-mode autoscroll. */
+  const exerciseStaffRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<ResponseNote[]>([]);
   const playStartMsRef = useRef<number>(0);
   const phaseRef = useRef<PracticePhase>('ready');
@@ -192,6 +203,53 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   // Stable ref to handlePlay — lets MIDI subscription auto-start without stale closure
   const handlePlayRef = useRef<() => void>(() => {});
 
+  /**
+   * Shared MIDI-attack scoring handler (Feature 001).
+   *
+   * Encapsulates the auto-start + scoring pipeline so both the physical
+   * context.midi.subscribe handler AND the virtual keyboard onKeyDown route
+   * call identical logic (R-003).  Audio playback is NOT performed here:
+   * - Physical MIDI handler adds its own context.playNote call after this ref.
+   * - Virtual keyboard component calls context.playNote directly (always-audible,
+   *   FR-006) before propagating up to this ref via the parent's onKeyDown prop.
+   */
+  const handleMidiAttackRef = useRef<(midiNote: number, timestamp: number) => void>(() => {});
+  useEffect(() => {
+    handleMidiAttackRef.current = (midiNote: number, timestamp: number) => {
+      // Auto-start: first note in ready phase triggers exercise start
+      if (phaseRef.current === 'ready') {
+        if (!autoStartedRef.current) {
+          if (configRef.current.mode === 'step') {
+            handleStartStepRef.current();
+          } else {
+            handlePlayRef.current();
+          }
+        }
+        return;
+      }
+      if (phaseRef.current !== 'playing') return;
+      if (configRef.current.mode === 'step') {
+        handleStepInputRef.current(midiNote);
+      } else {
+        const onsetMs = Date.now() - playStartMsRef.current;
+        captureRef.current.push({
+          hz: 0,
+          midiCents: midiNote * 100,
+          onsetMs,
+          confidence: 1,
+        });
+        setResponseNoteEvents(prev => [...prev, {
+          midiNote,
+          timestamp,
+          type: 'attack' as const,
+        }]);
+      }
+    };
+  // All dependencies are stable refs or stable React state setters — no stale
+  // closure risk.  The empty dep array is intentional.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── ScorePlayer subscription ──────────────────────────────────────────────────
   // Delivers state snapshots into React state so downstream effects can react.
   useEffect(() => {
@@ -237,6 +295,13 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     function applyMidiPresence(access: MIDIAccess) {
       const hasMidi = countInputs(access) > 0;
       setInputSource(prev => {
+        // Feature 001: do NOT override virtual-keyboard — the VKB toggle owns
+        // that transition.  Keep prevPhysicalSourceRef up-to-date so closing VKB
+        // restores correctly even if MIDI devices change while VKB is open.
+        if (prev === 'virtual-keyboard') {
+          prevPhysicalSourceRef.current = hasMidi ? 'midi' : null;
+          return prev;
+        }
         const next = hasMidi ? 'midi' : (prev === 'midi' ? null : prev);
         inputSourceRef.current = next;
         return next;
@@ -277,8 +342,8 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       setMicActive(true);
       setMicError(null);
 
-      // MIDI takes priority — ignore mic pitch events when MIDI keyboard is active
-      if (inputSourceRef.current === 'midi') return;
+      // MIDI takes priority over mic; virtual keyboard suspends mic entirely (Feature 001 — T008)
+      if (inputSourceRef.current === 'midi' || inputSourceRef.current === 'virtual-keyboard') return;
 
       // Determine if this frame carries a valid in-range pitch
       const midi = hzToMidi(event.hz);
@@ -383,6 +448,9 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   // ── MIDI subscription — detect source, capture, and auto-start ──────────────
   useEffect(() => {
     const unsub = context.midi.subscribe((event: PluginNoteEvent) => {
+      // Suspended when virtual keyboard is active (Feature 001 — T009)
+      if (inputSourceRef.current === 'virtual-keyboard') return;
+
       // Relay release events for audio feedback in MIDI flow mode
       if (event.type === 'release') {
         if (phaseRef.current === 'playing' && configRef.current.mode !== 'step') {
@@ -396,39 +464,11 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         setInputSource('midi');
         inputSourceRef.current = 'midi';
       }
-      // Auto-start when a key is pressed in the ready phase
-      if (phaseRef.current === 'ready') {
-        if (!autoStartedRef.current) {
-          if (configRef.current.mode === 'step') {
-            handleStartStepRef.current();
-          } else {
-            handlePlayRef.current();
-          }
-        }
-        return;
-      }
-      if (phaseRef.current !== 'playing') return;
-      if (configRef.current.mode === 'step') {
-        // Play back the user's note so MIDI keyboards (which produce no acoustic
-        // sound) are always audible, regardless of the soundEnabled toggle.
-        context.playNote({
-          midiNote: event.midiNote,
-          timestamp: event.timestamp,
-          type: 'attack',
-          durationMs: event.durationMs ?? 500,
-        });
-        handleStepInputRef.current(event.midiNote);
-      } else {
-        const onsetMs = Date.now() - playStartMsRef.current;
-        captureRef.current.push({
-          hz: 0,
-          midiCents: event.midiNote * 100,
-          onsetMs,
-          confidence: 1,
-        });
-        setResponseNoteEvents(prev => [...prev, event]);
-        // Play the note back so the user hears what they pressed (MIDI only —
-        // microphone mode already captures acoustic sound from the real instrument)
+      // Shared scoring + auto-start handler (also used by virtual keyboard — T002)
+      handleMidiAttackRef.current(event.midiNote, event.timestamp);
+      // Audio: MIDI keyboards produce no acoustic sound, so relay through the host.
+      // (Virtual keyboard handles its own audio unconditionally in the component.)
+      if (phaseRef.current === 'playing') {
         context.playNote({
           midiNote: event.midiNote,
           timestamp: event.timestamp,
@@ -572,6 +612,16 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   }, [context, clearStepTimeout, scheduleStepSlotTimeout]);
 
   useEffect(() => { handleStepInputRef.current = handleStepInput; }, [handleStepInput]);
+
+  // ── Step mode autoscroll — keep highlighted note visible as the slot advances
+  useEffect(() => {
+    if (config.mode !== 'step' || phase !== 'playing' || highlightedSlotIndex == null) return;
+    // .layout-glyph.highlighted is applied by LayoutRenderer.updateHighlights().
+    // scrollIntoView traverses up to find the nearest overflow-x:auto ancestor
+    // (the plugin-staff-viewer div) and scrolls it horizontally.
+    const el = exerciseStaffRef.current?.querySelector('.layout-glyph.highlighted') as Element | null;
+    el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [highlightedSlotIndex, config.mode, phase]);
 
   // ── Step mode start ──────────────────────────────────────────────────────────
   const handleStartStep = useCallback(() => {
@@ -877,8 +927,8 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   // ── Sidebar: only visible in Custom mode, hidden during exercise ──────────
   useEffect(() => {
     if (complexityLevel === null) {
-      // Custom mode: open when idle, collapse during exercise
-      if (phase !== 'playing' && phase !== 'countdown') setSidebarCollapsed(false);
+      // Custom mode: open when idle, collapse during exercise or results
+      if (phase !== 'playing' && phase !== 'countdown' && phase !== 'results') setSidebarCollapsed(false);
       else setSidebarCollapsed(true);
     } else {
       // Preset level: always hidden
@@ -909,6 +959,63 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     });
   }, []);
 
+  // ── Virtual keyboard toggle + note routing (Feature 001 — T007, T018) ────────
+
+  /**
+   * Toggle the virtual keyboard panel open/closed.
+   *
+   * Invariant (T021 / T022): this callback touches ONLY virtualKeyboardOpen,
+   * inputSource, and inputSourceRef.  It deliberately does NOT touch:
+   *   - preset state, score state, noteCount, BPM, or clef (SC-004)
+   *   - captureRef  — accumulated notes are preserved across mid-exercise toggles (US3-S4)
+   *   - handleStepInputRef — step handler continues operating after toggle (US3-S4)
+   * This guarantees seamless continuation when toggling mid-exercise (R-003).
+   */
+  const handleVirtualKeyboardToggle = useCallback(() => {
+    // NOTE: ref mutations and sibling setState calls must NOT happen inside a
+    // setState updater — React StrictMode calls updaters twice (probe + commit),
+    // which would overwrite prevPhysicalSourceRef with 'virtual-keyboard' on the
+    // second probe invocation, permanently breaking the restore-on-close path.
+    const opening = !virtualKeyboardOpen;
+    if (opening) {
+      // Opening: save current physical source, switch to virtual-keyboard
+      prevPhysicalSourceRef.current = inputSourceRef.current as 'midi' | 'mic' | null;
+      setInputSource('virtual-keyboard');
+      inputSourceRef.current = 'virtual-keyboard';
+    } else {
+      // Closing: restore the physical source that was active before VKB opened
+      const restored = prevPhysicalSourceRef.current;
+      setInputSource(restored);
+      inputSourceRef.current = restored;
+    }
+    setVirtualKeyboardOpen(opening);
+  }, [virtualKeyboardOpen]);
+
+  /**
+   * Virtual keyboard key-down handler.
+   *
+   * Audio is handled unconditionally by PracticeVirtualKeyboard (FR-006 — always audible).
+   * This parent handler routes to the shared scoring pipeline (handleMidiAttackRef).
+   *
+   * Intentional invariant: captureRef and handleStepInputRef are NOT cleared here —
+   * mid-exercise toggle continues seamlessly (US3-S4 / R-003).
+   */
+  const handleVirtualKeyDown = useCallback((midi: number, timestamp: number) => {
+    handleMidiAttackRef.current(midi, timestamp);
+  }, []);
+
+  /**
+   * Virtual keyboard key-up handler.
+   *
+   * Release audio is handled by PracticeVirtualKeyboard. The parent only needs
+   * to relay the release event so flow-mode exercises receive a release event
+   * consistent with physical MIDI behaviour.
+   */
+  const handleVirtualKeyUp = useCallback((_midi: number, _attackedAt: number) => {
+    // Flow-mode capture uses onset-only; release data is not needed for scoring.
+    // Audio release is already handled inside PracticeVirtualKeyboard.
+  }, []);
+
   // ── Highlighted notes ─────────────────────────────────────────────────────────
 
   // Response staff: most-recently played note
@@ -921,18 +1028,27 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   const { StaffViewer, ScoreSelector } = context.components;
 
   // ── Input source badge ────────────────────────────────────────────────────────
+  const isVirtualKeyboardActive = inputSource === 'virtual-keyboard';
   const inputBadgeClass = [
     'practice-mic-badge',
-    inputSource === 'midi'
-      ? 'practice-mic-badge--active practice-mic-badge--midi'
-      : micError
-        ? 'practice-mic-badge--error'
-        : micActive === true ? 'practice-mic-badge--active' : '',
+    isVirtualKeyboardActive
+      ? 'practice-mic-badge--suspended'
+      : inputSource === 'midi'
+        ? 'practice-mic-badge--active practice-mic-badge--midi'
+        : micError
+          ? 'practice-mic-badge--error'
+          : micActive === true ? 'practice-mic-badge--active' : '',
   ].filter(Boolean).join(' ');
-  const inputBadgeLabel = inputSource === 'midi' ? '🎹 MIDI Keyboard' :
-    micError ? `🎤 Mic (error)` : '🎤 Mic';
-  const inputBadgeTip = inputSource === 'midi' ? 'MIDI keyboard detected — using MIDI input' :
-    micError ?? 'Listening via microphone';
+  const inputBadgeLabel = isVirtualKeyboardActive
+    ? '🎹 Mic/MIDI suspended'
+    : inputSource === 'midi'
+      ? '🎹 MIDI Keyboard'
+      : micError ? `🎤 Mic (error)` : '🎤 Mic';
+  const inputBadgeTip = isVirtualKeyboardActive
+    ? 'Virtual keyboard active — mic and MIDI suspended'
+    : inputSource === 'midi'
+      ? 'MIDI keyboard detected — using MIDI input'
+      : micError ?? 'Listening via microphone';
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -983,10 +1099,41 @@ export function PracticePlugin({ context }: PracticePluginProps) {
           </button>
         )}
 
+        {phase === 'results' && (
+          <>
+            <button
+              className="practice-plugin__header-btn practice-plugin__header-btn--retry"
+              onClick={handleTryAgain}
+              aria-label="Retry exercise"
+              data-testid="practice-retry-btn"
+            >
+              🔁 Retry
+            </button>
+            <button
+              className="practice-plugin__header-btn practice-plugin__header-btn--new"
+              onClick={handleNewExercise}
+              aria-label="New exercise"
+            >
+              🎲 New
+            </button>
+          </>
+        )}
+
         {/* Spacer pushes badge to the right */}
         <div className="practice-plugin__header-spacer" />
 
         <div className="practice-plugin__header-actions">
+          {/* Virtual keyboard toggle (Feature 001 — FR-001, FR-011) */}
+          <button
+            className={`practice-plugin__vkb-toggle${virtualKeyboardOpen ? ' practice-plugin__vkb-toggle--active' : ''}`}
+            onClick={handleVirtualKeyboardToggle}
+            aria-label={virtualKeyboardOpen ? 'Hide virtual keyboard' : 'Show virtual keyboard'}
+            aria-pressed={virtualKeyboardOpen}
+            title={virtualKeyboardOpen ? 'Hide virtual keyboard' : 'Show virtual keyboard'}
+            data-testid="vkb-toggle-btn"
+          >
+            🎹
+          </button>
           <span
             className={inputBadgeClass}
             title={inputBadgeTip}
@@ -1192,7 +1339,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 {soundEnabled ? '🔊' : '🔇'}
               </button>
             </div>
-            <div className={`practice-staff-wrapper${phase === 'playing' ? ' practice-staff-wrapper--playing' : ''}`}>
+            <div ref={exerciseStaffRef} className={`practice-staff-wrapper${phase === 'playing' ? ' practice-staff-wrapper--playing' : ''}`}>
               <StaffViewer
                 notes={exerciseNoteEvents}
                 clef={config.clef}
@@ -1346,26 +1493,22 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                 )}
               </details>
 
-              <div className="practice-results__actions">
-                <button
-                  className="practice-plugin__play-btn"
-                  onClick={handleTryAgain}
-                  aria-label="Try again"
-                >
-                  🔁 Try Again
-                </button>
-                <button
-                  className="practice-plugin__play-btn practice-plugin__play-btn--new"
-                  onClick={handleNewExercise}
-                  aria-label="New exercise"
-                >
-                  🎲 New Exercise
-                </button>
-              </div>
+              {/* Retry / New actions are in the toolbar — no redundant buttons here */}
             </div>
           )}
         </main>
       </div>
+
+      {/* ── Virtual keyboard panel (Feature 001 — FR-002, FR-007, FR-008) ─── */}
+      {virtualKeyboardOpen && (
+        <div className="practice-plugin__vkb-panel" data-testid="vkb-panel">
+          <PracticeVirtualKeyboard
+            context={context}
+            onKeyDown={handleVirtualKeyDown}
+            onKeyUp={handleVirtualKeyUp}
+          />
+        </div>
+      )}
 
       {/* ── ScoreSelector overlay ─────────────────────────────────────────── */}
       {showScoreSelector && config.preset === 'score' && (
