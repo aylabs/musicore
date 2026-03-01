@@ -20,7 +20,10 @@ import type {
   ExerciseNote,
   ResponseNote,
   NoteComparisonStatus,
+  ActiveComplexityLevel,
+  ComplexityLevel,
 } from './practiceTypes';
+import { COMPLEXITY_PRESETS, COMPLEXITY_LEVEL_STORAGE_KEY } from './practiceTypes';
 import { generateExercise, generateScoreExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
 import { scoreCapture } from './exerciseScorer';
 import './PracticePlugin.css';
@@ -71,6 +74,9 @@ export interface PracticePluginProps {
 }
 
 export function PracticePlugin({ context }: PracticePluginProps) {
+  // ── Complexity level state ──────────────────────────────────────────────────
+  const [complexityLevel, setComplexityLevel] = useState<ActiveComplexityLevel>('low');
+
   // ── Config & BPM state ─────────────────────────────────────────────────────
   const [config, setConfig] = useState<ExerciseConfig>({ ...DEFAULT_EXERCISE_CONFIG });
   const [bpmValue, setBpmValue] = useState(80);
@@ -112,7 +118,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
   const [showTips, setShowTips] = useState(
     () => sessionStorage.getItem('practice-tips-v1-dismissed') !== 'yes',
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   // Sound toggle — muting silences guide notes without affecting user MIDI feedback
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -203,8 +209,12 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       if (pitches) {
         scorePitchesRef.current = pitches;
         setScorePitches(pitches);
+        // Apply the clef from the score so the staff matches the imported notes
+        const nextConfig = { ...configRef.current, clef: pitches.clef };
+        configRef.current = nextConfig;
+        setConfig(nextConfig);
         setShowScoreSelector(false);
-        setExercise(generateScoreExercise(bpmRef.current, pitches.notes, configRef.current.noteCount));
+        setExercise(generateScoreExercise(bpmRef.current, pitches.notes, nextConfig.noteCount));
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,13 +292,15 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         if (inputSourceRef.current === null) {
           setInputSource('mic');
           inputSourceRef.current = 'mic';
+          // Auto-mute guide notes when microphone is the input source
+          setSoundEnabled(false);
+          soundEnabledRef.current = false;
         }
 
         silenceStableCountRef.current = 0; // reset silence run
 
         // AUTO-START: first valid mic pitch while in ready phase
         if (phaseRef.current === 'ready' && !autoStartedRef.current) {
-          autoStartedRef.current = true;
           if (configRef.current.mode === 'step') {
             handleStartStepRef.current();
           } else {
@@ -387,7 +399,6 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       // Auto-start when a key is pressed in the ready phase
       if (phaseRef.current === 'ready') {
         if (!autoStartedRef.current) {
-          autoStartedRef.current = true;
           if (configRef.current.mode === 'step') {
             handleStartStepRef.current();
           } else {
@@ -398,6 +409,14 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       }
       if (phaseRef.current !== 'playing') return;
       if (configRef.current.mode === 'step') {
+        // Play back the user's note so MIDI keyboards (which produce no acoustic
+        // sound) are always audible, regardless of the soundEnabled toggle.
+        context.playNote({
+          midiNote: event.midiNote,
+          timestamp: event.timestamp,
+          type: 'attack',
+          durationMs: event.durationMs ?? 500,
+        });
         handleStepInputRef.current(event.midiNote);
       } else {
         const onsetMs = Date.now() - playStartMsRef.current;
@@ -476,6 +495,15 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     const targetNote = ex.notes[stepIdx];
     if (!targetNote) return;
 
+    // Track played note for live response staff using slot-relative onset so
+    // the layout engine sees timestamps consistent with exerciseNoteEvents.
+    setResponseNoteEvents(prev => [...prev, {
+      midiNote: detectedMidi,
+      timestamp: targetNote.expectedOnsetMs,
+      type: 'attack' as const,
+      durationMs: (60_000 / ex.bpm) * 0.85,
+    }]);
+
     if (detectedMidi === targetNote.midiPitch) {
       // ✓ Correct note — advance slot
       clearStepTimeout();
@@ -522,7 +550,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         }, STEP_INPUT_DELAY_MS);
         setHighlightedSlotIndex(nextIdx);
         stepLastPlayTimeRef.current = Date.now();
-        if (soundEnabledRef.current) {
+        if (soundEnabledRef.current || inputSourceRef.current === 'midi') {
           context.playNote({
             midiNote: ex.notes[nextIdx].midiPitch,
             timestamp: Date.now(),
@@ -565,7 +593,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     setHighlightedSlotIndex(0);
     const firstNote = exerciseRef.current.notes[0];
     if (firstNote) {
-      if (soundEnabledRef.current) {
+      if (soundEnabledRef.current || inputSourceRef.current === 'midi') {
         context.playNote({ midiNote: firstNote.midiPitch, timestamp: Date.now(), type: 'attack', durationMs: 600 });
       }
       scheduleStepSlotTimeout(0);
@@ -788,6 +816,84 @@ export function PracticePlugin({ context }: PracticePluginProps) {
     }
   }, []);
 
+  // ── Complexity level helper ────────────────────────────────────────────────
+  const applyComplexityLevel = useCallback((level: ComplexityLevel) => {
+    const preset = COMPLEXITY_PRESETS[level];
+
+    // Apply config + BPM directly via refs so the reset below can use them
+    const nextConfig = { ...configRef.current, ...(preset.config as Partial<ExerciseConfig>) };
+    configRef.current = nextConfig;
+    setConfig(nextConfig);
+    const nextBpm = preset.bpm;
+    bpmRef.current = nextBpm;
+    setBpmValue(nextBpm);
+
+    // Full session reset — stop any running playback and clear all transient state
+    context.stopPlayback();
+    captureRef.current = [];
+    pendingNoteRef.current = null;
+    resetOnsetDetection();
+    if (finishTimerRef.current !== null) { clearTimeout(finishTimerRef.current); finishTimerRef.current = null; }
+    highlightTimersRef.current.forEach(clearTimeout);
+    highlightTimersRef.current = [];
+    clearStepTimeout();
+    if (stepDebounceTimeoutRef.current !== null) { clearTimeout(stepDebounceTimeoutRef.current); stepDebounceTimeoutRef.current = null; }
+    setHighlightedSlotIndex(null);
+    setStepHint(null);
+    setResponseNoteEvents([]);
+    setResult(null);
+    setCountdownStep('');
+    stepIndexRef.current = 0;
+    lastStepMidiRef.current = null;
+    stepPenalizedSlotsRef.current = new Set();
+    stepWrongMidiMapRef.current = new Map();
+    autoStartedRef.current = false;
+
+    // Generate a fresh exercise with the new preset
+    setExercise(
+      nextConfig.preset === 'score' && scorePitchesRef.current
+        ? generateScoreExercise(nextBpm, scorePitchesRef.current.notes, nextConfig.noteCount)
+        : nextConfig.preset !== 'score'
+          ? generateExercise(nextBpm, nextConfig)
+          : { notes: [], bpm: nextBpm },
+    );
+
+    setPhase('ready');
+    phaseRef.current = 'ready';
+    setComplexityLevel(level);
+    localStorage.setItem(COMPLEXITY_LEVEL_STORAGE_KEY, level);
+  }, [context, resetOnsetDetection, clearStepTimeout]);
+
+  // ── Restore complexity level from localStorage on mount ───────────────────
+  useEffect(() => {
+    const stored = localStorage.getItem(COMPLEXITY_LEVEL_STORAGE_KEY);
+    const validLevels: ComplexityLevel[] = ['low', 'mid', 'high'];
+    const level: ComplexityLevel = stored && validLevels.includes(stored as ComplexityLevel)
+      ? (stored as ComplexityLevel)
+      : 'low';
+    applyComplexityLevel(level);
+  }, [applyComplexityLevel]);
+
+  // ── Sidebar: only visible in Custom mode, hidden during exercise ──────────
+  useEffect(() => {
+    if (complexityLevel === null) {
+      // Custom mode: open when idle, collapse during exercise
+      if (phase !== 'playing' && phase !== 'countdown') setSidebarCollapsed(false);
+      else setSidebarCollapsed(true);
+    } else {
+      // Preset level: always hidden
+      setSidebarCollapsed(true);
+    }
+  }, [complexityLevel, phase]);
+
+  // ── Mute staff speaker whenever mic is actively recording ───────────────
+  useEffect(() => {
+    if (micActive === true) {
+      setSoundEnabled(false);
+      soundEnabledRef.current = false;
+    }
+  }, [micActive]);
+
   // ── Tips dismiss ─────────────────────────────────────────────────────────────
   const handleDismissTips = useCallback(() => {
     sessionStorage.setItem('practice-tips-v1-dismissed', 'yes');
@@ -824,7 +930,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         : micActive === true ? 'practice-mic-badge--active' : '',
   ].filter(Boolean).join(' ');
   const inputBadgeLabel = inputSource === 'midi' ? '🎹 MIDI Keyboard' :
-    micError ? `🎤 Microphone (error)` : '🎤 Microphone';
+    micError ? `🎤 Mic (error)` : '🎤 Mic';
   const inputBadgeTip = inputSource === 'midi' ? 'MIDI keyboard detected — using MIDI input' :
     micError ?? 'Listening via microphone';
 
@@ -840,7 +946,46 @@ export function PracticePlugin({ context }: PracticePluginProps) {
         >
           ← Back
         </button>
-        <h1 className="practice-plugin__title">Practice Exercise</h1>
+        <h1 className="practice-plugin__title">Practice</h1>
+
+        {/* COMPLEXITY LEVEL — next to title */}
+        <label className="practice-plugin__level-label" htmlFor="practice-level-select">Level</label>
+        <select
+          id="practice-level-select"
+          aria-label="Complexity level"
+          className="practice-plugin__level-select"
+          value={complexityLevel ?? 'custom'}
+          disabled={isDisabled}
+          onChange={(e) => {
+            const v = e.target.value as ComplexityLevel | 'custom';
+            if (v !== 'custom') {
+              applyComplexityLevel(v);
+            } else {
+              setComplexityLevel(null);
+              setSidebarCollapsed(false);
+            }
+          }}
+        >
+          <option value="low">Low</option>
+          <option value="mid">Mid</option>
+          <option value="high">High</option>
+          <option value="custom">Custom</option>
+        </select>
+
+        {phase === 'playing' && (
+          <button
+            className="practice-plugin__header-btn practice-plugin__header-btn--stop"
+            onClick={handleStop}
+            aria-label="Stop exercise"
+            data-testid="practice-stop-btn"
+          >
+            ■ Stop
+          </button>
+        )}
+
+        {/* Spacer pushes badge to the right */}
+        <div className="practice-plugin__header-spacer" />
+
         <div className="practice-plugin__header-actions">
           <span
             className={inputBadgeClass}
@@ -849,20 +994,6 @@ export function PracticePlugin({ context }: PracticePluginProps) {
           >
             {inputBadgeLabel}
           </span>
-
-          {phase === 'playing' && (
-            <button
-              className="practice-plugin__header-btn practice-plugin__header-btn--stop"
-              onClick={handleStop}
-              aria-label="Stop exercise"
-              data-testid="practice-stop-btn"
-            >
-              ■ Stop
-            </button>
-          )}
-          {phase === 'results' && (
-            <span className="practice-plugin__phase-label">Results</span>
-          )}
         </div>
       </header>
 
@@ -870,7 +1001,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
       {showTips && (
         <div className="practice-plugin__tips" role="note">
           <ul className="practice-plugin__tips-list">
-            <li>🎹 <strong>You need a keyboard</strong> to play the notes.</li>
+            <li>🎹 Use a <strong>MIDI interface</strong> for accurate note detection.</li>
             <li>🎤 Place the <strong>microphone as close as possible</strong> to the keyboard's speakers.</li>
             <li>🤫 Practice in a <strong>quiet space</strong> — background noise reduces accuracy.</li>
             <li>⭐ An <strong>external microphone</strong> significantly improves pitch detection.</li>
@@ -890,17 +1021,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
 
         {/* ── Sidebar ────────────────────────────────────────────────────── */}
         <aside className={`practice-sidebar${sidebarCollapsed ? ' practice-sidebar--collapsed' : ''}`}>
-          <button
-            className="practice-sidebar__toggle"
-            onClick={() => setSidebarCollapsed(v => !v)}
-            aria-label={sidebarCollapsed ? 'Expand config' : 'Collapse config'}
-            aria-expanded={!sidebarCollapsed}
-          >
-            {sidebarCollapsed ? '›' : '‹'}
-          </button>
-
-          {!sidebarCollapsed && (
-            <div className="practice-sidebar__sections">
+          <div className="practice-sidebar__sections">
               {/* MODE */}
               <div className="practice-sidebar__section">
                 <p className="practice-sidebar__section-title">Mode</p>
@@ -909,7 +1030,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                   className="practice-sidebar__select"
                   value={config.mode}
                   disabled={isDisabled}
-                  onChange={(e) => updateConfig({ mode: e.target.value as 'flow' | 'step' })}
+                  onChange={(e) => { setComplexityLevel(null); updateConfig({ mode: e.target.value as 'flow' | 'step' }); }}
                 >
                   <option value="flow">Flow</option>
                   <option value="step">Step</option>
@@ -930,7 +1051,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                       value={v}
                       checked={config.preset === v}
                       disabled={isDisabled}
-                      onChange={() => updateConfig({ preset: v })}
+                      onChange={() => { setComplexityLevel(null); updateConfig({ preset: v }); }}
                     />
                     {label}
                   </label>
@@ -959,7 +1080,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                     value={config.noteCount}
                     disabled={isDisabled}
                     aria-label="Note count"
-                    onChange={(e) => updateConfig({ noteCount: Number(e.target.value) })}
+                    onChange={(e) => { setComplexityLevel(null); updateConfig({ noteCount: Number(e.target.value) }); }}
                   />
                   <span className="practice-sidebar__slider-value">{config.noteCount}</span>
                 </div>
@@ -980,7 +1101,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                       checked={config.clef === c}
                       disabled={isDisabled || config.preset === 'score'}
                       aria-disabled={config.preset === 'score'}
-                      onChange={() => updateConfig({ clef: c })}
+                      onChange={() => { setComplexityLevel(null); updateConfig({ clef: c }); }}
                     />
                     {c}
                   </label>
@@ -1005,7 +1126,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                       checked={config.octaveRange === o}
                       disabled={isDisabled || config.preset === 'score'}
                       aria-disabled={config.preset === 'score'}
-                      onChange={() => updateConfig({ octaveRange: o })}
+                      onChange={() => { setComplexityLevel(null); updateConfig({ octaveRange: o }); }}
                     />
                     {o === 1 ? '1 oct.' : '2 oct.'}
                   </label>
@@ -1027,14 +1148,13 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                     value={bpmValue}
                     disabled={isDisabled}
                     aria-label="Tempo BPM"
-                    onChange={(e) => handleBpmChange(Number(e.target.value))}
+                    onChange={(e) => { setComplexityLevel(null); handleBpmChange(Number(e.target.value)); }}
                   />
                   <span className="practice-sidebar__slider-value">{bpmValue}</span>
                 </div>
                 <p className="practice-sidebar__slider-sublabel">BPM</p>
               </div>
             </div>
-          )}
         </aside>
 
         {/* ── Main ─────────────────────────────────────────────────────────── */}
@@ -1092,22 +1212,19 @@ export function PracticePlugin({ context }: PracticePluginProps) {
           {/* Controls: ready phase */}
           {phase === 'ready' && (
             <div className="practice-controls">
-              <p className="practice-start-prompt" aria-live="polite">
-                🎹 Press any note to start
-              </p>
               <button
-                className="practice-plugin__play-btn"
-                onClick={config.mode === 'step' ? handleStartStep : handlePlay}
-                aria-label="Play exercise"
+                className="practice-start-prompt"
                 data-testid="practice-play-btn"
+                aria-label="Start exercise"
+                onClick={() => config.mode === 'step' ? handleStartStep() : handlePlay()}
               >
-                ▶ Play
+                🎹 Press any note to start
               </button>
             </div>
           )}
 
-          {/* Response staff — flow mode while playing or reviewing results */}
-          {(phase === 'playing' || phase === 'results') && config.mode !== 'step' && (
+          {/* Response staff — flow mode playing/results; step mode playing only */}
+          {(phase === 'playing' || (phase === 'results' && config.mode !== 'step')) && (
             <div className="practice-staff-block">
               <div className="practice-staff-label" aria-hidden="true">Your Response</div>
               <div className="practice-staff-wrapper">
@@ -1116,8 +1233,7 @@ export function PracticePlugin({ context }: PracticePluginProps) {
                   clef={config.clef}
                   highlightedNotes={responseHighlightedNotes}
                   bpm={exercise.bpm}
-                  timestampOffset={playStartMs}
-                  autoScroll
+                  {...(config.mode !== 'step' ? { timestampOffset: playStartMs, autoScroll: true } : {})}
                 />
               </div>
             </div>

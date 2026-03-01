@@ -164,6 +164,11 @@ function makeMockContext(overrides?: { scorePlayer?: PluginScorePlayerContext & 
   };
 }
 
+/** Fire a MIDI attack on ctx to auto-start the exercise (replaces the removed Play button). */
+function fireMidiAttack(ctx: ReturnType<typeof makeMockContext>, midiNote = 60) {
+  ctx._midiSubscribers.forEach(h => h({ type: 'attack' as const, midiNote, timestamp: Date.now(), durationMs: 500 }));
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
@@ -174,6 +179,7 @@ afterEach(() => {
   vi.runAllTimers();
   vi.useRealTimers();
   vi.clearAllMocks();
+  localStorage.clear();
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -194,12 +200,11 @@ describe('PracticePlugin', () => {
       expect(screen.getByLabelText(/mode/i)).toBeDefined();
     });
 
-    it('renders a Play button in the ready state', () => {
+    it('shows "Press any note to start" prompt in the ready state', () => {
       const ctx = makeMockContext();
       render(<PracticePlugin context={ctx} />);
 
-      const playButton = screen.getByRole('button', { name: /play/i });
-      expect(playButton).toBeDefined();
+      expect(screen.getByText(/press any note to start/i)).toBeDefined();
     });
 
     it('does NOT show results panel on mount', () => {
@@ -218,10 +223,11 @@ describe('PracticePlugin', () => {
       const ctx = makeMockContext();
       render(<PracticePlugin context={ctx} />);
 
-      // Press Play to start countdown
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      // Switch to flow mode (default level is low → step; flow needed for countdown)
+      await act(async () => { fireEvent.change(screen.getByLabelText(/mode/i), { target: { value: 'flow' } }); });
+
+      // Fire MIDI attack to start exercise (auto-start replaces Play button)
+      await act(async () => { fireMidiAttack(ctx); });
 
       // Should show countdown "3" immediately
       expect(screen.queryByText('3')).not.toBeNull();
@@ -293,9 +299,10 @@ describe('PracticePlugin', () => {
       const ctx = makeMockContext();
       render(<PracticePlugin context={ctx} />);
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      // Switch to flow mode so notes are scheduled via playNote
+      await act(async () => { fireEvent.change(screen.getByLabelText(/mode/i), { target: { value: 'flow' } }); });
+
+      await act(async () => { fireMidiAttack(ctx); });
 
       // Advance through countdown (3s) + a bit
       await act(async () => { vi.advanceTimersByTime(4000); });
@@ -320,9 +327,7 @@ describe('PracticePlugin', () => {
       const ctx = makeMockContext();
       render(<PracticePlugin context={ctx} />);
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      await act(async () => { fireMidiAttack(ctx); });
 
       // Get through countdown
       await act(async () => { vi.advanceTimersByTime(4000); });
@@ -342,9 +347,10 @@ describe('PracticePlugin', () => {
       const ctx = makeMockContext();
       render(<PracticePlugin context={ctx} />);
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      // Switch to flow mode so the exercise drives itself to completion
+      await act(async () => { fireEvent.change(screen.getByLabelText(/mode/i), { target: { value: 'flow' } }); });
+
+      await act(async () => { fireMidiAttack(ctx); });
 
       // Advance well past the exercise duration (countdown 3s + exercise up to ~10s + buffer)
       await act(async () => { vi.advanceTimersByTime(20_000); });
@@ -365,17 +371,15 @@ describe('PracticePlugin', () => {
       render(<PracticePlugin context={ctx} />);
 
       // Complete an exercise to reach results
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      await act(async () => { fireMidiAttack(ctx); });
       await act(async () => { vi.advanceTimersByTime(20_000); });
 
       // Find and click Try Again
       const tryAgainBtn = screen.queryByRole('button', { name: /try again/i });
       if (tryAgainBtn) {
         await act(async () => { fireEvent.click(tryAgainBtn); });
-        // After Try Again, Play button should be visible (back in ready)
-        expect(screen.getByRole('button', { name: /play/i })).toBeDefined();
+        // After Try Again, start prompt should be visible (back in ready)
+        expect(screen.getByText(/press any note to start/i)).toBeDefined();
       }
     });
   });
@@ -388,17 +392,15 @@ describe('PracticePlugin', () => {
       render(<PracticePlugin context={ctx} />);
 
       // Complete an exercise to reach results
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      await act(async () => { fireMidiAttack(ctx); });
       await act(async () => { vi.advanceTimersByTime(20_000); });
 
       // Find and click New Exercise
       const newExBtn = screen.queryByRole('button', { name: /new exercise/i });
       if (newExBtn) {
         await act(async () => { fireEvent.click(newExBtn); });
-        // After New Exercise, Play button should be visible (back in ready)
-        expect(screen.getByRole('button', { name: /play/i })).toBeDefined();
+        // After New Exercise, start prompt should be visible (back in ready)
+        expect(screen.getByText(/press any note to start/i)).toBeDefined();
       }
     });
   });
@@ -411,9 +413,7 @@ describe('PracticePlugin', () => {
       const { unmount } = render(<PracticePlugin context={ctx} />);
 
       // Start exercise
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /play/i }));
-      });
+      await act(async () => { fireMidiAttack(ctx); });
       // Get through countdown to playing phase
       await act(async () => { vi.advanceTimersByTime(4000); });
 
@@ -566,8 +566,8 @@ describe('PracticePlugin', () => {
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: /beethoven/i })); });
       await act(async () => { spPlayer._notify({ status: 'ready', currentTick: 0, totalDurationTicks: 1000, highlightedNoteIds: new Set<string>(), bpm: 120, title: null, error: null }); });
 
-      // Start exercise — enters countdown
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: /play/i })); });
+      // Start exercise — auto-start via MIDI attack
+      await act(async () => { fireMidiAttack(ctx); });
 
       const changeScoreBtn = screen.getByRole('button', { name: /change score/i }) as HTMLButtonElement;
       expect(changeScoreBtn.disabled).toBe(true);
@@ -776,5 +776,257 @@ describe('PracticePlugin', () => {
 
       expect(screen.getByTestId('score-selector-dialog')).toBeDefined();
     });
+  });
+});
+
+// ─── T004 — Complexity Level Selector (US1) ───────────────────────────────────
+
+describe('PracticePlugin — complexity level selector (US1)', () => {
+  it('renders a level select dropdown with Low, Mid, High options', () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    const values = Array.from(sel.options).map(o => o.value);
+    expect(values).toContain('low');
+    expect(values).toContain('mid');
+    expect(values).toContain('high');
+  });
+
+  it('select defaults to "low" (default level)', () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.value).toBe('low');
+  });
+
+  it('selecting Low sets BPM slider to 40', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'mid' } }); });
+    await act(async () => { fireEvent.change(sel, { target: { value: 'low' } }); });
+
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('40');
+  });
+
+  it('selecting Mid sets BPM slider to 80', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'mid' } }); });
+
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('80');
+  });
+
+  it('selecting High sets BPM slider to 100', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('100');
+  });
+
+  it('selecting Low sets Clef to Treble', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+    await act(async () => { fireEvent.change(sel, { target: { value: 'low' } }); });
+
+    const trebleRadio = screen.getByRole('radio', { name: /treble/i }) as HTMLInputElement;
+    expect(trebleRadio.checked).toBe(true);
+  });
+
+  it('selecting High sets Clef to Bass', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+
+    const bassRadio = screen.getByRole('radio', { name: /bass/i }) as HTMLInputElement;
+    expect(bassRadio.checked).toBe(true);
+  });
+
+  it('selecting High makes select value "high"', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+
+    expect(sel.value).toBe('high');
+  });
+
+  it('level selector is disabled while not in ready phase', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    // Trigger playing phase via MIDI auto-start
+    await act(async () => { fireMidiAttack(ctx); });
+    await act(async () => { vi.advanceTimersByTime(5000); });
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.disabled).toBe(true);
+  });
+});
+// ─── T008 — localStorage persistence (US2) ────────────────────────────────────
+
+describe('PracticePlugin — localStorage persistence (US2)', () => {
+  it('selecting Mid writes \'mid\' to localStorage[practice-complexity-level-v1]', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i);
+    await act(async () => { fireEvent.change(sel, { target: { value: 'mid' } }); });
+
+    expect(localStorage.getItem('practice-complexity-level-v1')).toBe('mid');
+  });
+
+  it('selecting High writes \'high\' to localStorage[practice-complexity-level-v1]', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i);
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+
+    expect(localStorage.getItem('practice-complexity-level-v1')).toBe('high');
+  });
+
+  it('when localStorage contains \'high\' on mount, select shows \'high\'', async () => {
+    localStorage.setItem('practice-complexity-level-v1', 'high');
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    await act(async () => { vi.runAllTimers(); });
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.value).toBe('high');
+  });
+
+  it('when localStorage contains \'high\', BPM slider initialises to 100', async () => {
+    localStorage.setItem('practice-complexity-level-v1', 'high');
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    await act(async () => { vi.runAllTimers(); });
+
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('100');
+  });
+
+  it('when localStorage contains invalid value, select defaults to \'low\'', async () => {
+    localStorage.setItem('practice-complexity-level-v1', 'extreme');
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    await act(async () => { vi.runAllTimers(); });
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.value).toBe('low');
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('40');
+  });
+
+  it('when localStorage is empty, select defaults to \'low\' with BPM=40', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    await act(async () => { vi.runAllTimers(); });
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.value).toBe('low');
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i) as HTMLInputElement;
+    expect(bpmSlider.value).toBe('40');
+  });
+});
+
+// ─── T011 — Visual differentiation + badge-clear (US3) ──────────────────
+
+describe('PracticePlugin — visual differentiation and badge-clear (US3)', () => {
+  it('Low option text is "Low"', () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    const lowOption = Array.from(sel.options).find(o => o.value === 'low');
+    expect(lowOption).toBeDefined();
+    expect(lowOption!.text).toBe('Low');
+  });
+
+  it('Mid option text is "Mid"', () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    const midOption = Array.from(sel.options).find(o => o.value === 'mid');
+    expect(midOption).toBeDefined();
+    expect(midOption!.text).toBe('Mid');
+  });
+
+  it('High option text is "High"', () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    const highOption = Array.from(sel.options).find(o => o.value === 'high');
+    expect(highOption).toBeDefined();
+    expect(highOption!.text).toBe('High');
+  });
+
+  it('after selecting Low then changing Notes slider, select shows "custom"', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    await act(async () => { vi.runAllTimers(); });
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    expect(sel.value).toBe('low');
+
+    // Change Notes slider - should switch to custom
+    const notesSlider = screen.getByLabelText(/note count/i);
+    await act(async () => { fireEvent.change(notesSlider, { target: { value: '12' } }); });
+
+    expect(sel.value).toBe('custom');
+  });
+
+  it('after selecting Mid then changing Clef, select shows "custom"', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'mid' } }); });
+    expect(sel.value).toBe('mid');
+
+    // Change Clef - should switch to custom
+    const bassRadio = screen.getByRole('radio', { name: /bass/i });
+    await act(async () => { fireEvent.click(bassRadio); });
+
+    expect(sel.value).toBe('custom');
+  });
+
+  it('after selecting High then changing BPM slider, select shows "custom"', async () => {
+    const ctx = makeMockContext();
+    render(<PracticePlugin context={ctx} />);
+
+    const sel = screen.getByLabelText(/complexity level/i) as HTMLSelectElement;
+    await act(async () => { fireEvent.change(sel, { target: { value: 'high' } }); });
+    expect(sel.value).toBe('high');
+
+    // Change BPM - should switch to custom
+    const bpmSlider = screen.getByLabelText(/tempo bpm/i);
+    await act(async () => { fireEvent.change(bpmSlider, { target: { value: '120' } }); });
+
+    expect(sel.value).toBe('custom');
   });
 });

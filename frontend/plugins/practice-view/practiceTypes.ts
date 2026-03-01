@@ -122,3 +122,50 @@ export interface ExerciseResult {
   /** Slots with correct timing */
   correctTimingCount: number;
 }
+
+// ─── Complexity Levels ────────────────────────────────────────────────────────
+
+/** The three user-facing complexity levels. */
+export type ComplexityLevel = 'low' | 'mid' | 'high';
+
+/**
+ * Active complexity level state.
+ * null means the user has customised parameters beyond a preset ("custom mode").
+ */
+export type ActiveComplexityLevel = ComplexityLevel | null;
+
+/** A named preset that maps a ComplexityLevel to exercise configuration + tempo. */
+export interface ComplexityPreset {
+  bpm: number;
+  config: Pick<ExerciseConfig, 'preset' | 'noteCount' | 'clef' | 'octaveRange' | 'mode'>;
+  /** Brief parameter summary shown beneath the level button. */
+  description: string;
+}
+
+/** All three complexity presets. */
+export type ComplexityPresets = Record<ComplexityLevel, ComplexityPreset>;
+
+/** localStorage key used to persist the selected complexity level across sessions. */
+export const COMPLEXITY_LEVEL_STORAGE_KEY = 'practice-complexity-level-v1';
+
+/**
+ * Preset definitions for Low / Mid / High complexity levels.
+ * FR-002 (Low), FR-003 (Mid), FR-004 (High).
+ */
+export const COMPLEXITY_PRESETS: ComplexityPresets = {
+  low: {
+    bpm: 40,
+    config: { preset: 'c4scale', noteCount: 8, clef: 'Treble', octaveRange: 1, mode: 'step' },
+    description: '8 notes · Treble · 40 BPM · Step',
+  },
+  mid: {
+    bpm: 80,
+    config: { preset: 'random', noteCount: 16, clef: 'Treble', octaveRange: 1, mode: 'step' },
+    description: '16 notes · Treble · 80 BPM · Step',
+  },
+  high: {
+    bpm: 100,
+    config: { preset: 'random', noteCount: 20, clef: 'Bass', octaveRange: 2, mode: 'flow' },
+    description: '20 notes · Bass · 100 BPM · Flow',
+  },
+};

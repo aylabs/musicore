@@ -32,8 +32,12 @@
   font-size: 1.05rem;
   font-weight: 700;
   margin: 0;
-  flex: 1;
   color: var(--color-text, #222);
+}
+
+/* Spacer that pushes the badge to the right end of the header */
+.practice-plugin__header-spacer {
+  flex: 1;
 }
 
 .practice-plugin__header-actions {
@@ -86,6 +90,30 @@
   background: var(--color-accent, #4f8ef7);
   color: #fff;
   border-color: transparent;
+}
+
+/* Level label + selector in the toolbar */
+.practice-plugin__level-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #666);
+  white-space: nowrap;
+}
+
+.practice-plugin__level-select {
+  min-height: 32px;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-border, #d0d0d0);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--color-surface-alt, #f8f8f8);
+  color: var(--color-text, #333);
+  cursor: pointer;
+}
+.practice-plugin__level-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .practice-plugin__header-btn--new:hover {
@@ -187,8 +215,11 @@
 }
 
 .practice-sidebar--collapsed {
-  width: 36px;
+  width: 0;
   overflow: hidden;
+  padding: 0;
+  border: none;
+  min-width: 0;
 }
 
 .practice-sidebar__toggle {
@@ -380,6 +411,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-muted, #888);
+  margin-left: 0.5rem;
 }
 
 /* Inline sound toggle next to the Exercise staff label */
@@ -660,7 +692,7 @@
   }
 
   .practice-sidebar--collapsed {
-    width: 100%;
+    display: none;
   }
 
   /* Sections scroll horizontally */
@@ -745,4 +777,56 @@
 
 .practice-sidebar__change-score-btn:not(:disabled):hover {
   opacity: 0.75;
+}
+
+/* ─── Complexity Level Selector (Feature 001) ──────────────────────────────── */
+
+.practice-level-selector {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.practice-level-btn {
+  flex: 1;
+  min-width: 3.5rem;
+  padding: 0.45rem 0.3rem 0.4rem;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: inherit;
+  text-align: center;
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s;
+  line-height: 1.2;
+}
+
+.practice-level-btn:not(:disabled):hover {
+  opacity: 0.8;
+}
+
+.practice-level-btn--active {
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 1;
+  font-weight: 600;
+  border-color: currentColor;
+}
+
+.practice-level-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.practice-level-btn__name {
+  display: block;
+}
+
+.practice-level-btn__description {
+  display: block;
+  font-size: 0.68rem;
+  opacity: 0.75;
+  font-weight: 400;
+  margin-top: 0.15rem;
 }
