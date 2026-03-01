@@ -13,10 +13,9 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // PLAYWRIGHT_TEST=1 makes vite.config.ts skip basicSsl so the dev server
-    // starts on plain HTTP – no TLS cert issues for Playwright's webServer
-    // health-check or for page.goto().
-    baseURL: 'http://localhost:5173',
+    // Playwright runs Vite on port 5174 (plain HTTP via PLAYWRIGHT_TEST=1)
+    // so it never conflicts with the regular dev server on 5173 (HTTPS).
+    baseURL: 'http://localhost:5174',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -29,12 +28,13 @@ export default defineConfig({
     },
   ],
 
-  // PLAYWRIGHT_TEST=1 disables basicSsl in vite.config.ts so the server
-  // starts on plain HTTP.  reuseExistingServer lets you keep a Playwright-
-  // started server alive across multiple test runs locally.
+  // Uses a dedicated port (5174) so this server never conflicts with the
+  // normal 'npm run dev' server on 5173.
+  // PLAYWRIGHT_TEST=1 tells vite.config.ts to skip basicSsl → plain HTTP
+  // so Playwright's webServer health-check can reach it without TLS issues.
   webServer: {
-    command: 'PLAYWRIGHT_TEST=1 npm run dev',
-    url: 'http://localhost:5173',
+    command: 'PLAYWRIGHT_TEST=1 npm run dev -- --port 5174',
+    url: 'http://localhost:5174',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
