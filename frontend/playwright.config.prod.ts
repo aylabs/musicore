@@ -33,6 +33,11 @@ export default defineConfig({
     baseURL: 'http://localhost:4173/musicore/',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Block the PWA service worker during E2E tests.
+    // On first activation the SW calls clients.claim() which forces a
+    // page reload, detaching all DOM elements mid-test and causing
+    // locator.click() to fail with "element detached / navigation".
+    serviceWorkers: 'block',
   },
 
   projects: [
@@ -47,7 +52,7 @@ export default defineConfig({
   webServer: {
     command: 'VITE_BASE=/musicore/ npx vite preview --port 4173',
     url: 'http://localhost:4173/musicore/',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
 });
