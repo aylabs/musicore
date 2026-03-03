@@ -157,9 +157,9 @@
   - `reset()`: clears prior presses and sets new required pitches.
   - `reset([])`: empty set never reports `complete`.
 
-- [X] T047 [P] Create `plugins-external/practice-view-plugin/chordDetector.ts` — verbatim mirror of `frontend/src/utils/chordDetector.ts`; file header comment must reference the canonical copy path.
+- [X] T047 [P] ~~Create `plugins-external/practice-view-plugin/chordDetector.ts` mirror~~ **SUPERSEDED**: `ChordDetector` is now re-exported via the Plugin API barrel (`frontend/src/plugin-api/index.ts`). External plugins import it from `../../frontend/src/plugin-api/index` — no mirror copy needed.
 
-- [X] T048 [P] Write `plugins-external/practice-view-plugin/chordDetector.test.ts` — same test cases as T046 to verify the mirror copy is correct.
+- [X] T048 [P] ~~Write `plugins-external/practice-view-plugin/chordDetector.test.ts`~~ **SUPERSEDED**: mirror copy and its tests deleted; canonical tests in `frontend/src/utils/chordDetector.test.ts` provide full coverage.
 
 - [X] T049 Update MIDI handler in `plugins-external/practice-view-plugin/PracticeViewPlugin.tsx`:
   - `import { ChordDetector } from './chordDetector'`.

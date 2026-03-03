@@ -13,12 +13,9 @@
  *   - Reusable: create one instance, call `reset()` each time the target
  *     chord changes.
  *
- * Plugin copy:
- *   A mirror of this file lives at
- *   `plugins-external/practice-view-plugin/chordDetector.ts` for
- *   self-contained plugin packaging (external plugins cannot import host
- *   internals beyond the Plugin API). Keep both files in sync when logic
- *   changes.
+ * Plugin access:
+ *   Re-exported via `frontend/src/plugin-api/index.ts` so external plugins can
+ *   import it directly from the Plugin API — no mirror copy needed.
  */
 
 // ---------------------------------------------------------------------------
