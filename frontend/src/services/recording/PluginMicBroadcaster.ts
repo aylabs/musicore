@@ -58,6 +58,20 @@ class PluginMicBroadcaster {
   private stream: MediaStream | null = null;
   /** Cached error, if any — delivered to late onError subscribers immediately */
   private errorState: string | null = null;
+  /**
+   * Monotonically increasing counter. Incremented whenever startMic() is
+   * invoked or stopMic() runs. Each startMic() invocation captures its value
+   * at entry; if the counter has advanced by the time an await resumes, the
+   * invocation is stale (a new startup was requested or a stop ran) and must
+   * release any resources it has already acquired.
+   *
+   * This prevents TWO concurrent startMic() calls from both completing when
+   * React StrictMode mounts-unmounts-remounts the component: the first call's
+   * async continuation resumes after pitchHandlers have been re-populated by
+   * the second mount, so pitchHandlers.size would be > 0 and the old guards
+   * would pass — leaving two open streams, one of which is never closed.
+   */
+  private micGeneration = 0;
 
   /**
    * Subscribe to microphone pitch events.
@@ -67,7 +81,6 @@ class PluginMicBroadcaster {
   subscribe(handler: (e: PluginPitchEvent) => void): () => void {
     this.pitchHandlers.add(handler);
     if (this.pitchHandlers.size === 1 && !this.stream) {
-      // First subscriber: open mic
       this.startMic();
     }
     return () => {
@@ -118,6 +131,7 @@ class PluginMicBroadcaster {
   // ─── Private: mic lifecycle ─────────────────────────────────────────────────
 
   private async startMic(): Promise<void> {
+    const gen = ++this.micGeneration;
     // Guard: AudioWorklet supported
     if (typeof AudioWorkletNode === 'undefined') {
       this.dispatchError('AudioWorklet not supported in this browser');
@@ -145,8 +159,8 @@ class PluginMicBroadcaster {
         },
       });
     } catch (err) {
-      // Check if subscriber count dropped to zero while we were awaiting permission
-      if (this.pitchHandlers.size === 0) return;
+      // Check if this invocation was superseded while we were awaiting permission
+      if (this.micGeneration !== gen) return;
       const name = (err as DOMException).name;
       const message =
         name === 'NotAllowedError'
@@ -158,8 +172,8 @@ class PluginMicBroadcaster {
       return;
     }
 
-    // Check if all subscribers unsubscribed while awaiting permission
-    if (this.pitchHandlers.size === 0) {
+    // Check if this invocation was superseded while we were awaiting getUserMedia
+    if (this.micGeneration !== gen) {
       stream.getTracks().forEach((t) => t.stop());
       return;
     }
@@ -171,18 +185,14 @@ class PluginMicBroadcaster {
         `${typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL ?? '/' : '/'}audio-processor.worklet.js`
       );
     } catch {
-      if (this.pitchHandlers.size === 0) {
-        stream.getTracks().forEach((t) => t.stop());
-        audioCtx.close();
-        return;
-      }
       stream.getTracks().forEach((t) => t.stop());
       audioCtx.close();
+      if (this.micGeneration !== gen) return;
       this.dispatchError('Failed to load audio processor');
       return;
     }
 
-    if (this.pitchHandlers.size === 0) {
+    if (this.micGeneration !== gen) {
       stream.getTracks().forEach((t) => t.stop());
       audioCtx.close();
       return;
@@ -222,19 +232,32 @@ class PluginMicBroadcaster {
       this.dispatch(event);
     };
 
+    // Final guard: check generation before committing resources to the singleton.
+    // If stopMic() or a new startMic() ran while this invocation was suspended
+    // at any await, the generation will have advanced and we must tear down
+    // rather than orphan this stream.
+    if (this.micGeneration !== gen) {
+      workletNode.disconnect();
+      stream.getTracks().forEach((t) => t.stop());
+      audioCtx.close();
+      return;
+    }
+
     this.stream = stream;
     this.audioCtx = audioCtx;
     this.workletNode = workletNode;
   }
 
   private stopMic(): void {
-    try {
-      this.workletNode?.disconnect();
-      this.stream?.getTracks().forEach((t) => t.stop());
-      this.audioCtx?.close();
-    } catch {
-      // Ignore teardown errors
-    }
+    // Advance the generation counter so any in-flight startMic() invocation
+    // will see a mismatch at its next guard and tear down its own resources.
+    this.micGeneration++;
+    // Each teardown step runs independently so a failed disconnect()
+    // cannot prevent the MediaStream tracks from being stopped — the tracks
+    // must be stopped for the browser to release the mic indicator.
+    try { this.workletNode?.disconnect(); } catch { /* ignore */ }
+    try { this.stream?.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
+    try { this.audioCtx?.close(); } catch { /* ignore */ }
     this.stream = null;
     this.audioCtx = null;
     this.workletNode = null;
