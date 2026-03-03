@@ -1,5 +1,6 @@
 #!/bin/sh
-# Pre-push hook - Full build validation before pushing to remote
+# Pre-push hook: fast checks (Rust tests, TS build, unit tests).
+# E2E tests are intentionally excluded — they take 20+ minutes and run in CI.
 
 echo "🚀 Running pre-push validation..."
 
@@ -28,7 +29,7 @@ if [ "$current_branch" = "main" ] || echo "$current_branch" | grep -qE '^[0-9]+-
 
   cd frontend
   
-  # Run full TypeScript build (with VITE_BASE so the E2E tests can reuse it)
+  # Run full TypeScript build with production base path (catches sub-path issues)
   echo "  - Type checking and building..."
   if ! VITE_BASE=/musicore/ npm run build > /dev/null 2>&1; then
     echo ""
@@ -49,22 +50,6 @@ if [ "$current_branch" = "main" ] || echo "$current_branch" | grep -qE '^[0-9]+-
     echo "Tip: Use 'git push --no-verify' to skip if tests are expected to fail."
     exit 1
   fi
-
-  # Run E2E tests (reuse the build already produced above)
-  echo "  - Running E2E tests..."
-  # Kill any stale preview server so Playwright's webServer starts fresh
-  lsof -i :4173 -t 2>/dev/null | xargs kill -9 2>/dev/null || true
-  if ! npx playwright test --config playwright.config.prod.ts --reporter=list > /tmp/e2e-prepush.log 2>&1; then
-    echo ""
-    echo "❌ E2E tests failed! Output:"
-    tail -40 /tmp/e2e-prepush.log
-    echo ""
-    echo "Run 'cd frontend && npm run e2e' to reproduce locally."
-    echo "Tip: Use 'git push --no-verify' to skip if this is expected."
-    exit 1
-  fi
-  e2e_passed=$(grep -c ' ✓ ' /tmp/e2e-prepush.log 2>/dev/null || echo 0)
-  echo "  E2E: ${e2e_passed} tests passed"
 
   cd ..
   
