@@ -207,6 +207,18 @@
 
 - [X] T061 Auto-scroll follows user target note — add `scrollTargetNoteIds` prop pipeline: during practice, `highlightedNoteIds` holds the phantom tempo position (amber) so `ScoreViewer.scrollToHighlightedSystem()` scrolled to the wrong note; add optional `scrollTargetNoteIds?: ReadonlySet<string>` to `PluginScoreRendererProps` in `frontend/src/plugin-api/types.ts`; thread it through `ScoreRendererPlugin.tsx` → `LayoutView.tsx` → `ScoreViewer.tsx`; in `ScoreViewer.componentDidUpdate` prefer `scrollTargetNoteIds` over `highlightedNoteIds` for scroll triggering and system-index lookup; in `PracticeViewPlugin.tsx` pass `scrollTargetNoteIds={practiceActive ? targetNoteIds : undefined}` to `<ScoreRenderer />`.
 
+## Phase 11: Off-beat Scoring, UX Fixes & Chord Detector Fix (Amendment 2026-03-04)
+
+**Context**: Bug fixes and UX refinements discovered during live testing.
+
+- [X] T062 [US2] Symmetric off-beat scoring — notes played ahead of tempo penalised identically to late notes: change `isLate` check in `practiceEngine.ts` from `responseTimeMs - expectedTimeMs > LATE_THRESHOLD_MS` to `Math.abs(responseTimeMs - expectedTimeMs) > LATE_THRESHOLD_MS`; update comment; rename `'Late'` UI label to `'Off-beat'` in the results overlay stat row, per-note table outcome column, and SVG graph dot comment in `PracticeViewPlugin.tsx`; add 1 new test: pressing a note >LATE\_THRESHOLD\_MS *early* yields `correct-late` (93 total passing).
+
+- [X] T063 Results overlay closes only via × button — remove backdrop-tap dismiss: remove `onClick` / `onTouchEnd` handlers and `role="button"` / `aria-label` from the `practice-results__backdrop` div in `PracticeViewPlugin.tsx`; remove `stopPropagation` on the results panel; update comment on `resultsOverlayVisible` state.
+
+- [X] T064 Remove tap-highlight blink on results backdrop: add `pointer-events: none` and `-webkit-tap-highlight-color: transparent` to `.practice-plugin--results .practice-results__backdrop` in `PracticeViewPlugin.css`; remove `cursor: pointer` (no longer interactive).
+
+- [X] T065 Fix `ChordDetector` window logic — chords not detected reliably on physical keyboard: two root causes: (1) eviction used `currentTimestamp − windowMs` as cutoff, so any non-chord keypress could evict earlier chord presses; (2) default `windowMs` of 80 ms too tight for 3-note physical chord (typical spread 80–150 ms); fix in `frontend/src/utils/chordDetector.ts`: non-required pitches `return early` without touching the window; eviction replaced by "oldest-anchor" logic: clear accumulated presses only when a new chord note arrives more than `windowMs` after the oldest collected press; raise default `windowMs` from 80 to 200 ms; update `chordDetector.test.ts`: update window-boundary test fixtures (80→200 ms), add test for realistic 150 ms chord spread, add test proving a non-chord note between chord presses does not break detection (16 total passing).
+
 ---
 
 ## Dependencies & Execution Order

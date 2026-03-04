@@ -104,14 +104,25 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 | `plugins-external/practice-view-plugin/PracticeViewPlugin.tsx` | Phantom highlights, deferred start wiring, `scrollTargetNoteIds`, delay delta payload |
 | `plugins-external/practice-view-plugin/PracticeViewPlugin.css` | Phantom opacity rule + delay graph styles |
 | `plugins-external/practice-view-plugin/practiceEngine.test.ts` | 3 new deferred-start tests (92 total passing) |
-| `specs/037-practice-view-plugin/` | Full spec suite + Phase 8–10 amendments |
+| `specs/037-practice-view-plugin/` | Full spec suite + Phase 8–11 amendments |
+
+### Off-beat Scoring, UX Fixes & Chord Detector Fix (T062–T065)
+- Notes played **too far ahead** of tempo are now penalised identically to late notes: `|responseTimeMs − expectedTimeMs| > 500 ms` → `correct-late`  
+- Results overlay renamed stat "Late" → **"Off-beat"** to reflect symmetric early/late treatment
+- Results overlay now closes **only via the × button** (backdrop tap no longer dismisses it)
+- Backdrop tap no longer causes a full-screen blink on touch devices (`pointer-events: none` + `-webkit-tap-highlight-color: transparent`)
+- **`ChordDetector` rewritten** to fix chord detection on physical keyboards:
+  - Old eviction cutoff `currentTimestamp − windowMs` would evict earlier chord notes when any key (even non-chord) was pressed; now returns early for non-chord pitches without touching the window
+  - Window anchor changed from latest-timestamp to **oldest-collected-chord-press** — the window stretches forward from the first note of the chord
+  - Default `windowMs` raised from 80 → **200 ms** (real 3-note chord spread is 80–150 ms)
+  - Tests: 16 passing (+2 new: 150 ms realistic spread, non-chord note isolation)
 
 ## Test Results
 
 - **304 Rust backend tests** — all passing
-- **1312 frontend unit tests** — all passing
+- **1329 frontend unit tests** — all passing
 - **49 Playwright E2E tests** — all passing
-- **Plugin unit tests** — 89 passing
+- **Plugin unit tests** — 93 passing
 - **Plugin bundle** — 7 KB (limit: 50 KB) ✅
 
 ## Success Criteria Met
