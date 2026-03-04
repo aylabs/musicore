@@ -74,6 +74,9 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 | `frontend/plugins/.gitignore` | New — prevent symlinks from being committed |
 | `frontend/plugins/train-view/exerciseGenerator.ts` | v6 migration (`midiPitches[0]`) |
 | `frontend/plugins/train-view/exerciseGenerator.test.ts` | Updated tests |
+| `frontend/src/services/recording/useMidiInput.ts` | Fix: `addEventListener` instead of `onstatechange` assignment |
+| `frontend/src/services/recording/useMidiInput.test.ts` | Updated cleanup test for addEventListener-based handler |
+| `frontend/src/test/mockMidi.ts` | Added `addEventListener`/`removeEventListener` support to MockMidiAccess |
 | `specs/037-practice-view-plugin/` | Full spec suite + Phase 8 amendment |
 
 ## Test Results
@@ -100,7 +103,12 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 56 tasks completed (T001–T056) across 9 phases.
 See `specs/037-practice-view-plugin/tasks.md` for full task list.
 
+### MIDI hotplug fix
+- `useMidiInput.ts` and plugin MIDI detection both called `requestMIDIAccess()` which returns the **same singleton** `MIDIAccess` object — assigning `onstatechange` on one overwrote the other's handler, and cleanup (`onstatechange = null`) killed MIDI detection permanently until browser restart
+- Fix: both now use `addEventListener('statechange', ...)` / `removeEventListener(...)` supporting multiple concurrent listeners
+- `MockMidiAccess` test infrastructure updated to support `addEventListener`/`removeEventListener`
+
 ## Notes
 
-- The closed-source plugin implementation lives in `aylabs/musicore-closed-plugins` at commit `f392f75`. This PR carries all host-side concerns: Plugin API surface, infrastructure improvements, `ChordDetector`, and spec artefacts.
+- The closed-source plugin implementation lives in `aylabs/musicore-closed-plugins` at commit `343c79b`. This PR carries all host-side concerns: Plugin API surface, infrastructure improvements, `ChordDetector`, MIDI fix, and spec artefacts.
 - `ChordDetector` is placed in `frontend/src/utils/` (not inside `plugin-api/types.ts`) so the canonical implementation is accessible to non-plugin host code; the re-export in `index.ts` makes it available to all plugins without duplication.
