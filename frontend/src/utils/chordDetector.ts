@@ -25,8 +25,7 @@
 export interface ChordDetectorOptions {
   /**
    * Maximum milliseconds between the first and last note press of a chord
-   * to be considered simultaneous. Defaults to 200 ms — chosen to accommodate
-   * real keyboard playing where a 3-note chord can easily spread 80–150 ms.
+   * to be considered simultaneous. Defaults to 80 ms.
    */
   windowMs?: number;
 }
@@ -55,7 +54,7 @@ export class ChordDetector {
   private presses: Map<number, number> = new Map();
 
   constructor(options: ChordDetectorOptions = {}) {
-    this.windowMs = options.windowMs ?? 200;
+    this.windowMs = options.windowMs ?? 80;
   }
 
   // ── Public methods ────────────────────────────────────────────────────────
