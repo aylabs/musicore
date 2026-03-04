@@ -105,7 +105,7 @@ describe('T006 — useMidiInput: core', () => {
     expect(result.current.devices).toHaveLength(0);
   });
 
-  it('cleans up onmidimessage and onstatechange handlers on unmount', async () => {
+  it('cleans up onmidimessage and statechange handlers on unmount', async () => {
     const input = createMockMidiInput('Piano');
     const access = createMockMidiAccess([input]);
     mockMidiSupported(access);
@@ -123,7 +123,8 @@ describe('T006 — useMidiInput: core', () => {
 
     // After unmount, all handlers should be cleared
     expect(input.onmidimessage).toBeNull();
-    expect(access.onstatechange).toBeNull();
+    // addEventListener-based: listener set should be empty after removeEventListener
+    expect(access._statechangeListeners.size).toBe(0);
   });
 
   it('returns isSupported=true when requestMIDIAccess is available', async () => {

@@ -35,6 +35,10 @@ export interface MockMidiAccess {
   outputs: Map<string, never>;
   sysexEnabled: boolean;
   onstatechange: ((ev: Partial<MIDIConnectionEvent>) => void) | null;
+  /** Registered statechange listeners (via addEventListener). */
+  _statechangeListeners: Set<EventListener>;
+  addEventListener: (type: string, listener: EventListener) => void;
+  removeEventListener: (type: string, listener: EventListener) => void;
 }
 
 // ─── Factory helpers ──────────────────────────────────────────────────────────
@@ -73,11 +77,19 @@ export function createMockMidiAccess(inputs?: MockMidiInput[]): MockMidiAccess {
   for (const input of inputs ?? []) {
     inputMap.set(input.id, input);
   }
+  const _statechangeListeners = new Set<EventListener>();
   return {
     inputs: inputMap,
     outputs: new Map<string, never>(),
     sysexEnabled: false,
     onstatechange: null,
+    _statechangeListeners,
+    addEventListener(type: string, listener: EventListener) {
+      if (type === 'statechange') _statechangeListeners.add(listener);
+    },
+    removeEventListener(type: string, listener: EventListener) {
+      if (type === 'statechange') _statechangeListeners.delete(listener);
+    },
   };
 }
 
@@ -177,7 +189,13 @@ export function fireMidiStateChange(
     // keep the input in the map but with state 'disconnected' so onstatechange can inspect it
     input.state = 'disconnected';
   }
+  const event = { port: input as unknown as MIDIPort } as Partial<MIDIConnectionEvent>;
+  // Fire legacy onstatechange handler
   if (access.onstatechange) {
-    access.onstatechange({ port: input as unknown as MIDIPort } as Partial<MIDIConnectionEvent>);
+    access.onstatechange(event);
+  }
+  // Fire addEventListener-registered listeners
+  for (const listener of access._statechangeListeners) {
+    listener(event as unknown as Event);
   }
 }
