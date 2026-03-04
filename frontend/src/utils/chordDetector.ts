@@ -86,7 +86,6 @@ export class ChordDetector {
     // to treat them as wrong-note events. Returning early also ensures that
     // non-chord key presses never affect the timing window.
     if (!(this.required as number[]).includes(midiNote)) {
-      console.debug(`[ChordDetector] ignored non-chord note ${midiNote} (required: [${this.required.join(', ')}])`);
       return this._evaluate();
     }
 
@@ -95,24 +94,14 @@ export class ChordDetector {
     // and start a fresh window anchored to this note.
     if (this.presses.size > 0) {
       const oldestTime = Math.min(...this.presses.values());
-      const span = timestamp - oldestTime;
-      if (span > this.windowMs) {
-        console.debug(`[ChordDetector] window expired — span ${span} ms > ${this.windowMs} ms, resetting. Collected: [${[...this.presses.keys()].join(', ')}]`);
+      if (timestamp - oldestTime > this.windowMs) {
         this.presses.clear();
       }
     }
 
-    const anchorTime = this.presses.size === 0 ? timestamp : Math.min(...this.presses.values());
     this.presses.set(midiNote, timestamp);
-    const currentSpan = timestamp - anchorTime;
 
-    const result = this._evaluate();
-    if (result.complete) {
-      console.debug(`[ChordDetector] ✅ chord complete! span=${currentSpan} ms (window=${this.windowMs} ms), notes=[${[...this.presses.keys()].join(', ')}]`);
-    } else {
-      console.debug(`[ChordDetector] note ${midiNote} collected, span so far=${currentSpan} ms, collected=[${result.collected.join(', ')}], missing=[${result.missing.join(', ')}]`);
-    }
-    return result;
+    return this._evaluate();
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
