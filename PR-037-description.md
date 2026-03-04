@@ -17,7 +17,8 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 ### Practice Toolbar & Engine (T025–T030)
 - Full toolbar: Back, Play/Pause/Stop, Timer, Tempo, Metronome, Staff selector, Practice button
 - Staff selector shows Treble Clef / Bass Clef / Staff N / **Both Clefs** (`value=-1`) for multi-staff scores
-- Pure state machine `practiceEngine.ts`: `reduce(state, action)` with `START`, `CORRECT_MIDI`, `WRONG_MIDI`, `STOP`, `DEACTIVATE`, `SEEK` — covered by 24 unit tests (TDD)
+- Pure state machine `practiceEngine.ts`: `reduce(state, action)` with `START`, `CORRECT_MIDI`, `WRONG_MIDI`, `STOP`, `DEACTIVATE`, `SEEK` — covered by 34 unit tests (TDD)
+- Practice button disabled when MIDI connection is known absent (`midiConnected === false`); enabled during pending check (`null`); tooltip shown on disabled state (FR-016)
 
 ### MIDI Step Practice & Seek (T031–T038)
 - Practice mode highlights current target note via `ScoreRenderer.highlightedNoteIds`
@@ -36,6 +37,14 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 - Re-exported via Plugin API (`frontend/src/plugin-api/index.ts`) — no mirror copy required in plugins
 - 14 unit tests
 - MIDI handler uses `ChordDetector.press()` — partial chord presses are silent (no wrong-note penalty while collecting remaining fingers)
+
+### Results Overlay (T053–T056)
+- `NoteOutcome` (`correct` | `correct-late` | `wrong`) and `PracticeNoteResult` per-note record added to engine state
+- `LATE_THRESHOLD_MS = 500` — notes played >500 ms after their beat position are `correct-late`
+- `WRONG_MIDI` now increments `currentWrongAttempts`; `CORRECT_MIDI` appends a `PracticeNoteResult` and resets the counter
+- Session score: `((correct + late × 0.5) / total) × 100 − min(wrongAttempts × 2, 30)`, clamped 0–100
+- Overlay shows: dynamic score ring with colour-coded grade (Perfect / Great / Good / Keep Practising), 4-stat row (Notes / Correct / Late / Wrong), practice time vs. score time comparison, collapsible per-note detail table with outcome row colours
+- Overlay dismissed via × or backdrop; Practice button available to restart
 
 ### Both Clefs Mode (T052)
 - Staff selector "Both Clefs" option (`value=-1`) merges all staves by tick
@@ -72,7 +81,7 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 - **304 Rust backend tests** — all passing
 - **1312 frontend unit tests** — all passing
 - **49 Playwright E2E tests** — all passing
-- **Plugin unit tests** — 72 passing
+- **Plugin unit tests** — 89 passing
 - **Plugin bundle** — 7 KB (limit: 50 KB) ✅
 
 ## Success Criteria Met
@@ -88,10 +97,10 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 
 ## Tasks
 
-52 tasks completed (T001–T052) across 8 phases.
+56 tasks completed (T001–T056) across 9 phases.
 See `specs/037-practice-view-plugin/tasks.md` for full task list.
 
 ## Notes
 
-- The closed-source plugin implementation lives in `aylabs/musicore-closed-plugins` at commit `eb27f93`. This PR carries all host-side concerns: Plugin API surface, infrastructure improvements, `ChordDetector`, and spec artefacts.
+- The closed-source plugin implementation lives in `aylabs/musicore-closed-plugins` at commit `f392f75`. This PR carries all host-side concerns: Plugin API surface, infrastructure improvements, `ChordDetector`, and spec artefacts.
 - `ChordDetector` is placed in `frontend/src/utils/` (not inside `plugin-api/types.ts`) so the canonical implementation is accessible to non-plugin host code; the re-export in `index.ts` makes it available to all plugins without duplication.
