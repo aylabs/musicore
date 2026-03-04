@@ -167,7 +167,12 @@ export function useMidiInput(callbacks: UseMidiInputCallbacks): UseMidiInputResu
         const initialDevices = accessToDevices(access);
         console.log('[useMidiInput] MIDI access granted, initial devices:', initialDevices.map(d => d.name));
         subscribeToAllInputs(access);
-        access.onstatechange = handleStateChange as EventListener;
+        // Use addEventListener instead of onstatechange assignment.
+        // The browser returns the SAME MIDIAccess singleton from every
+        // requestMIDIAccess() call — assigning onstatechange would be
+        // overwritten by any other caller (e.g. plugin MIDI detection),
+        // and their cleanup (onstatechange = null) would kill our handler.
+        access.addEventListener('statechange', handleStateChange as EventListener);
         setDevices(initialDevices);
         setError(null);
       })
@@ -196,9 +201,9 @@ export function useMidiInput(callbacks: UseMidiInputCallbacks): UseMidiInputResu
       });
       subscribedInputsRef.current = [];
 
-      // Remove state-change handler
+      // Remove state-change handler (addEventListener-based, not onstatechange)
       if (accessRef.current) {
-        accessRef.current.onstatechange = null;
+        accessRef.current.removeEventListener('statechange', handleStateChange as EventListener);
         accessRef.current = null;
       }
     };
