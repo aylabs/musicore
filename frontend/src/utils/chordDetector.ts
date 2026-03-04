@@ -82,16 +82,24 @@ export class ChordDetector {
    *                  `Date.now()`).
    */
   press(midiNote: number, timestamp: number): ChordResult {
-    // Evict presses that fell outside the rolling window.
-    const cutoff = timestamp - this.windowMs;
-    for (const [pitch, pressTime] of this.presses) {
-      if (pressTime < cutoff) this.presses.delete(pitch);
+    // Ignore pitches outside the required chord — the caller decides whether
+    // to treat them as wrong-note events. Returning early also ensures that
+    // non-chord key presses never affect the timing window.
+    if (!(this.required as number[]).includes(midiNote)) {
+      return this._evaluate();
     }
 
-    // Only track pitches that belong to the required chord.
-    if ((this.required as number[]).includes(midiNote)) {
-      this.presses.set(midiNote, timestamp);
+    // If this chord press arrives more than windowMs after the earliest
+    // already-collected press, the prior accumulation is stale — discard it
+    // and start a fresh window anchored to this note.
+    if (this.presses.size > 0) {
+      const oldestTime = Math.min(...this.presses.values());
+      if (timestamp - oldestTime > this.windowMs) {
+        this.presses.clear();
+      }
     }
+
+    this.presses.set(midiNote, timestamp);
 
     return this._evaluate();
   }
