@@ -612,6 +612,44 @@ describe('PracticeViewPlugin — Replay (038-practice-replay)', () => {
     expect(playNoteCalls[1][0].durationMs).toBe(425);
   });
 
+  // T011b: bpmAtCompletion uses playerState.bpm directly (no double tempoMultiplier)
+  it('T011b: bpmAtCompletion does not double-apply tempoMultiplier', () => {
+    const notes = [
+      { midiPitches: [60], noteIds: ['n1'], tick: 0 },
+      { midiPitches: [62], noteIds: ['n2'], tick: 960 },
+    ];
+    // Simulate tempoMultiplier=0.5 → bpm should be scoreTempo*0.5 = 60
+    // playerState.bpm already includes the multiplier (set by scorePlayerContext)
+    const ctx = createMockContext({ status: 'ready', staffCount: 1, bpm: 60 });
+    ctx.mockExtractPracticeNotes.mockReturnValue({
+      notes,
+      totalAvailable: notes.length,
+      clef: 'Treble',
+    });
+
+    render(<PracticeViewPlugin context={ctx.context} />);
+
+    const baseTime = Date.now();
+    fireEvent.click(screen.getByRole('button', { name: /start practice/i }));
+
+    vi.setSystemTime(baseTime);
+    act(() => { ctx.simulateMidiEvent({ type: 'attack', midiNote: 60 }); });
+    vi.setSystemTime(baseTime + 500);
+    act(() => { ctx.simulateMidiEvent({ type: 'attack', midiNote: 62 }); });
+
+    (ctx.context.playNote as ReturnType<typeof vi.fn>).mockClear();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /replay your performance/i }));
+    });
+
+    const playNoteCalls = (ctx.context.playNote as ReturnType<typeof vi.fn>).mock.calls;
+    // bpm=60 → msPerBeat=1000, msPerNote=1000*0.85=850
+    // Bug would give bpm=60*tempoMultiplier=30 → msPerBeat=2000, msPerNote=1700
+    expect(playNoteCalls[0][0].durationMs).toBe(850);
+    expect(playNoteCalls[1][0].durationMs).toBe(850);
+  });
+
   // T012: Replay button restored after natural end (finish timer)
   it('T012: restores Replay button after natural end of playback', () => {
     const notes = [

@@ -223,7 +223,7 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
         notes: [...practiceState.notes],
         noteResults: [...practiceState.noteResults],
         wrongNoteEvents: [...practiceState.wrongNoteEvents],
-        bpmAtCompletion: playerState.bpm * tempoMultiplier,
+        bpmAtCompletion: playerState.bpm,
       });
       setIsReplaying(false);
     }
@@ -323,8 +323,8 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
       const notes = practiceState.notes;
       const startIdx = practiceState.currentIndex;
       phantomNotesRef.current = notes;
-      const effectiveBpm = playerState.bpm * tempoMultiplier;
-      phantomBpmRef.current = effectiveBpm;
+      // playerState.bpm already includes tempoMultiplier (scoreTempo × multiplier)
+      phantomBpmRef.current = playerState.bpm;
       phantomBaseTickRef.current = notes[startIdx]?.tick ?? notes[0].tick;
       phantomStartTimeRef.current = Date.now();
       setPhantomIndex(startIdx);
@@ -354,7 +354,7 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
       phantomTimerRef.current = null;
       setPhantomIndex(-1);
     }
-  }, [practiceState.mode, practiceState.notes, practiceState.currentIndex, playerState.bpm, tempoMultiplier]);
+  }, [practiceState.mode, practiceState.notes, practiceState.currentIndex, playerState.bpm]);
 
   // Cleanup phantom timer on unmount
   useEffect(() => {
@@ -488,7 +488,8 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
             practiceStartTimeRef.current = Date.now();
           }
           // Compute timing data for the result
-          const bpm = playerStateRef.current.bpm * tempoMultiplierRef.current;
+          // playerState.bpm already includes tempoMultiplier (scoreTempo × multiplier)
+          const bpm = playerStateRef.current.bpm;
           const expectedTimeMs = bpm > 0
             ? (currentEntry.tick / ((bpm / 60) * PPQ)) * 1000
             : 0;
