@@ -221,6 +221,26 @@
 
 ---
 
+## Phase 12: Move Practice Plugin from External to Core (Amendment 2026-03-05)
+
+**Context**: `practice-view-plugin` was originally shipped as a private external plugin (standalone Vite build in `plugins-external/`). Decision: graduate it to an open-core plugin co-located with the host's other built-in plugins.
+
+- [X] T066 Remove symlink and copy source files into `frontend/plugins/practice-view-plugin/`: delete the `frontend/plugins/practice-view-plugin` → `../../plugins-external/practice-view-plugin` symlink; create a real directory; copy the 10 source files (PracticeViewPlugin.tsx/css/test, practiceEngine.ts/types/test, practiceToolbar.tsx/test, index.tsx, plugin.json); do **not** copy standalone build artefacts (package.json, vite.config*, tsconfig.json, build.sh, node_modules, dist, scripts/).
+
+- [X] T067 Update import paths in copied files: replace `'../../frontend/src/plugin-api/index'` → `'../../src/plugin-api/index'` in PracticeViewPlugin.tsx, PracticeViewPlugin.test.tsx, practiceEngine.types.ts, practiceToolbar.tsx, index.tsx (5 files, 6 occurrences); verify with grep that no `frontend/src/plugin-api` references remain.
+
+- [X] T068 Update plugin.json to core format: set `"type": "core"`, `"entryPoint": "index.tsx"`, `"icon": "🎯"`, `"order": 3`, `"name": "Practice"`; remove any `main`/`bundle` fields left over from external format.
+
+- [X] T069 Remove vitest exclusion and `.gitignore` entry: delete `'plugins/practice-view-plugin/**'` from `exclude` array in `frontend/vitest.config.ts`; remove `practice-view-plugin` line from `frontend/plugins/.gitignore` so the real directory is tracked by git.
+
+- [X] T070 Delete `plugins-external/practice-view-plugin/` entirely and commit the external plugins repo: run `rm -rf plugins-external/practice-view-plugin`; commit removal to the external plugins git repo with message "chore: remove practice-view-plugin — moved to musicore core plugins"; push `main`.
+
+- [X] T071 Run full frontend test suite and verify 93 practice-plugin tests pass: `vitest run` must report `plugins/practice-view-plugin/PracticeViewPlugin.test.tsx (17 tests)`, `practiceToolbar.test.tsx (27 tests)`, `practiceEngine.test.ts (49 tests)` — all passing; overall result: 91+ test files, 1422+ tests passing.
+
+- [X] T072 Commit host repo migration and push: `git add frontend/plugins/practice-view-plugin/ frontend/vitest.config.ts frontend/plugins/.gitignore`; commit `feat(037): move practice-view-plugin from external to core plugins`; push `037-practice-view-plugin`.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

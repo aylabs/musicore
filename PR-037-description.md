@@ -120,10 +120,9 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 ## Test Results
 
 - **304 Rust backend tests** — all passing
-- **1329 frontend unit tests** — all passing
+- **1422 frontend unit tests** — all passing
+- **93 practice-plugin tests** — now inline with host suite (practiceEngine 49, practiceToolbar 27, PracticeViewPlugin 17)
 - **49 Playwright E2E tests** — all passing
-- **Plugin unit tests** — 93 passing
-- **Plugin bundle** — 7 KB (limit: 50 KB) ✅
 
 ## Success Criteria Met
 
@@ -133,12 +132,12 @@ Implement the **Practice View Plugin** — an external MIDI step-by-step practic
 | SC-002: Correct MIDI → highlight advances within 100 ms | ✅ |
 | SC-003: Correct/incorrect detection for single notes, chords, all octaves | ✅ |
 | SC-004: Practice toggle is instantaneous | ✅ |
-| SC-005: Plugin bundle ≤ 50 KB (actual: 7 KB) | ✅ |
+| SC-005: Plugin is open-core (no standalone bundle) | ✅ |
 | SC-006: Clean teardown on unmount (stopPlayback + MIDI unsubscribe) | ✅ |
 
 ## Tasks
 
-56 tasks completed (T001–T056) across 9 phases.
+56 tasks completed (T001–T056) across 9 phases, plus 16 post-MVP amendment tasks (T057–T072).
 See `specs/037-practice-view-plugin/tasks.md` for full task list.
 
 ### MIDI hotplug fix
@@ -146,7 +145,24 @@ See `specs/037-practice-view-plugin/tasks.md` for full task list.
 - Fix: both now use `addEventListener('statechange', ...)` / `removeEventListener(...)` supporting multiple concurrent listeners
 - `MockMidiAccess` test infrastructure updated to support `addEventListener`/`removeEventListener`
 
+## Plugin Migration: External → Core
+
+The `practice-view-plugin` has been **graduated from the closed-source external plugins repo to the open-core host repo**:
+
+- Symlink `frontend/plugins/practice-view-plugin` → external removed; replaced with real source directory
+- Import paths updated: `../../frontend/src/plugin-api/index` → `../../src/plugin-api/index`
+- `plugin.json` updated: `"type": "core"`, `"entryPoint": "index.tsx"`, `"icon": "🎯"`, `"order": 3`
+- Removed from `frontend/vitest.config.ts` exclude list — all 93 plugin tests now run as part of the host suite
+- Removed from `frontend/plugins/.gitignore` — directory is tracked by git
+- `plugins-external/practice-view-plugin/` deleted; external repo records removal
+
+**Updated test results**: 1422 frontend tests passing (includes 93 practice-plugin tests now inline).
+
+## Tasks
+
+72 tasks completed (T001–T072) across 12 phases.
+See `specs/037-practice-view-plugin/tasks.md` for full task list.
+
 ## Notes
 
-- The closed-source plugin implementation lives in `aylabs/musicore-closed-plugins` at commit `343c79b`. This PR carries all host-side concerns: Plugin API surface, infrastructure improvements, `ChordDetector`, MIDI fix, and spec artefacts.
 - `ChordDetector` is placed in `frontend/src/utils/` (not inside `plugin-api/types.ts`) so the canonical implementation is accessible to non-plugin host code; the re-export in `index.ts` makes it available to all plugins without duplication.
