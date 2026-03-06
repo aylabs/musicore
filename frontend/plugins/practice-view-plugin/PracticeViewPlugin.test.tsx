@@ -612,6 +612,44 @@ describe('PracticeViewPlugin — Replay (038-practice-replay)', () => {
     expect(playNoteCalls[1][0].durationMs).toBe(425);
   });
 
+  // T011b: bpmAtCompletion uses playerState.bpm directly (no double tempoMultiplier)
+  it('T011b: bpmAtCompletion does not double-apply tempoMultiplier', () => {
+    const notes = [
+      { midiPitches: [60], noteIds: ['n1'], tick: 0 },
+      { midiPitches: [62], noteIds: ['n2'], tick: 960 },
+    ];
+    // Simulate tempoMultiplier=0.5 → bpm should be scoreTempo*0.5 = 60
+    // playerState.bpm already includes the multiplier (set by scorePlayerContext)
+    const ctx = createMockContext({ status: 'ready', staffCount: 1, bpm: 60 });
+    ctx.mockExtractPracticeNotes.mockReturnValue({
+      notes,
+      totalAvailable: notes.length,
+      clef: 'Treble',
+    });
+
+    render(<PracticeViewPlugin context={ctx.context} />);
+
+    const baseTime = Date.now();
+    fireEvent.click(screen.getByRole('button', { name: /start practice/i }));
+
+    vi.setSystemTime(baseTime);
+    act(() => { ctx.simulateMidiEvent({ type: 'attack', midiNote: 60 }); });
+    vi.setSystemTime(baseTime + 500);
+    act(() => { ctx.simulateMidiEvent({ type: 'attack', midiNote: 62 }); });
+
+    (ctx.context.playNote as ReturnType<typeof vi.fn>).mockClear();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /replay your performance/i }));
+    });
+
+    const playNoteCalls = (ctx.context.playNote as ReturnType<typeof vi.fn>).mock.calls;
+    // bpm=60 → msPerBeat=1000, msPerNote=1000*0.85=850
+    // Bug would give bpm=60*tempoMultiplier=30 → msPerBeat=2000, msPerNote=1700
+    expect(playNoteCalls[0][0].durationMs).toBe(850);
+    expect(playNoteCalls[1][0].durationMs).toBe(850);
+  });
+
   // T012: Replay button restored after natural end (finish timer)
   it('T012: restores Replay button after natural end of playback', () => {
     const notes = [
@@ -792,6 +830,46 @@ describe('PracticeViewPlugin — Replay (038-practice-replay)', () => {
     expect(playNoteCalls[0][0]).toEqual(expect.objectContaining({ midiNote: 60, offsetMs: 0 }));
     expect(playNoteCalls[1][0]).toEqual(expect.objectContaining({ midiNote: 61, offsetMs: 300 }));
     expect(playNoteCalls[2][0]).toEqual(expect.objectContaining({ midiNote: 62, offsetMs: 700 }));
+  });
+
+  // T042: Repractice button visible in results overlay
+  it('T042: shows Repractice button after exercise completion', () => {
+    const { ctx } = setupCompletedPractice();
+    expect(screen.getByRole('button', { name: /repractice/i })).toBeTruthy();
+  });
+
+  // T043: Repractice button restarts practice (results overlay disappears)
+  it('T043: clicking Repractice dismisses results and restarts practice', () => {
+    const { ctx } = setupCompletedPractice();
+
+    expect(screen.getByRole('region', { name: /practice results/i })).toBeTruthy();
+    const callsBefore = (ctx.context.scorePlayer.extractPracticeNotes as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /repractice/i }));
+    });
+
+    expect(screen.queryByRole('region', { name: /practice results/i })).toBeNull();
+    // Practice restarted — extractPracticeNotes called again
+    const callsAfter = (ctx.context.scorePlayer.extractPracticeNotes as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(callsAfter).toBeGreaterThan(callsBefore);
+  });
+
+  // T044: Repractice stops replay if active, then restarts practice
+  it('T044: Repractice stops ongoing replay before restarting', () => {
+    const { ctx } = setupCompletedPractice();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /replay your performance/i }));
+    });
+    expect(screen.getByRole('button', { name: /stop replay/i })).toBeTruthy();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /repractice/i }));
+    });
+
+    expect(ctx.mockStopPlayback).toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: /practice results/i })).toBeNull();
   });
 
   // T041: wrong notes do NOT trigger staff highlights during replay

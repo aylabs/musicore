@@ -41,6 +41,12 @@ export interface PracticeNoteResult {
    * 0 if unknown.
    */
   readonly expectedTimeMs: number;
+  /**
+   * Relative timing delta in ms — how far off the interval between
+   * this note and the previous one was compared to the expected interval.
+   * 0 for the first note (no reference point).
+   */
+  readonly relativeDeltaMs: number;
   /** Number of wrong attempts before getting this note correct. */
   readonly wrongAttempts: number;
 }
@@ -122,6 +128,8 @@ export type PracticeAction =
       readonly responseTimeMs: number;
       /** Expected time in ms based on tick & BPM. */
       readonly expectedTimeMs: number;
+      /** Optional: last index in notes[] for this session (loop-region completion). */
+      readonly endIndex?: number;
     }
   | {
       readonly type: 'WRONG_MIDI';
@@ -136,6 +144,11 @@ export type PracticeAction =
       readonly type: 'SEEK';
       /** Target index in `notes` to jump to during active mode. */
       readonly index: number;
+    }
+  | {
+      readonly type: 'LOOP_RESTART';
+      /** Index in `notes` to restart the loop from. */
+      readonly startIndex: number;
     };
 
 // ---------------------------------------------------------------------------

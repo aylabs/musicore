@@ -215,15 +215,40 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
   const [replayHighlightedNoteIds, setReplayHighlightedNoteIds] = useState<ReadonlySet<string>>(new Set());
   const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // ─── Multi-loop practice state ─────────────────────────────────────────────
+  const [loopCount, setLoopCount] = useState(1);
+  const remainingLoopsRef = useRef(0);
+  /** Completed loop iterations so far (0 = first loop). Used to offset expectedTimeMs. */
+  const loopIterationRef = useRef(0);
+  /**
+   * Wall-clock timestamp (relative to practiceStartTime) when the phantom restarts
+   * each loop. Recorded at each LOOP_RESTART so the next iteration can compute
+   * the real loop period for expectedTimeMs offset. Index 0 = loop 0 start = 0.
+   */
+  const loopStartTimesRef = useRef<number[]>([0]);
+
   // Show overlay each time practice enters 'complete' mode, capture PerformanceRecord (T005)
   useEffect(() => {
     if (practiceState.mode === 'complete') {
+      // Multi-loop: if remaining loops > 0, restart at the loop start
+      if (remainingLoopsRef.current > 0) {
+        remainingLoopsRef.current -= 1;
+        loopIterationRef.current += 1;
+        // Record the wall-clock time when this new loop starts (relative to practice start)
+        const loopStartMs = Date.now() - practiceStartTimeRef.current;
+        loopStartTimesRef.current.push(loopStartMs);
+        const range = loopPracticeRangeRef.current;
+        if (range) {
+          dispatchPractice({ type: 'LOOP_RESTART', startIndex: range.startIndex });
+          return; // Don't show results yet
+        }
+      }
       setResultsOverlayVisible(true);
       setPerformanceRecord({
         notes: [...practiceState.notes],
         noteResults: [...practiceState.noteResults],
         wrongNoteEvents: [...practiceState.wrongNoteEvents],
-        bpmAtCompletion: playerState.bpm * tempoMultiplier,
+        bpmAtCompletion: playerState.bpm,
       });
       setIsReplaying(false);
     }
@@ -323,8 +348,8 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
       const notes = practiceState.notes;
       const startIdx = practiceState.currentIndex;
       phantomNotesRef.current = notes;
-      const effectiveBpm = playerState.bpm * tempoMultiplier;
-      phantomBpmRef.current = effectiveBpm;
+      // playerState.bpm already includes tempoMultiplier (scoreTempo × multiplier)
+      phantomBpmRef.current = playerState.bpm;
       phantomBaseTickRef.current = notes[startIdx]?.tick ?? notes[0].tick;
       phantomStartTimeRef.current = Date.now();
       setPhantomIndex(startIdx);
@@ -354,7 +379,7 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
       phantomTimerRef.current = null;
       setPhantomIndex(-1);
     }
-  }, [practiceState.mode, practiceState.notes, practiceState.currentIndex, playerState.bpm, tempoMultiplier]);
+  }, [practiceState.mode, practiceState.notes, practiceState.currentIndex, playerState.bpm]);
 
   // Cleanup phantom timer on unmount
   useEffect(() => {
@@ -477,29 +502,44 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
       const chordResult = chordDetectorRef.current.press(event.midiNote, event.timestamp);
       const isInChord = (currentEntry.midiPitches as number[]).includes(event.midiNote);
       if (chordResult.complete) {
-        // All chord notes collected — advance (or loop-wrap).
-        const range = loopPracticeRangeRef.current;
-        if (range && ps.currentIndex >= range.endIndex) {
-          dispatchPractice({ type: 'SEEK', index: range.startIndex });
-        } else {
-          // Deferred start: if in 'waiting' mode, set the start time NOW
-          // (first correct note begins the clock).
-          if (ps.mode === 'waiting') {
-            practiceStartTimeRef.current = Date.now();
-          }
-          // Compute timing data for the result
-          const bpm = playerStateRef.current.bpm * tempoMultiplierRef.current;
-          const expectedTimeMs = bpm > 0
-            ? (currentEntry.tick / ((bpm / 60) * PPQ)) * 1000
-            : 0;
-          const responseTimeMs = ps.mode === 'waiting' ? 0 : Date.now() - practiceStartTimeRef.current;
-          dispatchPractice({
-            type: 'CORRECT_MIDI',
-            midiNote: event.midiNote,
-            responseTimeMs,
-            expectedTimeMs,
-          });
+        // All chord notes collected — advance.
+        // Deferred start: if in 'waiting' mode, set the start time NOW
+        // (first correct note begins the clock).
+        if (ps.mode === 'waiting') {
+          practiceStartTimeRef.current = Date.now();
         }
+        // Compute timing data for the result
+        // playerState.bpm already includes tempoMultiplier (scoreTempo × multiplier)
+        const bpm = playerStateRef.current.bpm;
+        const baseExpectedTimeMs = bpm > 0
+          ? (currentEntry.tick / ((bpm / 60) * PPQ)) * 1000
+          : 0;
+        // In multi-loop practice, compute expectedTimeMs relative to the real
+        // wall-clock time when the phantom restarted this loop iteration.
+        // This accounts for the last-note duration that MusicTimeline adds
+        // before wrapping, which is not reflected in loopRegion tick span.
+        const lr = loopRegionRef.current;
+        const loopK = loopIterationRef.current;
+        let expectedTimeMs: number;
+        if (lr && loopK > 0 && bpm > 0) {
+          // Time from loop start tick to this note's tick within the loop
+          const loopStartBaseMs = (lr.startTick / ((bpm / 60) * PPQ)) * 1000;
+          const timeWithinLoop = baseExpectedTimeMs - loopStartBaseMs;
+          // Wall-clock time when this loop iteration started
+          const loopStartMs = loopStartTimesRef.current[loopK] ?? 0;
+          expectedTimeMs = loopStartMs + timeWithinLoop;
+        } else {
+          expectedTimeMs = baseExpectedTimeMs;
+        }
+        const responseTimeMs = ps.mode === 'waiting' ? 0 : Date.now() - practiceStartTimeRef.current;
+        const range = loopPracticeRangeRef.current;
+        dispatchPractice({
+          type: 'CORRECT_MIDI',
+          midiNote: event.midiNote,
+          responseTimeMs,
+          expectedTimeMs,
+          endIndex: range?.endIndex,
+        });
       } else if (!isInChord) {
         // Pitch outside the required chord — treat as wrong note.
         const wrongResponseTimeMs = ps.mode === 'waiting' ? 0 : Date.now() - practiceStartTimeRef.current;
@@ -804,6 +844,15 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
     replayTimersRef.current = timers;
   }, [context, performanceRecord, isReplaying]);
 
+  const handleRepractice = useCallback(() => {
+    if (isReplaying) handleReplayStop();
+    remainingLoopsRef.current = loopCount - 1;
+    loopIterationRef.current = 0;
+    loopStartTimesRef.current = [0];
+    setResultsOverlayVisible(false);
+    handlePracticeToggle();
+  }, [isReplaying, handleReplayStop, handlePracticeToggle, loopCount]);
+
   // ─── Derived values ────────────────────────────────────────────────────────
 
   // During active practice:
@@ -913,8 +962,23 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
         selectedStaffIndex={selectedStaffIndex}
         onStaffChange={handleStaffChange}
         practiceMode={practiceState.mode}
-        currentPracticeIndex={practiceState.currentIndex}
-        totalPracticeNotes={practiceState.notes.length}
+        currentPracticeIndex={(() => {
+          const range = loopPracticeRangeRef.current;
+          if (range && practiceState.mode === 'active') {
+            const notesInLoop = range.endIndex - range.startIndex + 1;
+            const completedLoops = Math.max(0, (loopCount - 1) - remainingLoopsRef.current);
+            return completedLoops * notesInLoop + (practiceState.currentIndex - range.startIndex);
+          }
+          return practiceState.currentIndex;
+        })()}
+        totalPracticeNotes={(() => {
+          const range = loopPracticeRangeRef.current;
+          if (range && practiceState.mode === 'active') {
+            const notesInLoop = range.endIndex - range.startIndex + 1;
+            return notesInLoop * loopCount;
+          }
+          return practiceState.notes.length;
+        })()}
         onPracticeToggle={handlePracticeToggle}
         showStaffPicker={false}
         midiConnected={midiConnected}
@@ -1066,8 +1130,8 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
                         </td>
                         <td>{r.wrongAttempts > 0 ? r.wrongAttempts : '—'}</td>
                         <td>
-                          {r.expectedTimeMs > 0 && r.responseTimeMs > 0
-                            ? `${r.responseTimeMs - r.expectedTimeMs > 0 ? '+' : ''}${Math.round(r.responseTimeMs - r.expectedTimeMs)} ms`
+                          {r.relativeDeltaMs !== 0
+                            ? `${r.relativeDeltaMs > 0 ? '+' : ''}${r.relativeDeltaMs} ms`
                             : '—'}
                         </td>
                       </tr>
@@ -1080,15 +1144,9 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
             {/* Delay evolution graph — SVG line chart of timing deviation per note (incremental, X=real time) */}
             {(() => {
               const delayData = practiceReport.results
-                .map((r: PracticeNoteResult, i: number) => {
-                  if (i === 0) return { index: 0, delay: 0, timeMs: r.responseTimeMs };
-                  const prev = practiceReport.results[i - 1];
-                  if (r.expectedTimeMs <= 0 || prev.expectedTimeMs <= 0) return null;
-                  const actualInterval = r.responseTimeMs - prev.responseTimeMs;
-                  const expectedInterval = r.expectedTimeMs - prev.expectedTimeMs;
-                  return { index: i, delay: Math.round(actualInterval - expectedInterval), timeMs: r.responseTimeMs };
-                })
-                .filter((d): d is { index: number; delay: number; timeMs: number } => d !== null);
+                .map((r: PracticeNoteResult, i: number) => ({
+                  index: i, delay: r.relativeDeltaMs, timeMs: r.responseTimeMs,
+                }));
 
               if (delayData.length < 2) return null;
 
@@ -1206,6 +1264,13 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
             {/* Replay / Stop button (038-practice-replay, T018) */}
             {performanceRecord && (
               <div className="practice-results__replay-row">
+                <button
+                  className="practice-results__repractice-btn"
+                  onClick={handleRepractice}
+                  aria-label="Repractice"
+                >
+                  ↺ Repractice
+                </button>
                 {!isReplaying ? (
                   <button
                     className="practice-results__replay-btn"
@@ -1223,6 +1288,25 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
                     ■ Stop
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Loop count slider — only shown when a loop region is active */}
+            {loopRegion && (
+              <div className="practice-results__loop-slider-row" aria-label="Loop count">
+                <label className="practice-results__loop-label">
+                  Loops: <strong>{loopCount}</strong>
+                </label>
+                <input
+                  type="range"
+                  className="practice-results__loop-slider"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={loopCount}
+                  onChange={(e) => setLoopCount(Number(e.target.value))}
+                  aria-label="Number of loops to practice"
+                />
               </div>
             )}
 

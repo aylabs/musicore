@@ -155,6 +155,15 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   /** True if the finger drifted enough during a touch to count as a scroll */
   private hasMoved: boolean = false;
 
+  /** Mouse long-press: timer handle (desktop equivalent of touch long-press) */
+  private mouseLongPressTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Starting X of the current mouse-down (for drift detection) */
+  private mouseDownX: number = 0;
+  /** Starting Y of the current mouse-down */
+  private mouseDownY: number = 0;
+  /** True once the 500ms mouse long-press timer fires; suppresses click */
+  private mouseLongPressFired: boolean = false;
+
   /** Feature 024 (T027): Last scroll position applied to viewport (avoid redundant setState)
    * Initialize to -Infinity so the first updateViewport() call always runs. */
   private lastAppliedScrollTop: number = -Infinity;
@@ -232,6 +241,9 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
     }
     if (this.longPressTimer) {
       clearTimeout(this.longPressTimer);
+    }
+    if (this.mouseLongPressTimer !== null) {
+      clearTimeout(this.mouseLongPressTimer);
     }
     if (this.autoScrollAnimationId !== null) {
       cancelAnimationFrame(this.autoScrollAnimationId);
@@ -383,11 +395,55 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
   };
 
   /**
-   * Click handler (mouse/pointer; suppressed after touch to avoid double-firing).
+   * Click handler (mouse/pointer; suppressed after touch or mouse long-press).
    */
   private handleContainerClick = (e: React.MouseEvent): void => {
     if (this.touchWasHandled) { this.touchWasHandled = false; return; }
+    if (this.mouseLongPressFired) { this.mouseLongPressFired = false; return; }
     this.handleTapAt(e.clientX, e.clientY);
+  };
+
+  /** Mouse-down: start 500ms long-press timer (mirrors handleTouchStart). */
+  private handleMouseDown = (e: React.MouseEvent): void => {
+    // Only primary button; ignore right-click (context menu)
+    if (e.button !== 0) return;
+    this.mouseDownX = e.clientX;
+    this.mouseDownY = e.clientY;
+    this.mouseLongPressFired = false;
+    this.mouseLongPressTimer = setTimeout(() => {
+      this.mouseLongPressFired = true;
+      const noteId = this.findNearestNoteId(this.mouseDownX, this.mouseDownY);
+      const tick = (noteId !== null ? this.tickFromNoteId(noteId) : null)
+        ?? this.tickFromTouch(this.mouseDownX, this.mouseDownY);
+      this.props.onPin?.(tick, noteId);
+    }, 500);
+  };
+
+  /** Mouse-up: cancel the timer (click handler fires separately for short press). */
+  private handleMouseUp = (): void => {
+    if (this.mouseLongPressTimer !== null) {
+      clearTimeout(this.mouseLongPressTimer);
+      this.mouseLongPressTimer = null;
+    }
+  };
+
+  /** Mouse-move: cancel long-press if pointer drifts > 15 px (scroll/drag). */
+  private handleMouseMove = (e: React.MouseEvent): void => {
+    if (this.mouseLongPressTimer === null) return;
+    const dx = e.clientX - this.mouseDownX;
+    const dy = e.clientY - this.mouseDownY;
+    if (Math.sqrt(dx * dx + dy * dy) > 15) {
+      clearTimeout(this.mouseLongPressTimer);
+      this.mouseLongPressTimer = null;
+    }
+  };
+
+  /** Mouse-leave: cancel long-press when pointer leaves the container. */
+  private handleMouseLeave = (): void => {
+    if (this.mouseLongPressTimer !== null) {
+      clearTimeout(this.mouseLongPressTimer);
+      this.mouseLongPressTimer = null;
+    }
   };
 
   /**
@@ -716,6 +772,10 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
         <div
           ref={this.containerRef}
           onClick={this.handleContainerClick}
+          onMouseDown={this.handleMouseDown}
+          onMouseUp={this.handleMouseUp}
+          onMouseMove={this.handleMouseMove}
+          onMouseLeave={this.handleMouseLeave}
           className="score-scroll-container"
           onContextMenu={(e) => e.preventDefault()}
           onTouchStart={this.handleTouchStart}

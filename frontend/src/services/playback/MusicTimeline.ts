@@ -445,10 +445,20 @@ export function usePlayback(notes: Note[], tempo: number): PlaybackState {
   /**
    * Set (or clear) the loop end tick.
    * When non-null, the rAF tick loop will jump back to pinnedStartTickRef on reaching this tick.
+   * The effective end tick includes the duration of the note at `tick` so it sounds fully.
    */
   const setLoopEnd = useCallback((tick: number | null) => {
-    loopEndTickRef.current = tick;
-  }, []);
+    if (tick === null) {
+      loopEndTickRef.current = null;
+      return;
+    }
+    // Find the longest note starting at this tick so it plays fully before looping
+    const noteAtTick = notes.filter(n => n.start_tick === tick);
+    const maxDuration = noteAtTick.length > 0
+      ? Math.max(...noteAtTick.map(n => n.duration_ticks))
+      : 0;
+    loopEndTickRef.current = tick + maxDuration;
+  }, [notes]);
 
   /**
    * Feature 009: Clear pinned start position

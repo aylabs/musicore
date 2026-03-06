@@ -75,10 +75,27 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
       }
 
       const entry = state.notes[state.currentIndex];
-      const isLate =
-        action.expectedTimeMs > 0 &&
-        action.responseTimeMs > 0 &&
-        Math.abs(action.responseTimeMs - action.expectedTimeMs) > LATE_THRESHOLD_MS;
+
+      // Compute relative timing delta: how far off was the interval
+      // between this note and the previous one vs. the expected interval.
+      // First note always gets relativeDeltaMs = 0 (no reference).
+      // The caller is responsible for offsetting expectedTimeMs by the loop
+      // duration on each iteration so the engine sees monotonically increasing
+      // values. This makes the >= guard and interval math work identically
+      // for single notes, chords, and multi-note loops.
+      const prevResult = state.noteResults.length > 0
+        ? state.noteResults[state.noteResults.length - 1]
+        : null;
+      let relativeDeltaMs = 0;
+      if (prevResult) {
+        if (action.expectedTimeMs >= prevResult.expectedTimeMs) {
+          const actualInterval = action.responseTimeMs - prevResult.responseTimeMs;
+          const expectedInterval = action.expectedTimeMs - prevResult.expectedTimeMs;
+          relativeDeltaMs = Math.round(actualInterval - expectedInterval);
+        }
+      }
+
+      const isLate = Math.abs(relativeDeltaMs) > LATE_THRESHOLD_MS;
 
       const result: PracticeNoteResult = {
         noteIndex: state.currentIndex,
@@ -87,14 +104,15 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
         expectedMidi: entry.midiPitches,
         responseTimeMs: action.responseTimeMs,
         expectedTimeMs: action.expectedTimeMs,
+        relativeDeltaMs,
         wrongAttempts: state.currentWrongAttempts,
       };
 
       const newResults = [...state.noteResults, result];
 
-      const lastIndex = state.notes.length - 1;
+      const lastIndex = action.endIndex ?? state.notes.length - 1;
       if (state.currentIndex >= lastIndex) {
-        // Completed all notes
+        // Completed all notes (or loop-region boundary)
         return { ...state, mode: 'complete', noteResults: newResults, currentWrongAttempts: 0 };
       }
       return { ...state, mode: 'active', currentIndex: state.currentIndex + 1, noteResults: newResults, currentWrongAttempts: 0 };
@@ -138,6 +156,17 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
       const idx = clamp(action.index, 0, Math.max(0, state.notes.length - 1));
       if (idx === state.currentIndex) return state;
       return { ...state, currentIndex: idx };
+    }
+
+    case 'LOOP_RESTART': {
+      if (state.mode !== 'complete') return state;
+      const idx = clamp(action.startIndex, 0, Math.max(0, state.notes.length - 1));
+      return {
+        ...state,
+        mode: 'active',
+        currentIndex: idx,
+        currentWrongAttempts: 0,
+      };
     }
 
     default: {

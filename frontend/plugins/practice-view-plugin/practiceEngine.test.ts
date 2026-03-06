@@ -200,6 +200,7 @@ describe('reduce() — CORRECT_MIDI action', () => {
       selectedStaffIndex: 0,
       noteResults: [],
       currentWrongAttempts: 0,
+      wrongNoteEvents: [],
     };
     const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 3000, expectedTimeMs: 3000 });
     expect(next).toStrictEqual(state);
@@ -265,6 +266,7 @@ describe('reduce() — noteResults tracking', () => {
       expectedMidi: [60],
       responseTimeMs: 1000,
       expectedTimeMs: 1000,
+      relativeDeltaMs: 0,
       wrongAttempts: 0,
     });
   });
@@ -278,24 +280,42 @@ describe('reduce() — noteResults tracking', () => {
     expect(s.noteResults[1].noteIndex).toBe(1);
   });
 
-  it('marks note as correct-late when response exceeds expected by LATE_THRESHOLD_MS', () => {
-    const state = activeState(THREE_NOTES, 0);
-    const lateMs = 1000 + LATE_THRESHOLD_MS + 1; // just over threshold (late)
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: lateMs, expectedTimeMs: 1000 });
-    expect(next.noteResults[0].outcome).toBe('correct-late');
+  it('marks note as correct-late when relative interval delta exceeds LATE_THRESHOLD_MS (late)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // Note 0 on time
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    // Note 1: expected interval = 1000ms, actual interval = 1000 + LATE_THRESHOLD_MS + 1
+    const lateResponse = 2000 + LATE_THRESHOLD_MS + 1;
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: lateResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct-late');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(LATE_THRESHOLD_MS + 1);
   });
 
-  it('marks note as correct-late when response is MORE THAN LATE_THRESHOLD_MS early', () => {
-    const state = activeState(THREE_NOTES, 0);
-    const earlyMs = 1000 - LATE_THRESHOLD_MS - 1; // just over threshold (early)
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: earlyMs, expectedTimeMs: 1000 });
-    expect(next.noteResults[0].outcome).toBe('correct-late');
+  it('marks note as correct-late when relative interval delta exceeds LATE_THRESHOLD_MS (early)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // Note 0 on time
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    // Note 1: expected interval = 1000ms, actual interval = 1000 - LATE_THRESHOLD_MS - 1
+    const earlyResponse = 2000 - LATE_THRESHOLD_MS - 1;
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: earlyResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct-late');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(-(LATE_THRESHOLD_MS + 1));
   });
 
-  it('marks note as correct when response is exactly at LATE_THRESHOLD_MS', () => {
+  it('marks note as correct when relative interval delta is exactly at LATE_THRESHOLD_MS', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    const onTimeResponse = 2000 + LATE_THRESHOLD_MS; // exactly at threshold
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: onTimeResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(LATE_THRESHOLD_MS);
+  });
+
+  it('first note always has relativeDeltaMs 0 and outcome correct', () => {
     const state = activeState(THREE_NOTES, 0);
-    const onTimeMs = 1000 + LATE_THRESHOLD_MS; // exactly at threshold
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: onTimeMs, expectedTimeMs: 1000 });
+    // Even with wildly different response vs expected, first note has no reference
+    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 5000, expectedTimeMs: 1000 });
+    expect(next.noteResults[0].relativeDeltaMs).toBe(0);
     expect(next.noteResults[0].outcome).toBe('correct');
   });
 
@@ -342,10 +362,11 @@ describe('reduce() — noteResults tracking', () => {
     expect(stopped.noteResults).toHaveLength(0);
   });
 
-  it('handles zero expectedTimeMs gracefully (no late detection)', () => {
+  it('handles zero expectedTimeMs gracefully (first note always correct)', () => {
     const state = activeState(THREE_NOTES, 0);
     const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 99999, expectedTimeMs: 0 });
-    expect(next.noteResults[0].outcome).toBe('correct'); // can't determine lateness
+    expect(next.noteResults[0].outcome).toBe('correct'); // first note: relativeDeltaMs = 0
+    expect(next.noteResults[0].relativeDeltaMs).toBe(0);
   });
 });
 
@@ -496,5 +517,165 @@ describe('reduce() — wrongNoteEvents tracking', () => {
     // Wrong event should survive the correct note advance
     expect(s.wrongNoteEvents).toHaveLength(1);
     expect(s.wrongNoteEvents[0].midiNote).toBe(61);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reduce() — loop-region completion via CORRECT_MIDI endIndex
+// ---------------------------------------------------------------------------
+
+describe('reduce() — loop-region completion (endIndex)', () => {
+  it('completes at endIndex instead of notes.length - 1 when endIndex is provided', () => {
+    // 3 notes, but endIndex=1 means practice ends after note at index 1
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 1 });
+    expect(s.mode).toBe('active');
+    expect(s.currentIndex).toBe(1);
+    // Now at index 1 which is the endIndex — completing this note should finish
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 1 });
+    expect(s.mode).toBe('complete');
+    expect(s.noteResults).toHaveLength(2);
+  });
+
+  it('uses notes.length - 1 when endIndex is not provided (default)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500 });
+    // At index 2 now but not yet complete since there are 3 notes
+    expect(s.mode).toBe('active');
+    expect(s.currentIndex).toBe(2);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    expect(s.mode).toBe('complete');
+    expect(s.noteResults).toHaveLength(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reduce() — LOOP_RESTART action
+// ---------------------------------------------------------------------------
+
+describe('reduce() — LOOP_RESTART action', () => {
+  it('resets currentIndex to startIndex and sets mode to active', () => {
+    // Complete a 3-note session with endIndex=2
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.mode).toBe('complete');
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.mode).toBe('active');
+    expect(restarted.currentIndex).toBe(0);
+  });
+
+  it('preserves noteResults across loop restart', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.noteResults).toHaveLength(3);
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.noteResults).toHaveLength(3);
+  });
+
+  it('preserves wrongNoteEvents across loop restart', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'WRONG_MIDI', midiNote: 61, responseTimeMs: 100 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.wrongNoteEvents).toHaveLength(1);
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.wrongNoteEvents).toHaveLength(1);
+  });
+
+  it('resets currentWrongAttempts to 0', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 0 });
+    expect(s.mode).toBe('complete');
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.currentWrongAttempts).toBe(0);
+  });
+
+  it('does nothing when mode is not complete', () => {
+    const state = activeState(THREE_NOTES, 0);
+    const next = reduce(state, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(next).toBe(state);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reduce() — loop boundary relative delta
+// ---------------------------------------------------------------------------
+
+describe('reduce() — loop boundary relative delta', () => {
+  it('sets relativeDeltaMs to 0 at loop boundary (expectedTimeMs goes backwards)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // First loop: complete all 3 notes
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    // Restart loop
+    s = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    // First note of second loop — if caller doesn't offset, expectedTimeMs goes backwards
+    // Engine treats backwards expectedTimeMs as loop boundary → delta = 0
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1500, expectedTimeMs: 0 });
+    const loopBoundaryResult = s.noteResults[3]; // 4th result (index 3)
+    expect(loopBoundaryResult.relativeDeltaMs).toBe(0);
+    expect(loopBoundaryResult.outcome).toBe('correct');
+  });
+
+  it('computes correct delta for single-note loop when caller offsets expectedTimeMs', () => {
+    // Single note at tick 19200 → baseExpectedTimeMs = 10000 at 120 BPM
+    // Loop region duration = 10000ms (e.g. ticks [0, 19200])
+    const SINGLE_NOTE = [makeNoteAtTick(19200, [36])];
+    let s = activeState(SINGLE_NOTE, 0);
+
+    // Loop 0: first note, delta = 0
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 36, responseTimeMs: 0, expectedTimeMs: 10000, endIndex: 0 });
+    expect(s.mode).toBe('complete');
+    expect(s.noteResults[0].relativeDeltaMs).toBe(0);
+
+    // LOOP_RESTART
+    s = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+
+    // Loop 1: caller offsets expectedTimeMs by loopDuration (10000)
+    // User plays ~10s after first note → on time
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 36, responseTimeMs: 10000, expectedTimeMs: 20000, endIndex: 0 });
+    expect(s.noteResults[1].relativeDeltaMs).toBe(0);
+    expect(s.noteResults[1].outcome).toBe('correct');
+
+    // LOOP_RESTART
+    s = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+
+    // Loop 2: user is 300ms late
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 36, responseTimeMs: 20300, expectedTimeMs: 30000, endIndex: 0 });
+    expect(s.noteResults[2].relativeDeltaMs).toBe(300);
+    expect(s.noteResults[2].outcome).toBe('correct');
+  });
+
+  it('computes correct delta for multi-note loop when caller offsets expectedTimeMs', () => {
+    // 3 notes at ticks 0, 960, 1920 → expectedTimeMs 0, 500, 1000 at 120 BPM
+    // Loop region [0, 3840] → loopDurationMs = 2000
+    let s = activeState(THREE_NOTES, 0);
+
+    // --- Loop 0 ---
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.mode).toBe('complete');
+
+    s = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+
+    // --- Loop 1: offset all expectedTimeMs by +2000 ---
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 2000, expectedTimeMs: 2000, endIndex: 2 });
+    // expectedInterval = 2000 - 1000 = 1000, actualInterval = 2000 - 1000 = 1000 → delta = 0
+    expect(s.noteResults[3].relativeDeltaMs).toBe(0);
+
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 2500, expectedTimeMs: 2500, endIndex: 2 });
+    expect(s.noteResults[4].relativeDeltaMs).toBe(0);
+
+    // Third note: user is 200ms late
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 3200, expectedTimeMs: 3000, endIndex: 2 });
+    expect(s.noteResults[5].relativeDeltaMs).toBe(200);
   });
 });
