@@ -215,9 +215,22 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
   const [replayHighlightedNoteIds, setReplayHighlightedNoteIds] = useState<ReadonlySet<string>>(new Set());
   const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // ─── Multi-loop practice state ─────────────────────────────────────────────
+  const [loopCount, setLoopCount] = useState(1);
+  const remainingLoopsRef = useRef(0);
+
   // Show overlay each time practice enters 'complete' mode, capture PerformanceRecord (T005)
   useEffect(() => {
     if (practiceState.mode === 'complete') {
+      // Multi-loop: if remaining loops > 0, restart at the loop start
+      if (remainingLoopsRef.current > 0) {
+        remainingLoopsRef.current -= 1;
+        const range = loopPracticeRangeRef.current;
+        if (range) {
+          dispatchPractice({ type: 'LOOP_RESTART', startIndex: range.startIndex });
+          return; // Don't show results yet
+        }
+      }
       setResultsOverlayVisible(true);
       setPerformanceRecord({
         notes: [...practiceState.notes],
@@ -804,9 +817,10 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
 
   const handleRepractice = useCallback(() => {
     if (isReplaying) handleReplayStop();
+    remainingLoopsRef.current = loopCount - 1;
     setResultsOverlayVisible(false);
     handlePracticeToggle();
-  }, [isReplaying, handleReplayStop, handlePracticeToggle]);
+  }, [isReplaying, handleReplayStop, handlePracticeToggle, loopCount]);
 
   // ─── Derived values ────────────────────────────────────────────────────────
 
@@ -1234,6 +1248,25 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
                     ■ Stop
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Loop count slider — only shown when a loop region is active */}
+            {loopRegion && (
+              <div className="practice-results__loop-slider-row" aria-label="Loop count">
+                <label className="practice-results__loop-label">
+                  Loops: <strong>{loopCount}</strong>
+                </label>
+                <input
+                  type="range"
+                  className="practice-results__loop-slider"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={loopCount}
+                  onChange={(e) => setLoopCount(Number(e.target.value))}
+                  aria-label="Number of loops to practice"
+                />
               </div>
             )}
 

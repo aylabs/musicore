@@ -548,3 +548,77 @@ describe('reduce() — loop-region completion (endIndex)', () => {
     expect(s.noteResults).toHaveLength(3);
   });
 });
+
+// ---------------------------------------------------------------------------
+// reduce() — LOOP_RESTART action
+// ---------------------------------------------------------------------------
+
+describe('reduce() — LOOP_RESTART action', () => {
+  it('resets currentIndex to startIndex and sets mode to active', () => {
+    // Complete a 3-note session with endIndex=2
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.mode).toBe('complete');
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.mode).toBe('active');
+    expect(restarted.currentIndex).toBe(0);
+  });
+
+  it('preserves noteResults across loop restart', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.noteResults).toHaveLength(3);
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.noteResults).toHaveLength(3);
+  });
+
+  it('preserves wrongNoteEvents across loop restart', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'WRONG_MIDI', midiNote: 61, responseTimeMs: 100 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    expect(s.wrongNoteEvents).toHaveLength(1);
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.wrongNoteEvents).toHaveLength(1);
+  });
+
+  it('resets currentWrongAttempts to 0', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 0 });
+    expect(s.mode).toBe('complete');
+    const restarted = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(restarted.currentWrongAttempts).toBe(0);
+  });
+
+  it('does nothing when mode is not complete', () => {
+    const state = activeState(THREE_NOTES, 0);
+    const next = reduce(state, { type: 'LOOP_RESTART', startIndex: 0 });
+    expect(next).toBe(state);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reduce() — loop boundary relative delta
+// ---------------------------------------------------------------------------
+
+describe('reduce() — loop boundary relative delta', () => {
+  it('sets relativeDeltaMs to 0 at loop boundary (expectedTimeMs goes backwards)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // First loop: complete all 3 notes
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 0, expectedTimeMs: 0, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: 500, expectedTimeMs: 500, endIndex: 2 });
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 64, responseTimeMs: 1000, expectedTimeMs: 1000, endIndex: 2 });
+    // Restart loop
+    s = reduce(s, { type: 'LOOP_RESTART', startIndex: 0 });
+    // First note of second loop — expectedTimeMs goes back to 0 (< prevResult's 1000)
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1500, expectedTimeMs: 0 });
+    const loopBoundaryResult = s.noteResults[3]; // 4th result (index 3)
+    expect(loopBoundaryResult.relativeDeltaMs).toBe(0);
+    expect(loopBoundaryResult.outcome).toBe('correct');
+  });
+});

@@ -84,9 +84,12 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
         : null;
       let relativeDeltaMs = 0;
       if (prevResult) {
-        const actualInterval = action.responseTimeMs - prevResult.responseTimeMs;
-        const expectedInterval = action.expectedTimeMs - prevResult.expectedTimeMs;
-        relativeDeltaMs = Math.round(actualInterval - expectedInterval);
+        // At loop boundary (ticks go backwards), treat as no-reference.
+        if (action.expectedTimeMs >= prevResult.expectedTimeMs) {
+          const actualInterval = action.responseTimeMs - prevResult.responseTimeMs;
+          const expectedInterval = action.expectedTimeMs - prevResult.expectedTimeMs;
+          relativeDeltaMs = Math.round(actualInterval - expectedInterval);
+        }
       }
 
       const isLate = Math.abs(relativeDeltaMs) > LATE_THRESHOLD_MS;
@@ -150,6 +153,17 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
       const idx = clamp(action.index, 0, Math.max(0, state.notes.length - 1));
       if (idx === state.currentIndex) return state;
       return { ...state, currentIndex: idx };
+    }
+
+    case 'LOOP_RESTART': {
+      if (state.mode !== 'complete') return state;
+      const idx = clamp(action.startIndex, 0, Math.max(0, state.notes.length - 1));
+      return {
+        ...state,
+        mode: 'active',
+        currentIndex: idx,
+        currentWrongAttempts: 0,
+      };
     }
 
     default: {

@@ -675,6 +675,28 @@
   background: #1b5e20;
 }
 
+/* ── Loop count slider (multi-loop practice) ───────────────────────────────── */
+
+.practice-results__loop-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 0 4px;
+}
+
+.practice-results__loop-label {
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.practice-results__loop-slider {
+  flex: 1;
+  min-width: 80px;
+  accent-color: #2e7d32;
+}
+
 @media (max-width: 768px) {
   .practice-results__score-number {
     font-size: 2.25rem;

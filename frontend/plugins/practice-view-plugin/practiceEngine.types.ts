@@ -144,6 +144,11 @@ export type PracticeAction =
       readonly type: 'SEEK';
       /** Target index in `notes` to jump to during active mode. */
       readonly index: number;
+    }
+  | {
+      readonly type: 'LOOP_RESTART';
+      /** Index in `notes` to restart the loop from. */
+      readonly startIndex: number;
     };
 
 // ---------------------------------------------------------------------------
