@@ -13,8 +13,8 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: #fff;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--ls-bg, #fff);
+  font-family: var(--ls-font-body, system-ui, -apple-system, sans-serif);
 }
 
 /* ─── Phantom tempo highlight — 50% opacity amber during active practice ── */
@@ -43,8 +43,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #f8f8f8;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--ls-navbar-bg, #f8f8f8);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
   overflow: visible;
   min-height: 52px;
@@ -58,13 +58,13 @@
   justify-content: center;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid #d0d0d0;
-  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--ls-bg, #fff);
   font-size: 0.875rem;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.12s, border-color 0.12s;
-  color: #222;
+  color: var(--ls-heading, #222);
   min-height: 36px;
 }
 
@@ -84,44 +84,44 @@
 }
 
 .practice-plugin__toolbar-btn--play {
-  color: #1a7a2a;
-  border-color: #1a7a2a;
+  color: var(--ls-cta-bg, #1a7a2a);
+  border-color: var(--ls-cta-bg, #1a7a2a);
 }
 
 .practice-plugin__toolbar-btn--pause {
-  color: #7a6a10;
-  border-color: #c5a800;
+  color: color-mix(in srgb, var(--ls-accent, #f59e0b) 75%, #000);
+  border-color: var(--ls-accent, #c5a800);
 }
 
 .practice-plugin__toolbar-btn--stop {
-  color: #7a1a1a;
-  border-color: #c84040;
+  color: color-mix(in srgb, var(--ls-accent, #ef4444) 75%, #000);
+  border-color: var(--ls-accent, #c84040);
 }
 
 /* Practice button in inactive state */
 .practice-plugin__toolbar-btn--practice {
-  color: #1a4a9a;
-  border-color: #3060cc;
+  color: var(--ls-cta-bg, #1a4a9a);
+  border-color: var(--ls-cta-bg, #3060cc);
   font-weight: 600;
 }
 
 /* Practice button in active state */
 .practice-plugin__toolbar-btn--practice-active {
-  background: #1a4a9a;
-  color: #fff;
-  border-color: #1a4a9a;
+  background: var(--ls-cta-bg, #1a4a9a);
+  color: var(--ls-cta-text, #fff);
+  border-color: var(--ls-cta-bg, #1a4a9a);
   font-weight: 600;
 }
 
 .practice-plugin__toolbar-btn--practice-active:hover:not(:disabled) {
-  background: #163e84;
+  background: color-mix(in srgb, var(--ls-cta-bg, #1a4a9a) 80%, #000);
 }
 
 /* Complete badge */
 .practice-plugin__toolbar-btn--practice-complete {
-  background: #1a7a2a;
-  color: #fff;
-  border-color: #1a7a2a;
+  background: var(--ls-cta-bg, #1a7a2a);
+  color: var(--ls-cta-text, #fff);
+  border-color: var(--ls-cta-bg, #1a7a2a);
   font-weight: 600;
 }
 
@@ -130,7 +130,7 @@
 .practice-plugin__toolbar-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #333;
+  color: var(--ls-heading, #333);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -143,13 +143,13 @@
 .practice-plugin__toolbar-timer {
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  color: #555;
+  color: var(--ls-body, #555);
   white-space: nowrap;
   user-select: none;
 }
 
 .practice-plugin__toolbar-timer-total {
-  color: #999;
+  color: var(--ls-body, #999);
 }
 
 /* ─── Tempo control ───────────────────────────────────────────────────────── */
@@ -167,19 +167,19 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #999;
+  color: var(--ls-body, #999);
   white-space: nowrap;
 }
 
 .practice-plugin__toolbar-tempo-slider {
   width: 130px;
-  accent-color: #3060cc;
+  accent-color: var(--ls-accent, #3060cc);
 }
 
 .practice-plugin__toolbar-bpm {
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  color: #555;
+  color: var(--ls-body, #555);
   white-space: nowrap;
   min-width: 2.5ch;
 }
@@ -190,9 +190,9 @@
   font-size: 0.8rem;
   padding: 4px 8px;
   border-radius: 6px;
-  border: 1px solid #d0d0d0;
-  background: #fff;
-  color: #222;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--ls-bg, #fff);
+  color: var(--ls-heading, #222);
   cursor: pointer;
   max-width: 120px;
 }
@@ -210,7 +210,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #7c3aed;
+  background: var(--ls-accent, #7c3aed);
   color: #fff;
   border: none;
   border-radius: 8px 0 0 8px;
@@ -236,13 +236,13 @@
 
 .practice-plugin__metro-btn--active,
 .practice-plugin__metro-btn--active:hover {
-  background: #7c3aed;
+  background: var(--ls-accent, #7c3aed);
   animation: practice-metro-pulse 0.12s ease-out;
 }
 
 .practice-plugin__metro-btn--downbeat,
 .practice-plugin__metro-btn--downbeat:hover {
-  background: #6d28d9;
+  background: color-mix(in srgb, var(--ls-accent, #7c3aed) 80%, #000);
   animation: practice-metro-pulse-down 0.14s ease-out;
 }
 
@@ -265,7 +265,7 @@
   border: none;
   border-left: 1px solid rgba(255,255,255,0.25);
   border-radius: 0 8px 8px 0;
-  background: #7c3aed;
+  background: var(--ls-accent, #7c3aed);
   color: #fff;
   font-size: 0.75rem;
   cursor: pointer;
@@ -281,8 +281,8 @@
   top: calc(100% + 6px);
   right: 0;
   min-width: 120px;
-  background: #1e1b2e;
-  border: 1px solid #7c3aed;
+  background: color-mix(in srgb, var(--ls-accent, #7c3aed) 15%, #111);
+  border: 1px solid var(--ls-accent, #7c3aed);
   border-radius: 8px;
   padding: 4px 0;
   box-shadow: 0 4px 16px rgba(0,0,0,0.45);
@@ -306,7 +306,7 @@
 }
 
 .practice-plugin__metro-menu-item:hover {
-  background: rgba(124, 58, 237, 0.25);
+  background: color-mix(in srgb, var(--ls-accent, #7c3aed) 25%, transparent);
 }
 
 .practice-plugin__metro-menu-item--active {
@@ -315,7 +315,7 @@
 }
 
 .practice-plugin__metro-menu-check {
-  color: #a78bfa;
+  color: var(--ls-accent, #a78bfa);
   font-size: 0.8rem;
   width: 12px;
   flex-shrink: 0;
@@ -352,9 +352,9 @@
   align-items: center;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #1a53c0;
-  background: #e8f0fe;
-  border: 1px solid #a8c0f8;
+  color: var(--ls-cta-bg, #1a53c0);
+  background: color-mix(in srgb, var(--ls-cta-bg, #1a53c0) 10%, var(--ls-bg, #fff));
+  border: 1px solid color-mix(in srgb, var(--ls-cta-bg, #1a53c0) 30%, transparent);
   border-radius: 6px;
   padding: 4px 10px;
   white-space: nowrap;
@@ -369,14 +369,14 @@
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: #333;
+  color: var(--ls-heading, #333);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .practice-plugin__staff-picker-label {
   font-weight: 600;
-  color: #555;
+  color: var(--ls-body, #555);
 }
 
 /* ─── Practice progress label (x / total) ────────────────────────────────── */

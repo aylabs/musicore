@@ -983,3 +983,119 @@
     z-index: 1;
   }
 }
+
+/* ── Feature 039: Metronome group — matches Play / Practice style ────────── */
+
+.train-plugin__metro-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.train-plugin__metro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ls-accent, var(--color-accent, #7c3aed));
+  color: #fff;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  min-width: 44px;
+  padding: 0 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+  min-height: 36px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.12s;
+}
+
+.train-plugin__metro-btn:hover {
+  filter: brightness(1.18);
+}
+
+.train-plugin__metro-btn--active {
+  background: var(--ls-accent, var(--color-accent, #7c3aed));
+  animation: train-metro-pulse 0.12s ease-out;
+}
+
+.train-plugin__metro-btn--downbeat {
+  background: color-mix(in srgb, var(--ls-accent, var(--color-accent, #7c3aed)) 80%, #000);
+  animation: train-metro-pulse-down 0.14s ease-out;
+}
+
+@keyframes train-metro-pulse {
+  0%   { filter: brightness(1.6); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes train-metro-pulse-down {
+  0%   { filter: brightness(2) saturate(1.4); }
+  100% { filter: brightness(1); }
+}
+
+.train-plugin__metro-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 6px;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0 8px 8px 0;
+  background: var(--ls-accent, var(--color-accent, #7c3aed));
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+
+.train-plugin__metro-chevron:hover {
+  filter: brightness(1.15);
+}
+
+.train-plugin__metro-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 120px;
+  background: color-mix(in srgb, var(--ls-accent, var(--color-accent, #7c3aed)) 15%, #111);
+  border: 1px solid var(--ls-accent, var(--color-accent, #7c3aed));
+  border-radius: 8px;
+  padding: 4px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  z-index: 200;
+}
+
+.train-plugin__metro-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #e2d9f3;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.train-plugin__metro-menu-item:hover {
+  background: color-mix(in srgb, var(--ls-accent, var(--color-accent, #7c3aed)) 25%, transparent);
+}
+
+.train-plugin__metro-menu-item--active {
+  color: #fff;
+  font-weight: 700;
+}
+
+.train-plugin__metro-menu-check {
+  color: var(--ls-accent, var(--color-accent, #a78bfa));
+  font-size: 0.8rem;
+  width: 12px;
+  flex-shrink: 0;
+}

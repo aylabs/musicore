@@ -1,0 +1,79 @@
+/* ==========================================================================
+   DesignNavbar.css — Feature 039-landing-page-redesign
+   Sticky horizontally-scrollable design variant switcher navbar.
+   ========================================================================== */
+
+/* ── Container ──────────────────────────────────────────────────────────── */
+.design-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: 100%;
+  background: var(--ls-navbar-bg, #f0f0f0);
+  /* Thin bottom border to visually separate navbar from hero */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Scrollable strip ───────────────────────────────────────────────────── */
+.design-navbar__strip {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+  padding: 0 0.25rem;
+  gap: 0;
+}
+
+.design-navbar__strip::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari */
+}
+
+/* ── Tab buttons ────────────────────────────────────────────────────────── */
+.design-navbar__tab {
+  flex-shrink: 0;
+  padding: 0.625rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--ls-font-body, system-ui, sans-serif);
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, font-weight 0.15s ease;
+  /* Override global button styles */
+  outline: none;
+  line-height: 1.4;
+}
+
+.design-navbar__tab:hover {
+  border-bottom-color: var(--ls-accent, #FF7043);
+  opacity: 0.85;
+}
+
+/* ── Active tab ─────────────────────────────────────────────────────────── */
+.design-navbar__tab.active {
+  font-weight: 700;
+  border-bottom-color: var(--ls-navbar-active, #E64A19);
+  color: var(--ls-navbar-active, #E64A19);
+}
+
+/* ── Focus ring (US5 / T024) ────────────────────────────────────────────── */
+.design-navbar__tab:focus-visible {
+  outline: 3px solid var(--ls-accent, #FF7043);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Responsive: narrower viewports ────────────────────────────────────── */
+@media (max-width: 600px) {
+  .design-navbar__tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+}

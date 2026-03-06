@@ -8,6 +8,8 @@ import { loadScoreFromIndexedDB } from "../services/storage/local-storage";
 import { LoadScoreDialog } from "./load-score/LoadScoreDialog";
 import { PRELOADED_SCORES } from "../data/preloadedScores";
 import { LandingScreen } from "./LandingScreen";
+import { DesignNavbar } from "./DesignNavbar";
+import { LANDING_THEMES, getThemeById } from "../themes/landing-themes";
 import { usePlayback } from "../services/playback/MusicTimeline";
 import { useTempoState } from "../services/state/TempoStateContext";
 import "./ScoreViewer.css";
@@ -22,6 +24,12 @@ interface ScoreViewerProps {
   corePlugins?: Array<{ id: string; name: string; icon?: string }>;
   /** Called when the user launches a core plugin from the landing screen. */
   onLaunchPlugin?: (pluginId: string) => void;
+  /** Feature 039: Active landing theme id — managed by App.tsx */
+  activeThemeId?: string;
+  /** Feature 039: Called when the user selects a different design variant */
+  onThemeChange?: (themeId: string) => void;
+  /** Feature 039: Easter-egg — show theme navbar only when a theme hash is in the URL */
+  showThemeNavbar?: boolean;
 }
 
 /**
@@ -49,6 +57,9 @@ export function ScoreViewer({
   onShowRecording,
   corePlugins,
   onLaunchPlugin,
+  activeThemeId = 'ember',
+  onThemeChange,
+  showThemeNavbar = false,
 }: ScoreViewerProps) {
   const [score, setScore] = useState<Score | null>(null);
   const [scoreId, setScoreId] = useState<string | undefined>(initialScoreId);
@@ -58,6 +69,11 @@ export function ScoreViewer({
   const [skipNextLoad, setSkipNextLoad] = useState(false);
   const [isFileSourced, setIsFileSourced] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // ── Feature 039: Theme handled by App.tsx — use provided prop ───────────
+  const handleThemeChange = useCallback((themeId: string) => {
+    onThemeChange?.(themeId);
+  }, [onThemeChange]);
   const [scoreTitle, setScoreTitle] = useState<string | null>(null);
 
   // File state management (Feature 004 - Score File Persistence)
@@ -220,12 +236,28 @@ export function ScoreViewer({
   // ── Landing screen (no score loaded) ────────────────────────────────────────
 
   if (!score) {
+    const activeTheme = getThemeById(activeThemeId);
+    const noteColors = [
+      activeTheme.palette.noteColor1,
+      activeTheme.palette.noteColor2,
+      activeTheme.palette.noteColor3,
+    ] as const;
+
     return (
       <div className="score-viewer">
+        {showThemeNavbar && (
+          <DesignNavbar
+            themes={LANDING_THEMES}
+            activeThemeId={activeThemeId}
+            onThemeChange={handleThemeChange}
+          />
+        )}
         <LandingScreen
           onShowInstruments={debugMode ? handleAutoLoadInstruments : undefined}
           corePlugins={corePlugins}
           onLaunchPlugin={onLaunchPlugin}
+          activeThemeId={activeThemeId}
+          noteColors={noteColors}
         />
         {error && <div className="error">{error}</div>}
         {successMessage && <div className="success">{successMessage}</div>}

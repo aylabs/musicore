@@ -81,6 +81,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - N/A — no persistence; all state is session-local within the plugin (037-practice-view-plugin)
 - TypeScript 5+, React 18+ + Plugin API v2 (`context.playNote`, `context.stopPlayback` — existing); `practiceEngine.types.ts` (existing); no new dependencies (038-practice-replay)
 - N/A — all replay state is transient in-memory (results screen lifetime only) (038-practice-replay)
+- TypeScript 5.x, React 18, CSS3 (custom properties) + Vite 5 (bundler), React 18, @testing-library/react, Vitest (unit), Playwright (E2E) (039-landing-page-redesign)
+- N/A (no persistence; theme state is React component state) (039-landing-page-redesign)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -101,9 +103,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 039-landing-page-redesign: Added TypeScript 5.x, React 18, CSS3 (custom properties) + Vite 5 (bundler), React 18, @testing-library/react, Vitest (unit), Playwright (E2E)
 - 038-practice-replay: Added TypeScript 5+, React 18+ + Plugin API v2 (`context.playNote`, `context.stopPlayback` — existing); `practiceEngine.types.ts` (existing); no new dependencies
 - 037-practice-view-plugin: Added TypeScript 5.5, React 19 + Plugin API (`frontend/src/plugin-api/index.ts`), Vite 5, Vitest 2 — mirrors `plugins-external/virtual-keyboard-pro/` package structure
-- 036-rename-practice-train: Added TypeScript 5 + React 18 (frontend only; no backend change) + React, Vite, Vitest, Testing Library — no new dependencies introduced
 
 
 <!-- MANUAL ADDITIONS START -->

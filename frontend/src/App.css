@@ -16,12 +16,62 @@
   padding: 12px 20px;
   text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .app-header h1 {
   margin: 0;
   font-size: 1.5em;
   font-weight: 600;
+  transition: color 0.3s ease, font-family 0.1s, font-weight 0.1s;
+}
+
+/* ── Feature 039: Theme-aware header ────────────────────────────────────── */
+/* When a landing theme is active, override the default purple gradient.      */
+body[data-landing-theme] .app-header {
+  background: var(--ls-navbar-bg);
+  color: var(--ls-heading);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+body[data-landing-theme] .app-header h1 {
+  color: var(--ls-heading);
+  font-family: var(--ls-font-heading);
+  font-weight: var(--ls-heading-weight, 700);
+}
+
+body[data-landing-theme] .app-header a {
+  color: var(--ls-accent);
+}
+
+/* ── Feature 039: Bridge --color-* tokens for plugins that use them ───────── */
+/* The train-view plugin uses --color-* vars internally. Map them to --ls-*   */
+/* landing tokens so every theme update propagates without touching plugin CSS. */
+body[data-landing-theme] {
+  /* Surface / background */
+  --color-surface: var(--ls-bg);
+  --color-surface-alt: var(--ls-navbar-bg);
+  --color-border: rgba(0, 0, 0, 0.08);
+
+  /* Text */
+  --color-text: var(--ls-heading);
+  --color-text-secondary: var(--ls-body);
+  --color-text-muted: var(--ls-body);
+  --color-muted: var(--ls-body);
+
+  /* Primary / accent actions (play button, sliders, radio, staff highlight) */
+  --color-accent: var(--ls-cta-bg);
+  --color-accent-dark: color-mix(in srgb, var(--ls-cta-bg) 75%, #000);
+  --color-primary: var(--ls-cta-bg);
+
+  /* Danger / stop actions */
+  --color-danger: var(--ls-accent);
+  --color-danger-dark: color-mix(in srgb, var(--ls-accent) 75%, #000);
+  --color-danger-bg: color-mix(in srgb, var(--ls-accent) 10%, var(--ls-bg));
+
+  /* Warning / retry actions */
+  --color-warning: color-mix(in srgb, var(--ls-accent) 80%, #fff);
+  --color-warning-dark: var(--ls-accent);
 }
 
 main {

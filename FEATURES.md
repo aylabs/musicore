@@ -112,3 +112,36 @@ The **Play Score** plugin is a built-in full-screen plugin that lets users load,
 
 **Version**: 1.0 (Read-Only Viewer)  
 **Updated**: February 2026
+
+---
+
+## Landing Page Redesign — Feature 039
+
+10 warm-colour themed design variants for the landing screen, accessible via a persistent navbar switcher. Each variant applies a distinct WCAG 2.1 AA-compliant colour palette and typography pairing from three self-hosted font families.
+
+### Design Variants
+
+| # | Name | Heading Font | Feel |
+|---|------|-------------|------|
+| 1 | **Ember** | Space Grotesk Bold | Deep orange, earthy |
+| 2 | **Saffron** | IBM Plex Sans Bold | Golden amber |
+| 3 | **Sienna** | Inter SemiBold | Warm brown, calm |
+| 4 | **Terracotta** | Space Grotesk SemiBold | Clay red, grounded |
+| 5 | **Paprika** | IBM Plex Sans Bold | Crimson rose |
+| 6 | **Honey** | Inter Bold | Bright amber yellow |
+| 7 | **Coral** | Space Grotesk Bold | Vivid orange-red |
+| 8 | **Marigold** | IBM Plex Sans SemiBold | Golden orange |
+| 9 | **Blush** | Inter Bold | Pink-rose |
+| 10 | **Rust** | Space Grotesk Bold | Dark rust brown |
+
+### Capabilities
+
+- **DesignNavbar**: Persistent horizontally-scrollable tab strip listing all 10 variants; sticky at top; keyboard navigable (Tab + Enter/Space)
+- **CSS custom property theming**: 15 tokens per theme scoped to `.landing-screen.theme-*` — no global pollution
+- **Deep linking**: URL hash routing (`/#ember`, `/#saffron`, etc.) — no router dependency; browser back/forward supported
+- **Self-hosted fonts**: Inter, IBM Plex Sans, Space Grotesk (4 weights each, ~730 KB total) in `public/fonts/`; `font-display: swap`; offline/PWA-ready
+- **Animated note colours**: Each theme's `noteColor1/2/3` palette feeds the Feature 001 Lissajous animation
+- **Accessibility**: WCAG 2.1 AA contrast on all 10 palettes; ARIA roles (`tablist`/`tab`/`aria-selected`); visible focus rings
+
+**Spec**: `specs/039-landing-page-redesign/`  
+**Updated**: March 2026

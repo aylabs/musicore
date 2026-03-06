@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PluginContext, PluginPitchEvent, PluginNoteEvent, PluginScorePitches, ScorePlayerState, MetronomeState } from '../../src/plugin-api/index';
+import type { PluginContext, PluginPitchEvent, PluginNoteEvent, PluginScorePitches, ScorePlayerState, MetronomeState, MetronomeSubdivision } from '../../src/plugin-api/index';
 import type {
   TrainPhase,
   TrainExercise,
@@ -1023,13 +1023,34 @@ export function TrainPlugin({ context }: TrainPluginProps) {
     });
   }, [context.metronome]);
 
+  // Feature 039: Metronome subdivision dropdown
+  const [metroMenuOpen, setMetroMenuOpen] = useState(false);
+  const metroGroupRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!metroMenuOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (metroGroupRef.current && !metroGroupRef.current.contains(e.target as Node)) {
+        setMetroMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [metroMenuOpen]);
+
+  const handleMetronomeSubdivisionChange = useCallback((s: MetronomeSubdivision) => {
+    context.metronome.setSubdivision(s).catch((e) => {
+      console.error('[TrainPlugin] metronome.setSubdivision failed:', e);
+    });
+  }, [context.metronome]);
+
   // Feature 035: Build metronome button CSS class (beat-pulse animation)
   const metronomeBtnClass = [
-    'train-plugin__header-btn',
-    'train-plugin__metronome-btn',
-    ...(metronomeState.active ? ['metro-pulse'] : []),
-    ...(metronomeState.active && metronomeState.isDownbeat ? ['metro-downbeat'] : []),
+    'train-plugin__metro-btn',
+    ...(metronomeState.active ? ['train-plugin__metro-btn--active'] : []),
+    ...(metronomeState.active && metronomeState.isDownbeat ? ['train-plugin__metro-btn--downbeat'] : []),
   ].join(' ');
+  const SUBDIV_ICONS: Record<MetronomeSubdivision, string> = { 1: '♩', 2: '♪', 4: '♬' };
+  const SUBDIV_LABELS: Record<MetronomeSubdivision, string> = { 1: '♩ 1/4', 2: '♪ 1/8', 4: '♬ 1/16' };
   // Change key each beat to restart the CSS animation (same pattern as PlaybackToolbar)
   const metronomeAnimKey = metronomeState.active
     ? `metro-${metronomeState.beatIndex}`
@@ -1167,17 +1188,51 @@ export function TrainPlugin({ context }: TrainPluginProps) {
         <div className="train-plugin__header-spacer" />
 
         <div className="train-plugin__header-actions">
-          {/* Metronome toggle (Feature 035) */}
-          <button
-            key={metronomeAnimKey}
-            className={metronomeBtnClass}
-            onClick={handleMetronomeToggle}
-            aria-label="Toggle metronome"
-            aria-pressed={metronomeState.active}
-            title={metronomeState.active ? 'Stop metronome' : 'Start metronome'}
-          >
-            ♪
-          </button>
+          {/* Metronome toggle + subdivision dropdown (Feature 035 / 039) */}
+          <div className="train-plugin__metro-group" ref={metroGroupRef}>
+            <button
+              key={metronomeAnimKey}
+              className={metronomeBtnClass}
+              onClick={handleMetronomeToggle}
+              aria-label="Toggle metronome"
+              aria-pressed={metronomeState.active}
+              title={metronomeState.active ? 'Stop metronome' : 'Start metronome'}
+            >
+              {SUBDIV_ICONS[metronomeState.subdivision as MetronomeSubdivision ?? 1]}
+            </button>
+            <button
+              className="train-plugin__metro-chevron"
+              onClick={() => setMetroMenuOpen((o) => !o)}
+              aria-label="Metronome subdivision"
+              aria-expanded={metroMenuOpen}
+              aria-haspopup="menu"
+            >
+              ▾
+            </button>
+            {metroMenuOpen && (
+              <div className="train-plugin__metro-menu" role="menu">
+                {([1, 2, 4] as MetronomeSubdivision[]).map((s) => (
+                  <button
+                    key={s}
+                    role="menuitem"
+                    className={
+                      'train-plugin__metro-menu-item' +
+                      (metronomeState.subdivision === s ? ' train-plugin__metro-menu-item--active' : '')
+                    }
+                    onClick={() => {
+                      handleMetronomeSubdivisionChange(s);
+                      setMetroMenuOpen(false);
+                    }}
+                  >
+                    {metronomeState.subdivision === s && (
+                      <span className="train-plugin__metro-menu-check">✓</span>
+                    )}
+                    {SUBDIV_LABELS[s]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {/* Virtual keyboard toggle (Feature 001 — FR-001, FR-011) */}
           <button
             className={`train-plugin__vkb-toggle${virtualKeyboardOpen ? ' train-plugin__vkb-toggle--active' : ''}`}

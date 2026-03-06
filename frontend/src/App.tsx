@@ -22,6 +22,7 @@ import { createNoOpMetronome, createMetronomeProxy } from './plugin-api/metronom
 import { ToneAdapter } from './services/playback/ToneAdapter'
 import { pluginMicBroadcaster } from './services/recording/PluginMicBroadcaster'
 import { useMidiInput } from './services/recording/useMidiInput'
+import { getThemeFromHash, isThemeInHash } from './themes/landing-themes'
 import packageJson from '../package.json'
 import './App.css'
 
@@ -56,6 +57,31 @@ function App() {
   const [showRemover, setShowRemover] = useState(false)
   // Feature 030: Increment to re-run loadPlugins (e.g. after a new plugin is imported)
   const [pluginsVersion, setPluginsVersion] = useState(0)
+
+  // Feature 039: Theme state — lifted here so it persists across full-screen plugin views.
+  const [activeThemeId, setActiveThemeId] = useState<string>(() => getThemeFromHash())
+  // Easter-egg: only show the theme navbar when a theme hash is explicitly in the URL.
+  const [showThemeNavbar, setShowThemeNavbar] = useState<boolean>(() => isThemeInHash())
+
+  const handleThemeChange = useCallback((themeId: string) => {
+    setActiveThemeId(themeId)
+    window.location.hash = themeId
+  }, [])
+
+  useEffect(() => {
+    function onHashChange() {
+      setActiveThemeId(getThemeFromHash())
+      setShowThemeNavbar(isThemeInHash())
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  // Keep body[data-landing-theme] always in sync — never removed — so the theme
+  // tokens cascade to app-header, full-screen plugins and all other descendants.
+  useEffect(() => {
+    document.body.dataset.landingTheme = activeThemeId
+  }, [activeThemeId])
 
   // When a core plugin is active, apply fullscreen-play body class.
   // This is required for iOS Safari where `overflow-x: hidden` on the body
@@ -469,7 +495,7 @@ function App() {
           inset: 0,
           display: 'flex',
           flexDirection: 'column',
-          background: '#fff',
+          background: 'var(--ls-bg, #fff)',
           zIndex: 100,
         }}>
           {isV3 && proxyRefs ? (
@@ -603,6 +629,9 @@ function App() {
                   .filter(p => p.manifest.type === 'core')
                   .map(p => ({ id: p.manifest.id, name: p.manifest.name, icon: p.manifest.icon }))}
                 onLaunchPlugin={handleSelectPlugin}
+                activeThemeId={activeThemeId}
+                onThemeChange={handleThemeChange}
+                showThemeNavbar={showThemeNavbar}
               />
             )}
           </main>
@@ -621,7 +650,7 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
                 zIndex: 100,
-                backgroundColor: '#fff',
+                backgroundColor: 'var(--ls-bg, #fff)',
               }}>
                 {isV3Common && proxyRefsCommon ? (
                   // v3+ common plugins: wire up the score player proxy via V3PluginWrapper.
@@ -638,8 +667,8 @@ function App() {
                         alignItems: 'center',
                         gap: '10px',
                         padding: '6px 12px',
-                        background: '#f5f5f5',
-                        borderBottom: '1px solid #ddd',
+                        background: 'var(--ls-navbar-bg, #f5f5f5)',
+                        borderBottom: '1px solid rgba(0,0,0,0.08)',
                         flexShrink: 0,
                       }}
                     >
@@ -651,10 +680,10 @@ function App() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
-                          background: '#fff',
-                          border: '1px solid #bbb',
+                          background: 'var(--ls-bg, #fff)',
+                          border: '1px solid rgba(0,0,0,0.18)',
                           borderRadius: '6px',
-                          color: '#333',
+                          color: 'var(--ls-heading, #333)',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           padding: '5px 12px',
@@ -664,7 +693,7 @@ function App() {
                       >
                         ← Back
                       </button>
-                      <span style={{ color: '#666', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--ls-body, #666)', fontSize: '0.8rem' }}>
                         {entry.manifest.name}
                       </span>
                     </div>

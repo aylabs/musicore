@@ -74,6 +74,18 @@ export interface LandingScreenProps {
   corePlugins?: Array<{ id: string; name: string; icon?: string }>;
   /** Called when the user taps a core plugin launch button. */
   onLaunchPlugin?: (pluginId: string) => void;
+  /**
+   * Feature 039: Active landing theme id (e.g. "ember").
+   * When provided, applies `.theme-<id>` CSS class to the root element
+   * and uses `noteColors` for the animation cycle.
+   * When absent, falls back to original Feature 001 behaviour.
+   */
+  activeThemeId?: string;
+  /**
+   * Feature 039: Override the animated note colour cycle for the active theme.
+   * When absent, the hardcoded NOTE_COLORS constant is used.
+   */
+  noteColors?: readonly [string, string, string];
 }
 
 /**
@@ -87,7 +99,7 @@ export interface LandingScreenProps {
  * - Pauses when the browser tab is hidden (Page Visibility API)
  * - Respects prefers-reduced-motion: position frozen, glyph/color still cycle
  */
-export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }: LandingScreenProps) {
+export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin, activeThemeId, noteColors }: LandingScreenProps) {
   // Read reduced-motion preference once at mount
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -99,8 +111,11 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
   const [glyphIdx, setGlyphIdx] = useState(() =>
     Math.floor(Math.random() * NOTE_GLYPHS.length)
   );
+  // Use theme-provided colours if given, else fall back to Feature 001 defaults
+  const activeColors = noteColors ?? NOTE_COLORS;
+
   const [colorIdx, setColorIdx] = useState(() =>
-    Math.floor(Math.random() * NOTE_COLORS.length)
+    Math.floor(Math.random() * activeColors.length)
   );
 
   // Pause/resume state — ref for rAF callbacks, state for aria/CSS
@@ -115,6 +130,10 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
   // Keep current indices accessible inside rAF callbacks without stale closures
   const glyphIdxRef = useRef(glyphIdx);
   const colorIdxRef = useRef(colorIdx);
+
+  // Keep a ref to the active colours so rAF callbacks always read the latest value
+  const activeColorsRef = useRef(activeColors);
+  useEffect(() => { activeColorsRef.current = noteColors ?? NOTE_COLORS; }, [noteColors]);
 
   // Keep refs in sync with state
   useEffect(() => { glyphIdxRef.current = glyphIdx; }, [glyphIdx]);
@@ -145,7 +164,7 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
       if (currentSecond !== prevSecondRef.current) {
         prevSecondRef.current = currentSecond;
         const nextGlyph = pickRandom(NOTE_GLYPHS.length, glyphIdxRef.current);
-        const nextColor = pickRandom(NOTE_COLORS.length, colorIdxRef.current);
+        const nextColor = pickRandom(activeColorsRef.current.length, colorIdxRef.current);
         setGlyphIdx(nextGlyph);
         setColorIdx(nextColor);
       }
@@ -191,7 +210,7 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
           if (currentSecond !== prevSecondRef.current) {
             prevSecondRef.current = currentSecond;
             const nextGlyph = pickRandom(NOTE_GLYPHS.length, glyphIdxRef.current);
-            const nextColor = pickRandom(NOTE_COLORS.length, colorIdxRef.current);
+            const nextColor = pickRandom(activeColorsRef.current.length, colorIdxRef.current);
             setGlyphIdx(nextGlyph);
             setColorIdx(nextColor);
           }
@@ -234,7 +253,7 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
         if (currentSecond !== prevSecondRef.current) {
           prevSecondRef.current = currentSecond;
           const nextGlyph = pickRandom(NOTE_GLYPHS.length, glyphIdxRef.current);
-          const nextColor = pickRandom(NOTE_COLORS.length, colorIdxRef.current);
+          const nextColor = pickRandom(activeColorsRef.current.length, colorIdxRef.current);
           setGlyphIdx(nextGlyph);
           setColorIdx(nextColor);
         }
@@ -260,7 +279,7 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
   // --------------------------------------------------------------------------
   return (
     <div
-      className={`landing-screen${paused ? ' landing-screen--paused' : ''}`}
+      className={`landing-screen${paused ? ' landing-screen--paused' : ''}${activeThemeId ? ` theme-${activeThemeId}` : ''}`}
       data-testid="landing-screen"
       role="region"
       aria-label={paused ? 'Landing screen (paused — click to resume)' : 'Landing screen (click to pause)'}
@@ -275,7 +294,7 @@ export function LandingScreen({ onShowInstruments, corePlugins, onLaunchPlugin }
         style={{
           left: `${position.x}%`,
           top: `${position.y}%`,
-          color: NOTE_COLORS[colorIdx],
+          color: activeColorsRef.current[colorIdx],
         }}
       >
         {NOTE_GLYPHS[glyphIdx]}
