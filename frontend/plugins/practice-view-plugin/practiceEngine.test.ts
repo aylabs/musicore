@@ -265,6 +265,7 @@ describe('reduce() — noteResults tracking', () => {
       expectedMidi: [60],
       responseTimeMs: 1000,
       expectedTimeMs: 1000,
+      relativeDeltaMs: 0,
       wrongAttempts: 0,
     });
   });
@@ -278,24 +279,42 @@ describe('reduce() — noteResults tracking', () => {
     expect(s.noteResults[1].noteIndex).toBe(1);
   });
 
-  it('marks note as correct-late when response exceeds expected by LATE_THRESHOLD_MS', () => {
-    const state = activeState(THREE_NOTES, 0);
-    const lateMs = 1000 + LATE_THRESHOLD_MS + 1; // just over threshold (late)
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: lateMs, expectedTimeMs: 1000 });
-    expect(next.noteResults[0].outcome).toBe('correct-late');
+  it('marks note as correct-late when relative interval delta exceeds LATE_THRESHOLD_MS (late)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // Note 0 on time
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    // Note 1: expected interval = 1000ms, actual interval = 1000 + LATE_THRESHOLD_MS + 1
+    const lateResponse = 2000 + LATE_THRESHOLD_MS + 1;
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: lateResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct-late');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(LATE_THRESHOLD_MS + 1);
   });
 
-  it('marks note as correct-late when response is MORE THAN LATE_THRESHOLD_MS early', () => {
-    const state = activeState(THREE_NOTES, 0);
-    const earlyMs = 1000 - LATE_THRESHOLD_MS - 1; // just over threshold (early)
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: earlyMs, expectedTimeMs: 1000 });
-    expect(next.noteResults[0].outcome).toBe('correct-late');
+  it('marks note as correct-late when relative interval delta exceeds LATE_THRESHOLD_MS (early)', () => {
+    let s = activeState(THREE_NOTES, 0);
+    // Note 0 on time
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    // Note 1: expected interval = 1000ms, actual interval = 1000 - LATE_THRESHOLD_MS - 1
+    const earlyResponse = 2000 - LATE_THRESHOLD_MS - 1;
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: earlyResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct-late');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(-(LATE_THRESHOLD_MS + 1));
   });
 
-  it('marks note as correct when response is exactly at LATE_THRESHOLD_MS', () => {
+  it('marks note as correct when relative interval delta is exactly at LATE_THRESHOLD_MS', () => {
+    let s = activeState(THREE_NOTES, 0);
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 1000, expectedTimeMs: 1000 });
+    const onTimeResponse = 2000 + LATE_THRESHOLD_MS; // exactly at threshold
+    s = reduce(s, { type: 'CORRECT_MIDI', midiNote: 62, responseTimeMs: onTimeResponse, expectedTimeMs: 2000 });
+    expect(s.noteResults[1].outcome).toBe('correct');
+    expect(s.noteResults[1].relativeDeltaMs).toBe(LATE_THRESHOLD_MS);
+  });
+
+  it('first note always has relativeDeltaMs 0 and outcome correct', () => {
     const state = activeState(THREE_NOTES, 0);
-    const onTimeMs = 1000 + LATE_THRESHOLD_MS; // exactly at threshold
-    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: onTimeMs, expectedTimeMs: 1000 });
+    // Even with wildly different response vs expected, first note has no reference
+    const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 5000, expectedTimeMs: 1000 });
+    expect(next.noteResults[0].relativeDeltaMs).toBe(0);
     expect(next.noteResults[0].outcome).toBe('correct');
   });
 
@@ -342,10 +361,11 @@ describe('reduce() — noteResults tracking', () => {
     expect(stopped.noteResults).toHaveLength(0);
   });
 
-  it('handles zero expectedTimeMs gracefully (no late detection)', () => {
+  it('handles zero expectedTimeMs gracefully (first note always correct)', () => {
     const state = activeState(THREE_NOTES, 0);
     const next = reduce(state, { type: 'CORRECT_MIDI', midiNote: 60, responseTimeMs: 99999, expectedTimeMs: 0 });
-    expect(next.noteResults[0].outcome).toBe('correct'); // can't determine lateness
+    expect(next.noteResults[0].outcome).toBe('correct'); // first note: relativeDeltaMs = 0
+    expect(next.noteResults[0].relativeDeltaMs).toBe(0);
   });
 });
 

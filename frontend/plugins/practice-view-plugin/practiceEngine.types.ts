@@ -41,6 +41,12 @@ export interface PracticeNoteResult {
    * 0 if unknown.
    */
   readonly expectedTimeMs: number;
+  /**
+   * Relative timing delta in ms — how far off the interval between
+   * this note and the previous one was compared to the expected interval.
+   * 0 for the first note (no reference point).
+   */
+  readonly relativeDeltaMs: number;
   /** Number of wrong attempts before getting this note correct. */
   readonly wrongAttempts: number;
 }

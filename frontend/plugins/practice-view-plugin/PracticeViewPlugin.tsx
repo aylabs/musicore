@@ -1070,8 +1070,8 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
                         </td>
                         <td>{r.wrongAttempts > 0 ? r.wrongAttempts : '—'}</td>
                         <td>
-                          {r.expectedTimeMs > 0 && r.responseTimeMs > 0
-                            ? `${r.responseTimeMs - r.expectedTimeMs > 0 ? '+' : ''}${Math.round(r.responseTimeMs - r.expectedTimeMs)} ms`
+                          {r.relativeDeltaMs !== 0
+                            ? `${r.relativeDeltaMs > 0 ? '+' : ''}${r.relativeDeltaMs} ms`
                             : '—'}
                         </td>
                       </tr>

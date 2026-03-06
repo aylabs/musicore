@@ -75,10 +75,21 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
       }
 
       const entry = state.notes[state.currentIndex];
-      const isLate =
-        action.expectedTimeMs > 0 &&
-        action.responseTimeMs > 0 &&
-        Math.abs(action.responseTimeMs - action.expectedTimeMs) > LATE_THRESHOLD_MS;
+
+      // Compute relative timing delta: how far off was the interval
+      // between this note and the previous one vs. the expected interval.
+      // First note always gets relativeDeltaMs = 0 (no reference).
+      const prevResult = state.noteResults.length > 0
+        ? state.noteResults[state.noteResults.length - 1]
+        : null;
+      let relativeDeltaMs = 0;
+      if (prevResult) {
+        const actualInterval = action.responseTimeMs - prevResult.responseTimeMs;
+        const expectedInterval = action.expectedTimeMs - prevResult.expectedTimeMs;
+        relativeDeltaMs = Math.round(actualInterval - expectedInterval);
+      }
+
+      const isLate = Math.abs(relativeDeltaMs) > LATE_THRESHOLD_MS;
 
       const result: PracticeNoteResult = {
         noteIndex: state.currentIndex,
@@ -87,6 +98,7 @@ export function reduce(state: PracticeState, action: PracticeAction): PracticeSt
         expectedMidi: entry.midiPitches,
         responseTimeMs: action.responseTimeMs,
         expectedTimeMs: action.expectedTimeMs,
+        relativeDeltaMs,
         wrongAttempts: state.currentWrongAttempts,
       };
 
