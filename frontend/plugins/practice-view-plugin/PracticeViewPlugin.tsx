@@ -802,6 +802,12 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
     replayTimersRef.current = timers;
   }, [context, performanceRecord, isReplaying]);
 
+  const handleRepractice = useCallback(() => {
+    if (isReplaying) handleReplayStop();
+    setResultsOverlayVisible(false);
+    handlePracticeToggle();
+  }, [isReplaying, handleReplayStop, handlePracticeToggle]);
+
   // ─── Derived values ────────────────────────────────────────────────────────
 
   // During active practice:
@@ -1204,6 +1210,13 @@ export function PracticeViewPlugin({ context }: PracticeViewPluginProps) {
             {/* Replay / Stop button (038-practice-replay, T018) */}
             {performanceRecord && (
               <div className="practice-results__replay-row">
+                <button
+                  className="practice-results__repractice-btn"
+                  onClick={handleRepractice}
+                  aria-label="Repractice"
+                >
+                  ↺ Repractice
+                </button>
                 {!isReplaying ? (
                   <button
                     className="practice-results__replay-btn"

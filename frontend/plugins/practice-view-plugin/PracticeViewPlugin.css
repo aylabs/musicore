@@ -613,6 +613,7 @@
 .practice-results__replay-row {
   display: flex;
   justify-content: center;
+  gap: 8px;
   margin: 12px 0 4px;
 }
 
@@ -649,6 +650,29 @@
 
 .practice-results__replay-btn--stop:active {
   background: #8e0000;
+}
+
+.practice-results__repractice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #2e7d32;
+  color: #fff;
+  transition: background 0.15s ease;
+}
+
+.practice-results__repractice-btn:hover {
+  background: #1b5e20;
+}
+
+.practice-results__repractice-btn:active {
+  background: #1b5e20;
 }
 
 @media (max-width: 768px) {

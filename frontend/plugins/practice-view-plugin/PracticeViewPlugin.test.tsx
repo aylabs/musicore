@@ -832,6 +832,46 @@ describe('PracticeViewPlugin — Replay (038-practice-replay)', () => {
     expect(playNoteCalls[2][0]).toEqual(expect.objectContaining({ midiNote: 62, offsetMs: 700 }));
   });
 
+  // T042: Repractice button visible in results overlay
+  it('T042: shows Repractice button after exercise completion', () => {
+    const { ctx } = setupCompletedPractice();
+    expect(screen.getByRole('button', { name: /repractice/i })).toBeTruthy();
+  });
+
+  // T043: Repractice button restarts practice (results overlay disappears)
+  it('T043: clicking Repractice dismisses results and restarts practice', () => {
+    const { ctx } = setupCompletedPractice();
+
+    expect(screen.getByRole('region', { name: /practice results/i })).toBeTruthy();
+    const callsBefore = (ctx.context.scorePlayer.extractPracticeNotes as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /repractice/i }));
+    });
+
+    expect(screen.queryByRole('region', { name: /practice results/i })).toBeNull();
+    // Practice restarted — extractPracticeNotes called again
+    const callsAfter = (ctx.context.scorePlayer.extractPracticeNotes as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(callsAfter).toBeGreaterThan(callsBefore);
+  });
+
+  // T044: Repractice stops replay if active, then restarts practice
+  it('T044: Repractice stops ongoing replay before restarting', () => {
+    const { ctx } = setupCompletedPractice();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /replay your performance/i }));
+    });
+    expect(screen.getByRole('button', { name: /stop replay/i })).toBeTruthy();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /repractice/i }));
+    });
+
+    expect(ctx.mockStopPlayback).toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: /practice results/i })).toBeNull();
+  });
+
   // T041: wrong notes do NOT trigger staff highlights during replay
   it('T041: wrong notes do not change staff highlight', () => {
     const notes = [
