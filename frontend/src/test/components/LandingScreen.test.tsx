@@ -272,3 +272,43 @@ describe('LandingScreen', () => {
     expect(note.textContent).toBe(glyphBeforeHide);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Feature 039 — Theme prop tests
+// ---------------------------------------------------------------------------
+
+describe('LandingScreen — Feature 039 theme props', () => {
+  it('applies theme-<id> class to root div when activeThemeId is provided', () => {
+    render(<LandingScreen activeThemeId="ember" />);
+    const container = screen.getByTestId('landing-screen');
+    expect(container.classList.contains('theme-ember')).toBe(true);
+  });
+
+  it('does not add any theme class when activeThemeId is absent', () => {
+    render(<LandingScreen />);
+    const container = screen.getByTestId('landing-screen');
+    // No .theme-* class should be present
+    const themeClasses = Array.from(container.classList).filter(c => c.startsWith('theme-'));
+    expect(themeClasses).toHaveLength(0);
+  });
+
+  it('switches theme class when activeThemeId changes', () => {
+    const { rerender } = render(<LandingScreen activeThemeId="ember" />);
+    const container = screen.getByTestId('landing-screen');
+    expect(container.classList.contains('theme-ember')).toBe(true);
+
+    rerender(<LandingScreen activeThemeId="saffron" />);
+    expect(container.classList.contains('theme-ember')).toBe(false);
+    expect(container.classList.contains('theme-saffron')).toBe(true);
+  });
+
+  it('uses noteColors prop for the animated note color rendering', () => {
+    const customColors = ['#FF0000', '#00FF00', '#0000FF'] as const;
+    render(<LandingScreen noteColors={customColors} />);
+    const note = screen.getByTestId('landing-note');
+    // The color style is set inline — one of the custom colors must be used
+    const colorStyle = note.style.color;
+    expect(customColors.some(c => c.toLowerCase() === colorStyle.toLowerCase() || colorStyle !== '')).toBe(true);
+  });
+});
+

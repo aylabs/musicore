@@ -1,6 +1,10 @@
 /* ==========================================================================
    LandingScreen.css — Feature 001-landing-redesign
+   Feature 039: CSS custom property theming via landing-themes.css
    ========================================================================== */
+
+/* Import theme token definitions (10 .theme-* classes) */
+@import '../themes/landing-themes.css';
 
 /**
  * Full-viewport container that sits behind the .app-header banner.
@@ -14,7 +18,7 @@
   height: 100%;
   overflow: hidden;
   z-index: 0;
-  background: #f5f5f5;
+  background: var(--ls-bg, #f5f5f5);
   cursor: pointer;
   /* Remove browser tap-highlight and focus ring on click */
   -webkit-tap-highlight-color: transparent;
@@ -76,6 +80,26 @@
 }
 
 /* --------------------------------------------------------------------------
+   Feature 039: Typography token wiring (T017 + T020)
+   Applied to any headline/body text elements within .landing-screen.
+   -------------------------------------------------------------------------- */
+.landing-screen .landing-headline {
+  font-family: var(--ls-font-heading, system-ui, sans-serif);
+  font-weight: var(--ls-heading-weight, 700);
+  color: var(--ls-heading, inherit);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.landing-screen .landing-body {
+  font-family: var(--ls-font-body, system-ui, sans-serif);
+  font-weight: var(--ls-body-weight, 400);
+  color: var(--ls-body, inherit);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
    Reduced-motion override
    The glyph/color animation is handled in JS; only the CSS transition
    needs suppressing here.
@@ -90,18 +114,19 @@
   border-radius: 12px;
   padding: 1.25rem 2.5rem;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: var(--ls-heading-weight, 700);
   letter-spacing: 0.03em;
-  background: #5AC481;
-  color: #fff;
+  background: var(--ls-cta-bg, #5AC481);
+  color: var(--ls-cta-text, #fff);
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(90, 196, 129, 0.45);
   min-width: unset;
+  font-family: var(--ls-font-body, inherit);
 }
 
 .landing-plugin-btn:hover {
-  background: #3ea864;
+  background: var(--ls-accent, #3ea864);
 }
 
 .landing-instruments-btn {
@@ -120,6 +145,15 @@
 
 .landing-instruments-btn:hover {
   background: #f57c00;
+}
+
+/* --------------------------------------------------------------------------
+   Feature 039: Hero content max-width constraint (T027)
+   Prevents infinite horizontal stretch on ultra-wide screens (>2560px).
+   -------------------------------------------------------------------------- */
+.landing-content {
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 @media (max-width: 520px) {
