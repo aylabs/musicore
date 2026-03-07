@@ -542,7 +542,7 @@ function App() {
               </a>
             </h1>
             {/* Feature 030: Plugin navigation entries */}
-            {allPlugins.length > 0 && (
+            {allPlugins.some(p => p.manifest.type !== 'core' && !p.manifest.hidden) && (
               <nav
                 aria-label="Installed plugins"
                 className="plugin-nav"
