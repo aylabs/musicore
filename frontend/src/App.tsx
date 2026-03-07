@@ -545,14 +545,7 @@ function App() {
             {allPlugins.length > 0 && (
               <nav
                 aria-label="Installed plugins"
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '8px',
-                  justifyContent: 'center',
-                  marginTop: '8px',
-                  paddingBottom: '4px',
-                }}
+                className="plugin-nav"
               >
                 {allPlugins.filter(p => p.manifest.type !== 'core').map(({ manifest }) => (
                   <PluginNavEntry

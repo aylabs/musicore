@@ -44,21 +44,32 @@ body[data-landing-theme] .app-header a {
   color: var(--ls-accent);
 }
 
-/* ── Feature 039: Plugin navigation entries ────────────────────────────────── */
+/* ── Feature 039: Plugin nav wrapper ──────────────────────────────────────── */
+.plugin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 4px;
+  padding-bottom: 2px;
+}
+
+/* ── Feature 039: Plugin navigation entries (scaled ~50% from touch defaults) */
 /* Default: works on the dark purple gradient header.                          */
 .plugin-nav-entry {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px 16px;
-  font-size: 0.875rem;
+  gap: 4px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #e0e0ff;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -76,21 +87,21 @@ body[data-landing-theme] .app-header a {
 }
 
 .plugin-nav-entry__badge {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   opacity: 0.7;
 }
 
-/* +/- plugin management buttons */
+/* +/- plugin management buttons (scaled to match entries) */
 .plugin-manage-btn {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 24px;
+  min-height: 24px;
   border: 1px dashed #666;
-  border-radius: 6px;
+  border-radius: 4px;
   background: transparent;
   color: #999;
-  font-size: 1.2em;
+  font-size: 0.85em;
   cursor: pointer;
-  padding: 0 10px;
+  padding: 3px 6px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
