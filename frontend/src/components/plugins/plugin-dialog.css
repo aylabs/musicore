@@ -78,11 +78,44 @@
   font-weight: 500;
 }
 
-/* ── File input ─────────────────────────────────────────────────────────── */
-.plugin-dialog__file-input {
-  font-size: 0.875rem;
-  cursor: pointer;
-  color: var(--ls-body, #444);
+/* ── File input: hidden native picker (keeps testid for tests) ──────── */
+.plugin-dialog__file-input--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Pick button row ─────────────────────────────────────────────────── */
+.plugin-dialog__pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Filename badge shown after a file is selected ──────────────────── */
+.plugin-dialog__filename {
+  font-size: 0.8rem;
+  color: var(--ls-body, #555);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  opacity: 0.85;
+}
+
+/* ── Variant: pick / neutral primary action ─────────────────────────── */
+.plugin-dialog__btn--pick {
+  background: var(--ls-cta-bg, #4a90e2);
+  color: var(--ls-cta-text, #fff);
+  border: none;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.plugin-dialog__btn--pick:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ls-cta-bg, #4a90e2) 80%, #000);
 }
 
 /* ── Status / loading text ──────────────────────────────────────────────── */

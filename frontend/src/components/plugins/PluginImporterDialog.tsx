@@ -43,6 +43,7 @@ export function PluginImporterDialog({
   onClose,
 }: PluginImporterDialogProps) {
   const [state, setState] = useState<DialogState>({ phase: 'idle' });
+  const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // ── File selection ─────────────────────────────────────────────────────
@@ -65,7 +66,10 @@ export function PluginImporterDialog({
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      setFileName(file.name);
+      handleFile(file);
+    }
   }
 
   // ── Duplicate confirmation ─────────────────────────────────────────────
@@ -86,6 +90,7 @@ export function PluginImporterDialog({
 
   function handleCancelDuplicate() {
     setState({ phase: 'idle' });
+    setFileName(null);
     // Reset file input so the same file can be re-selected
     if (inputRef.current) inputRef.current.value = '';
   }
@@ -117,9 +122,8 @@ export function PluginImporterDialog({
           {/* ── File picker ─────────────────────────────────────────────── */}
           {(state.phase === 'idle' || state.phase === 'error') && (
             <>
-              <label htmlFor="plugin-file-input" className="plugin-dialog__label">
-                Select a plugin ZIP package:
-              </label>
+              <label className="plugin-dialog__label">Select a plugin ZIP package:</label>
+              {/* Hidden native input keeps testid for tests and handles the OS picker */}
               <input
                 ref={inputRef}
                 id="plugin-file-input"
@@ -127,8 +131,22 @@ export function PluginImporterDialog({
                 type="file"
                 accept=".zip"
                 onChange={handleInputChange}
-                className="plugin-dialog__file-input"
+                className="plugin-dialog__file-input--hidden"
+                aria-hidden="true"
+                tabIndex={-1}
               />
+              <div className="plugin-dialog__pick-row">
+                <button
+                  type="button"
+                  className="plugin-dialog__btn plugin-dialog__btn--pick"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  📂 Choose ZIP file…
+                </button>
+                {fileName && (
+                  <span className="plugin-dialog__filename" title={fileName}>{fileName}</span>
+                )}
+              </div>
               {state.phase === 'error' && (
                 <p role="alert" className="plugin-dialog__message plugin-dialog__message--error">
                   {state.message}
