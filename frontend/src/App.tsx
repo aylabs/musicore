@@ -535,7 +535,7 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      fontSize: '0.5em',
+                      fontSize: '0.375em',
                       color: '#999',
                       fontWeight: 'normal',
                       textDecoration: 'none'
