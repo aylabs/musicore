@@ -526,7 +526,7 @@ function App() {
           <OfflineBanner />
           <header className="app-header">
             <div className="app-header-brand">
-              <img src="/logo.svg" alt="Musicore logo" className="app-logo" />
+              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Musicore logo" className="app-logo" />
               <div>
                 <h1>
                   Musicore{' '}
