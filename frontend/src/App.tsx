@@ -529,7 +529,7 @@ function App() {
               <div className="app-header-title-row">
                 <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Musicore logo" className="app-logo" />
                 <h1>
-                  Musicore{' '}
+                  <span className="app-title-initial">G</span>raditone{' '}
                   <a
                     href="https://github.com/aylabs/musicore"
                     target="_blank"
