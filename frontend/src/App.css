@@ -21,7 +21,7 @@
 
 .app-header h1 {
   margin: 0;
-  font-size: 1.5em;
+  font-size: 2em;
   font-weight: 600;
   transition: color 0.3s ease, font-family 0.1s, font-weight 0.1s;
 }
@@ -36,14 +36,15 @@
 
 .app-header-brand {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
 .app-logo {
-  height: 46px;
+  height: 30px;
   width: auto;
   flex-shrink: 0;
+  margin-top: 4px;
 }
 
 /* ── Feature 039: Theme-aware header ────────────────────────────────────── */
