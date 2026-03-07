@@ -525,23 +525,28 @@ function App() {
         <div className="app">
           <OfflineBanner />
           <header className="app-header">
-            <h1>
-              Musicore{' '}
-              <a 
-                href="https://github.com/aylabs/musicore" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{ 
-                  fontSize: '0.5em', 
-                  color: '#999', 
-                  fontWeight: 'normal',
-                  textDecoration: 'none'
-                }}
-              >
-                v{packageJson.version}
-              </a>
-            </h1>
-            <p className="app-slogan">The open platform for musical practice</p>
+            <div className="app-header-brand">
+              <img src="/logo.svg" alt="Musicore logo" className="app-logo" />
+              <div>
+                <h1>
+                  Musicore{' '}
+                  <a
+                    href="https://github.com/aylabs/musicore"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '0.5em',
+                      color: '#999',
+                      fontWeight: 'normal',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    v{packageJson.version}
+                  </a>
+                </h1>
+                <p className="app-slogan">The open platform for musical practice</p>
+              </div>
+            </div>
             {/* Feature 030: Plugin navigation entries */}
             <nav
               aria-label="Installed plugins"

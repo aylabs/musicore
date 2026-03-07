@@ -34,6 +34,18 @@
   opacity: 0.8;
 }
 
+.app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-logo {
+  height: 46px;
+  width: auto;
+  flex-shrink: 0;
+}
+
 /* ── Feature 039: Theme-aware header ────────────────────────────────────── */
 /* When a landing theme is active, override the default purple gradient.      */
 body[data-landing-theme] .app-header {
