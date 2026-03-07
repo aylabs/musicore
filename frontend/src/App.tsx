@@ -541,6 +541,7 @@ function App() {
                 v{packageJson.version}
               </a>
             </h1>
+            <p className="app-slogan">The music open platform</p>
             {/* Feature 030: Plugin navigation entries */}
             <nav
               aria-label="Installed plugins"

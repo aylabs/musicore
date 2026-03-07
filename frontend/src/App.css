@@ -26,6 +26,14 @@
   transition: color 0.3s ease, font-family 0.1s, font-weight 0.1s;
 }
 
+.app-slogan {
+  margin: 2px 0 0;
+  font-size: 0.75em;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
 /* ── Feature 039: Theme-aware header ────────────────────────────────────── */
 /* When a landing theme is active, override the default purple gradient.      */
 body[data-landing-theme] .app-header {
@@ -42,6 +50,11 @@ body[data-landing-theme] .app-header h1 {
 
 body[data-landing-theme] .app-header a {
   color: var(--ls-accent);
+}
+
+body[data-landing-theme] .app-slogan {
+  font-family: var(--ls-font-body);
+  color: var(--ls-body);
 }
 
 /* ── Feature 039: Plugin nav wrapper ──────────────────────────────────────── */
