@@ -526,8 +526,8 @@ function App() {
           <OfflineBanner />
           <header className="app-header">
             <div className="app-header-brand">
-              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Musicore logo" className="app-logo" />
-              <div>
+              <div className="app-header-title-row">
+                <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Musicore logo" className="app-logo" />
                 <h1>
                   Musicore{' '}
                   <a
@@ -544,8 +544,8 @@ function App() {
                     v{packageJson.version}
                   </a>
                 </h1>
-                <p className="app-slogan">The open platform for musical practice</p>
               </div>
+              <p className="app-slogan">The open platform for musical practice</p>
             </div>
             {/* Feature 030: Plugin navigation entries */}
             <nav

@@ -36,12 +36,18 @@
 
 .app-header-brand {
   display: inline-flex;
+  flex-direction: column;
   align-items: flex-start;
+}
+
+.app-header-title-row {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
 .app-logo {
-  height: 52px;
+  height: 2em;
   width: auto;
   flex-shrink: 0;
 }
