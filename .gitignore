@@ -39,3 +39,12 @@ playwright-report/
 plugins-external/
 # Built plugin ZIPs (build artifacts from plugins-external/)
 *.zip
+
+# Android TWA project (android/)
+*.keystore
+*.jks
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/google-services.json

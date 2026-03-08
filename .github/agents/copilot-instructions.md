@@ -103,9 +103,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 040-android-app-pwa: Added Android TWA (Trusted Web Activity via Bubblewrap CLI), Kotlin/Gradle (Android App Bundle), Firebase Crashlytics (anonymous crash reporting), `android/` project directory, `frontend/public/.well-known/assetlinks.json` (Digital Asset Links), `.github/workflows/build-android.yml` (CI AAB build on release tag). No changes to backend Rust or frontend React/WASM.
 - 039-landing-page-redesign: Added TypeScript 5.x, React 18, CSS3 (custom properties) + Vite 5 (bundler), React 18, @testing-library/react, Vitest (unit), Playwright (E2E)
 - 038-practice-replay: Added TypeScript 5+, React 18+ + Plugin API v2 (`context.playNote`, `context.stopPlayback` — existing); `practiceEngine.types.ts` (existing); no new dependencies
-- 037-practice-view-plugin: Added TypeScript 5.5, React 19 + Plugin API (`frontend/src/plugin-api/index.ts`), Vite 5, Vitest 2 — mirrors `plugins-external/virtual-keyboard-pro/` package structure
 
 
 <!-- MANUAL ADDITIONS START -->

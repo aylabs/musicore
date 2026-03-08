@@ -253,6 +253,23 @@ graditone/
 - ✅ Feature 009: Playback with Auto-scroll - Web Audio API integration
 - ✅ Feature 010: Stacked Staves View - Piano/multi-staff display
 
+## Android Distribution
+
+Graditone is available as an Android app on the Google Play Store, packaged as a [Trusted Web Activity (TWA)](https://developer.chrome.com/docs/android/trusted-web-activity) wrapping the existing PWA.
+
+<!-- Play Store badge — update href once app is live -->
+_Google Play listing coming soon._
+
+### Minimum Requirements
+
+- Android 9.0 (Pie, API 28) or later
+
+### Update Process
+
+Android app updates are delivered automatically through Google Play. When a new version is published, installed users receive an update notification. The release process is documented in [android/RELEASE.md](android/RELEASE.md).
+
+---
+
 ## Technology Stack
 
 | Layer | Technology | Version |
