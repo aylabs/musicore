@@ -57,8 +57,8 @@ android {
         applicationId "com.graditone.app"
         minSdkVersion 28
         targetSdkVersion 35
-        versionCode 200
-        versionName "0.1.99"
+        versionCode (project.findProperty('APP_VERSION_CODE') as Integer) ?: 102
+        versionName project.findProperty('APP_VERSION_NAME') ?: "0.1.102"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
