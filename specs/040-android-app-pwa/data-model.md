@@ -11,7 +11,7 @@ The root configuration artifact that Bubblewrap CLI reads to generate (and regen
 | Field | Type | Value / Constraint |
 |---|---|---|
 | `packageId` | string | `io.graditone.app` — reverse-domain notation, immutable after first Play Store submission |
-| `host` | string | `graditone.github.io` — the production PWA domain |
+| `host` | string | `graditone.com` — the production PWA domain |
 | `startUrl` | string | `/` — matches PWA `start_url` |
 | `name` | string | `Graditone` — Play Store display name (≤30 chars) |
 | `launcherName` | string | `Graditone` — home screen label (≤12 chars recommended) |
@@ -51,7 +51,7 @@ Created once; used to sign every Android App Bundle released to Play Store.
 
 ## Entity: Digital Asset Links File
 
-A JSON file hosted at `https://graditone.github.io/.well-known/assetlinks.json`. Authorises the Android TWA to claim the Graditone domain, enabling full-screen mode.
+A JSON file hosted at `https://graditone.com/.well-known/assetlinks.json`. Authorises the Android TWA to claim the Graditone domain, enabling full-screen mode.
 
 | Field | Type | Value |
 |---|---|---|
@@ -61,7 +61,7 @@ A JSON file hosted at `https://graditone.github.io/.well-known/assetlinks.json`.
 | `sha256_cert_fingerprints` | string[] | Upload key fingerprint + Play App Signing key fingerprint |
 
 **Source file**: `frontend/public/.well-known/assetlinks.json`  
-**Deployed to**: `https://graditone.github.io/.well-known/assetlinks.json`  
+**Deployed to**: `https://graditone.com/.well-known/assetlinks.json`  
 **Deployed by**: Existing `deploy-pwa.yml` (no changes needed — Vite copies `public/` contents to `dist/` automatically)
 
 ---

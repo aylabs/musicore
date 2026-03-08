@@ -73,7 +73,7 @@ keytool -genkey -v \
 
 ```bash
 # From the repo root
-bubblewrap init --manifest https://graditone.github.io/manifest.webmanifest
+bubblewrap init --manifest https://graditone.com/manifest.webmanifest
 ```
 
 Follow the interactive prompts. When asked:
@@ -112,7 +112,7 @@ git commit -m "feat: add Bubblewrap-generated Android TWA project"
 ```
 
 4. Commit and push to `main` → the existing `deploy-pwa.yml` deploys it.
-5. Verify: `curl https://graditone.github.io/.well-known/assetlinks.json`
+5. Verify: `curl https://graditone.com/.well-known/assetlinks.json`
 
 ---
 
@@ -208,7 +208,7 @@ The team then manually downloads the `.aab` artifact and uploads it to the Play 
 
 ## Verification Checklist (before first Play Store submission)
 
-- [ ] `assetlinks.json` is accessible at `https://graditone.github.io/.well-known/assetlinks.json`
+- [ ] `assetlinks.json` is accessible at `https://graditone.com/.well-known/assetlinks.json`
 - [ ] TWA launches full-screen on a physical Android device (no browser chrome visible)
 - [ ] Back button navigates within the app; pressing back at root prompts to exit
 - [ ] App loads previously visited content while on airplane mode
