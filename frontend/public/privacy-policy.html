@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Graditone</title>
+  <style>
+    :root {
+      --bg: #1a1a1a;
+      --surface: #242424;
+      --text: #e8e8e8;
+      --muted: #a0a0a0;
+      --accent: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    header { margin-bottom: 2.5rem; }
+    header a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    header a:hover { text-decoration: underline; }
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 0.5rem;
+      color: var(--text);
+    }
+    .last-updated {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+    }
+    p, li { color: var(--text); }
+    ul {
+      padding-left: 1.5rem;
+      margin-top: 0.5rem;
+    }
+    li { margin-bottom: 0.25rem; }
+    .highlight {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 6px 6px 0;
+      margin: 1.5rem 0;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #333;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="/">&larr; Back to Graditone</a>
+      <h1>Privacy Policy</h1>
+      <p class="last-updated">Last updated: 2026-03-08</p>
+    </header>
+
+    <div class="highlight">
+      <strong>Summary:</strong> Graditone does not collect, store, or share any personally identifiable information. The only diagnostic data collected is anonymous crash reports, which cannot be linked to any individual.
+    </div>
+
+    <h2>1. Who We Are</h2>
+    <p>
+      Graditone is a free, open-source music score viewer and practice tool. It is available as a Progressive Web App (PWA) and as an Android application distributed through the Google Play Store.
+    </p>
+
+    <h2>2. What We Collect</h2>
+    <p>We collect <strong>no personally identifiable information (PII)</strong>. Specifically, we do not collect:</p>
+    <ul>
+      <li>Names, email addresses, or account credentials</li>
+      <li>Device identifiers that can be linked to an individual</li>
+      <li>Location data</li>
+      <li>Microphone, camera, or media data beyond what you explicitly use within the app</li>
+      <li>Financial or payment information</li>
+    </ul>
+
+    <h2>3. Anonymous Crash Diagnostics</h2>
+    <p>
+      The Android app uses <strong>Firebase Crashlytics</strong> to collect anonymous crash reports. This data is used solely to identify and fix software defects. Crash reports may include:
+    </p>
+    <ul>
+      <li>The type and message of any unhandled exception</li>
+      <li>An anonymised stack trace</li>
+      <li>Device model (e.g., "Pixel 8") and Android version (e.g., "Android 14")</li>
+      <li>App version number</li>
+    </ul>
+    <p>
+      These reports are <strong>not linked to any user identity</strong> and cannot be used to identify you. They are processed by Google (Firebase) in accordance with <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Google's Privacy and Security policies</a>.
+    </p>
+    <p>
+      This data is declared in the Google Play Data Safety section as <em>"App diagnostics"</em>, collected automatically, not linked to identity, and not shared with third parties.
+    </p>
+
+    <h2>4. Local Data Storage</h2>
+    <p>
+      All scores and app settings you interact with are stored <strong>locally on your device</strong> using browser storage (IndexedDB, Cache Storage). This data never leaves your device and is never transmitted to any server.
+    </p>
+
+    <h2>5. Third-Party Services</h2>
+    <p>Graditone uses the following third-party services:</p>
+    <ul>
+      <li>
+        <strong>Firebase Crashlytics (Google)</strong> — Anonymous crash diagnostics (Android app only).
+        <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Privacy policy</a>.
+      </li>
+      <li>
+        <strong>GitHub Pages</strong> — Hosting for the PWA.
+        <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" rel="noopener">Privacy policy</a>.
+      </li>
+    </ul>
+    <p>No advertising networks, analytics SDKs, or social media pixel trackers are used.</p>
+
+    <h2>6. Children's Privacy</h2>
+    <p>
+      Graditone does not knowingly collect any information from children or any other user. The app is rated <strong>PEGI 3 / Everyone</strong> and is suitable for all ages. Because no personal data is collected, no special treatment for minors is required.
+    </p>
+
+    <h2>7. Changes to This Policy</h2>
+    <p>
+      We may update this policy if new features are added that change our data practices. Any changes will be reflected in the "Last updated" date above. Continued use of Graditone after such changes constitutes acceptance of the updated policy.
+    </p>
+
+    <h2>8. Contact</h2>
+    <p>
+      If you have questions or concerns about this privacy policy, please open an issue on our <a href="https://github.com/graditone/graditone/issues" target="_blank" rel="noopener">GitHub repository</a>.
+    </p>
+
+    <footer>
+      <p>
+        &copy; Graditone contributors. Open source under the MIT License. &nbsp;|&nbsp;
+        <a href="https://github.com/graditone/graditone" target="_blank" rel="noopener">GitHub</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

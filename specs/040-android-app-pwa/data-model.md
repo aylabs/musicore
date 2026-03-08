@@ -1,0 +1,118 @@
+# Data Model: Android App Distribution via Google Play
+
+**Branch**: `040-android-app-pwa` | **Date**: 2026-03-08
+
+---
+
+## Entity: TWA Configuration
+
+The root configuration artifact that Bubblewrap CLI reads to generate (and regenerate) the Android project. Stored as `android/twa-manifest.json` and committed to source control.
+
+| Field | Type | Value / Constraint |
+|---|---|---|
+| `packageId` | string | `io.graditone.app` — reverse-domain notation, immutable after first Play Store submission |
+| `host` | string | `graditone.github.io` — the production PWA domain |
+| `startUrl` | string | `/` — matches PWA `start_url` |
+| `name` | string | `Graditone` — Play Store display name (≤30 chars) |
+| `launcherName` | string | `Graditone` — home screen label (≤12 chars recommended) |
+| `themeColor` | hex string | `#6366f1` — must match PWA `theme_color` |
+| `backgroundColor` | hex string | `#1a1a1a` — must match PWA `background_color` |
+| `display` | enum | `standalone` |
+| `orientation` | enum | `default` (follows device) |
+| `enableNotifications` | bool | `false` (initial release) |
+| `minSdkVersion` | int | `28` (Android 9.0) |
+| `targetSdkVersion` | int | `34` (Android 14, Play Store minimum as of 2025) |
+| `signingKey` | object | See App Signing Credentials entity |
+
+**Validation rules**:
+- `packageId` MUST NOT change after first Play Store release
+- `host` MUST exactly match the domain in `assetlinks.json`
+- `themeColor` and `backgroundColor` MUST match the deployed PWA manifest values
+
+---
+
+## Entity: App Signing Credentials
+
+Created once; used to sign every Android App Bundle released to Play Store.
+
+| Field | Type | Constraint |
+|---|---|---|
+| `alias` | string | Identifier within the keystore (e.g., `graditone-release`) |
+| `sha256Fingerprint` | string | SHA-256 of the certificate — placed in `assetlinks.json` and Play Console |
+| `storeFile` | path | `.jks` file — MUST be backed up in a secure location (not committed to git) |
+| `validity` | int (years) | ≥ 25 years (Play Store recommendation) |
+
+**State transitions**:
+- Generated once during project setup → stored as GitHub Actions secret `ANDROID_KEYSTORE_BASE64`
+- Never regenerated — loss of keystore means new package ID required (breaks all installed apps)
+- If Google Play App Signing is enrolled, Play holds a secondary key; both fingerprints listed in `assetlinks.json`
+
+---
+
+## Entity: Digital Asset Links File
+
+A JSON file hosted at `https://graditone.github.io/.well-known/assetlinks.json`. Authorises the Android TWA to claim the Graditone domain, enabling full-screen mode.
+
+| Field | Type | Value |
+|---|---|---|
+| `relation` | string[] | `["delegate_permission/common.handle_all_urls"]` |
+| `namespace` | string | `android_app` |
+| `package_name` | string | `io.graditone.app` |
+| `sha256_cert_fingerprints` | string[] | Upload key fingerprint + Play App Signing key fingerprint |
+
+**Source file**: `frontend/public/.well-known/assetlinks.json`  
+**Deployed to**: `https://graditone.github.io/.well-known/assetlinks.json`  
+**Deployed by**: Existing `deploy-pwa.yml` (no changes needed — Vite copies `public/` contents to `dist/` automatically)
+
+---
+
+## Entity: App Version
+
+Each release to the Play Store is identified by a version pair. Must be monotonically increasing.
+
+| Field | Type | Constraint |
+|---|---|---|
+| `versionName` | string | Semver string from `frontend/package.json` (e.g., `0.2.5`) |
+| `versionCode` | int | `major × 10000 + minor × 100 + patch` (e.g., `0.2.5` → `205`) |
+
+**Derivation**: CI workflow reads `frontend/package.json` at build time and computes both values automatically. Existing auto-bump on `main` ensures `versionCode` always increases.
+
+---
+
+## Entity: Play Store Listing
+
+The public-facing store page. Configured once in Play Console; updated per release.
+
+| Field | Constraint |
+|---|---|
+| App name | ≤30 characters → `Graditone` |
+| Short description | ≤80 characters |
+| Full description | ≤4000 characters |
+| Category | Music & Audio |
+| Content rating | PEGI 3 / Everyone (completed via Play Console questionnaire) |
+| Privacy policy URL | Required — publicly accessible HTTPS URL |
+| Feature graphic | 1024×500 PNG |
+| Phone screenshots | ≥2 at 1080×1920 to 1080×2400 |
+| Tablet screenshots | Recommended (1200×1920 minimum) |
+| Hi-res icon | 512×512 PNG, no alpha |
+
+---
+
+## Entity: Release
+
+Each deliberate publish to the Play Store, advancing through tracks.
+
+| Field | Type | Constraint |
+|---|---|---|
+| `track` | enum | `internal` → `beta` → `production` (sequential; no skipping) |
+| `rolloutPercentage` | int (0–100) | Must be 100% for `internal` and `beta`; ≤ 100% for `production` (staged rollout allowed) |
+| `releaseNotes` | string | Per-language (min: `en-US`) ≤500 characters |
+| `appBundle` | `.aab` file | Signed with App Signing Credentials; generated by CI |
+| `approvedBy` | string | Team member who manually promoted in Play Console |
+
+**State transitions**:
+```
+internal (instant, no review)
+  → closed beta (invite-only testers, no review)
+    → production (Google review required, ~1–3 days for first submission)
+```
