@@ -76,9 +76,9 @@
 **Independent Test**: Open app once with internet → enable airplane mode → reopen → verify previously loaded scores play and a clear offline message appears when offline for the first time.
 
 - [X] T026 [US2] Configure TWA back navigation in `android/twa-manifest.json` — set `navigationFallback` and `exitAnimations` to handle Android back-button correctly; verify pressing back at root prompts user before closing
-- [ ] T027 [US2] Verify first-launch offline scenario on internal track device: install app, do NOT open it with internet, immediately enable airplane mode and open — verify app shows clear offline message (not blank screen, not crash)
-- [ ] T028 [US2] Verify offline score playback on internal track device: open app with internet, load at least 2 scores, enable airplane mode, reopen — verify scores load and play without network
-- [ ] T029 [US2] Verify graceful fallback when production URL is unavailable: simulate by blocking the URL in device hosts file — verify cached offline page is served from Service Worker, not a browser error
+- [X] T027 [US2] Verify first-launch offline scenario on internal track device: install app, do NOT open it with internet, immediately enable airplane mode and open — verify app shows clear offline message (not blank screen, not crash)
+- [X] T028 [US2] Verify offline score playback on internal track device: open app with internet, load at least 2 scores, enable airplane mode, reopen — verify scores load and play without network
+- [X] T029 [US2] Verify graceful fallback when production URL is unavailable: simulate by blocking the URL in device hosts file — verify cached offline page is served from Service Worker, not a browser error
 
 **Checkpoint**: US2 complete when offline playback verified and back-button behaviour confirmed on physical device.
 
