@@ -61,7 +61,7 @@ Current manifest specifies `"purpose": "any maskable"` (space-separated) for bot
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "io.graditone.app",
+    "package_name": "com.graditone.app",
     "sha256_cert_fingerprints": [
       "FILLED_IN_AFTER_KEYSTORE_GENERATION"
     ]

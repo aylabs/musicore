@@ -10,7 +10,7 @@ The root configuration artifact that Bubblewrap CLI reads to generate (and regen
 
 | Field | Type | Value / Constraint |
 |---|---|---|
-| `packageId` | string | `io.graditone.app` — reverse-domain notation, immutable after first Play Store submission |
+| `packageId` | string | `com.graditone.app` — reverse-domain notation, immutable after first Play Store submission |
 | `host` | string | `graditone.com` — the production PWA domain |
 | `startUrl` | string | `/` — matches PWA `start_url` |
 | `name` | string | `Graditone` — Play Store display name (≤30 chars) |
@@ -57,7 +57,7 @@ A JSON file hosted at `https://graditone.com/.well-known/assetlinks.json`. Autho
 |---|---|---|
 | `relation` | string[] | `["delegate_permission/common.handle_all_urls"]` |
 | `namespace` | string | `android_app` |
-| `package_name` | string | `io.graditone.app` |
+| `package_name` | string | `com.graditone.app` |
 | `sha256_cert_fingerprints` | string[] | Upload key fingerprint + Play App Signing key fingerprint |
 
 **Source file**: `frontend/public/.well-known/assetlinks.json`  

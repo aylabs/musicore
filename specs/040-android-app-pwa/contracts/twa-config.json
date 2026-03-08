@@ -20,7 +20,7 @@
     "packageId": {
       "type": "string",
       "description": "Reverse-domain package name. IMMUTABLE after first Play Store publication.",
-      "example": "io.graditone.app"
+      "example": "com.graditone.app"
     },
     "host": {
       "type": "string",
@@ -111,7 +111,7 @@
   },
   "examples": [
     {
-      "packageId": "io.graditone.app",
+      "packageId": "com.graditone.app",
       "host": "graditone.com",
       "startUrl": "/",
       "name": "Graditone",

@@ -20,7 +20,7 @@
 - [X] T001 Fix PWA manifest icon `purpose` — split combined `"any maskable"` value into separate `"any"` and `"maskable"` entries per icon size in `frontend/vite.config.ts`
 - [X] T002 [P] Create manifest TWA-readiness validation script that asserts required fields and correct icon purpose values in `android/scripts/validate-manifest.js`
 - [X] T003 Generate Android release keystore (25-year validity), record SHA-256 fingerprint, and store base64-encoded keystore + passwords as GitHub Actions secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD`)
-- [ ] T004 Initialise Android TWA project using Bubblewrap CLI (`bubblewrap init --manifest https://graditone.com/manifest.webmanifest`) with package ID `io.graditone.app`, minSdk 28, targetSdk 34 — commit generated project to `android/`
+- [ ] T004 Initialise Android TWA project using Bubblewrap CLI (`bubblewrap init --manifest https://graditone.com/manifest.webmanifest`) with package ID `com.graditone.app`, minSdk 28, targetSdk 34 — commit generated project to `android/`
 
 **Checkpoint**: Android project exists in `android/`; signing credentials are stored; manifest icons are correct.
 
