@@ -37,8 +37,8 @@
 - [ ] T007 [P] Create Firebase project in Firebase Console, download `google-services.json`, add it to `android/app/google-services.json`
 - [ ] T008 Integrate Firebase Crashlytics SDK into the Android project — add Firebase BOM and Crashlytics Gradle plugin in `android/app/build.gradle` and `android/build.gradle`
 - [X] T009 Create Android CI build workflow that triggers on `v*` tags, decodes keystore secret, reads version from `frontend/package.json`, computes `versionCode = major×10000 + minor×100 + patch`, builds signed release AAB, and uploads as workflow artifact at `.github/workflows/build-android.yml`
-- [ ] T010 Enrol app in Google Play App Signing; retrieve Play App Signing key SHA-256 fingerprint from Play Console; update `frontend/public/.well-known/assetlinks.json` with both fingerprints (upload key + Play App Signing key)
-- [ ] T011 Deploy PWA to production (push to main → triggers `deploy-pwa.yml`); verify `https://graditone.com/.well-known/assetlinks.json` returns valid JSON with correct fingerprints
+- [X] T010 Enrol app in Google Play App Signing; retrieve Play App Signing key SHA-256 fingerprint from Play Console; update `frontend/public/.well-known/assetlinks.json` with both fingerprints (upload key + Play App Signing key)
+- [X] T011 Deploy PWA to production (push to main → triggers `deploy-pwa.yml`); verify `https://graditone.com/.well-known/assetlinks.json` returns valid JSON with correct fingerprints
 
 **Checkpoint**: Digital Asset Links live at production URL with correct fingerprints; CI workflow builds signed AAB; privacy policy is live; Crashlytics SDK integrated.
 
@@ -50,14 +50,14 @@
 
 **Independent Test**: Search "Graditone" on the Play Store → install → launch → verify full-screen display, correct icon, all PWA features functional.
 
-- [ ] T012 [P] [US1] Create Play Store feature graphic 1024×500 PNG at `assets/store/feature-graphic.png`
-- [ ] T013 [P] [US1] Capture minimum 2 phone screenshots at 1080×1920–2400 resolution at `assets/store/screenshots/phone/`
+- [X] T012 [P] [US1] Create Play Store feature graphic 1024×500 PNG at `assets/store/feature-graphic.png`
+- [X] T013 [P] [US1] Capture minimum 2 phone screenshots at 1080×1920–2400 resolution at `assets/store/screenshots/phone/`
 - [ ] T014 [P] [US1] Capture tablet screenshots at 1200×1920 resolution at `assets/store/screenshots/tablet/`
 - [X] T015 [US1] Write Play Store short description (≤80 chars) and full description (≤4000 chars) in `android/store-listing.md`
-- [ ] T016 [US1] Create new app in Google Play Console ($25 one-time fee); set app name "Graditone", default language English, category "Music & Audio"
-- [ ] T017 [US1] Upload all store listing assets (icon, feature graphic, screenshots, descriptions, privacy policy URL) in Play Console → Store presence
-- [ ] T018 [US1] Complete Play Store content rating questionnaire in Play Console (expected result: PEGI 3 / Everyone)
-- [ ] T019 [US1] Complete Play Store Data Safety form: declare "App diagnostics" collected, not linked to identity (per research.md Unknown 4)
+- [X] T016 [US1] Create new app in Google Play Console ($25 one-time fee); set app name "Graditone", default language English, category "Music & Audio"
+- [X] T017 [US1] Upload all store listing assets (icon, feature graphic, screenshots, descriptions, privacy policy URL) in Play Console → Store presence
+- [X] T018 [US1] Complete Play Store content rating questionnaire in Play Console (expected result: PEGI 3 / Everyone)
+- [X] T019 [US1] Complete Play Store Data Safety form: declare "App diagnostics" collected, not linked to identity (per research.md Unknown 4)
 - [ ] T020 [US1] Build signed release AAB using CI workflow (push release tag → download artifact from GitHub Actions)
 - [ ] T021 [US1] Upload AAB to Play Console → Testing → Internal testing track; create release
 - [ ] T022 [US1] Test internal track on a physical Android device: verify full-screen display with no browser chrome, Graditone icon on home screen, all PWA core features (score loading, playback, navigation) work identically to browser PWA
