@@ -348,7 +348,19 @@ export function TrainPlugin({ context }: TrainPluginProps) {
   //    finalising the pending note and resetting the state machine
   //  - Filters pitches outside CAPTURE_MIDI_MIN..CAPTURE_MIDI_MAX (ultrasonic artefacts)
   //  - Ignores frames with confidence < MIN_CONFIDENCE
+  //  - Mic stream is stopped entirely while MIDI is the active input source;
+  //    it restarts automatically when MIDI disconnects.
   useEffect(() => {
+    // MIDI active → release the microphone hardware immediately.
+    // The effect re-runs when inputSource changes, so the stream restarts
+    // automatically if MIDI is later disconnected.
+    if (inputSource === 'midi') {
+      context.recording.stop();
+      setMicActive(null);
+      setMicError(null);
+      return;
+    }
+
     const unsubError = context.recording.onError((err) => {
       setMicError(err);
       setMicActive(false);
@@ -358,8 +370,8 @@ export function TrainPlugin({ context }: TrainPluginProps) {
       setMicActive(true);
       setMicError(null);
 
-      // MIDI takes priority over mic; virtual keyboard suspends mic entirely (Feature 001 — T008)
-      if (inputSourceRef.current === 'midi' || inputSourceRef.current === 'virtual-keyboard') return;
+      // Virtual keyboard suspends mic entirely (Feature 001 — T008)
+      if (inputSourceRef.current === 'virtual-keyboard') return;
 
       // Determine if this frame carries a valid in-range pitch
       const midi = hzToMidi(event.hz);
@@ -459,7 +471,7 @@ export function TrainPlugin({ context }: TrainPluginProps) {
       unsubPitch();
       unsubError();
     };
-  }, [context]);
+  }, [context, inputSource]);
 
   // ── MIDI subscription — detect source, capture, and auto-start ──────────────
   useEffect(() => {
