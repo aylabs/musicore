@@ -139,8 +139,21 @@ jobs:
           retention-days: 30
 
       # ── Deploy to Google Play ─────────────────────────────────────────────────
+      - name: Check Play Store secret
+        id: play_check
+        if: steps.android_check.outputs.exists == 'true'
+        env:
+          PLAY_SECRET: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_SECRET" ]; then
+            echo "has_secret=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secret=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not set — skipping Play Store upload."
+          fi
+
       - name: Upload to Google Play
-        if: steps.android_check.outputs.exists == 'true' && secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != ''
+        if: steps.android_check.outputs.exists == 'true' && steps.play_check.outputs.has_secret == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
