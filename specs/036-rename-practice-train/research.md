@@ -135,3 +135,54 @@ function pluginSortKey(m: PluginManifest): [number, string] {
 **Decision**: Update all three locations in `PLUGINS.md`.
 
 **Alternatives considered**: Only update the manifest schema (minimal change). Rejected: the reference section pointing to `frontend/plugins/practice-view/` becomes a broken path after the rename.
+
+---
+
+## R-008 — Tips banner must use CSS design tokens, not hardcoded colours
+
+**Problem**: `.train-plugin__tips`, `.train-plugin__tips-list`, and `.train-plugin__tips-dismiss` in `TrainPlugin.css` used hardcoded light-blue hex values (`#e8f4fd`, `#1a5276`, `#bee3f8`, etc.), making the banner invisible or illegible in dark/custom themes.
+
+**Finding**: All other Train plugin CSS rules already use `var(--color-*)` tokens defined in `App.css` (the Feature 039 bridge layer that maps `--ls-*` landing tokens). The tips section was the only block that bypassed this system.
+
+**Decision**: Replace hardcoded colours with `color-mix(in srgb, var(--color-accent, …) N%, var(--color-surface, …))` for backgrounds/borders and `var(--color-text)` for text. The `color-mix()` approach derives a contextual tint from the theme accent colour without needing new tokens.
+
+```css
+/* Before */
+background: #e8f4fd;
+border-bottom: 1px solid #bee3f8;
+color: #1a5276;
+
+/* After */
+background: color-mix(in srgb, var(--color-accent, #4f8ef7) 10%, var(--color-surface, #fff));
+border-bottom: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 30%, var(--color-border, #e0e0e0));
+color: var(--color-text, #222);
+```
+
+**Alternatives considered**: Adding a dedicated `--color-info-*` token set. Rejected — one-off usage; `color-mix` on the existing accent token is sufficient and consistent with how `--color-danger-bg` is derived elsewhere.
+
+---
+
+## R-009 — Microphone must be released when MIDI input is active
+
+**Problem**: When a MIDI keyboard was connected, the browser microphone stream remained open (browser mic indicator lit, AudioWorklet running), wasting resources and creating user confusion. Mic input was silently ignored in the pitch handler but the hardware was never released.
+
+**Finding**: The mic subscription `useEffect` had `[context]` as its dep array — it subscribed once on mount regardless of whether MIDI was active. The MIDI-priority guard (`if (inputSourceRef.current === 'midi') return;`) discarded events but never stopped the stream.
+
+**Decision**: Add `inputSource` to the mic `useEffect` dep array and insert an early-return branch:
+
+```tsx
+useEffect(() => {
+  // MIDI active → release the microphone hardware immediately.
+  if (inputSource === 'midi') {
+    context.recording.stop();
+    setMicActive(null);
+    setMicError(null);
+    return;
+  }
+  // … normal subscribe …
+}, [context, inputSource]);
+```
+
+When `inputSource` transitions to `'midi'` (on first MIDI attack or device detection), React runs the effect cleanup (unsubscribing the previous handler, which triggers `PluginMicBroadcaster.stopMic()` via subscriber-count teardown), then runs the new effect body which calls `stop()` as an extra safety net and returns without re-subscribing. When MIDI disconnects and `inputSource` reverts to `null`, the effect re-runs and the mic stream restarts.
+
+**Alternatives considered**: Calling `context.recording.stop()` directly inside the MIDI subscription handler. Rejected — that would stop the shared broadcaster stream for all current subscribers including any other plugin that might be using it; the `useEffect` scope restricts the teardown to the re-render triggered by this component's state change.

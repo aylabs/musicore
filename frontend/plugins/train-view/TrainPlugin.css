@@ -164,8 +164,8 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.625rem 1rem;
-  background: #e8f4fd;
-  border-bottom: 1px solid #bee3f8;
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 10%, var(--color-surface, #fff));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 30%, var(--color-border, #e0e0e0));
   flex-shrink: 0;
 }
 
@@ -174,7 +174,7 @@
   margin: 0;
   padding: 0 0 0 1.25rem;
   font-size: 0.82rem;
-  color: #1a5276;
+  color: var(--color-text, #222);
   list-style: disc;
   line-height: 1.6;
 }
@@ -187,18 +187,18 @@
   flex-shrink: 0;
   align-self: center;
   padding: 0.3rem 0.75rem;
-  border: 1px solid #7fb3d3;
+  border: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 40%, var(--color-border, #e0e0e0));
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 600;
-  background: #fff;
-  color: #1a5276;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #222);
   cursor: pointer;
   transition: background 0.12s;
 }
 
 .train-plugin__tips-dismiss:hover {
-  background: #d6eaf8;
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 15%, var(--color-surface, #fff));
 }
 
 /* ── Body: sidebar + main ────────────────────────────────────────────────── */
