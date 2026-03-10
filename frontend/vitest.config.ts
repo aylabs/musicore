@@ -12,7 +12,8 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      '**/e2e/**',         // Playwright tests — run via `playwright test`, not vitest
+      '**/e2e/**',              // Playwright tests — run via `playwright test`, not vitest
+      '**/tests/visual/**',     // Playwright visual regression tests — run via `playwright test`
       // External plugins symlinked for local dev — they have their own test suite
       'plugins/virtual-keyboard-pro/**',
     ],
