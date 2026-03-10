@@ -108,7 +108,11 @@ fn arabesque_time_signature_2_4() {
 
     assert_eq!(time_sig.numerator, 2, "Arabesque should be in 2/4 time");
     assert_eq!(time_sig.denominator, 4, "Arabesque should be in 2/4 time");
-    assert_eq!(time_sig.tick.value(), 0, "Time signature should be at tick 0");
+    assert_eq!(
+        time_sig.tick.value(),
+        0,
+        "Time signature should be at tick 0"
+    );
 
     // Verify layout produces 2/4 measure boundaries (1920 ticks per measure)
     let dto: musicore_backend::adapters::dtos::ScoreDto = (&result.score).into();
