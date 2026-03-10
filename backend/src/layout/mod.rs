@@ -61,16 +61,21 @@ impl Default for LayoutConfig {
 /// Layout computation is deterministic - identical inputs always produce
 /// byte-identical outputs, enabling aggressive caching.
 pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> GlobalLayout {
-    // Extract time signature from first staff (all staves share the same meter)
-    let (time_numerator, time_denominator) = score["instruments"]
+    // Extract time signature from global_structural_events (where the converter stores it)
+    let (time_numerator, time_denominator) = score["global_structural_events"]
         .as_array()
-        .and_then(|insts| insts.first())
-        .and_then(|inst| inst["staves"].as_array())
-        .and_then(|s| s.first())
-        .map(|first| {
-            let n = first["time_signature"]["numerator"].as_u64().unwrap_or(4) as u32;
-            let d = first["time_signature"]["denominator"].as_u64().unwrap_or(4) as u32;
-            (n, d)
+        .and_then(|events| {
+            events.iter().find_map(|e| {
+                let ts = &e["TimeSignature"];
+                if ts.is_object() {
+                    Some((
+                        ts["numerator"].as_u64().unwrap_or(4) as u32,
+                        ts["denominator"].as_u64().unwrap_or(4) as u32,
+                    ))
+                } else {
+                    None
+                }
+            })
         })
         .unwrap_or((4, 4));
     let ticks_per_measure: u32 = (3840 * time_numerator) / time_denominator;
@@ -122,7 +127,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         .collect();
 
     // Extract instruments from score (needed before breaking to compute system height)
-    let instruments = extract_instruments(score);
+    let instruments = extract_instruments(score, time_numerator, time_denominator);
 
     // Compute effective system height based on total staves across ALL instruments.
     // A single staff occupies 4 * units_per_space (5 lines, 4 gaps of 1 space each).
@@ -280,6 +285,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     staff_vertical_offset,
                     &note_positions,
                     unified_left_margin,
+                    ticks_per_measure,
                 );
 
                 // Separate pseudo-glyphs (stems U+0000, beams U+0001) from text glyphs
@@ -721,7 +727,11 @@ struct NoteEvent {
 }
 
 /// Extract instruments from CompiledScore JSON
-fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
+fn extract_instruments(
+    score: &serde_json::Value,
+    global_time_numerator: u32,
+    global_time_denominator: u32,
+) -> Vec<InstrumentData> {
     let mut instruments = Vec::new();
 
     if let Some(instruments_array) = score["instruments"].as_array() {
@@ -739,10 +749,26 @@ fn extract_instruments(score: &serde_json::Value) -> Vec<InstrumentData> {
 
                     // Extract structural metadata (with defaults)
                     let clef = staff["clef"].as_str().unwrap_or("Treble").to_string();
-                    let time_numerator =
-                        staff["time_signature"]["numerator"].as_u64().unwrap_or(4) as u8;
-                    let time_denominator =
-                        staff["time_signature"]["denominator"].as_u64().unwrap_or(4) as u8;
+                    // Use time signature from global_structural_events;
+                    // fall back to staff-level for test fixtures that set it there
+                    let time_numerator = if global_time_numerator != 4
+                        || global_time_denominator != 4
+                    {
+                        global_time_numerator as u8
+                    } else {
+                        staff["time_signature"]["numerator"]
+                            .as_u64()
+                            .unwrap_or(global_time_numerator as u64) as u8
+                    };
+                    let time_denominator = if global_time_numerator != 4
+                        || global_time_denominator != 4
+                    {
+                        global_time_denominator as u8
+                    } else {
+                        staff["time_signature"]["denominator"]
+                            .as_u64()
+                            .unwrap_or(global_time_denominator as u64) as u8
+                    };
                     let key_sharps = staff["key_signature"]["sharps"].as_i64().unwrap_or(0) as i8;
 
                     if let Some(voices_array) = staff["voices"].as_array() {
@@ -986,6 +1012,7 @@ fn position_glyphs_for_staff(
     staff_vertical_offset: f32,
     note_positions: &HashMap<u32, f32>,
     left_margin: f32,
+    ticks_per_measure: u32,
 ) -> Vec<Glyph> {
     let mut all_glyphs = Vec::new();
 
@@ -1141,6 +1168,7 @@ fn position_glyphs_for_staff(
             voice_index,
             staff_vertical_offset,
             staff_data.key_sharps,
+            ticks_per_measure,
         );
 
         all_glyphs.extend(accidental_glyphs);
@@ -2975,6 +3003,9 @@ mod tests {
         // 4 quarter notes at 960 ticks each → in 2/4 (1920 ticks/measure) = 2 measures
         // In hardcoded 4/4 (3840 ticks/measure) this would be only 1 measure
         let score = serde_json::json!({
+            "global_structural_events": [
+                { "TimeSignature": { "tick": 0, "numerator": 2, "denominator": 4 } }
+            ],
             "instruments": [{
                 "id": "piano",
                 "staves": [{
@@ -3018,6 +3049,9 @@ mod tests {
         // 7 quarter notes: with 3/4 (2880 ticks/measure) = 3 measures (0,0,0 | 1,1,1 | 2)
         // With hardcoded 3840 = 2 measures (0,0,0,0 | 1,1,1) → only 2 barlines
         let score = serde_json::json!({
+            "global_structural_events": [
+                { "TimeSignature": { "tick": 0, "numerator": 3, "denominator": 4 } }
+            ],
             "instruments": [{
                 "id": "piano",
                 "staves": [{
@@ -3114,6 +3148,9 @@ mod tests {
     #[test]
     fn test_time_signature_glyph_2_4() {
         let score = serde_json::json!({
+            "global_structural_events": [
+                { "TimeSignature": { "tick": 0, "numerator": 2, "denominator": 4 } }
+            ],
             "instruments": [{
                 "id": "piano",
                 "staves": [{
@@ -3156,6 +3193,9 @@ mod tests {
     #[test]
     fn test_time_signature_glyph_6_8() {
         let score = serde_json::json!({
+            "global_structural_events": [
+                { "TimeSignature": { "tick": 0, "numerator": 6, "denominator": 8 } }
+            ],
             "instruments": [{
                 "id": "piano",
                 "staves": [{
@@ -3185,6 +3225,68 @@ mod tests {
         assert!(
             ts_codepoints.contains(&"\u{E086}"),
             "Should contain time sig digit '6' (U+E086), got: {:?}",
+            ts_codepoints
+        );
+        assert!(
+            ts_codepoints.contains(&"\u{E088}"),
+            "Should contain time sig digit '8' (U+E088), got: {:?}",
+            ts_codepoints
+        );
+    }
+
+    /// 12/8: multi-digit numerator renders two glyphs ("1" and "2"), correct measure boundaries
+    #[test]
+    fn test_layout_12_8_time_signature() {
+        // 12 eighth notes → in 12/8 (5760 ticks/measure) = 1 measure
+        let score = serde_json::json!({
+            "global_structural_events": [
+                { "TimeSignature": { "tick": 0, "numerator": 12, "denominator": 8 } }
+            ],
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 12, "denominator": 8 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 60, "tick": 0, "duration": 480 },
+                            { "pitch": 62, "tick": 480, "duration": 480 },
+                            { "pitch": 64, "tick": 960, "duration": 480 },
+                            { "pitch": 65, "tick": 1440, "duration": 480 },
+                            { "pitch": 67, "tick": 1920, "duration": 480 },
+                            { "pitch": 69, "tick": 2400, "duration": 480 },
+                            { "pitch": 71, "tick": 2880, "duration": 480 },
+                            { "pitch": 72, "tick": 3360, "duration": 480 },
+                            { "pitch": 74, "tick": 3840, "duration": 480 },
+                            { "pitch": 76, "tick": 4320, "duration": 480 },
+                            { "pitch": 77, "tick": 4800, "duration": 480 },
+                            { "pitch": 79, "tick": 5280, "duration": 480 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+
+        // Multi-digit numerator "12" → two glyphs: U+E081 ("1") and U+E082 ("2")
+        let ts_codepoints: Vec<&str> = staff
+            .structural_glyphs
+            .iter()
+            .map(|g| g.codepoint.as_str())
+            .collect();
+
+        assert!(
+            ts_codepoints.contains(&"\u{E081}"),
+            "Should contain time sig digit '1' (U+E081) for '12', got: {:?}",
+            ts_codepoints
+        );
+        assert!(
+            ts_codepoints.contains(&"\u{E082}"),
+            "Should contain time sig digit '2' (U+E082) for '12', got: {:?}",
             ts_codepoints
         );
         assert!(

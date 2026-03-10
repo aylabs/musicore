@@ -356,6 +356,21 @@ pub fn position_clef(
     }
 }
 
+/// Convert a number (0-99) to a vector of SMuFL time signature digit codepoints.
+/// SMuFL codepoints: U+E080 = 0, U+E081 = 1, ..., U+E089 = 9
+fn number_to_smufl_codepoints(n: u8) -> Vec<char> {
+    if n >= 10 {
+        let tens = n / 10;
+        let ones = n % 10;
+        vec![
+            char::from_u32(0xE080 + tens as u32).unwrap_or('?'),
+            char::from_u32(0xE080 + ones as u32).unwrap_or('?'),
+        ]
+    } else {
+        vec![char::from_u32(0xE080 + n as u32).unwrap_or('?')]
+    }
+}
+
 /// Position time signature at system start (T032-T033)
 ///
 /// Creates two stacked glyphs for numerator and denominator.
@@ -379,50 +394,56 @@ pub fn position_time_signature(
     let mut glyphs = Vec::new();
 
     // SMuFL time signature digits: U+E080-U+E089 (0-9)
-    let numerator_codepoint = char::from_u32(0xE080 + numerator as u32).unwrap_or('?');
-    let denominator_codepoint = char::from_u32(0xE080 + denominator as u32).unwrap_or('?');
+    // For multi-digit numbers (e.g. 12), emit one glyph per digit
+    let numerator_codepoints = number_to_smufl_codepoints(numerator);
+    let denominator_codepoints = number_to_smufl_codepoints(denominator);
+
+    // Approximate width of one SMuFL time-sig digit (units_per_space-relative)
+    let digit_width = units_per_space * 1.4;
 
     // Numerator in upper half of staff (between lines 0-2, centered at y=10)
-    let numerator_pos = Point {
-        x: x_position,
-        y: 10.0 + staff_vertical_offset,
-    };
-
-    let numerator_bbox =
-        compute_glyph_bounding_box("timeSig0", &numerator_pos, 40.0, units_per_space);
-
-    glyphs.push(Glyph {
-        position: numerator_pos,
-        bounding_box: numerator_bbox,
-        codepoint: numerator_codepoint.to_string(),
-        source_reference: SourceReference {
-            instrument_id: "structural".to_string(),
-            staff_index: 0,
-            voice_index: 0,
-            event_index: 0,
-        },
-    });
+    let num_total_width = numerator_codepoints.len() as f32 * digit_width;
+    let num_start_x = x_position - num_total_width / 2.0 + digit_width / 2.0;
+    for (di, cp) in numerator_codepoints.iter().enumerate() {
+        let pos = Point {
+            x: num_start_x + di as f32 * digit_width,
+            y: 10.0 + staff_vertical_offset,
+        };
+        let bbox = compute_glyph_bounding_box("timeSig0", &pos, 40.0, units_per_space);
+        glyphs.push(Glyph {
+            position: pos,
+            bounding_box: bbox,
+            codepoint: cp.to_string(),
+            source_reference: SourceReference {
+                instrument_id: "structural".to_string(),
+                staff_index: 0,
+                voice_index: 0,
+                event_index: 0,
+            },
+        });
+    }
 
     // Denominator in lower half of staff (between lines 2-4, centered at y=50)
-    let denominator_pos = Point {
-        x: x_position,
-        y: 50.0 + staff_vertical_offset,
-    };
-
-    let denominator_bbox =
-        compute_glyph_bounding_box("timeSig0", &denominator_pos, 40.0, units_per_space);
-
-    glyphs.push(Glyph {
-        position: denominator_pos,
-        bounding_box: denominator_bbox,
-        codepoint: denominator_codepoint.to_string(),
-        source_reference: SourceReference {
-            instrument_id: "structural".to_string(),
-            staff_index: 0,
-            voice_index: 0,
-            event_index: 0,
-        },
-    });
+    let den_total_width = denominator_codepoints.len() as f32 * digit_width;
+    let den_start_x = x_position - den_total_width / 2.0 + digit_width / 2.0;
+    for (di, cp) in denominator_codepoints.iter().enumerate() {
+        let pos = Point {
+            x: den_start_x + di as f32 * digit_width,
+            y: 50.0 + staff_vertical_offset,
+        };
+        let bbox = compute_glyph_bounding_box("timeSig0", &pos, 40.0, units_per_space);
+        glyphs.push(Glyph {
+            position: pos,
+            bounding_box: bbox,
+            codepoint: cp.to_string(),
+            source_reference: SourceReference {
+                instrument_id: "structural".to_string(),
+                staff_index: 0,
+                voice_index: 0,
+                event_index: 0,
+            },
+        });
+    }
 
     glyphs
 }
@@ -539,6 +560,7 @@ pub fn position_note_accidentals(
     voice_index: usize,
     staff_vertical_offset: f32,
     key_sharps: i8,
+    ticks_per_measure: u32,
 ) -> Vec<Glyph> {
     use std::collections::HashMap;
 
@@ -621,7 +643,7 @@ pub fn position_note_accidentals(
         let pitch_class = pitch % 12;
 
         // Check for measure boundary (reset accidental state)
-        let measure = start_tick / 3840;
+        let measure = start_tick / ticks_per_measure;
         if measure != current_measure {
             measure_accidental_state.clear();
             current_measure = measure;
