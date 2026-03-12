@@ -1934,8 +1934,14 @@ fn test_key_signature_expands_left_margin() {
 
     // Count key sig accidentals (sharp glyph codepoint)
     let sharp_codepoint = String::from('\u{E262}');
-    let c_sharp_count = c_structural.iter().filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint)).count();
-    let s7_sharp_count = s7_structural.iter().filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint)).count();
+    let c_sharp_count = c_structural
+        .iter()
+        .filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint))
+        .count();
+    let s7_sharp_count = s7_structural
+        .iter()
+        .filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint))
+        .count();
 
     assert_eq!(c_sharp_count, 0, "C major should have 0 sharp glyphs");
     assert_eq!(s7_sharp_count, 7, "C# major should have 7 sharp glyphs");
