@@ -263,7 +263,7 @@ export class ScoreViewer extends Component<ScoreViewerProps, ScoreViewerState> {
    * and auto-scroll to follow highlighted notes during playback.
    */
   componentDidUpdate(prevProps: ScoreViewerProps): void {
-    if (prevProps.darkMode !== this.props.darkMode) {
+    if (prevProps.darkMode !== this.props.darkMode || prevProps.config !== this.props.config) {
       const baseConfig = this.props.config || createDefaultConfig();
       const config = this.props.darkMode ? this.createDarkModeConfig(baseConfig) : baseConfig;
       this.setState({ config });

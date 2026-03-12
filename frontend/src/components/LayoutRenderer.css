@@ -63,7 +63,6 @@ polygon.highlighted {
 .layout-glyph.highlighted {
   fill: #F5A340 !important;
   stroke: #F5A340 !important;
-  filter: drop-shadow(0 0 3px rgba(245, 163, 64, 0.7));
   transition: fill 50ms ease-out, stroke 50ms ease-out;
 }
 
@@ -90,7 +89,6 @@ text.layout-glyph {
 .layout-glyph.pinned {
   fill: #5AC481 !important;
   stroke: #5AC481 !important;
-  filter: drop-shadow(0 0 4px rgba(90, 196, 129, 0.7)) !important;
 }
 
 /* Pinned notehead scale is also applied via JS SVG attribute (see applyNoteheadScale). */

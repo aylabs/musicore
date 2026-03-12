@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as _ReactNS from 'react'
 import { ScoreViewer } from './components/ScoreViewer'
 import { RecordingView } from './components/recording/RecordingView'
@@ -20,10 +20,25 @@ import type { PluginContext, PluginNoteEvent, GraditonePlugin } from './plugin-a
 import { PluginStaffViewer } from './plugin-api/PluginStaffViewer'
 import { createNoOpScorePlayer, createScorePlayerProxy } from './plugin-api/scorePlayerContext'
 import { createNoOpMetronome, createMetronomeProxy } from './plugin-api/metronomeContext'
-import { ToneAdapter } from './services/playback/ToneAdapter'
+// US3 (T027): type-only import — no runtime dependency on the Tone.js bundle.
+// The actual module is loaded lazily via loadToneAdapter() on first user interaction.
+import type { ToneAdapter as ToneAdapterType } from './services/playback/ToneAdapter'
+// Module-level cache: populated by the first loadToneAdapter() call (triggered in
+// handleSelectPlugin on user gesture). Synchronous callbacks (playNote, stopPlayback)
+// read this reference after the dynamic import has settled.
+let _toneAdapter: ToneAdapterType | null = null
+async function loadToneAdapter(): Promise<ToneAdapterType> {
+  if (!_toneAdapter) {
+    const { ToneAdapter } = await import('./services/playback/ToneAdapter')
+    _toneAdapter = ToneAdapter.getInstance()
+  }
+  return _toneAdapter!
+}
 import { pluginMicBroadcaster } from './services/recording/PluginMicBroadcaster'
 import { useMidiInput } from './services/recording/useMidiInput'
-import { getThemeFromHash, isThemeInHash } from './themes/landing-themes'
+import { getThemeFromHash, isThemeInHash, getThemeById } from './themes/landing-themes'
+import { createDefaultConfig } from './utils/renderUtils'
+import { RenderConfigContext } from './contexts/RenderConfigContext'
 import packageJson from '../package.json'
 import './App.css'
 
@@ -84,6 +99,18 @@ function App() {
   // tokens cascade to app-header, full-screen plugins and all other descendants.
   useEffect(() => {
     document.body.dataset.landingTheme = activeThemeId
+  }, [activeThemeId])
+
+  // Compute a theme-tinted RenderConfig for score notation (background + ink colors).
+  const scoreRenderConfig = useMemo(() => {
+    const theme = getThemeById(activeThemeId)
+    const base = createDefaultConfig()
+    return {
+      ...base,
+      backgroundColor: theme.palette.bg,
+      staffLineColor: theme.palette.body,
+      glyphColor: theme.palette.body,
+    }
   }, [activeThemeId])
 
   // When a core plugin is active, apply fullscreen-play body class.
@@ -237,8 +264,8 @@ function App() {
             // by handleSelectPlugin so samples should be loaded before the first
             // keypress. Skipping while loading prevents notes queueing up and
             // firing all at once when init finally completes.
-            const adapter = ToneAdapter.getInstance()
-            if (!adapter.isInitialized()) return
+            const adapter = _toneAdapter
+            if (!adapter || !adapter.isInitialized()) return
             if (event.type === 'release') {
               adapter.releaseNote(event.midiNote)
               return
@@ -276,7 +303,7 @@ function App() {
               timers.forEach(clearTimeout)
               timers.clear()
             }
-            ToneAdapter.getInstance().stopAll()
+            _toneAdapter?.stopAll()
           },
           // Dismiss this plugin and return to the main app view.
           // Core plugins call this from their own UI instead of relying on the
@@ -352,7 +379,10 @@ function App() {
     // This starts loading Salamander samples immediately so they are ready by the
     // time the user presses a key. The gesture of clicking a nav entry satisfies
     // the browser autoplay policy.
-    ToneAdapter.getInstance().init().catch(() => {})
+    // US3 (T027): dynamic import triggers the lazy tone-audio chunk load and caches
+    // the singleton in _toneAdapter so synchronous callers (playNote, stopPlayback)
+    // can use it without awaiting.
+    loadToneAdapter().then(adapter => adapter.init()).catch(() => {})
   }, [allPlugins])
 
   // T024: Handle successful plugin import — close the dialog and re-run loadPlugins
@@ -522,11 +552,16 @@ function App() {
 
       // v3 plugins need TempoStateProvider for useScorePlayerBridge (→ useTempoState).
       // v2 plugins don't use TempoState so we skip the provider for backward compat.
-      return isV3 ? <TempoStateProvider>{innerContent}</TempoStateProvider> : innerContent
+      return (
+        <RenderConfigContext.Provider value={scoreRenderConfig}>
+          {isV3 ? <TempoStateProvider>{innerContent}</TempoStateProvider> : innerContent}
+        </RenderConfigContext.Provider>
+      )
     }
   }
 
   return (
+    <RenderConfigContext.Provider value={scoreRenderConfig}>
     <TempoStateProvider>
       <FileStateProvider>
         <div className="app">
@@ -697,6 +732,7 @@ function App() {
         </div>
       </FileStateProvider>
     </TempoStateProvider>
+    </RenderConfigContext.Provider>
   )
 }
 
