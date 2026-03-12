@@ -351,10 +351,10 @@ export function TrainPlugin({ context }: TrainPluginProps) {
   //  - Mic stream is stopped entirely while MIDI is the active input source;
   //    it restarts automatically when MIDI disconnects.
   useEffect(() => {
-    // MIDI active → release the microphone hardware immediately.
+    // MIDI or virtual keyboard active → release the microphone hardware immediately.
     // The effect re-runs when inputSource changes, so the stream restarts
-    // automatically if MIDI is later disconnected.
-    if (inputSource === 'midi') {
+    // automatically when neither MIDI nor the virtual keyboard is active.
+    if (inputSource === 'midi' || inputSource === 'virtual-keyboard') {
       context.recording.stop();
       setMicActive(null);
       setMicError(null);

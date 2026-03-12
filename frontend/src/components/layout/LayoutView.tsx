@@ -12,6 +12,7 @@ import { ScoreViewer, LABEL_MARGIN } from '../../pages/ScoreViewer';
 import type { GlobalLayout } from '../../wasm/layout';
 import { computeLayout } from '../../wasm/layout';
 import { buildSourceToNoteIdMap } from '../../services/highlight/sourceMapping';
+import { useRenderConfig } from '../../contexts/RenderConfigContext';
 
 /**
  * BASE_SCALE mirrors the constant in pages/ScoreViewer: each layout unit = 0.5 CSS px.
@@ -233,6 +234,10 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playba
     ? Math.min(MAX_SYSTEM_WIDTH, Math.max(800, Math.floor(containerWidth / BASE_SCALE) - LABEL_MARGIN))
     : DEFAULT_SYSTEM_WIDTH;
 
+  // Consume theme-derived render config from context (provided by App.tsx).
+  // Falls back to undefined so pages/ScoreViewer uses its own default.
+  const renderConfig = useRenderConfig();
+
   /**
    * Feature 019: Build mapping from layout source references to note IDs
    * Must use layout's instrument_ids (not score's) to match glyph source_references
@@ -326,6 +331,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playba
     <div ref={containerRef} style={styles.container}>
       <ScoreViewer 
         layout={layout} 
+        config={renderConfig}
         highlightedNoteIds={highlightedNoteIds}
         sourceToNoteIdMap={sourceToNoteIdMap}
         onTogglePlayback={onTogglePlayback}
