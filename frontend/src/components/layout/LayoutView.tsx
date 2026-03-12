@@ -98,7 +98,8 @@ interface LayoutViewProps {
  * Convert Score to format expected by computeLayout
  * Processes all instruments and their staves for multi-instrument layout
  */
-function convertScoreToLayoutFormat(score: Score): ConvertedScore {
+// eslint-disable-next-line react-refresh/only-export-components
+export function convertScoreToLayoutFormat(score: Score): ConvertedScore {
   if (score.instruments.length === 0) {
     throw new Error('No instruments in score');
   }
@@ -127,25 +128,8 @@ function convertScoreToLayoutFormat(score: Score): ConvertedScore {
       const firstKeySigEvent = staff.staff_structural_events.find((e: StaffStructuralEvent) => 'KeySignature' in e);
       if (firstKeySigEvent && 'KeySignature' in firstKeySigEvent) {
         const keySig = firstKeySigEvent.KeySignature.key;
-        // Map key signature enum to number of sharps/flats
-        const keyMap: { [key: string]: number } = {
-          'CMajor': 0, 'AMinor': 0,
-          'GMajor': 1, 'EMinor': 1,
-          'DMajor': 2, 'BMinor': 2,
-          'AMajor': 3, 'FSharpMinor': 3,
-          'EMajor': 4, 'CSharpMinor': 4,
-          'BMajor': 5, 'GSharpMinor': 5,
-          'FSharpMajor': 6, 'DSharpMinor': 6,
-          'CSharpMajor': 7, 'ASharpMinor': 7,
-          'FMajor': -1, 'DMinor': -1,
-          'BFlatMajor': -2, 'GMinor': -2,
-          'EFlatMajor': -3, 'CMinor': -3,
-          'AFlatMajor': -4, 'FMinor': -4,
-          'DFlatMajor': -5, 'BFlatMinor': -5,
-          'GFlatMajor': -6, 'EFlatMinor': -6,
-          'CFlatMajor': -7, 'AFlatMinor': -7,
-        };
-        keySharps = keyMap[keySig] || 0;
+        // Rust KeySignature(i8) serializes as a JSON number directly
+        keySharps = typeof keySig === 'number' ? keySig : 0;
       }
 
       return {

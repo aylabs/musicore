@@ -463,7 +463,7 @@ pub fn position_time_signature(
 /// Vector of glyphs positioned at correct line/space positions
 pub fn position_key_signature(
     sharps: i8,
-    _clef_type: &str,
+    clef_type: &str,
     x_start: f32,
     units_per_space: f32,
     staff_vertical_offset: f32,
@@ -481,17 +481,49 @@ pub fn position_key_signature(
         '\u{E260}' // accidentalFlat
     };
 
-    // Treble clef sharp positions (F C G D A E B) — pitch_to_y values
-    let treble_sharp_positions = vec![-10.0, 20.0, -20.0, 10.0, 40.0, 0.0, 30.0];
+    // Position tables per clef: y offsets relative to staff_vertical_offset.
+    // Derived from standard key-signature placement conventions (Gould "Behind Bars" p.86).
+    // Each clef uses the standard zigzag pattern that keeps accidentals within the staff.
+    // Sharps order: F C G D A E B | Flats order: B E A D G C F
+    //
+    // Staff position → y mapping (per-clef, with -0.5 staff-space glyph offset):
+    //   Treble: F5=-10, E5=0, D5=10, C5=20, B4=30, A4=40, G4=50, F4=60, E4=70
+    //   Bass:   A3=-10, G3=0, F3=10, E3=20, D3=30, C3=40, B2=50, A2=60, G2=70
+    //   Alto:   G4=-10, F4=0, E4=10, D4=20, C4=30, B3=40, A3=50, G3=60, F3=70
+    //   Tenor:  E4=-10, D4=0, C4=10, B3=20, A3=30, G3=40, F3=50, E3=60, D3=70
+    let (sharp_positions, flat_positions) = match clef_type {
+        "Bass" => (
+            //       F♯3   C♯3   G♯3   D♯3   A♯2   E♯3   B♯2
+            vec![10.0, 40.0, 0.0, 30.0, 60.0, 20.0, 50.0],
+            //       B♭2   E♭3   A♭2   D♭3   G♭2   C♭3   F♭3
+            vec![50.0, 20.0, 60.0, 30.0, 70.0, 40.0, 10.0],
+        ),
+        "Alto" => (
+            //       F♯4   C♯4   G♯4   D♯4   A♯3   E♯4   B♯3
+            vec![0.0, 30.0, -10.0, 20.0, 50.0, 10.0, 40.0],
+            //       B♭3   E♭4   A♭3   D♭4   G♭3   C♭4   F♭3
+            vec![40.0, 10.0, 50.0, 20.0, 60.0, 30.0, 70.0],
+        ),
+        "Tenor" => (
+            //       F♯3   C♯4   G♯3   D♯3   A♯3   E♯4   B♯3
+            vec![50.0, 10.0, 40.0, 70.0, 30.0, -10.0, 20.0],
+            //       B♭3   E♭4   A♭3   D♭4   G♭3   C♭4   F♭3
+            vec![20.0, -10.0, 30.0, 0.0, 40.0, 10.0, 50.0],
+        ),
+        _ => (
+            // Treble clef (default fallback)
+            //       F♯5   C♯5   G♯5   D♯5   A♯4   E♯5   B♯4
+            vec![-10.0, 20.0, -20.0, 10.0, 40.0, 0.0, 30.0],
+            //       B♭4   E♭5   A♭4   D♭5   G♭4   C♭5   F♭4
+            vec![30.0, 0.0, 40.0, 10.0, 50.0, 20.0, 60.0],
+        ),
+    };
 
-    // Treble clef flat positions (B E A D G C F) — pitch_to_y values
-    let treble_flat_positions = vec![30.0, 0.0, 40.0, 10.0, 50.0, 20.0, 60.0];
-
-    // Select positions based on sharps/flats and clef type
+    // Select positions based on sharps/flats
     let positions = if sharps > 0 {
-        &treble_sharp_positions // Use sharps
+        &sharp_positions
     } else {
-        &treble_flat_positions // Use flats
+        &flat_positions
     };
 
     let count = sharps.unsigned_abs() as usize;
@@ -1457,6 +1489,65 @@ mod tests {
         let glyphs = position_key_signature(0, "Treble", x_start, units_per_space, 0.0);
 
         assert_eq!(glyphs.len(), 0, "C major has no accidentals");
+    }
+
+    // ================================================================
+    // T009–T014: Regression tests for Bug 1 (clef type ignored)
+    // All must FAIL before T015 fix, PASS after.
+    // ================================================================
+
+    #[test]
+    fn test_position_key_signature_bass_1_sharp() {
+        // Bass clef: F3 is on line 2 from top → y = 10.0
+        let glyphs = position_key_signature(1, "Bass", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "G major has 1 sharp");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E262}'), "Sharp glyph");
+        assert_eq!(glyphs[0].position.y, 10.0, "F3 on bass clef line 2");
+    }
+
+    #[test]
+    fn test_position_key_signature_bass_1_flat() {
+        // Bass clef: Bb2 is on line 4 from top → y = 50.0
+        let glyphs = position_key_signature(-1, "Bass", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "F major has 1 flat");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E260}'), "Flat glyph");
+        assert_eq!(glyphs[0].position.y, 50.0, "Bb2 on bass clef line 4");
+    }
+
+    #[test]
+    fn test_position_key_signature_alto_1_sharp() {
+        // Alto clef: F♯4 is in space 4 from top → y = 0.0
+        let glyphs = position_key_signature(1, "Alto", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "G major has 1 sharp");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E262}'), "Sharp glyph");
+        assert_eq!(glyphs[0].position.y, 0.0, "F4 on alto clef space 4");
+    }
+
+    #[test]
+    fn test_position_key_signature_alto_1_flat() {
+        // Alto clef: B♭3 is in space 2 from bottom → y = 40.0
+        let glyphs = position_key_signature(-1, "Alto", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "F major has 1 flat");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E260}'), "Flat glyph");
+        assert_eq!(glyphs[0].position.y, 40.0, "Bb3 on alto clef space 2");
+    }
+
+    #[test]
+    fn test_position_key_signature_tenor_1_sharp() {
+        // Tenor clef: F♯3 at pos -2 from middle → y = 50.0
+        let glyphs = position_key_signature(1, "Tenor", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "G major has 1 sharp");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E262}'), "Sharp glyph");
+        assert_eq!(glyphs[0].position.y, 50.0, "F3 on tenor clef line 2");
+    }
+
+    #[test]
+    fn test_position_key_signature_tenor_1_flat() {
+        // Tenor clef: Bb3 is on line 2 from top → y = 20.0
+        let glyphs = position_key_signature(-1, "Tenor", 120.0, 20.0, 0.0);
+        assert_eq!(glyphs.len(), 1, "F major has 1 flat");
+        assert_eq!(glyphs[0].codepoint, String::from('\u{E260}'), "Flat glyph");
+        assert_eq!(glyphs[0].position.y, 20.0, "Bb3 on tenor clef line 2");
     }
 
     /// T016: Beamed eighth note should use bare noteheadBlack (U+E0A4)

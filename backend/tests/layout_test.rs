@@ -1894,3 +1894,114 @@ mod multi_instrument_tests {
         }
     }
 }
+
+/// T022: Key signature with 7 sharps should produce wider left margin than C major
+#[test]
+fn test_key_signature_expands_left_margin() {
+    let make_score = |key_sharps: i8| {
+        serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "name": "Piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "key_signature": { "sharps": key_sharps },
+                    "voices": [{
+                        "notes": [
+                            {"tick": 0, "duration": 960, "pitch": 60},
+                        ]
+                    }]
+                }]
+            }]
+        })
+    };
+
+    let config = LayoutConfig::default();
+
+    let layout_c_major = compute_layout(&make_score(0), &config);
+    let layout_7_sharps = compute_layout(&make_score(7), &config);
+
+    let c_json = serde_json::to_value(&layout_c_major).unwrap();
+    let s7_json = serde_json::to_value(&layout_7_sharps).unwrap();
+
+    // Key sig glyphs in structural_glyphs — C major should have 0, 7-sharp should have 7
+    let c_structural = c_json["systems"][0]["staff_groups"][0]["staves"][0]["structural_glyphs"]
+        .as_array()
+        .expect("structural_glyphs");
+    let s7_structural = s7_json["systems"][0]["staff_groups"][0]["staves"][0]["structural_glyphs"]
+        .as_array()
+        .expect("structural_glyphs");
+
+    // Count key sig accidentals (sharp glyph codepoint)
+    let sharp_codepoint = String::from('\u{E262}');
+    let c_sharp_count = c_structural.iter().filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint)).count();
+    let s7_sharp_count = s7_structural.iter().filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint)).count();
+
+    assert_eq!(c_sharp_count, 0, "C major should have 0 sharp glyphs");
+    assert_eq!(s7_sharp_count, 7, "C# major should have 7 sharp glyphs");
+
+    // 7-sharp score should have more structural_glyphs (key sig takes space → wider left margin)
+    assert!(
+        s7_structural.len() > c_structural.len(),
+        "7-sharp layout should have more structural_glyphs ({}) than C major ({})",
+        s7_structural.len(),
+        c_structural.len()
+    );
+}
+
+/// T025: Key signature should appear on all systems (not just the first)
+#[test]
+fn test_key_signature_appears_on_all_systems() {
+    // Create score with enough notes to force 2 systems at narrow width
+    let mut notes = Vec::new();
+    for i in 0..16 {
+        notes.push(serde_json::json!({"tick": i * 960, "duration": 960, "pitch": 60}));
+    }
+    let score = serde_json::json!({
+        "instruments": [{
+            "id": "piano",
+            "name": "Piano",
+            "staves": [{
+                "clef": "Treble",
+                "key_signature": { "sharps": 1 },
+                "voices": [{ "notes": notes }]
+            }]
+        }]
+    });
+
+    // Use narrow width to force multi-system layout
+    let config = LayoutConfig {
+        max_system_width: 600.0,
+        units_per_space: 20.0,
+        system_spacing: 220.0,
+        system_height: 200.0,
+    };
+
+    let layout = compute_layout(&score, &config);
+    let json = serde_json::to_value(&layout).unwrap();
+    let systems = json["systems"].as_array().expect("systems array");
+
+    assert!(
+        systems.len() >= 2,
+        "Should have at least 2 systems with 16 quarter notes at 600px width, got {}",
+        systems.len()
+    );
+
+    let sharp_codepoint = String::from('\u{E262}');
+
+    for (idx, system) in systems.iter().enumerate() {
+        let structural = system["staff_groups"][0]["staves"][0]["structural_glyphs"]
+            .as_array()
+            .unwrap_or_else(|| panic!("System {} should have structural_glyphs", idx));
+        let sharp_count = structural
+            .iter()
+            .filter(|g| g["codepoint"].as_str() == Some(&sharp_codepoint))
+            .count();
+        assert!(
+            sharp_count >= 1,
+            "System {} should have at least 1 key signature sharp, found {}",
+            idx,
+            sharp_count
+        );
+    }
+}
