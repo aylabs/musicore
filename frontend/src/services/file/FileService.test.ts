@@ -867,7 +867,7 @@ describe('FileService - loadScore', () => {
                 id: '770e8400-e29b-41d4-a716-446655440002',
                 staff_structural_events: [
                   { Clef: { tick: 0, clef_type: 'Treble' } },
-                  { KeySignature: { tick: 0, key: 'CMajor' } },
+                  { KeySignature: { tick: 0, key: 0 } },
                 ],
                 voices: [
                   {

@@ -26,7 +26,7 @@ describe("InstrumentList - Editing UI Removal", () => {
           ],
           staff_structural_events: [],
           active_clef: "Treble",
-          active_key: "CMajor",
+          active_key: 0,
         },
       ],
     },

@@ -16,38 +16,8 @@ export type Pitch = number;
 /** Clef types */
 export type ClefType = "Treble" | "Bass" | "Alto" | "Tenor";
 
-/** Key signature types */
-export type KeySignature =
-  | "CMajor"
-  | "GMajor"
-  | "DMajor"
-  | "AMajor"
-  | "EMajor"
-  | "BMajor"
-  | "FSharpMajor"
-  | "CSharpMajor"
-  | "FMajor"
-  | "BFlatMajor"
-  | "EFlatMajor"
-  | "AFlatMajor"
-  | "DFlatMajor"
-  | "GFlatMajor"
-  | "CFlatMajor"
-  | "AMinor"
-  | "EMinor"
-  | "BMinor"
-  | "FSharpMinor"
-  | "CSharpMinor"
-  | "GSharpMinor"
-  | "DSharpMinor"
-  | "ASharpMinor"
-  | "DMinor"
-  | "GMinor"
-  | "CMinor"
-  | "FMinor"
-  | "BFlatMinor"
-  | "EFlatMinor"
-  | "AFlatMinor";
+/** Key signature: sharps/flats count from Rust KeySignature(i8) — range -7 to +7 */
+export type KeySignature = number;
 
 // ============================================================================
 // Events

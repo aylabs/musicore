@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Instrument } from "../types/score";
+import type { Instrument, KeySignature } from "../types/score";
 import type { PlaybackStatus } from "../types/playback";
 import { NoteDisplay } from "./NoteDisplay";
 import "./InstrumentList.css";
@@ -79,14 +79,14 @@ export function InstrumentList({ instruments, currentTick, playbackStatus, onSee
   /**
    * Get key signature for a staff at tick 0
    */
-  const getStaffKey = (instrument: Instrument, staffIndex: number): string => {
+  const getStaffKey = (instrument: Instrument, staffIndex: number): KeySignature => {
     const staff = instrument.staves[staffIndex];
     for (const event of staff.staff_structural_events) {
       if ("KeySignature" in event && event.KeySignature.tick === 0) {
         return event.KeySignature.key;
       }
     }
-    return "CMajor";
+    return 0;
   };
 
   return (
