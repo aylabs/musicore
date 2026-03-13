@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run subset-fonts && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "build:wasm": "../backend/scripts/build-wasm.sh",
     "subset-fonts": "node scripts/subset-fonts.mjs",
     "check-budget": "node scripts/check-budget.mjs",
