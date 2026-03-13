@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:wasm": "../backend/scripts/build-wasm.sh",
+    "subset-fonts": "node scripts/subset-fonts.mjs",
+    "check-budget": "node scripts/check-budget.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

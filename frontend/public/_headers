@@ -1,0 +1,41 @@
+# Cloudflare Pages _headers file
+# Feature 001-pwa-hosting-service — US1 (T007)
+#
+# Applies HTTP response headers to all served paths.
+# Cloudflare Pages reads this file from frontend/dist/_headers after build.
+# Reference: https://developers.cloudflare.com/pages/configuration/headers/
+#
+# Format:
+#   /path/pattern
+#     Header-Name: value
+
+# Global: COEP + COOP on every response.
+# Required for SharedArrayBuffer / WASM threading (FR-003, SC-002).
+/*
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+/
+  Cache-Control: public, max-age=3600
+
+/index.html
+  Cache-Control: public, max-age=3600
+
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/wasm/*
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: cross-origin
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable

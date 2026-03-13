@@ -48,3 +48,7 @@ android/build/
 android/app/build/
 android/local.properties
 android/app/google-services.json
+# Android build artifacts (release outputs — not source)
+android/*.apk
+android/*.aab
+android/*.idsig
