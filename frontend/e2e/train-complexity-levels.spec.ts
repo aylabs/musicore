@@ -2,7 +2,7 @@
  * Feature 001 / Feature 036: Train (formerly Practice) Complexity Levels — E2E Tests
  *
  * SC-001: Select Low → level selector shows Low active → clicking Play starts
- *         a c4scale exercise within 15 s (countdown + playing phase reached)
+ *         a scales exercise within 15 s (countdown + playing phase reached)
  * SC-002: Each level produces the correct parameters visible in the sidebar
  *         (BPM slider value matches FR-002/FR-003/FR-004 specs)
  * SC-003: Session reachable in exactly 2 interactions:

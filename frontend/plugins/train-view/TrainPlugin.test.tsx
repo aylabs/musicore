@@ -440,13 +440,13 @@ describe('TrainPlugin', () => {
   // ── (l) Score preset — US1 ────────────────────────────────────────────────
 
   describe('Score preset (US1 — T007)', () => {
-    it('renders three preset options: Random, C4 Scale, and Score', () => {
+    it('renders three preset options: Random, Scales, and Score', () => {
       const ctx = makeMockContext();
       render(<TrainPlugin context={ctx} />);
 
       // All three radio options must be present in the preset selector
       expect(screen.getByRole('radio', { name: /random/i })).toBeDefined();
-      expect(screen.getByRole('radio', { name: /c4 scale/i })).toBeDefined();
+      expect(screen.getByRole('radio', { name: /scales/i })).toBeDefined();
       expect(screen.getByRole('radio', { name: /score/i })).toBeDefined();
     });
 

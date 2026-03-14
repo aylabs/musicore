@@ -19,7 +19,7 @@ import { test, expect, type Page } from '@playwright/test';
 // ─ Selectors ────────────────────────────────────────────────────────────────
 
 const TRAIN_BTN     = /train/i;
-const C4_RADIO      = /c4 scale/i;
+const SCALES_RADIO  = /scales/i;
 const TRAIN_VIEW    = '[data-testid="train-view"]';
 const PLAY_BTN      = '[data-testid="train-play-btn"]';
 const STOP_BTN      = '[data-testid="train-stop-btn"]';
@@ -36,10 +36,10 @@ async function openTrain(page: Page) {
   await expect(page.locator(TRAIN_VIEW)).toBeVisible({ timeout: 15_000 });
 }
 
-async function openC4ScalePreset(page: Page) {
+async function openScalesPreset(page: Page) {
   await page.getByLabel(/complexity level/i).selectOption('custom');
-  await page.getByRole('radio', { name: C4_RADIO }).click();
-  await expect(page.getByRole('radio', { name: C4_RADIO })).toBeChecked({ timeout: 5_000 });
+  await page.getByRole('radio', { name: SCALES_RADIO }).click();
+  await expect(page.getByRole('radio', { name: SCALES_RADIO })).toBeChecked({ timeout: 5_000 });
 }
 
 /** Click the VKB toggle and wait for the panel to appear. */
@@ -129,12 +129,12 @@ test.describe('SC-005: Active input source visually unambiguous', () => {
 test.describe('SC-001 / SC-003: Exercise flows through virtual keyboard', () => {
   test('start exercise with VK active → tap a key → exercise receives input without crash', async ({ page }) => {
     await openTrain(page);
-    await openC4ScalePreset(page);
+    await openScalesPreset(page);
 
     // Open virtual keyboard before starting exercise
     await openVkb(page);
 
-    // Start exercise (C4 Scale, step mode — no countdown)
+    // Start exercise (Scales, step mode — no countdown)
     await page.locator(PLAY_BTN).click();
     await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 15_000 });
@@ -154,20 +154,20 @@ test.describe('SC-001 / SC-003: Exercise flows through virtual keyboard', () => 
 // ─ SC-004: Exercise config preserved after VK toggle ─────────────────────────
 
 test.describe('SC-004: Exercise config preserved after toggle on → off', () => {
-  test('C4 Scale preset still selected after toggle on then off', async ({ page }) => {
+  test('Scales preset still selected after toggle on then off', async ({ page }) => {
     await openTrain(page);
-    await openC4ScalePreset(page);
+    await openScalesPreset(page);
 
     // Record preset selection before toggling
-    await expect(page.getByRole('radio', { name: C4_RADIO })).toBeChecked({ timeout: 5_000 });
+    await expect(page.getByRole('radio', { name: SCALES_RADIO })).toBeChecked({ timeout: 5_000 });
 
     // Toggle VK on then off
     await openVkb(page);
     await page.locator(VKB_TOGGLE).click();
     await expect(page.locator(VKB_PANEL)).not.toBeVisible({ timeout: 2_000 });
 
-    // Preset must still be C4 Scale
-    await expect(page.getByRole('radio', { name: C4_RADIO })).toBeChecked({ timeout: 5_000 });
+    // Preset must still be Scales
+    await expect(page.getByRole('radio', { name: SCALES_RADIO })).toBeChecked({ timeout: 5_000 });
   });
 });
 
@@ -176,9 +176,7 @@ test.describe('SC-004: Exercise config preserved after toggle on → off', () =>
 test.describe('US3-S4: Mid-exercise toggle does not restart or crash exercise', () => {
   test('toggle VK on and off mid-exercise — stop button remains visible throughout', async ({ page }) => {
     await openTrain(page);
-    await openC4ScalePreset(page);
-
-    // Start exercise
+    await openScalesPreset(page);
     await page.locator(PLAY_BTN).click();
     await expect(page.locator(PLAY_BTN)).not.toBeVisible({ timeout: 10_000 });
     await expect(page.locator(STOP_BTN)).toBeVisible({ timeout: 15_000 });

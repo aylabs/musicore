@@ -24,7 +24,7 @@ import type {
   ComplexityLevel,
 } from './trainTypes';
 import { COMPLEXITY_PRESETS, COMPLEXITY_LEVEL_STORAGE_KEY } from './trainTypes';
-import { generateExercise, generateScoreExercise, DEFAULT_EXERCISE_CONFIG } from './exerciseGenerator';
+import { generateExercise, generateScoreExercise, generateScaleExercise, DEFAULT_EXERCISE_CONFIG, SCALE_OPTIONS } from './exerciseGenerator';
 import { scoreCapture } from './exerciseScorer';
 import './TrainPlugin.css';
 import { TrainVirtualKeyboard } from './TrainVirtualKeyboard';
@@ -123,6 +123,7 @@ export function TrainPlugin({ context }: TrainPluginProps) {
     timeSignature: { numerator: 4, denominator: 4 }, staffCount: 0,
   });
   const scorePitchesRef = useRef<PluginScorePitches | null>(null);
+  const savedCustomRef = useRef<{ config: ExerciseConfig; bpm: number } | null>(null);
 
   // Feature 035: Metronome state
   const [metronomeState, setMetronomeState] = useState<MetronomeState>({
@@ -882,6 +883,8 @@ export function TrainPlugin({ context }: TrainPluginProps) {
         } else {
           setExercise({ notes: [], bpm: bpmRef.current });
         }
+      } else if (next.preset === 'scales') {
+        setExercise(generateScaleExercise(bpmRef.current, next.scaleId, next.octaveRange));
       } else {
         setExercise(generateExercise(bpmRef.current, next));
       }
@@ -894,6 +897,8 @@ export function TrainPlugin({ context }: TrainPluginProps) {
     if (phaseRef.current === 'ready') {
       if (configRef.current.preset === 'score' && scorePitchesRef.current) {
         setExercise(generateScoreExercise(v, scorePitchesRef.current.notes, configRef.current.noteCount));
+      } else if (configRef.current.preset === 'scales') {
+        setExercise(generateScaleExercise(v, configRef.current.scaleId, configRef.current.octaveRange));
       } else if (configRef.current.preset !== 'score') {
         setExercise(generateExercise(v, configRef.current));
       }
@@ -1149,11 +1154,36 @@ export function TrainPlugin({ context }: TrainPluginProps) {
           className="train-plugin__level-select"
           value={complexityLevel ?? 'custom'}
           disabled={isDisabled}
+          onClick={(e) => {
+            // Always open sidebar when clicking Custom, even if already selected
+            if ((e.target as HTMLSelectElement).value === 'custom') {
+              setSidebarCollapsed(false);
+            }
+          }}
           onChange={(e) => {
             const v = e.target.value as ComplexityLevel | 'custom';
             if (v !== 'custom') {
+              // Save current custom config before overwriting with a preset
+              if (complexityLevel === null) {
+                savedCustomRef.current = { config: configRef.current, bpm: bpmRef.current };
+              }
               applyComplexityLevel(v);
             } else {
+              // Restore saved custom config if available
+              if (savedCustomRef.current) {
+                const { config: saved, bpm: savedBpm } = savedCustomRef.current;
+                configRef.current = saved;
+                setConfig(saved);
+                bpmRef.current = savedBpm;
+                setBpmValue(savedBpm);
+                if (phaseRef.current === 'ready') {
+                  if (saved.preset === 'scales') {
+                    setExercise(generateScaleExercise(savedBpm, saved.scaleId, saved.octaveRange));
+                  } else if (saved.preset !== 'score') {
+                    setExercise(generateExercise(savedBpm, saved));
+                  }
+                }
+              }
               setComplexityLevel(null);
               setSidebarCollapsed(false);
             }
@@ -1320,7 +1350,7 @@ export function TrainPlugin({ context }: TrainPluginProps) {
               {/* SCORE */}
               <div className="train-sidebar__section">
                 <p className="train-sidebar__section-title">Score</p>
-                {([['random', 'Random'], ['c4scale', 'C4 Scale (debug)'], ['score', 'Score']] as [ExerciseConfig['preset'], string][]).map(([v, label]) => (
+                {([['random', 'Random'], ['score', 'Score'], ['scales', 'Scales']] as [ExerciseConfig['preset'], string][]).map(([v, label]) => (
                   <label
                     key={v}
                     className={`train-sidebar__radio-label${isDisabled ? ' train-sidebar__radio-label--disabled' : ''}`}
@@ -1331,11 +1361,32 @@ export function TrainPlugin({ context }: TrainPluginProps) {
                       value={v}
                       checked={config.preset === v}
                       disabled={isDisabled}
-                      onChange={() => { setComplexityLevel(null); updateConfig({ preset: v }); }}
+                      onClick={() => { if (v === 'scales') setSidebarCollapsed(false); }}
+                      onChange={() => {
+                        setComplexityLevel(null);
+                        if (v === 'scales') {
+                          updateConfig({ preset: v, noteCount: 8 * config.octaveRange, clef: 'Treble' });
+                        } else {
+                          updateConfig({ preset: v });
+                        }
+                      }}
                     />
                     {label}
                   </label>
                 ))}
+                {config.preset === 'scales' && (
+                  <select
+                    className="train-sidebar__select"
+                    value={config.scaleId}
+                    disabled={isDisabled}
+                    aria-label="Scale"
+                    onChange={(e) => { setComplexityLevel(null); updateConfig({ scaleId: e.target.value }); }}
+                  >
+                    {SCALE_OPTIONS.map((s) => (
+                      <option key={s.id} value={s.id}>{s.displayName}</option>
+                    ))}
+                  </select>
+                )}
                 {config.preset === 'score' && scorePitches !== null && (
                   <button
                     className="train-sidebar__change-score-btn"
@@ -1358,12 +1409,15 @@ export function TrainPlugin({ context }: TrainPluginProps) {
                     max={config.preset === 'score' && scorePitches ? scorePitches.totalAvailable : 20}
                     step={1}
                     value={config.noteCount}
-                    disabled={isDisabled}
+                    disabled={isDisabled || config.preset === 'scales'}
                     aria-label="Note count"
                     onChange={(e) => { setComplexityLevel(null); updateConfig({ noteCount: Number(e.target.value) }); }}
                   />
                   <span className="train-sidebar__slider-value">{config.noteCount}</span>
                 </div>
+                {config.preset === 'scales' && (
+                  <span className="train-score-disabled-label">Set by scale</span>
+                )}
               </div>
 
               {/* CLEF */}
@@ -1372,15 +1426,15 @@ export function TrainPlugin({ context }: TrainPluginProps) {
                 {(['Treble', 'Bass'] as const).map((c) => (
                   <label
                     key={c}
-                    className={`train-sidebar__radio-label${(isDisabled || config.preset === 'score') ? ' train-sidebar__radio-label--disabled' : ''}`}
+                    className={`train-sidebar__radio-label${(isDisabled || config.preset === 'score' || config.preset === 'scales') ? ' train-sidebar__radio-label--disabled' : ''}`}
                   >
                     <input
                       type="radio"
                       name="train-clef"
                       value={c}
                       checked={config.clef === c}
-                      disabled={isDisabled || config.preset === 'score'}
-                      aria-disabled={config.preset === 'score'}
+                      disabled={isDisabled || config.preset === 'score' || config.preset === 'scales'}
+                      aria-disabled={config.preset === 'score' || config.preset === 'scales'}
                       onChange={() => { setComplexityLevel(null); updateConfig({ clef: c }); }}
                     />
                     {c}
@@ -1389,28 +1443,34 @@ export function TrainPlugin({ context }: TrainPluginProps) {
                 {config.preset === 'score' && (
                   <span className="train-score-disabled-label">Set by score</span>
                 )}
+                {config.preset === 'scales' && (
+                  <span className="train-score-disabled-label">Set by scale</span>
+                )}
               </div>
 
               {/* OCTAVES */}
               <div className="train-sidebar__section">
                 <p className="train-sidebar__section-title">Octaves</p>
-                {([1, 2] as const).map((o) => (
-                  <label
-                    key={o}
-                    className={`train-sidebar__radio-label${(isDisabled || config.preset === 'score') ? ' train-sidebar__radio-label--disabled' : ''}`}
-                  >
-                    <input
-                      type="radio"
-                      name="train-octaves"
-                      value={o}
-                      checked={config.octaveRange === o}
-                      disabled={isDisabled || config.preset === 'score'}
-                      aria-disabled={config.preset === 'score'}
-                      onChange={() => { setComplexityLevel(null); updateConfig({ octaveRange: o }); }}
-                    />
-                    {o === 1 ? '1 oct.' : '2 oct.'}
-                  </label>
-                ))}
+                <select
+                  className="train-sidebar__select"
+                  value={config.octaveRange}
+                  disabled={isDisabled || config.preset === 'score'}
+                  aria-label="Octave range"
+                  aria-disabled={config.preset === 'score'}
+                  onChange={(e) => {
+                    const o = Number(e.target.value) as 1 | 2 | 3 | 4;
+                    setComplexityLevel(null);
+                    if (config.preset === 'scales') {
+                      updateConfig({ octaveRange: o, noteCount: 8 * o });
+                    } else {
+                      updateConfig({ octaveRange: o });
+                    }
+                  }}
+                >
+                  {(config.preset === 'scales' ? [1, 2, 3, 4] : [1, 2]).map((o) => (
+                    <option key={o} value={o}>{o} oct.</option>
+                  ))}
+                </select>
                 {config.preset === 'score' && (
                   <span className="train-score-disabled-label">Set by score</span>
                 )}

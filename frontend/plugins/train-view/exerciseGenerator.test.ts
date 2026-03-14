@@ -89,10 +89,10 @@ describe('COMPLEXITY_PRESETS', () => {
     expect(COMPLEXITY_PRESETS).toHaveProperty('high');
   });
 
-  it('low preset: preset=c4scale, noteCount=8, clef=Treble, octaveRange=1, bpm=40, mode=step', () => {
+  it('low preset: preset=scales, noteCount=8, clef=Treble, octaveRange=1, bpm=40, mode=step', () => {
     const { bpm, config } = COMPLEXITY_PRESETS['low'];
     expect(bpm).toBe(40);
-    expect(config.preset).toBe('c4scale');
+    expect(config.preset).toBe('scales');
     expect(config.noteCount).toBe(8);
     expect(config.clef).toBe('Treble');
     expect(config.octaveRange).toBe(1);
