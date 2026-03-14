@@ -233,12 +233,11 @@ def generate_major_scale(
     fifths: int,
     output_dir: Path,
 ) -> None:
-    """Generate one .mxl covering oct4 then oct5 (8 measures total)."""
+    """Generate one .mxl: 2 octaves ascending then 2 octaves descending (8 measures)."""
     semitone = ROOT_SEMITONES[file_root]
-    notes = (
-        build_scale_notes(60 + semitone, MAJOR_INTERVALS, fifths)  # C4 base
-        + build_scale_notes(72 + semitone, MAJOR_INTERVALS, fifths)  # C5 base
-    )
+    oct4 = build_scale_notes(60 + semitone, MAJOR_INTERVALS, fifths)  # 8 asc + 8 desc
+    oct5 = build_scale_notes(72 + semitone, MAJOR_INTERVALS, fifths)  # 8 asc + 8 desc
+    notes = oct4[:8] + oct5[:8] + oct5[8:] + oct4[8:]  # up oct4, up oct5, down oct5, down oct4
     xml = build_score_xml(f"{display_root} Major", fifths, "major", notes)
     write_mxl(output_dir / f"{file_root}_major.mxl", xml)
 
@@ -249,12 +248,11 @@ def generate_minor_scale(
     fifths: int,
     output_dir: Path,
 ) -> None:
-    """Generate one .mxl covering oct4 then oct5 (8 measures total)."""
+    """Generate one .mxl: 2 octaves ascending then 2 octaves descending (8 measures)."""
     semitone = ROOT_SEMITONES[file_root]
-    notes = (
-        build_scale_notes(60 + semitone, MINOR_INTERVALS, fifths)  # C4 base
-        + build_scale_notes(72 + semitone, MINOR_INTERVALS, fifths)  # C5 base
-    )
+    oct4 = build_scale_notes(60 + semitone, MINOR_INTERVALS, fifths)  # 8 asc + 8 desc
+    oct5 = build_scale_notes(72 + semitone, MINOR_INTERVALS, fifths)  # 8 asc + 8 desc
+    notes = oct4[:8] + oct5[:8] + oct5[8:] + oct4[8:]  # up oct4, up oct5, down oct5, down oct4
     xml = build_score_xml(f"{display_root} Minor", fifths, "minor", notes)
     write_mxl(output_dir / f"{file_root}_minor.mxl", xml)
 
@@ -268,10 +266,9 @@ def generate_all_major_scales(output_dir: Path) -> None:
     sections: list[tuple[tuple[int, str], list[str]]] = []
     for file_root, _display_root, fifths in MAJOR_SCALES_COF:
         semitone = ROOT_SEMITONES[file_root]
-        notes = (
-            build_scale_notes(60 + semitone, MAJOR_INTERVALS, fifths)
-            + build_scale_notes(72 + semitone, MAJOR_INTERVALS, fifths)
-        )
+        oct4 = build_scale_notes(60 + semitone, MAJOR_INTERVALS, fifths)
+        oct5 = build_scale_notes(72 + semitone, MAJOR_INTERVALS, fifths)
+        notes = oct4[:8] + oct5[:8] + oct5[8:] + oct4[8:]
         sections.append(((fifths, "major"), notes))
     xml = build_multisection_score_xml("All Major Scales", sections)
     write_mxl(output_dir / "All_major_scales.mxl", xml)
@@ -286,10 +283,9 @@ def generate_all_minor_scales(output_dir: Path) -> None:
     sections: list[tuple[tuple[int, str], list[str]]] = []
     for file_root, _display_root, fifths in MINOR_SCALES_COF:
         semitone = ROOT_SEMITONES[file_root]
-        notes = (
-            build_scale_notes(60 + semitone, MINOR_INTERVALS, fifths)
-            + build_scale_notes(72 + semitone, MINOR_INTERVALS, fifths)
-        )
+        oct4 = build_scale_notes(60 + semitone, MINOR_INTERVALS, fifths)
+        oct5 = build_scale_notes(72 + semitone, MINOR_INTERVALS, fifths)
+        notes = oct4[:8] + oct5[:8] + oct5[8:] + oct4[8:]
         sections.append(((fifths, "minor"), notes))
     xml = build_multisection_score_xml("All Minor Scales", sections)
     write_mxl(output_dir / "All_minor_scales.mxl", xml)

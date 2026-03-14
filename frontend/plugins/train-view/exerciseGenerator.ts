@@ -7,21 +7,62 @@
  *
  * Exports:
  * - generateExercise(bpm?, config?, seed?) → TrainExercise
- * - generateC4ScaleExercise(bpm?, noteCount?, clef?) → TrainExercise
+ * - generateScaleExercise(bpm, scaleId, octaveRange) → TrainExercise
+ * - SCALE_OPTIONS — ordered list for the scale dropdown
  * - DEFAULT_EXERCISE_CONFIG
  */
 
 import type { ExerciseConfig, ExerciseNote, TrainExercise } from './trainTypes';
 
+// ─── Scale definitions ────────────────────────────────────────────────────────
+
+/** Semitone intervals for one ascending octave of a major scale (root → octave). */
+const MAJOR_INTERVALS = [0, 2, 4, 5, 7, 9, 11, 12] as const;
+
+/** Semitone intervals for one ascending octave of a natural minor scale. */
+const MINOR_INTERVALS = [0, 2, 3, 5, 7, 8, 10, 12] as const;
+
+export interface ScaleOption {
+  id: string;
+  displayName: string;
+  /** MIDI pitch of the root in octave 4 */
+  rootMidi: number;
+  intervals: readonly number[];
+}
+
+/** All 24 scales in circle-of-fifths order (majors then minors). */
+export const SCALE_OPTIONS: readonly ScaleOption[] = [
+  // Major scales
+  { id: 'c-major',  displayName: 'C Major',       rootMidi: 60, intervals: MAJOR_INTERVALS },
+  { id: 'g-major',  displayName: 'G Major',       rootMidi: 67, intervals: MAJOR_INTERVALS },
+  { id: 'd-major',  displayName: 'D Major',       rootMidi: 62, intervals: MAJOR_INTERVALS },
+  { id: 'a-major',  displayName: 'A Major',       rootMidi: 69, intervals: MAJOR_INTERVALS },
+  { id: 'e-major',  displayName: 'E Major',       rootMidi: 64, intervals: MAJOR_INTERVALS },
+  { id: 'b-major',  displayName: 'B Major',       rootMidi: 71, intervals: MAJOR_INTERVALS },
+  { id: 'fs-major', displayName: 'F\u266f Major', rootMidi: 66, intervals: MAJOR_INTERVALS },
+  { id: 'db-major', displayName: 'D\u266d Major', rootMidi: 61, intervals: MAJOR_INTERVALS },
+  { id: 'ab-major', displayName: 'A\u266d Major', rootMidi: 68, intervals: MAJOR_INTERVALS },
+  { id: 'eb-major', displayName: 'E\u266d Major', rootMidi: 63, intervals: MAJOR_INTERVALS },
+  { id: 'bb-major', displayName: 'B\u266d Major', rootMidi: 70, intervals: MAJOR_INTERVALS },
+  { id: 'f-major',  displayName: 'F Major',       rootMidi: 65, intervals: MAJOR_INTERVALS },
+  // Natural minor scales
+  { id: 'c-minor',  displayName: 'C Minor',       rootMidi: 60, intervals: MINOR_INTERVALS },
+  { id: 'g-minor',  displayName: 'G Minor',       rootMidi: 67, intervals: MINOR_INTERVALS },
+  { id: 'd-minor',  displayName: 'D Minor',       rootMidi: 62, intervals: MINOR_INTERVALS },
+  { id: 'a-minor',  displayName: 'A Minor',       rootMidi: 69, intervals: MINOR_INTERVALS },
+  { id: 'e-minor',  displayName: 'E Minor',       rootMidi: 64, intervals: MINOR_INTERVALS },
+  { id: 'b-minor',  displayName: 'B Minor',       rootMidi: 71, intervals: MINOR_INTERVALS },
+  { id: 'fs-minor', displayName: 'F\u266f Minor', rootMidi: 66, intervals: MINOR_INTERVALS },
+  { id: 'cs-minor', displayName: 'C\u266f Minor', rootMidi: 61, intervals: MINOR_INTERVALS },
+  { id: 'gs-minor', displayName: 'G\u266f Minor', rootMidi: 68, intervals: MINOR_INTERVALS },
+  { id: 'ds-minor', displayName: 'D\u266f Minor', rootMidi: 63, intervals: MINOR_INTERVALS },
+  { id: 'bb-minor', displayName: 'B\u266d Minor', rootMidi: 70, intervals: MINOR_INTERVALS },
+  { id: 'f-minor',  displayName: 'F Minor',       rootMidi: 65, intervals: MINOR_INTERVALS },
+];
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_BPM = 80;
-
-/** Diatonic pitches from C4 to C5 inclusive (C4=60, D4=62 ... C5=72) */
-const C4_TO_C5_PITCHES: readonly number[] = [60, 62, 64, 65, 67, 69, 71, 72];
-
-/** Diatonic pitches from C3 to C4 inclusive (C3=48, D3=50 ... C4=60) */
-const C3_TO_C4_PITCHES: readonly number[] = [48, 50, 52, 53, 55, 57, 59, 60];
 
 /**
  * Diatonic note pools keyed by "Clef-OctaveRange".
@@ -42,6 +83,7 @@ export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
   noteCount: 8,
   clef: 'Treble',
   octaveRange: 1,
+  scaleId: 'c-major',
   mode: 'flow',
   stepTimeoutMultiplier: 4,
 };
@@ -67,7 +109,7 @@ function mulberry32(seed: number): () => number {
 
 /**
  * Generate a practice exercise from the given config.
- * When config.preset === 'c4scale', delegates to generateC4ScaleExercise.
+ * When config.preset === 'scales', delegates to generateScaleExercise.
  * When config.preset === 'score', delegates to generateScoreExercise using
  * the supplied scorePitches (returns an empty exercise when pitches are absent).
  *
@@ -82,8 +124,8 @@ export function generateExercise(
   seed?: number,
   scorePitches?: ReadonlyArray<{ midiPitches: ReadonlyArray<number> }>,
 ): TrainExercise {
-  if (config.preset === 'c4scale') {
-    return generateC4ScaleExercise(bpm, config.noteCount, config.clef);
+  if (config.preset === 'scales') {
+    return generateScaleExercise(bpm, config.scaleId, config.octaveRange);
   }
   if (config.preset === 'score') {
     if (!scorePitches || scorePitches.length === 0) {
@@ -108,20 +150,43 @@ export function generateExercise(
 }
 
 /**
- * Returns a fixed ascending C major scale exercise:
- *   - Treble: C4–C5 (MIDI 60–72)
- *   - Bass:   C3–C4 (MIDI 48–60)
- * Useful for debugging: expected pitches are known and predictable.
+ * Generate a scale exercise for the given scale and octave range.
+ * Produces 8 ascending notes per octave (root through octave).
+ * The clef is always Treble and starts at the scale's root in octave 4.
+ *
+ * @param bpm         Tempo in beats per minute
+ * @param scaleId     Scale identifier from SCALE_OPTIONS (e.g. 'c-major')
+ * @param octaveRange Number of octaves (1–4)
  */
-export function generateC4ScaleExercise(
+export function generateScaleExercise(
   bpm: number = DEFAULT_BPM,
-  noteCount = 8,
-  clef: 'Treble' | 'Bass' = 'Treble',
+  scaleId: string = 'c-major',
+  octaveRange: 1 | 2 | 3 | 4 = 1,
 ): TrainExercise {
-  const pitches = clef === 'Bass' ? C3_TO_C4_PITCHES : C4_TO_C5_PITCHES;
+  const scale = SCALE_OPTIONS.find((s) => s.id === scaleId) ?? SCALE_OPTIONS[0];
   const msPerBeat = 60_000 / bpm;
-  const num = Math.min(noteCount, pitches.length);
-  const notes: ExerciseNote[] = pitches.slice(0, num).map((midiPitch, i) => ({
+
+  // 8-note ascending sequence for octave N (root shifted N semitones × 12 higher)
+  const ascOct = (n: number): number[] => scale.intervals.map((i) => scale.rootMidi + n * 12 + i);
+
+  // Pattern by octaveRange:
+  //   1 → [asc0]                         — 1 up
+  //   2 → [asc0, desc0]                  — 1 up, 1 down
+  //   3 → [asc0, asc1, desc1]            — 2 up, 1 down
+  //   4 → [asc0, asc1, desc1, desc0]     — 2 up, 2 down
+  const ascCount = Math.ceil(octaveRange / 2);
+  const descCount = Math.floor(octaveRange / 2);
+
+  const pitches: number[] = [];
+  for (let n = 0; n < ascCount; n++) {
+    pitches.push(...ascOct(n));
+  }
+  // Descend from the highest ascending octave back down
+  for (let n = ascCount - 1; n >= ascCount - descCount; n--) {
+    pitches.push(...[...ascOct(n)].reverse());
+  }
+
+  const notes: ExerciseNote[] = pitches.map((midiPitch, i) => ({
     id: `ex-${i}`,
     slotIndex: i,
     midiPitch,

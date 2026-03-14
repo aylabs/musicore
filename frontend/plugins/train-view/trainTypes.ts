@@ -16,13 +16,15 @@ export type TrainMode = 'flow' | 'step';
 /** Exercise configuration for generating a training set */
 export interface ExerciseConfig {
   /** Note pool selection */
-  preset: 'random' | 'c4scale' | 'score';
+  preset: 'random' | 'scales' | 'score';
   /** Number of notes in the exercise (1–20) */
   noteCount: number;
   /** Clef determines the note pool range */
   clef: 'Treble' | 'Bass';
-  /** 1 = one octave around the clef centre; 2 = two octaves */
-  octaveRange: 1 | 2;
+  /** 1–4 octaves; for scales the note count is 8 × octaveRange */
+  octaveRange: 1 | 2 | 3 | 4;
+  /** Selected scale identifier (required when preset === 'scales') */
+  scaleId: string;
   /** Train mode: 'flow' = timed play-through; 'step' = wait for correct note each slot */
   mode: TrainMode;
   /**
@@ -137,7 +139,7 @@ export type ActiveComplexityLevel = ComplexityLevel | null;
 /** A named preset that maps a ComplexityLevel to exercise configuration + tempo. */
 export interface ComplexityPreset {
   bpm: number;
-  config: Pick<ExerciseConfig, 'preset' | 'noteCount' | 'clef' | 'octaveRange' | 'mode'>;
+  config: Pick<ExerciseConfig, 'preset' | 'noteCount' | 'clef' | 'octaveRange' | 'mode' | 'scaleId'>;
   /** Brief parameter summary shown beneath the level button. */
   description: string;
 }
@@ -155,17 +157,17 @@ export const COMPLEXITY_LEVEL_STORAGE_KEY = 'train-complexity-level-v1';
 export const COMPLEXITY_PRESETS: ComplexityPresets = {
   low: {
     bpm: 40,
-    config: { preset: 'c4scale', noteCount: 8, clef: 'Treble', octaveRange: 1, mode: 'step' },
-    description: '8 notes · Treble · 40 BPM · Step',
+    config: { preset: 'scales', noteCount: 8, clef: 'Treble', octaveRange: 1, mode: 'step', scaleId: 'c-major' },
+    description: '8 notes · C Major · 40 BPM · Step',
   },
   mid: {
     bpm: 80,
-    config: { preset: 'random', noteCount: 16, clef: 'Treble', octaveRange: 1, mode: 'step' },
+    config: { preset: 'random', noteCount: 16, clef: 'Treble', octaveRange: 1, mode: 'step', scaleId: 'c-major' },
     description: '16 notes · Treble · 80 BPM · Step',
   },
   high: {
     bpm: 100,
-    config: { preset: 'random', noteCount: 20, clef: 'Bass', octaveRange: 2, mode: 'flow' },
+    config: { preset: 'random', noteCount: 20, clef: 'Bass', octaveRange: 2, mode: 'flow', scaleId: 'c-major' },
     description: '20 notes · Bass · 100 BPM · Flow',
   },
 };
