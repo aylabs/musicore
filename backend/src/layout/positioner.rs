@@ -717,67 +717,14 @@ pub fn position_note_accidentals(
         let needs_accidental;
         let accidental_type: i8; // +1=sharp, -1=flat, 0=natural
 
-        if key_sharps > 0 {
-            // Sharp key: key signature sharps certain diatonic notes.
-            // Compare note_alteration with what the key signature says about
-            // the note's diatonic pitch class.
-            if note_alteration == key_says {
-                // Note matches what the key signature prescribes → no accidental
-                needs_accidental = false;
-                accidental_type = 0;
-            } else {
-                // Note differs from key signature → show accidental
-                needs_accidental = true;
-                accidental_type = note_alteration;
-            }
-        } else if key_sharps < 0 {
-            // Flat key: key signature flats certain diatonic notes
-            // E.g., F major (1 flat): B is flatted to Bb
-            // In flat keys, the flattened pitch classes are:
-            // flat_order gives the diatonic notes that get flatted
-            // The SOUNDING pitch class of a flatted note = diatonic_pc - 1
-            let flatted_sounding: Vec<u8> = flat_order
-                .iter()
-                .take(key_sharps.unsigned_abs() as usize)
-                .map(|&pc| (pc + 12 - 1) % 12) // B(11)->Bb(10), E(4)->Eb(3), etc.
-                .collect();
-
-            if flatted_sounding.contains(&pitch_class) {
-                // This note is a flat that's in the key signature → no accidental
-                needs_accidental = false;
-                accidental_type = 0;
-            } else if note_alteration == 0 {
-                // Natural note — check if key would flat the diatonic version
-                let diatonic_is_flatted = flat_order
-                    .iter()
-                    .take(key_sharps.unsigned_abs() as usize)
-                    .any(|&pc| pc == pitch_class);
-                if diatonic_is_flatted {
-                    // e.g., B natural in key of F (where B is normally flatted) → needs natural
-                    needs_accidental = true;
-                    accidental_type = 0; // natural
-                } else {
-                    needs_accidental = false;
-                    accidental_type = 0;
-                }
-            } else if note_alteration == 1 {
-                // Sharp note in flat key → needs sharp accidental
-                needs_accidental = true;
-                accidental_type = 1;
-            } else {
-                // Flat note not in key signature → needs explicit flat
-                needs_accidental = true;
-                accidental_type = -1;
-            }
+        if note_alteration == key_says {
+            // Note matches what the key signature prescribes → no accidental
+            needs_accidental = false;
+            accidental_type = 0;
         } else {
-            // C major / A minor: no key signature accidentals
-            if note_alteration != 0 {
-                needs_accidental = true;
-                accidental_type = note_alteration;
-            } else {
-                needs_accidental = false;
-                accidental_type = 0;
-            }
+            // Note differs from key signature → show accidental
+            needs_accidental = true;
+            accidental_type = note_alteration;
         }
 
         if !needs_accidental {
