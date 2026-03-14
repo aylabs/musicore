@@ -55,6 +55,10 @@ criterion = "0.5"
 # Note: Benchmarks defined in benches/ directory are optional development tools
 # They are not required for production builds
 
+[[bench]]
+name = "midi_latency"
+harness = false
+
 # WASM release profile optimized for size
 [profile.release]
 opt-level = "z"       # Optimize for size, not speed
