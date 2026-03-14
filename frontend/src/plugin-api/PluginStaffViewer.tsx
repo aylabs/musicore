@@ -33,6 +33,7 @@ import { computeLayout } from '../wasm/layout';
 import { initWasm } from '../services/wasm/loader';
 import { ScoreViewer, LABEL_MARGIN } from '../pages/ScoreViewer';
 import type { GlobalLayout } from '../wasm/layout';
+import { buildSpellingTable } from './pitchSpelling';
 
 // ---------------------------------------------------------------------------
 // MIDI-event → Note conversion
@@ -101,6 +102,7 @@ const WASM_QUARTER_TICKS = 960;
 function toConvertedScore(events: readonly PluginNoteEvent[], clef: string, bpm: number, timestampOffset = 0, keySignature = 0) {
   const msPerBeat = 60_000 / bpm;
   const attacks = events.filter(e => !e.type || e.type === 'attack');
+  const spellingTable = buildSpellingTable(keySignature);
   return {
     instruments: [{
       id: 'practice',
@@ -110,12 +112,16 @@ function toConvertedScore(events: readonly PluginNoteEvent[], clef: string, bpm:
         time_signature: { numerator: 4, denominator: 4 },
         key_signature: { sharps: keySignature },
         voices: [{
-          notes: attacks.map((e) => ({
-            tick: Math.max(0, Math.round(((e.timestamp - timestampOffset) / msPerBeat) * WASM_QUARTER_TICKS)),
-            duration: Math.max(1, Math.round(((e.durationMs ?? msPerBeat) / msPerBeat) * WASM_QUARTER_TICKS)),
-            pitch: e.midiNote,
-            articulation: null,
-          })),
+          notes: attacks.map((e) => {
+            const sp = spellingTable[e.midiNote % 12];
+            return {
+              tick: Math.max(0, Math.round(((e.timestamp - timestampOffset) / msPerBeat) * WASM_QUARTER_TICKS)),
+              duration: Math.max(1, Math.round(((e.durationMs ?? msPerBeat) / msPerBeat) * WASM_QUARTER_TICKS)),
+              pitch: e.midiNote,
+              articulation: null,
+              spelling: { step: sp.step, alter: sp.alter },
+            };
+          }),
         }],
       }],
     }],
