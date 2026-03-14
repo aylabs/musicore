@@ -162,12 +162,12 @@ export const COMPLEXITY_PRESETS: ComplexityPresets = {
   },
   mid: {
     bpm: 80,
-    config: { preset: 'random', noteCount: 16, clef: 'Treble', octaveRange: 1, mode: 'step' },
+    config: { preset: 'random', noteCount: 16, clef: 'Treble', octaveRange: 1, mode: 'step', scaleId: 'c-major' },
     description: '16 notes · Treble · 80 BPM · Step',
   },
   high: {
     bpm: 100,
-    config: { preset: 'random', noteCount: 20, clef: 'Bass', octaveRange: 2, mode: 'flow' },
+    config: { preset: 'random', noteCount: 20, clef: 'Bass', octaveRange: 2, mode: 'flow', scaleId: 'c-major' },
     description: '20 notes · Bass · 100 BPM · Flow',
   },
 };
