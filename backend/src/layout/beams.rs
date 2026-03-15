@@ -169,6 +169,10 @@ fn compute_beat_boundaries(numerator: u8, denominator: u8) -> Vec<u32> {
             boundaries.push(960); // After 2 eighths
             boundaries.push(1920); // After 2 more eighths
         }
+        // 3/8: one dotted-quarter beat per measure (all 3 eighths beam together)
+        (3, 8) => {
+            // No additional boundaries — the entire 1440-tick measure is one beat.
+        }
         // Simple meters: quarter note = 960 ticks
         _ => {
             for i in 1..numerator {
@@ -1543,5 +1547,40 @@ mod tests {
         assert_eq!(groups.len(), 2, "5/8: should produce 2 groups (3+2)");
         assert_eq!(groups[0].len(), 3, "First group should have 3 eighths");
         assert_eq!(groups[1].len(), 2, "Second group should have 2 eighths");
+    }
+
+    /// T057 (spec 050, Issue 05-B): 3/8 compound meter — all 3 eighths must beam together.
+    ///
+    /// In 3/8 the entire measure is ONE dotted-quarter beat (1 440 ticks).
+    /// The algorithmic fallback `group_beamable_by_time_signature(notes, 3, 8)` must
+    /// therefore return exactly ONE group containing all three eighth notes.
+    ///
+    /// FAILS before fix (`compute_beat_boundaries` falls into the default branch and
+    /// emits boundaries at 960 + 1 920, splitting the 3rd eighth into its own beat).
+    /// PASSES after adding `(3, 8) =>` to `compute_beat_boundaries` with no extra boundaries.
+    #[test]
+    fn test_group_by_time_sig_3_8_one_beam_group() {
+        let notes = vec![
+            make_note(0, 480),    // beat 1
+            make_note(480, 480),  // beat 2
+            make_note(960, 480),  // beat 3 — must stay in the SAME group
+        ];
+
+        let groups = group_beamable_by_time_signature(&notes, 3, 8);
+
+        assert_eq!(
+            groups.len(),
+            1,
+            "3/8: all 3 eighth notes form a single dotted-quarter beat and must \
+             beam together. Got {} group(s). \
+             Fix: add `(3, 8) =>` case to `compute_beat_boundaries()` in beams.rs \
+             returning no additional boundaries.",
+            groups.len()
+        );
+        assert_eq!(
+            groups[0].len(),
+            3,
+            "The single 3/8 beam group must contain all 3 eighth notes"
+        );
     }
 }

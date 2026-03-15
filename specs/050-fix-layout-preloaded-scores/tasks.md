@@ -103,30 +103,30 @@ and `vitest` produces no failures.
 
 ### Score 3 — Pachelbel Canon in D
 
-- [ ] T042 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/03-Pachelbel_CanonD/cycle-01.md`
-- [ ] T043 [US2] Capture Graditone baseline screenshot → `reviews/03-Pachelbel_CanonD/cycle-01-graditone-baseline.png`
-- [ ] T044 [US2] Side-by-side comparison of `references/Pachelbel_CanonD.png` vs baseline; record issues in `cycle-01.md`; check horizontal spacing uniformity across repeated patterns in 4/4
-- [ ] T045 [US2] Write failing tests for each new issue found in T044 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
-- [ ] T046 [P] [US2] Apply fixes for Canon issues; propagate any generic fix to scores 4–6; run `cargo test` + `vitest`
-- [ ] T047 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
+- [x] T042 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/03-Pachelbel_CanonD/cycle-01.md`
+- [x] T043 [US2] Capture Graditone baseline screenshot → `reviews/03-Pachelbel_CanonD/cycle-01-graditone-baseline.png`
+- [x] T044 [US2] Side-by-side comparison of `references/Pachelbel_CanonD.png` vs baseline; record issues in `cycle-01.md`; check horizontal spacing uniformity across repeated patterns in 4/4
+- [x] T045 [US2] Write failing tests for each new issue found in T044 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
+- [x] T046 [P] [US2] Apply fixes for Canon issues; propagate any generic fix to scores 4–6; run `cargo test` + `vitest`
+- [x] T047 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
 
 ### Score 4 — Bach Invention No. 1
 
-- [ ] T048 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/04-Bach_InventionNo1/cycle-01.md`
-- [ ] T049 [US2] Capture Graditone baseline screenshot → `reviews/04-Bach_InventionNo1/cycle-01-graditone-baseline.png`
-- [ ] T050 [US2] Side-by-side comparison of `references/Bach_InventionNo1.png` vs baseline; record issues in `cycle-01.md`; check two-voice spacing (imitative counterpoint runs in both treble and bass) and stem direction consistency
-- [ ] T051 [US2] Write failing tests for each new issue found in T050 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
-- [ ] T052 [P] [US2] Apply fixes for Invention issues; propagate any generic fix to scores 5–6; run `cargo test` + `vitest`
-- [ ] T053 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
+- [X] T048 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/04-Bach_InventionNo1/cycle-01.md`
+- [X] T049 [US2] Capture Graditone baseline screenshot → `reviews/04-Bach_InventionNo1/cycle-01-graditone-baseline.png`
+- [X] T050 [US2] Side-by-side comparison of `references/Bach_InventionNo1.png` vs baseline; record issues in `cycle-01.md`; check two-voice spacing (imitative counterpoint runs in both treble and bass) and stem direction consistency
+- [X] T051 [US2] Write failing tests for each new issue found in T050 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
+- [X] T052 [P] [US2] Apply fixes for Invention issues; propagate any generic fix to scores 5–6; run `cargo test` + `vitest`
+- [X] T053 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
 
 ### Score 5 — Beethoven Für Elise
 
-- [ ] T054 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/05-Beethoven_FurElise/cycle-01.md`
-- [ ] T055 [US2] Capture Graditone baseline screenshot → `reviews/05-Beethoven_FurElise/cycle-01-graditone-baseline.png`
-- [ ] T056 [US2] Side-by-side comparison of `references/Beethoven_FurElise.png` vs baseline; record issues in `cycle-01.md`; focus on 3/8 compound-meter beaming (`build_beam_groups_from_musicxml()` path in `backend/src/layout/beams.rs`) and note density per beat
-- [ ] T057 [US2] Write failing tests for each new issue found in T056 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
-- [ ] T058 [P] [US2] Apply fixes for Für Elise issues; propagate any generic fix to score 6; run `cargo test` + `vitest`
-- [ ] T059 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
+- [X] T054 [US2] Create `specs/050-fix-layout-preloaded-scores/reviews/05-Beethoven_FurElise/cycle-01.md`
+- [X] T055 [US2] Capture Graditone baseline screenshot → `reviews/05-Beethoven_FurElise/cycle-01-graditone-baseline.png`
+- [X] T056 [US2] Side-by-side comparison of `references/Beethoven_FurElise.png` vs baseline; record issues in `cycle-01.md`; focus on 3/8 compound-meter beaming (`build_beam_groups_from_musicxml()` path in `backend/src/layout/beams.rs`) and note density per beat
+- [X] T057 [US2] Write failing tests for each new issue found in T056 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
+- [X] T058 [P] [US2] Apply fixes for Für Elise issues; propagate any generic fix to score 6; run `cargo test` + `vitest`
+- [X] T059 [US2] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
 
 **Checkpoint**: Scores 2–5 each have an approved `cycle-NN.md`. `cargo test` + `vitest` green.
 
@@ -143,12 +143,12 @@ professional" for all 6.
 
 ### Score 6 — Chopin Nocturne Op. 9 No. 2
 
-- [ ] T060 [US3] Create `specs/050-fix-layout-preloaded-scores/reviews/06-Chopin_NocturneOp9No2/cycle-01.md`
-- [ ] T061 [US3] Capture Graditone baseline screenshot → `reviews/06-Chopin_NocturneOp9No2/cycle-01-graditone-baseline.png`
-- [ ] T062 [US3] Side-by-side comparison of `references/Chopin_NocturneOp9No2.png` vs baseline; record issues in `cycle-01.md`; focus on: 12/8 beaming (6 eighth-notes per beam group), accidental collision avoidance (`backend/src/layout/positioner.rs`), ornament rendering, E♭ major key signature (3 flats), cross-staff note positioning
-- [ ] T063 [US3] Write failing tests for each new issue found in T062 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
-- [ ] T064 [P] [US3] Apply fixes for Nocturne issues in appropriate `backend/src/layout/` files or `frontend/src/components/LayoutRenderer.tsx`; run `cargo test` + `vitest`
-- [ ] T065 [US3] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
+- [X] T060 [US3] Create `specs/050-fix-layout-preloaded-scores/reviews/06-Chopin_NocturneOp9No2/cycle-01.md`
+- [X] T061 [US3] Capture Graditone baseline screenshot → `reviews/06-Chopin_NocturneOp9No2/cycle-01-graditone-baseline.png`
+- [X] T062 [US3] Side-by-side comparison of `references/Chopin_NocturneOp9No2.png` vs baseline; record issues in `cycle-01.md`; focus on: 12/8 beaming (6 eighth-notes per beam group), accidental collision avoidance (`backend/src/layout/positioner.rs`), ornament rendering, E♭ major key signature (3 flats), cross-staff note positioning
+- [X] T063 [US3] Write failing tests for each new issue found in T062 in `backend/tests/layout_test.rs` or `frontend/src/` (Constitution VII)
+- [X] T064 [P] [US3] Apply fixes for Nocturne issues in appropriate `backend/src/layout/` files or `frontend/src/components/LayoutRenderer.tsx`; run `cargo test` + `vitest`
+- [X] T065 [US3] Capture updated screenshot, create `cycle-01-comparison.png`; present to musician; iterate until approved; update `cycle-01.md`
 
 ### Cross-Score Consistency Verification
 

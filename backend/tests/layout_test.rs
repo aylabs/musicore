@@ -2047,3 +2047,155 @@ fn test_key_signature_appears_on_all_systems() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T045 (spec 050): Failing tests for Pachelbel Canon in D layout issues
+//
+// Issue 01-C: Excessive score height — eighths hit the minimum-spacing floor
+//   so measures grow too wide, forcing too many systems.
+// Issue 02-C: Low ink density (symptom of Issue 01-C).
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod canon_d_spacing_tests {
+    use super::*;
+
+    /// T045-A (spec 050): Eighth-note spacing must stay below 40 units.
+    ///
+    /// Canon D has 8 eighth notes per measure.  With the base Gould formula
+    /// (`base=15, factor=25`) the duration-based component for an eighth note is
+    ///   15 + sqrt(0.5) × 25 ≈ 32.7 units  (≈ 1.6 staff spaces at ups=20)
+    ///
+    /// The current `minimum_spacing = 45` overrides that value upward to 45,
+    /// expanding each measure by (45 − 32.7) × 8 ≈ 98 extra units.  Over 21
+    /// measures this pushes the Canon D from 4 systems to 5+.
+    ///
+    /// Fix: lower `minimum_spacing` to ≤ 38 so eighth notes are packed no wider
+    /// than ~1.9 staff spaces — still collision-safe, but much closer to Gould.
+    ///
+    /// FAILS before fix (minimum_spacing = 45 > 40).
+    /// PASSES after fix (minimum_spacing ≤ 38 → formula value wins at ≈ 33).
+    #[test]
+    fn test_eighth_note_spacing_within_engraving_standard() {
+        let config = SpacingConfig::default();
+        let eighth_spacing = compute_note_spacing(480, &config);
+
+        assert!(
+            eighth_spacing <= 40.0,
+            "Eighth note spacing must be ≤ 40 units (2 sp at ups=20) for Canon D to fit \
+             4 measures per system. \
+             Current value {:.1} = {:.2} sp. \
+             Fix: lower minimum_spacing in spacer.rs from 45 to ≤ 38.",
+            eighth_spacing,
+            eighth_spacing / 20.0,
+        );
+        assert!(
+            eighth_spacing >= 20.0,
+            "Eighth note spacing must be ≥ 20 units (1 sp) to prevent notehead collision. \
+             Current value: {:.1}",
+            eighth_spacing,
+        );
+    }
+
+    /// T045-B (spec 050): 21-measure eighth-note grand-staff score must produce ≤ 4 systems.
+    ///
+    /// Pachelbel Canon in D has exactly 21 measures, time 4/4, predominantly eighth notes.
+    /// MuseScore renders the full piece on one page using 4 systems.
+    ///
+    /// At max_system_width = 2250 (≈ 1200 px container at BASE_SCALE=0.5, minus left margin):
+    ///   * current measure width ≈ 430 units  → 5 measures/system → 5 systems  (FAIL)
+    ///   * target  measure width ≈ 370 units  → 6 measures/system → 4 systems  (PASS)
+    ///
+    /// FAILS before fix (5 systems).
+    /// PASSES after fix (4 systems).
+    #[test]
+    fn test_canon_d_21_measures_fits_in_four_systems() {
+        let config = SpacingConfig::default();
+
+        // 21 measures, each with 8 eighth notes (no rests in the note durations list
+        // — rests are passed separately and do not affect flag count).
+        let eighth: u32 = 480;
+        let note_durations: Vec<u32> = vec![eighth; 8];
+        let measure_width = compute_measure_width(&note_durations, &[], &config);
+
+        // max_system_width mirrors LayoutView.tsx at a 1200 px container:
+        //   1200 / 0.5 (BASE_SCALE) − 150 (LABEL_MARGIN) = 2250 units
+        let max_system_width = 2250.0_f32;
+        let measures_per_system = (max_system_width / measure_width).floor() as usize;
+        let total_measures: usize = 21;
+        let system_count = total_measures.div_ceil(measures_per_system);
+
+        assert!(
+            system_count <= 4,
+            "Canon D (21 eighth-note measures) must break into ≤ 4 systems at \
+             max_system_width = {max_system_width}. \
+             measure_width = {measure_width:.1} → measures_per_system = {measures_per_system} \
+             → system_count = {system_count}. \
+             Fix: lower minimum_spacing so measure_width ≤ {:.1}.",
+            max_system_width / 5.0 - 1.0,
+        );
+    }
+
+    /// T051 (spec 050): Bach Invention No. 1 — 22 measures of 16th notes must produce ≤ 8 systems.
+    ///
+    /// Bach Invention No. 1 has 22 measures of 4/4 dominated by 16th notes (16 per measure).
+    /// MuseScore renders it across 2 pages ≈ 7-8 systems total.
+    ///
+    /// With minimum_spacing = 38 (16th note floor), each measure is approximately
+    ///   16 × 38 + overhead ≈ 658–720 units wide.
+    /// At max_system_width = 2250: floor(2250/690) ≈ 3 measures/system → ~8 systems.
+    #[test]
+    fn test_bach_invention_22_measures_fits_in_eight_systems() {
+        let config = SpacingConfig::default();
+
+        // 22 measures of 16 sixteenth notes each
+        let sixteenth: u32 = 240;
+        let note_durations: Vec<u32> = vec![sixteenth; 16];
+        let measure_width = compute_measure_width(&note_durations, &[], &config);
+
+        let max_system_width = 2250.0_f32;
+        let measures_per_system = (max_system_width / measure_width).floor().max(1.0) as usize;
+        let total_measures: usize = 22;
+        let system_count = total_measures.div_ceil(measures_per_system);
+
+        assert!(
+            system_count <= 8,
+            "Bach Invention (22 sixteenth-note measures) must break into ≤ 8 systems at \
+             max_system_width = {max_system_width}. \
+             measure_width = {measure_width:.1} → measures_per_system = {measures_per_system} \
+             → system_count = {system_count}.",
+        );
+    }
+
+    /// T063 (spec 050): Chopin Nocturne Op. 9 No. 2 — 38 measures of 12/8 must produce ≤ 15 systems.
+    ///
+    /// The Nocturne has 38 measures in 12/8. Dominant note type is eighth note (924 events),
+    /// with roughly 24 eighth-note events per measure across both staves.
+    /// MuseScore renders it across 4 pages ≈ 10-13 systems total.
+    ///
+    /// With minimum_spacing = 38 and ~12 eighth notes per staff per measure
+    /// (the busier treble staff), measure width ≈ 12 × 38 + overhead ≈ 526–600 units.
+    /// At max_system_width = 2250: floor(2250/560) ≈ 4 measures/system → ~10 systems.
+    #[test]
+    fn test_chopin_nocturne_38_measures_fits_in_fifteen_systems() {
+        let config = SpacingConfig::default();
+
+        // 38 measures, each dominated by 12 eighth notes (the typical treble beat pattern)
+        let eighth: u32 = 480;
+        let note_durations: Vec<u32> = vec![eighth; 12];
+        let measure_width = compute_measure_width(&note_durations, &[], &config);
+
+        let max_system_width = 2250.0_f32;
+        let measures_per_system = (max_system_width / measure_width).floor().max(1.0) as usize;
+        let total_measures: usize = 38;
+        let system_count = total_measures.div_ceil(measures_per_system);
+
+        assert!(
+            system_count <= 15,
+            "Chopin Nocturne (38 eighth-note-dominant 12/8 measures) must break into ≤ 15 systems at \
+             max_system_width = {max_system_width}. \
+             measure_width = {measure_width:.1} → measures_per_system = {measures_per_system} \
+             → system_count = {system_count}.",
+        );
+    }
+}
