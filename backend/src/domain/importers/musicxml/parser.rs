@@ -432,7 +432,12 @@ impl MusicXMLParser {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(e)) => match e.name().as_ref() {
                     b"attributes" => {
-                        measure.attributes = Some(Self::parse_attributes(reader)?);
+                        let attrs = Self::parse_attributes(reader)?;
+                        // Store in elements to track mid-measure position for clef/key changes
+                        measure
+                            .elements
+                            .push(MeasureElement::Attributes(attrs.clone()));
+                        measure.attributes = Some(attrs);
                     }
                     b"note" => {
                         let note = Self::parse_note(reader)?;

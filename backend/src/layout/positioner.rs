@@ -284,6 +284,7 @@ pub fn position_noteheads(
                     voice_index,
                     event_index: i,
                 },
+                font_size: None,
             }
         })
         .collect()
@@ -353,6 +354,56 @@ pub fn position_clef(
             voice_index: 0,
             event_index: 0,
         },
+        font_size: None,
+    }
+}
+
+/// Position a smaller courtesy/cautionary clef for mid-system clef changes.
+///
+/// Rendered at 75% of the normal clef size, following standard engraving practice
+/// where clef changes within a system use a smaller clef glyph.
+pub fn position_courtesy_clef(
+    clef_type: &str,
+    x_position: f32,
+    units_per_space: f32,
+    staff_vertical_offset: f32,
+) -> Glyph {
+    let scale = 0.75;
+    let courtesy_font_size = 60.0; // 75% of normal 80
+
+    let (codepoint, y_position) = match clef_type {
+        "Treble" => ('\u{E050}', 50.0),
+        "Bass" => ('\u{E062}', 10.0),
+        "Alto" => ('\u{E05C}', 30.0),
+        "Tenor" => ('\u{E05D}', 10.0),
+        _ => ('\u{E050}', 50.0),
+    };
+
+    // Adjust y to vertically center the smaller glyph on the same staff line
+    let y_adjust = (1.0 - scale) * 10.0; // half-space nudge toward center
+    let position = Point {
+        x: x_position,
+        y: y_position + y_adjust + staff_vertical_offset,
+    };
+
+    let bounding_box = compute_glyph_bounding_box(
+        "gClef",
+        &position,
+        40.0 * scale, // smaller bounding box
+        units_per_space,
+    );
+
+    Glyph {
+        position,
+        bounding_box,
+        codepoint: codepoint.to_string(),
+        source_reference: SourceReference {
+            instrument_id: "structural".to_string(),
+            staff_index: 0,
+            voice_index: 0,
+            event_index: 0,
+        },
+        font_size: Some(courtesy_font_size),
     }
 }
 
@@ -420,6 +471,7 @@ pub fn position_time_signature(
                 voice_index: 0,
                 event_index: 0,
             },
+            font_size: None,
         });
     }
 
@@ -442,6 +494,7 @@ pub fn position_time_signature(
                 voice_index: 0,
                 event_index: 0,
             },
+            font_size: None,
         });
     }
 
@@ -551,6 +604,7 @@ pub fn position_key_signature(
                 voice_index: 0,
                 event_index: 0,
             },
+            font_size: None,
         });
     }
 
@@ -794,6 +848,7 @@ pub fn position_note_accidentals(
                 voice_index,
                 event_index: i,
             },
+            font_size: None,
         });
     }
 
@@ -1051,6 +1106,7 @@ pub(super) fn position_rests_for_staff(
                 voice_index: rest.voice.saturating_sub(1),
                 event_index,
             },
+            font_size: None,
         });
     }
 

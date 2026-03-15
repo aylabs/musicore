@@ -498,9 +498,12 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 // Determine the active key signature at this system's start tick
                 let system_key_sharps = staff_data.get_key_at_tick(system.tick_range.start_tick);
 
+                // Determine the active clef at this system's start tick
+                let system_clef = staff_data.get_clef_at_tick(system.tick_range.start_tick);
+
                 // Position clef at x=60 (left margin with room for brace and glyph extent)
                 let clef_glyph = positioner::position_clef(
-                    &staff_data.clef,
+                    system_clef,
                     60.0,
                     config.units_per_space,
                     staff_vertical_offset,
@@ -510,7 +513,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 // Position key signature after clef (x=120)
                 let key_sig_glyphs = positioner::position_key_signature(
                     system_key_sharps,
-                    &staff_data.clef,
+                    system_clef,
                     120.0,
                     config.units_per_space,
                     staff_vertical_offset,
@@ -546,14 +549,85 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                             // Position the key signature glyphs at the measure start
                             // Shift slightly right to leave room after the barline
                             let key_x = measure_x_start + 10.0;
+                            let active_clef = staff_data.get_clef_at_tick(event_tick);
                             let mid_key_glyphs = positioner::position_key_signature(
                                 event_sharps,
-                                &staff_data.clef,
+                                active_clef,
                                 key_x,
                                 config.units_per_space,
                                 staff_vertical_offset,
                             );
                             structural_glyphs.extend(mid_key_glyphs);
+                        }
+                    }
+                }
+
+                // Render clef changes within this system (mid-system and
+                // mid-measure).  Also render a courtesy clef at the right
+                // edge when the clef changes at the start of the next system.
+                if !staff_data.clef_events.is_empty() {
+                    for (event_tick, event_clef) in &staff_data.clef_events {
+                        // Skip the initial clef (tick 0 or system start) — it is
+                        // already rendered as the system-start clef glyph.
+                        if *event_tick <= system.tick_range.start_tick {
+                            continue;
+                        }
+
+                        // Courtesy clef: event falls on or after this system's
+                        // end tick → place a small warning clef at the right edge.
+                        if *event_tick >= system.tick_range.end_tick {
+                            if *event_tick == system.tick_range.end_tick {
+                                let courtesy_x = system.bounding_box.width - 40.0;
+                                let courtesy_glyph = positioner::position_courtesy_clef(
+                                    event_clef,
+                                    courtesy_x,
+                                    config.units_per_space,
+                                    staff_vertical_offset,
+                                );
+                                structural_glyphs.push(courtesy_glyph);
+                            }
+                            continue;
+                        }
+
+                        // Event is inside this system.  Find the enclosing
+                        // measure: the one whose start_tick is the largest value
+                        // that is ≤ event_tick.
+                        let enclosing = measure_x_bounds
+                            .iter()
+                            .filter(|(tick, _)| **tick <= *event_tick)
+                            .max_by_key(|(tick, _)| *tick);
+
+                        if let Some((&_m_tick, &(measure_x_start, measure_x_end))) = enclosing {
+                            // Place the courtesy clef near the start of the
+                            // measure (for measure-start changes) or offset
+                            // proportionally for mid-measure changes.
+                            let clef_x = if *event_tick == _m_tick {
+                                measure_x_start + 10.0
+                            } else {
+                                // Mid-measure: position at a fraction of the
+                                // measure width based on tick offset.
+                                let measure_width = measure_x_end - measure_x_start;
+                                let ticks_per_meas = system
+                                    .tick_range
+                                    .end_tick
+                                    .saturating_sub(system.tick_range.start_tick);
+                                let measures_count = measure_x_bounds.len().max(1) as u32;
+                                let avg_ticks = ticks_per_meas / measures_count;
+                                let offset_ticks = event_tick - _m_tick;
+                                let frac = if avg_ticks > 0 {
+                                    (offset_ticks as f32 / avg_ticks as f32).min(0.9)
+                                } else {
+                                    0.5
+                                };
+                                measure_x_start + measure_width * frac
+                            };
+                            let mid_clef_glyph = positioner::position_courtesy_clef(
+                                event_clef,
+                                clef_x,
+                                config.units_per_space,
+                                staff_vertical_offset,
+                            );
+                            structural_glyphs.push(mid_clef_glyph);
                         }
                     }
                 }
@@ -971,6 +1045,8 @@ struct StaffData {
     key_sharps: i8,       // Initial key: positive for sharps, negative for flats, 0 for C major
     /// Key signature changes sorted by tick. Empty if no mid-piece changes.
     key_signature_events: Vec<(u32, i8)>,
+    /// Clef changes sorted by tick. Empty if no mid-piece changes.
+    clef_events: Vec<(u32, String)>,
 }
 
 impl StaffData {
@@ -984,6 +1060,22 @@ impl StaffData {
         for &(event_tick, sharps) in &self.key_signature_events {
             if event_tick <= tick {
                 result = sharps;
+            } else {
+                break;
+            }
+        }
+        result
+    }
+
+    /// Get the active clef at a given tick.
+    fn get_clef_at_tick(&self, tick: u32) -> &str {
+        if self.clef_events.is_empty() {
+            return &self.clef;
+        }
+        let mut result = &self.clef;
+        for (event_tick, clef) in &self.clef_events {
+            if *event_tick <= tick {
+                result = clef;
             } else {
                 break;
             }
@@ -1195,6 +1287,17 @@ fn extract_instruments(
                         key_signature_events.sort_by_key(|&(t, _)| t);
                     }
 
+                    // Parse clef change events (for mid-piece clef changes)
+                    let mut clef_events: Vec<(u32, String)> = Vec::new();
+                    if let Some(events_array) = staff["clef_events"].as_array() {
+                        for ev in events_array {
+                            let tick = ev["tick"].as_u64().unwrap_or(0) as u32;
+                            let clef_name = ev["clef"].as_str().unwrap_or("Treble").to_string();
+                            clef_events.push((tick, clef_name));
+                        }
+                        clef_events.sort_by_key(|(t, _)| *t);
+                    }
+
                     staves.push(StaffData {
                         voices,
                         clef,
@@ -1202,6 +1305,7 @@ fn extract_instruments(
                         time_denominator,
                         key_sharps,
                         key_signature_events,
+                        clef_events,
                     });
                 }
             }
@@ -1636,6 +1740,7 @@ fn position_glyphs_for_staff(
                         voice_index,
                         event_index: group.notes[i].event_index,
                     },
+                    font_size: None,
                 };
                 stem_glyphs.push(stem_glyph);
                 stem_end_ys.push(final_stem_end);
@@ -1689,6 +1794,7 @@ fn position_glyphs_for_staff(
                         // the whole group but clicking a beam selects the group's first note.
                         event_index: group.notes.first().map_or(0, |n| n.event_index),
                     },
+                    font_size: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -1722,6 +1828,7 @@ fn position_glyphs_for_staff(
                         // Same as primary beam: use first note's event_index.
                         event_index: updated_group.notes.first().map_or(0, |n| n.event_index),
                     },
+                    font_size: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -3167,6 +3274,7 @@ mod tests {
             time_denominator: 4,
             key_sharps: 0,
             key_signature_events: vec![],
+            clef_events: vec![],
             voices: vec![VoiceData {
                 notes: vec![NoteEvent {
                     pitch: 67, // G4 — on the second line of treble staff
@@ -3206,6 +3314,7 @@ mod tests {
             time_denominator: 4,
             key_sharps: 0,
             key_signature_events: vec![],
+            clef_events: vec![],
             voices: vec![VoiceData {
                 notes: vec![NoteEvent {
                     pitch: 60, // C4 (middle C) — below treble staff, needs ledger line
