@@ -152,11 +152,11 @@ professional" for all 6.
 
 ### Cross-Score Consistency Verification
 
-- [ ] T066 [US3] Open all 6 approved scores consecutively in Graditone; capture one screenshot per score at equivalent zoom level → `reviews/final-consistency-check/`
-- [ ] T067 [US3] Compare visual constants across all 6 screenshots: staff line weight, clef size, time-sig size, notehead size relative to staff, stem length, barline weight — record any inconsistency in `reviews/final-consistency-check/consistency-report.md`
-- [ ] T068 [P] [US3] For any inconsistency found in T067 attributed to `layout-engine`: write failing test in `backend/tests/layout_integration_test.rs`; fix in appropriate `backend/src/layout/` file; run `cargo test`
-- [ ] T069 [P] [US3] For any inconsistency found in T067 attributed to `renderer`: write failing test in `frontend/src/`; fix in `frontend/src/components/LayoutRenderer.tsx`; run `vitest`
-- [ ] T070 [US3] Re-capture all 6 screenshots after T068/T069 fixes; present final consistency panel to musician for sign-off; update `consistency-report.md`
+- [x] T066 [US3] Open all 6 approved scores consecutively in Graditone; capture one screenshot per score at equivalent zoom level → `reviews/final-consistency-check/`
+- [x] T067 [US3] Compare visual constants across all 6 screenshots: staff line weight, clef size, time-sig size, notehead size relative to staff, stem length, barline weight — record any inconsistency in `reviews/final-consistency-check/consistency-report.md`
+- [x] T068 [P] [US3] For any inconsistency found in T067 attributed to `layout-engine`: write failing test in `backend/tests/layout_integration_test.rs`; fix in appropriate `backend/src/layout/` file; run `cargo test`
+- [x] T069 [P] [US3] For any inconsistency found in T067 attributed to `renderer`: write failing test in `frontend/src/`; fix in `frontend/src/components/LayoutRenderer.tsx`; run `vitest`
+- [x] T070 [US3] Re-capture all 6 screenshots after T068/T069 fixes; present final consistency panel to musician for sign-off; update `consistency-report.md`
 
 **Checkpoint**: All 6 `cycle-NN.md` documents have `[x] Approved`. Consistency report has musician sign-off. `cargo test` + `vitest` pass.
 
@@ -166,12 +166,12 @@ professional" for all 6.
 
 **Purpose**: Finalize known-limitation documentation, run full test suite, and close the feature.
 
-- [ ] T071 [P] Document any technical limitation that could not be fixed to full Musescore fidelity in `spec.md § Known Issues & Regression Tests` (FR-006 requirement)
-- [ ] T072 Run full regression suite: `cd backend && cargo test` — all tests must pass
-- [ ] T073 [P] Run full frontend test suite: `cd frontend && npm run test` — all tests must pass
-- [ ] T074 [P] Run E2E smoke test opening all 6 scores: `cd frontend && npx playwright test` (if relevant test exists)
-- [ ] T075 Verify no previously-approved score regressed: re-open each approved score and compare against its `cycle-NN-comparison.png` approval artifact
-- [ ] T076 Run quickstart.md validation: follow `specs/050-fix-layout-preloaded-scores/quickstart.md` steps end-to-end on a clean branch clone to verify the review workflow is reproducible
+- [x] T071 [P] Document any technical limitation that could not be fixed to full Musescore fidelity in `spec.md § Known Issues & Regression Tests` (FR-006 requirement)
+- [x] T072 Run full regression suite: `cd backend && cargo test` — all tests must pass
+- [x] T073 [P] Run full frontend test suite: `cd frontend && npm run test` — all tests must pass
+- [x] T074 [P] Run E2E smoke test opening all 6 scores: `cd frontend && npx playwright test` (if relevant test exists)
+- [x] T075 Verify no previously-approved score regressed: re-open each approved score and compare against its `cycle-NN-comparison.png` approval artifact
+- [x] T076 Run quickstart.md validation: follow `specs/050-fix-layout-preloaded-scores/quickstart.md` steps end-to-end on a clean branch clone to verify the review workflow is reproducible
 
 ---
 

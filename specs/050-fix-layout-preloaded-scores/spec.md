@@ -102,7 +102,58 @@ All 6 preloaded scores share a consistent visual style: uniform spacing, note si
 
 ## Known Issues & Regression Tests *(if applicable)*
 
-None at feature start. This section will grow as issues are discovered during implementation.
+The following limitations were identified during the 6-score review campaign (2026-03-15)
+and accepted as out-of-scope for this feature. They are tracked here per FR-006.
+
+### KL-001 — Ornaments, Grace Notes, and Dynamics not rendered
+
+**Affects**: Beethoven Für Elise (trills, grace notes), Chopin Nocturne (trills, turns, grace notes), and any future score with ornaments or dynamic markings.
+
+**Layer**: Layout engine — no implementation for ornament glyphs (`trill`, `turn`, `mordent`, `grace-note` elements) or dynamic markings (`p`, `f`, `mf`, `cresc.`, etc.).
+
+**Impact**: Low — ornaments are decorative; the core pitches and rhythms are rendered correctly.
+
+**Resolution**: Out of scope for this feature. Tracked as a future enhancement.
+
+---
+
+### KL-002 — Stem direction is pitch-based only (no multi-voice support)
+
+**Affects**: Scores with two voices on the same staff (none of the current 6 preloaded scores).
+
+**Layer**: Layout engine (`stems.rs`) — stem direction is determined by note pitch relative to the middle line (B4 for treble). Voice-number-aware stem direction (Voice 1 → stems up, Voice 2 → stems down) is not implemented.
+
+**Impact**: None for current preloaded scores. Would be visible on future scores with multiple independent voices on one staff.
+
+**Resolution**: Out of scope. Tracked as a future enhancement.
+
+---
+
+### KL-003 — `compute_beat_boundaries()` fallback for uncommon meters
+
+**Affects**: Scores in meters other than those explicitly handled (2/4, 3/4, 4/4, 6/8, 12/8, 3/8).
+
+**Layer**: Layout engine (`beams.rs`) — `compute_beat_boundaries()` falls back to equal beat division for unrecognised meters, which may produce incorrect beam groups.
+
+**Impact**: None for current 6 preloaded scores (all use supported time signatures). MusicXML beam data takes precedence when present in the file.
+
+**Resolution**: The fallback is acceptable for the current score set. Unsupported meters will be addressed when a score requiring them is added.
+
+---
+
+### Regression Tests Added (by this feature)
+
+| Test | File | What it guards |
+|------|------|---------------|
+| `test_stem_length_standard_note` | `backend/tests/layout_test.rs` | Stem height ≥ 70 units (T020) |
+| `test_staff_line_stroke_width` | `frontend/src/components/LayoutRenderer.test.tsx` | Staff line stroke-width ≥ 1.5 (T022) |
+| `canon_d_beam_glyphs_have_positive_width` → `all_beams_have_positive_width` | `backend/tests/canon_d_beam_test.rs` | All beam widths > 10 units |
+| `all_beams_inside_system_bounding_box` | `backend/tests/canon_d_beam_test.rs` | System bboxes cover all stems/beams (beam-cut fix regression) |
+| `consistent_font_size_across_scores` | `backend/tests/cross_score_consistency_test.rs` | All scores use font_size=80.0 |
+| `all_scores_have_essential_glyphs` | `backend/tests/cross_score_consistency_test.rs` | Clef, time sig, noteheads present in all 6 |
+| `consistent_stem_lengths_across_scores` | `backend/tests/cross_score_consistency_test.rs` | Stem lengths ≥ 50 units in all 6 |
+| `consistent_barline_widths_across_scores` | `backend/tests/cross_score_consistency_test.rs` | Barline widths 1.5/4.0 in all 6 |
+| `bounding_boxes_contain_all_glyphs_across_scores` | `backend/tests/cross_score_consistency_test.rs` | No gleems outside bbox (beam-cut, all 6 scores) |
 
 ## Constraints & Tradeoffs
 
