@@ -237,7 +237,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     let num_instruments = instruments.len();
 
     // Spacing multipliers (in staff-space units)
-    let intra_staff_multiplier = 8.0_f32; // Between staves of the same instrument (compact with room for ledger lines)
+    let intra_staff_multiplier = 10.0_f32; // Between staves of the same instrument (grand-staff standard: ~6-space gap)
     let inter_instrument_multiplier = 5.0_f32; // Extra gap between different instruments
 
     // Inter-instrument gap: extra spacing between different instruments
@@ -429,7 +429,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         }
 
         // Compute cumulative collision-avoidance extra per staff
-        let min_clearance = 1.0 * config.units_per_space; // 1 staff-space clearance
+        let min_clearance = 2.0 * config.units_per_space; // 2 staff-space clearance (accounts for stems/accidentals)
         let mut cumulative_collision_extra: Vec<f32> = vec![0.0; staff_extents.len()];
         for i in 0..staff_extents.len().saturating_sub(1) {
             let (_, max_y_upper) = staff_extents[i]; // bottom extent of upper staff
@@ -1935,6 +1935,7 @@ fn compute_staff_note_extents(
 ) -> (f32, f32) {
     let mut min_y = 0.0_f32; // top staff line
     let mut max_y = 4.0 * units_per_space; // bottom staff line
+    let middle_y = 2.0 * units_per_space; // middle staff line
 
     for voice in &staff_data.voices {
         for note in &voice.notes {
@@ -1951,6 +1952,20 @@ fn compute_staff_note_extents(
                 }
                 if y > max_y {
                     max_y = y;
+                }
+                // Include stem extent: notes above the middle line have stems going
+                // DOWN (increasing y); notes on/below the middle line have stems
+                // going UP (decreasing y).  Both can push into the inter-staff gap.
+                if y < middle_y {
+                    let stem_tip = y + stems::Stem::STEM_LENGTH;
+                    if stem_tip > max_y {
+                        max_y = stem_tip;
+                    }
+                } else {
+                    let stem_tip = y - stems::Stem::STEM_LENGTH;
+                    if stem_tip < min_y {
+                        min_y = stem_tip;
+                    }
                 }
             }
         }
@@ -2545,12 +2560,13 @@ mod tests {
         let treble_top = treble_staff.staff_lines[0].y_position;
         let bass_top = bass_staff.staff_lines[0].y_position;
 
-        // Vertical spacing should be 8 staff spaces (160 units at default units_per_space=20)
-        let expected_spacing = 8.0 * config.units_per_space; // 160 units
+        // Vertical spacing should be 10 staff spaces (200 units at default units_per_space=20)
+        // This matches the standard grand-staff gap (~6 spaces between staff edges).
+        let expected_spacing = 10.0 * config.units_per_space; // 200 units
         assert_eq!(
             bass_top - treble_top,
             expected_spacing,
-            "Staff vertical spacing should be 8 staff spaces (160 units)"
+            "Staff vertical spacing should be 10 staff spaces (200 units)"
         );
 
         // Verify bracket type is Brace for piano
@@ -3354,10 +3370,11 @@ mod tests {
             end_tick: 3840,
         };
         let (min_y, max_y) = compute_staff_note_extents(&staff_data, &tick_range, ups);
-        // G4 is within treble staff, so extents should be [0, 4*ups]
+        // G4 anchor y=50 (below middle line at 40), stem goes UP: tip = 50-70 = -20.
+        // Stem-aware extents include this above-staff stem.
         assert!(
-            min_y >= -0.1 && min_y <= 0.1,
-            "min_y should be ~0 for in-staff note, got {}",
+            (min_y - (-20.0)).abs() < 0.1,
+            "min_y should be ~-20 for G4 (stem extends above staff), got {}",
             min_y
         );
         assert!(
@@ -3497,7 +3514,7 @@ mod tests {
         let bass_top = sg.staves[1].staff_lines[0].y_position;
         let spacing = bass_top - treble_top;
 
-        let default_spacing = 8.0 * config.units_per_space; // 160 units
+        let default_spacing = 10.0 * config.units_per_space; // 200 units (grand-staff standard)
         assert_eq!(
             spacing, default_spacing,
             "Spacing should remain at default when no collision: got {} (expected {})",
