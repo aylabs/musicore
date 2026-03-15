@@ -16,11 +16,16 @@ import { useRenderConfig } from '../../contexts/RenderConfigContext';
 
 /**
  * BASE_SCALE mirrors the constant in pages/ScoreViewer: each layout unit = 0.5 CSS px.
- * max_system_width (layout units) = containerWidth (CSS px) / BASE_SCALE - LABEL_MARGIN
+ * max_system_width (layout units) = containerWidth (CSS px) / BASE_SCALE - LABEL_MARGIN - RIGHT_MARGIN
  */
 const BASE_SCALE = 0.5;
 /** Fallback width used only until the container is measured */
 const DEFAULT_SYSTEM_WIDTH = 2400;
+/**
+ * Right-side breathing room so the system end barline never touches the window edge.
+ * 40 layout units = 20 CSS px at BASE_SCALE 0.5.
+ */
+const RIGHT_MARGIN = 40;
 
 interface ConvertedScore {
   instruments: Array<{
@@ -261,7 +266,7 @@ export function LayoutView({ score, highlightedNoteIds, onTogglePlayback, playba
    */
   const MAX_SYSTEM_WIDTH = 3000;
   const maxSystemWidth = containerWidth > 0
-    ? Math.min(MAX_SYSTEM_WIDTH, Math.max(800, Math.floor(containerWidth / BASE_SCALE) - LABEL_MARGIN))
+    ? Math.min(MAX_SYSTEM_WIDTH, Math.max(800, Math.floor(containerWidth / BASE_SCALE) - LABEL_MARGIN - RIGHT_MARGIN))
     : DEFAULT_SYSTEM_WIDTH;
 
   // Consume theme-derived render config from context (provided by App.tsx).
