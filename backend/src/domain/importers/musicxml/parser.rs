@@ -437,7 +437,12 @@ impl MusicXMLParser {
                         measure
                             .elements
                             .push(MeasureElement::Attributes(attrs.clone()));
-                        measure.attributes = Some(attrs);
+                        // Only set measure-level attributes from the first <attributes> block.
+                        // Subsequent blocks (mid-measure clef/key changes) are already tracked
+                        // in measure.elements and must not overwrite the initial attributes.
+                        if measure.attributes.is_none() {
+                            measure.attributes = Some(attrs);
+                        }
                     }
                     b"note" => {
                         let note = Self::parse_note(reader)?;

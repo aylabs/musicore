@@ -662,7 +662,7 @@ impl MusicXMLConverter {
             .and_then(|a| a.divisions)
             .unwrap_or(1);
 
-        for (i, measure) in measures.iter().enumerate().skip(1) {
+        for (i, measure) in measures.iter().enumerate() {
             // Update divisions from measure-level attributes (if present)
             if let Some(attrs) = &measure.attributes {
                 if let Some(d) = attrs.divisions {
@@ -718,6 +718,7 @@ impl MusicXMLConverter {
                             let tick = measure_start + offset;
                             let clef = ElementMapper::map_clef(&cd.sign, cd.line)?;
                             let clef_event = ClefEvent::new(Tick::new(tick), clef);
+                            // Silently ignores duplicates (e.g., tick-0 clef already added from initial attributes)
                             let _ = staff.add_clef_event(clef_event);
                         }
                     }
