@@ -16,9 +16,11 @@ Before running your first review cycle, ensure:
 
 2. **Backend built** (WASM):
    ```bash
-   cd backend
-   wasm-pack build --target web --out-dir ../frontend/src/wasm/pkg
+   cd frontend
+   npm run build:wasm
    ```
+   This runs `backend/scripts/build-wasm.sh`, which builds with `wasm-pack` and copies the
+   output to `frontend/public/wasm/`.
 
 3. **Frontend dev server running**:
    ```bash
@@ -148,7 +150,7 @@ For each issue identified, follow the fix workflow in [contracts/review-protocol
 ## Step 6: Re-render and Re-compare
 
 After all fixes:
-1. Rebuild the WASM module: `wasm-pack build --target web --out-dir ../frontend/src/wasm/pkg` in `backend/`.
+1. Rebuild the WASM module: `npm run build:wasm` (from the `frontend/` directory), which runs `backend/scripts/build-wasm.sh`.
 2. Reload the app (Vite hot-reload handles frontend changes automatically; WASM changes require a manual reload).
 3. Capture new Graditone screenshot: `cycle-01-graditone-after.png`.
 4. Create new side-by-side: `cycle-01-comparison.png`.
