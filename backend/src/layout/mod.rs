@@ -1848,6 +1848,8 @@ fn position_glyphs_for_staff(
         let mut chord_x_offsets: Vec<f32> = vec![0.0; notes_in_range.len()];
         let mut chord_secondary_indices: std::collections::HashSet<usize> =
             std::collections::HashSet::new();
+        // Chord stems for non-beamed chords: (x, y_top, y_bottom, event_index)
+        let mut chord_stem_data: Vec<(f32, f32, f32, usize)> = Vec::new();
 
         for indices in chord_tick_to_indices.values() {
             if indices.len() < 2 {
@@ -1872,22 +1874,61 @@ fn position_glyphs_for_staff(
                     da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .unwrap();
-            let chord_stem_down =
-                chord_note_y_positions[most_extreme] <= chord_stem_middle_y;
+            let chord_stem_down = chord_note_y_positions[most_extreme] <= chord_stem_middle_y;
 
-            // Designate the source note (keeps the combined note+stem glyph):
+            // Anchor note for stem attachment (non-displaced):
             //   Stem-up  → lowest note (highest y) = sorted[0]
             //   Stem-down → highest note (lowest y) = sorted.last()
-            let source_idx = if chord_stem_down {
+            let anchor_idx = if chord_stem_down {
                 *sorted.last().unwrap()
             } else {
                 sorted[0]
             };
 
-            // Non-source, non-beamed notes become secondary (bare notehead only).
-            for &idx in &sorted {
-                if idx != source_idx && !beamed_note_indices.contains(&idx) {
+            // Check if chord needs an explicit stem pseudo-glyph.
+            // Quarter notes and longer (except whole notes) have stems but are not beamed.
+            let chord_duration = notes_in_range[sorted[0]].2;
+            let needs_explicit_stem = (960..3840).contains(&chord_duration);
+            let any_beamed = sorted.iter().any(|idx| beamed_note_indices.contains(idx));
+
+            if needs_explicit_stem && !any_beamed {
+                // ALL chord members use bare noteheads so every head is the same size.
+                for &idx in &sorted {
                     chord_secondary_indices.insert(idx);
+                }
+
+                // Compute stem geometry
+                let visual_y_offset = 0.5 * units_per_space;
+                let notehead_width = stems::Stem::NOTEHEAD_WIDTH;
+                let bottom_y = chord_note_y_positions[sorted[0]] + visual_y_offset;
+                let top_y = chord_note_y_positions[*sorted.last().unwrap()] + visual_y_offset;
+
+                if chord_stem_down {
+                    // Stem on left side of highest (anchor) note, extends below lowest note
+                    let stem_x = horizontal_offsets[anchor_idx] - notehead_width;
+                    chord_stem_data.push((
+                        stem_x,
+                        top_y,
+                        bottom_y + stems::Stem::STEM_LENGTH,
+                        anchor_idx,
+                    ));
+                } else {
+                    // Stem on right side of lowest (anchor) note, extends above highest note
+                    let stem_x = horizontal_offsets[anchor_idx] + notehead_width;
+                    chord_stem_data.push((
+                        stem_x,
+                        top_y - stems::Stem::STEM_LENGTH,
+                        bottom_y,
+                        anchor_idx,
+                    ));
+                }
+            } else {
+                // For beamed chords or short-duration chords: only non-anchor notes
+                // become secondary (anchor keeps its combined note+stem glyph).
+                for &idx in &sorted {
+                    if idx != anchor_idx && !beamed_note_indices.contains(&idx) {
+                        chord_secondary_indices.insert(idx);
+                    }
                 }
             }
 
@@ -1937,6 +1978,33 @@ fn position_glyphs_for_staff(
         );
 
         all_glyphs.extend(glyphs);
+
+        // Generate explicit stem pseudo-glyphs for non-beamed chords.
+        // These replace the built-in stem that combined note glyphs normally provide.
+        for &(stem_x, y_top, y_bottom, event_index) in &chord_stem_data {
+            let stem_height = y_bottom - y_top;
+            let stem_glyph = Glyph {
+                codepoint: '\u{0000}'.to_string(),
+                position: Point {
+                    x: stem_x,
+                    y: y_top,
+                },
+                bounding_box: BoundingBox {
+                    x: stem_x - (stems::Stem::STEM_THICKNESS / 2.0),
+                    y: y_top,
+                    width: stems::Stem::STEM_THICKNESS,
+                    height: stem_height,
+                },
+                source_reference: SourceReference {
+                    instrument_id: instrument_id.to_string(),
+                    staff_index,
+                    voice_index,
+                    event_index,
+                },
+                font_size: None,
+            };
+            all_glyphs.push(stem_glyph);
+        }
 
         // Position accidentals based on key signature and measure context
         let accidental_glyphs = positioner::position_note_accidentals(
