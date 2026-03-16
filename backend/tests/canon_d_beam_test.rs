@@ -55,7 +55,12 @@ fn all_beams_inside_system_bounding_box() {
                             if glyph_min_y < sys_bb_y - 0.1 || glyph_max_y > sys_y_end + 0.1 {
                                 outside.push(format!(
                                     "Sys {} Staff {}: glyph y={:.1}-{:.1}, bbox y={:.1}-{:.1}",
-                                    sys_idx, staff_idx, glyph_min_y, glyph_max_y, sys_bb_y, sys_y_end
+                                    sys_idx,
+                                    staff_idx,
+                                    glyph_min_y,
+                                    glyph_max_y,
+                                    sys_bb_y,
+                                    sys_y_end
                                 ));
                             }
                         }

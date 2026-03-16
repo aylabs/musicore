@@ -889,9 +889,13 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     } else if next_start_repeat {
                         BarLineType::RepeatStart
                     } else {
-                        let is_last = measure_infos.last().map(|mi| mi.end_tick)
-                            == Some(m.end_tick);
-                        if is_last { BarLineType::Final } else { BarLineType::Single }
+                        let is_last =
+                            measure_infos.last().map(|mi| mi.end_tick) == Some(m.end_tick);
+                        if is_last {
+                            BarLineType::Final
+                        } else {
+                            BarLineType::Single
+                        }
                     }
                 }
                 None => BarLineType::Single,
@@ -901,14 +905,18 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             let top_y = staff_group.staves.first().unwrap().staff_lines[0].y_position;
             let bottom_y = staff_group.staves.last().unwrap().staff_lines[4].y_position;
             let segments = create_bar_line_segments(content_width, top_y, bottom_y, &end_bar_type);
-            let dots = compute_repeat_dots(content_width, top_y, config.units_per_space, &end_bar_type);
+            let dots =
+                compute_repeat_dots(content_width, top_y, config.units_per_space, &end_bar_type);
             // For multi-staff groups, also add repeat dots for lower staves.
             let mut all_dots = dots;
             if staff_group.staves.len() >= 2 {
                 for staff in &staff_group.staves[1..] {
                     let staff_top = staff.staff_lines[0].y_position;
                     all_dots.extend(compute_repeat_dots(
-                        content_width, staff_top, config.units_per_space, &end_bar_type,
+                        content_width,
+                        staff_top,
+                        config.units_per_space,
+                        &end_bar_type,
                     ));
                 }
             }
@@ -1459,7 +1467,8 @@ fn extract_instruments(
                     if let Some(events_array) = staff["staff_structural_events"].as_array() {
                         for ev in events_array {
                             if let Some(ks_obj) = ev.get("KeySignature") {
-                                let tick = ks_obj["tick"].as_u64()
+                                let tick = ks_obj["tick"]
+                                    .as_u64()
                                     .or_else(|| ks_obj["tick"]["value"].as_u64())
                                     .unwrap_or(0) as u32;
                                 let sharps = ks_obj["sharps"].as_i64().unwrap_or(0) as i8;
@@ -1477,7 +1486,8 @@ fn extract_instruments(
                     let mut clef_events: Vec<(u32, String)> = Vec::new();
                     if let Some(events_array) = staff["clef_events"].as_array() {
                         for ev in events_array {
-                            let tick = ev["tick"].as_u64()
+                            let tick = ev["tick"]
+                                .as_u64()
                                 .or_else(|| ev["tick"]["value"].as_u64())
                                 .unwrap_or(0) as u32;
                             let clef_name = ev["clef"].as_str().unwrap_or("Treble").to_string();
@@ -1488,13 +1498,12 @@ fn extract_instruments(
                     if let Some(events_array) = staff["staff_structural_events"].as_array() {
                         for ev in events_array {
                             if let Some(clef_obj) = ev.get("Clef") {
-                                let tick = clef_obj["tick"].as_u64()
+                                let tick = clef_obj["tick"]
+                                    .as_u64()
                                     .or_else(|| clef_obj["tick"]["value"].as_u64())
                                     .unwrap_or(0) as u32;
-                                let clef_name = clef_obj["clef"]
-                                    .as_str()
-                                    .unwrap_or("Treble")
-                                    .to_string();
+                                let clef_name =
+                                    clef_obj["clef"].as_str().unwrap_or("Treble").to_string();
                                 clef_events.push((tick, clef_name));
                             }
                         }

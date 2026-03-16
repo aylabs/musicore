@@ -101,6 +101,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - None — content is static inline JSX; no IndexedDB or network required (001-docs-plugin)
 - TypeScript ~5.9 (frontend), Python 3.x (generation script) + React 19, Vite 7, Vitest 4 (frontend); Python stdlib only — `zipfile`, `xml.etree.ElementTree` (generator) (001-scales-generation)
 - Static `.mxl` files committed to `scores/scales/` and served via existing `frontend/public/scores → ../../scores` symlink (001-scales-generation)
+- Rust 1.x stable (layout engine, WASM); TypeScript 5.x / React 18 (renderer) (050-fix-layout-preloaded-scores)
+- Score files in `scores/*.mxl`; review artifacts in `specs/050-fix-layout-preloaded-scores/reviews/`; reference images in `specs/050-fix-layout-preloaded-scores/references/` (050-fix-layout-preloaded-scores)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -121,9 +123,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 050-fix-layout-preloaded-scores: Added Rust 1.x stable (layout engine, WASM); TypeScript 5.x / React 18 (renderer)
 - 001-scales-generation: Added TypeScript ~5.9 (frontend), Python 3.x (generation script) + React 19, Vite 7, Vitest 4 (frontend); Python stdlib only — `zipfile`, `xml.etree.ElementTree` (generator)
 - 001-docs-plugin: Added TypeScript 5.x / React 18+ (existing frontend stack) + React (existing), Vitest + Testing Library (existing test stack)
-- 047-repeat-volta-playback: Added Rust 2024 edition (backend/WASM), TypeScript strict (frontend) + quick-xml 0.31 (MusicXML parsing), serde 1.0 with `default` feature (JSON serialization/deserialization), wasm-bindgen 0.2 (WASM bindings), Tone.js (frontend audio scheduling), Vitest (frontend unit tests)
 
 
 <!-- MANUAL ADDITIONS START -->

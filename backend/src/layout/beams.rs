@@ -1561,9 +1561,9 @@ mod tests {
     #[test]
     fn test_group_by_time_sig_3_8_one_beam_group() {
         let notes = vec![
-            make_note(0, 480),    // beat 1
-            make_note(480, 480),  // beat 2
-            make_note(960, 480),  // beat 3 — must stay in the SAME group
+            make_note(0, 480),   // beat 1
+            make_note(480, 480), // beat 2
+            make_note(960, 480), // beat 3 — must stay in the SAME group
         ];
 
         let groups = group_beamable_by_time_signature(&notes, 3, 8);

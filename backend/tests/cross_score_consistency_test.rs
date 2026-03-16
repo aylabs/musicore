@@ -53,8 +53,12 @@ fn collect_metrics(layout: &serde_json::Value) -> ScoreMetrics {
                     let cp = glyph["codepoint"].as_str().unwrap_or("");
                     for ch in cp.chars() {
                         let code = ch as u32;
-                        if (0xE050..=0xE07F).contains(&code) { has_clef = true; }
-                        if (0xE080..=0xE089).contains(&code) { has_time_sig = true; }
+                        if (0xE050..=0xE07F).contains(&code) {
+                            has_clef = true;
+                        }
+                        if (0xE080..=0xE089).contains(&code) {
+                            has_time_sig = true;
+                        }
                     }
                 }
                 // Glyph run font sizes + noteheads + stems
@@ -132,10 +136,15 @@ fn consistent_font_size_across_scores() {
             assert!(
                 (*fs - 80.0).abs() < 0.01,
                 "{}: unexpected font_size {:.1}, expected 80.0",
-                name, fs
+                name,
+                fs
             );
         }
-        assert!(!metrics.font_sizes.is_empty(), "{}: no glyph runs found", name);
+        assert!(
+            !metrics.font_sizes.is_empty(),
+            "{}: no glyph runs found",
+            name
+        );
     }
 }
 
@@ -156,7 +165,11 @@ fn all_scores_have_essential_glyphs() {
         let metrics = collect_metrics(&layout);
 
         assert!(metrics.has_clef, "{}: missing clef glyph", name);
-        assert!(metrics.has_time_sig, "{}: missing time signature glyph", name);
+        assert!(
+            metrics.has_time_sig,
+            "{}: missing time signature glyph",
+            name
+        );
         assert!(metrics.has_noteheads, "{}: missing notehead glyphs", name);
         assert!(metrics.system_count > 0, "{}: no systems produced", name);
     }
@@ -185,7 +198,8 @@ fn consistent_stem_lengths_across_scores() {
             assert!(
                 *sl >= 49.0,
                 "{}: stem length {:.1} below minimum 50.0",
-                name, sl
+                name,
+                sl
             );
         }
     }
@@ -207,20 +221,26 @@ fn consistent_barline_widths_across_scores() {
         let layout = layout_score(path);
         let metrics = collect_metrics(&layout);
 
-        assert!(!metrics.thin_barline_widths.is_empty(), "{}: no thin barlines found", name);
+        assert!(
+            !metrics.thin_barline_widths.is_empty(),
+            "{}: no thin barlines found",
+            name
+        );
 
         for w in &metrics.thin_barline_widths {
             assert!(
                 (*w - 1.5).abs() < 0.01,
                 "{}: thin barline width {:.2}, expected 1.5",
-                name, w
+                name,
+                w
             );
         }
         for w in &metrics.thick_barline_widths {
             assert!(
                 (*w - 4.0).abs() < 0.01,
                 "{}: thick barline width {:.2}, expected 4.0",
-                name, w
+                name,
+                w
             );
         }
     }
@@ -263,7 +283,13 @@ fn bounding_boxes_contain_all_glyphs_across_scores() {
                                 if glyph_min < sys_y - 0.1 || glyph_max > sys_y_end + 0.1 {
                                     outside.push(format!(
                                         "{} sys{} staff{}: y={:.1}-{:.1} outside {:.1}-{:.1}",
-                                        name, sys_idx, staff_idx, glyph_min, glyph_max, sys_y, sys_y_end
+                                        name,
+                                        sys_idx,
+                                        staff_idx,
+                                        glyph_min,
+                                        glyph_max,
+                                        sys_y,
+                                        sys_y_end
                                     ));
                                 }
                             }
@@ -306,9 +332,7 @@ fn grand_staff_measure_barlines_are_joined() {
                     continue;
                 }
 
-                let bottom_y = staves
-                    .last()
-                    .unwrap()["staff_lines"]
+                let bottom_y = staves.last().unwrap()["staff_lines"]
                     .as_array()
                     .unwrap()
                     .last()
@@ -318,7 +342,8 @@ fn grand_staff_measure_barlines_are_joined() {
 
                 // staves[0] barlines must span to bottom_y
                 let empty_barlines = vec![];
-                let first_staves_barlines = staves[0]["bar_lines"].as_array().unwrap_or(&empty_barlines);
+                let first_staves_barlines =
+                    staves[0]["bar_lines"].as_array().unwrap_or(&empty_barlines);
                 for bl in first_staves_barlines {
                     if let Some(segments) = bl["segments"].as_array() {
                         for seg in segments {
@@ -340,7 +365,10 @@ fn grand_staff_measure_barlines_are_joined() {
                     if !bls.is_empty() {
                         violations.push(format!(
                             "{} sys{} staff{}: expected no barlines after merge, found {}",
-                            name, sys_idx, staff_idx, bls.len()
+                            name,
+                            sys_idx,
+                            staff_idx,
+                            bls.len()
                         ));
                     }
                 }
