@@ -1896,7 +1896,11 @@ fn position_glyphs_for_staff(
             let any_beamed = sorted.iter().any(|idx| beamed_note_indices.contains(idx));
 
             // Scale factor to make bare noteheads match combined-glyph notehead widths.
-            let notehead_scale: f32 = if chord_duration >= 1920 {
+            // Whole notes (duration >= 3840) use noteheadWhole in both chord and standalone
+            // paths — no combined glyph exists — so no scaling is needed (scale = 1.0).
+            let notehead_scale: f32 = if chord_duration >= 3840 {
+                1.0 // noteheadWhole — same glyph in chord and standalone
+            } else if chord_duration >= 1920 {
                 345.0 / 300.0 // noteheadHalf → matches noteHalfDown notehead width
             } else {
                 332.0 / 295.0 // noteheadBlack → matches noteQuarterDown notehead width
