@@ -53,6 +53,10 @@ fn measure_end_tick(measure_index: usize, pickup_ticks: u32, ticks_per_measure: 
     }
 }
 
+/// Notes grouped by MusicXML voice number, paired with rest events.
+/// Used as the return type of `collect_notes` / `collect_notes_for_staff`.
+type NotesByVoice = (HashMap<usize, Vec<Note>>, Vec<RestEvent>);
+
 /// Voice distributor for resolving overlapping notes by splitting into multiple voices
 ///
 /// Uses deterministic algorithm: sort notes by (start_tick, pitch), then assign
@@ -786,7 +790,7 @@ impl MusicXMLConverter {
     fn collect_notes(
         measures: &[MeasureData],
         context: &mut ImportContext,
-    ) -> Result<(HashMap<usize, Vec<Note>>, Vec<RestEvent>), ImportError> {
+    ) -> Result<NotesByVoice, ImportError> {
         let mut notes_by_voice: HashMap<usize, Vec<Note>> = HashMap::new();
         let mut rests = Vec::new();
         let mut timing_context = TimingContext::new();
@@ -912,7 +916,7 @@ impl MusicXMLConverter {
         measures: &[MeasureData],
         staff_num: usize,
         context: &mut ImportContext,
-    ) -> Result<(HashMap<usize, Vec<Note>>, Vec<RestEvent>), ImportError> {
+    ) -> Result<NotesByVoice, ImportError> {
         let mut notes_by_voice: HashMap<usize, Vec<Note>> = HashMap::new();
         let mut rests = Vec::new();
         let mut timing_context = TimingContext::new();
