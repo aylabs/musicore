@@ -687,16 +687,18 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                                 note.start_tick,
                                 note.duration_ticks,
                                 note.spelling,
+                                note.staccato,
+                                note.dot_count,
                             )
                         })
                         .collect();
                     let offsets: Vec<f32> = notes_in_range
                         .iter()
-                        .map(|(_, tick, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
+                        .map(|(_, tick, _, _, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
                         .collect();
                     let ledger_clefs: Vec<&str> = notes_in_range
                         .iter()
-                        .map(|(_, tick, _, _)| staff_data.get_clef_at_tick(*tick))
+                        .map(|(_, tick, _, _, _, _)| staff_data.get_clef_at_tick(*tick))
                         .collect();
                     ledger_lines.extend(positioner::position_ledger_lines(
                         &notes_in_range,
@@ -707,6 +709,128 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     ));
                 }
 
+                // Compute notation dots (augmentation dots and staccato dots)
+                let mut notation_dots = Vec::new();
+                let dot_radius = 0.18 * config.units_per_space;
+                let staff_middle_y = staff_vertical_offset + 1.5 * config.units_per_space;
+                let num_voices_for_dots = staff_data.voices.len();
+                for (dot_voice_idx, voice) in staff_data.voices.iter().enumerate() {
+                    // Multi-voice stem rule for dot placement
+                    let forced_stem_down_dots: Option<bool> = if num_voices_for_dots > 1 {
+                        Some(dot_voice_idx > 0)
+                    } else {
+                        None
+                    };
+                    let voice_notes: Vec<&NoteEvent> = voice
+                        .notes
+                        .iter()
+                        .filter(|n| {
+                            n.start_tick >= system.tick_range.start_tick
+                                && n.start_tick < system.tick_range.end_tick
+                        })
+                        .collect();
+                    // Group notes by tick for chord handling
+                    let mut tick_groups: std::collections::BTreeMap<u32, Vec<&NoteEvent>> =
+                        std::collections::BTreeMap::new();
+                    for note in &voice_notes {
+                        tick_groups.entry(note.start_tick).or_default().push(note);
+                    }
+                    for (_tick, group) in &tick_groups {
+                        let clef = staff_data.get_clef_at_tick(*_tick);
+                        // Compute y positions for all notes in this chord/tick
+                        let mut note_ys: Vec<(f32, &NoteEvent)> = group
+                            .iter()
+                            .map(|n| {
+                                let y = positioner::pitch_to_y_with_spelling(
+                                    n.pitch,
+                                    clef,
+                                    config.units_per_space,
+                                    n.spelling,
+                                ) + staff_vertical_offset;
+                                (y, *n)
+                            })
+                            .collect();
+                        note_ys.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+                        // Determine stem direction for the chord/note
+                        // Multi-voice override takes priority; otherwise use standard rule
+                        let stem_down = if let Some(forced) = forced_stem_down_dots {
+                            forced
+                        } else {
+                            let most_extreme_y = note_ys
+                                .iter()
+                                .max_by(|a, b| {
+                                    let da = (a.0 - staff_middle_y).abs();
+                                    let db = (b.0 - staff_middle_y).abs();
+                                    da.partial_cmp(&db).unwrap()
+                                })
+                                .map(|(y, _)| *y)
+                                .unwrap_or(staff_middle_y);
+                            most_extreme_y <= staff_middle_y
+                        };
+
+                        // Augmentation dots: placed to the right of each notehead
+                        for &(y_raw, note) in &note_ys {
+                            if note.dot_count > 0 {
+                                let note_x = *note_positions.get(&note.start_tick).unwrap_or(&0.0);
+                                // Shift y to visual center (pitch_to_y has -0.5*ups text offset)
+                                let visual_y = y_raw + 0.5 * config.units_per_space;
+                                // If note sits on a staff line, shift dot up to nearest space
+                                let dot_y = shift_dot_to_space(
+                                    visual_y,
+                                    staff_vertical_offset,
+                                    config.units_per_space,
+                                );
+                                let notehead_half_w = stems::Stem::NOTEHEAD_WIDTH;
+                                for d in 0..note.dot_count {
+                                    let gap = 0.4 * config.units_per_space;
+                                    let dot_spacing = 0.6 * config.units_per_space;
+                                    notation_dots.push(types::NotationDot {
+                                        x: note_x + notehead_half_w + gap + d as f32 * dot_spacing,
+                                        y: dot_y,
+                                        radius: dot_radius,
+                                    });
+                                }
+                            }
+                        }
+
+                        // Staccato dot: one per chord, placed on the notehead side (opposite stem)
+                        let has_staccato = group.iter().any(|n| n.staccato);
+                        if has_staccato {
+                            // Anchor on the notehead side (opposite the stem)
+                            let (anchor_y_raw, anchor_note) = if stem_down {
+                                // Stem down → staccato above the highest note (lowest y)
+                                note_ys[0]
+                            } else {
+                                // Stem up → staccato below the lowest note (highest y)
+                                *note_ys.last().unwrap()
+                            };
+                            let note_x =
+                                *note_positions.get(&anchor_note.start_tick).unwrap_or(&0.0);
+                            let visual_y = anchor_y_raw + 0.5 * config.units_per_space;
+                            let staccato_offset = 1.2 * config.units_per_space;
+                            let staccato_y = if stem_down {
+                                // Stem down → dot above notehead (negative direction)
+                                visual_y - staccato_offset
+                            } else {
+                                // Stem up → dot below notehead (positive direction)
+                                visual_y + staccato_offset
+                            };
+                            // Shift to space if on a line
+                            let staccato_y = shift_dot_to_space(
+                                staccato_y,
+                                staff_vertical_offset,
+                                config.units_per_space,
+                            );
+                            notation_dots.push(types::NotationDot {
+                                x: note_x,
+                                y: staccato_y,
+                                radius: dot_radius,
+                            });
+                        }
+                    }
+                }
+
                 // Create staff with batched glyphs and structural glyphs
                 let staff = Staff {
                     staff_lines,
@@ -714,6 +838,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     structural_glyphs,
                     bar_lines,
                     ledger_lines,
+                    notation_dots,
                 };
 
                 staves.push(staff);
@@ -1278,11 +1403,11 @@ pub(super) struct RestLayoutEvent {
     voice: usize,
 }
 
-/// Note data tuple: (pitch, start_tick, duration_ticks, spelling)
+/// Note data tuple: (pitch, start_tick, duration_ticks, spelling, staccato, dot_count)
 ///
 /// Spelling is an optional (step_letter, alter) pair from MusicXML,
 /// e.g. ('E', -1) for Eb, ('D', 1) for D#.
-pub type NoteData = (u8, u32, u32, Option<(char, i8)>);
+pub type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8);
 
 /// Represents a single note event
 #[derive(Debug, Clone)]
@@ -1294,6 +1419,10 @@ struct NoteEvent {
     spelling: Option<(char, i8)>,
     /// Beam annotations from MusicXML import (empty = needs algorithmic grouping)
     beam_info: Vec<(u8, String)>, // (beam_level, beam_type_string)
+    /// Staccato articulation
+    staccato: bool,
+    /// Number of augmentation dots (0, 1, or 2)
+    dot_count: u8,
 }
 
 /// Extract instruments from CompiledScore JSON
@@ -1414,6 +1543,9 @@ fn extract_instruments(
                                             }
                                             beams
                                         },
+                                        staccato: note_item["staccato"].as_bool().unwrap_or(false),
+                                        dot_count: note_item["dot_count"].as_u64().unwrap_or(0)
+                                            as u8,
                                     });
                                 }
                             }
@@ -1672,8 +1804,16 @@ fn position_glyphs_for_staff(
     measure_x_bounds: &HashMap<u32, (f32, f32)>,
 ) -> Vec<Glyph> {
     let mut all_glyphs = Vec::new();
+    let num_voices = staff_data.voices.len();
 
     for (voice_index, voice) in staff_data.voices.iter().enumerate() {
+        // Multi-voice stem rule: voice 0 always stems up, voice 1+ always stems down
+        let forced_stem_down: Option<bool> = if num_voices > 1 {
+            Some(voice_index > 0)
+        } else {
+            None
+        };
+
         // Filter notes that fall within this system's tick range
         let notes_in_range: Vec<NoteData> = voice
             .notes
@@ -1687,6 +1827,8 @@ fn position_glyphs_for_staff(
                     note.start_tick,
                     note.duration_ticks,
                     note.spelling,
+                    note.staccato,
+                    note.dot_count,
                 )
             })
             .collect();
@@ -1698,7 +1840,7 @@ fn position_glyphs_for_staff(
         // Use pre-computed positions from unified spacing (Principle VI)
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
+            .map(|(_, start_tick, _, _, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
             .collect();
 
         // Position noteheads using positioner module
@@ -1714,7 +1856,7 @@ fn position_glyphs_for_staff(
         // Compute per-note clef types based on active clef at each note's tick
         let note_clefs: Vec<&str> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _, _)| staff_data.get_clef_at_tick(*start_tick))
+            .map(|(_, start_tick, _, _, _, _)| staff_data.get_clef_at_tick(*start_tick))
             .collect();
 
         // Build beamable notes with beam info for beam group analysis
@@ -1786,7 +1928,7 @@ fn position_glyphs_for_staff(
         // Map tick → ALL note indices at that tick (chords have multiple notes per tick)
         let mut tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, duration_ticks, _)) in notes_in_range.iter().enumerate() {
+        for (idx, (_, start_tick, duration_ticks, _, _, _)) in notes_in_range.iter().enumerate() {
             if *duration_ticks <= 480 {
                 tick_to_indices.entry(*start_tick).or_default().push(idx);
             }
@@ -1819,7 +1961,7 @@ fn position_glyphs_for_staff(
         let chord_note_y_positions: Vec<f32> = notes_in_range
             .iter()
             .enumerate()
-            .map(|(i, (pitch, _, _, spelling))| {
+            .map(|(i, (pitch, _, _, spelling, _, _))| {
                 positioner::pitch_to_y_with_spelling(
                     *pitch,
                     note_clefs[i],
@@ -1836,7 +1978,7 @@ fn position_glyphs_for_staff(
         // Build tick → note-index map for ALL notes (not just beamed).
         let mut chord_tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, _, _)) in notes_in_range.iter().enumerate() {
+        for (idx, (_, start_tick, _, _, _, _)) in notes_in_range.iter().enumerate() {
             chord_tick_to_indices
                 .entry(*start_tick)
                 .or_default()
@@ -1869,16 +2011,21 @@ fn position_glyphs_for_staff(
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            // Chord stem direction: based on whichever note is furthest from the middle line.
-            let most_extreme = *sorted
-                .iter()
-                .max_by(|&&a, &&b| {
-                    let da = (chord_note_y_positions[a] - chord_stem_middle_y).abs();
-                    let db = (chord_note_y_positions[b] - chord_stem_middle_y).abs();
-                    da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .unwrap();
-            let chord_stem_down = chord_note_y_positions[most_extreme] <= chord_stem_middle_y;
+            // Chord stem direction: forced by voice in multi-voice, otherwise
+            // based on whichever note is furthest from the middle line.
+            let chord_stem_down = if let Some(forced) = forced_stem_down {
+                forced
+            } else {
+                let most_extreme = *sorted
+                    .iter()
+                    .max_by(|&&a, &&b| {
+                        let da = (chord_note_y_positions[a] - chord_stem_middle_y).abs();
+                        let db = (chord_note_y_positions[b] - chord_stem_middle_y).abs();
+                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .unwrap();
+                chord_note_y_positions[most_extreme] <= chord_stem_middle_y
+            };
 
             // Anchor note for stem attachment (non-displaced):
             //   Stem-up  → lowest note (highest y) = sorted[0]
@@ -1992,6 +2139,7 @@ fn position_glyphs_for_staff(
             staff_vertical_offset,
             &beamed_note_indices,
             &chord_scale_map,
+            forced_stem_down,
         );
 
         all_glyphs.extend(glyphs);
@@ -2054,8 +2202,13 @@ fn position_glyphs_for_staff(
                 continue; // Skip degenerate groups (single note → use flag)
             }
 
-            // T033: Compute uniform stem direction for the group using majority rule
-            let group_direction = beams::compute_group_stem_direction(&group.notes, staff_middle_y);
+            // T033: Compute uniform stem direction for the group.
+            // Multi-voice override takes priority; otherwise use majority rule.
+            let group_direction = if let Some(forced) = forced_stem_down {
+                if forced { stems::StemDirection::Down } else { stems::StemDirection::Up }
+            } else {
+                beams::compute_group_stem_direction(&group.notes, staff_middle_y)
+            };
 
             let notehead_width = stems::Stem::NOTEHEAD_WIDTH;
 
@@ -2354,6 +2507,22 @@ fn compute_staff_note_extents(
     }
 
     (min_y, max_y)
+}
+
+/// Shift a dot y-coordinate so it sits in a staff space (not on a line).
+///
+/// Staff lines are at `staff_offset + n * units_per_space` for n=0..4.
+/// If y is within a small tolerance of a line, nudge it up by half a space.
+fn shift_dot_to_space(y: f32, staff_offset: f32, units_per_space: f32) -> f32 {
+    let relative = y - staff_offset;
+    let line_index = (relative / units_per_space).round();
+    let on_line = (relative - line_index * units_per_space).abs() < 0.15 * units_per_space;
+    if on_line && (0.0..=4.0).contains(&line_index) {
+        // Shift up (visually) by half a space — move towards the nearest space above the line
+        y - 0.5 * units_per_space
+    } else {
+        y
+    }
 }
 
 /// Create staff lines for a single staff
@@ -2984,6 +3153,7 @@ mod tests {
             structural_glyphs: vec![],
             bar_lines: vec![],
             ledger_lines: vec![],
+            notation_dots: vec![],
         };
 
         let staff_1 = Staff {
@@ -2992,6 +3162,7 @@ mod tests {
             structural_glyphs: vec![],
             bar_lines: vec![],
             ledger_lines: vec![],
+            notation_dots: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -3044,6 +3215,7 @@ mod tests {
             structural_glyphs: vec![],
             bar_lines: vec![],
             ledger_lines: vec![],
+            notation_dots: vec![],
         };
 
         let staff_1 = Staff {
@@ -3052,6 +3224,7 @@ mod tests {
             structural_glyphs: vec![],
             bar_lines: vec![],
             ledger_lines: vec![],
+            notation_dots: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -3746,6 +3919,8 @@ mod tests {
                     duration_ticks: 960,
                     spelling: None,
                     beam_info: vec![],
+                    staccato: false,
+                    dot_count: 0,
                 }],
                 rests: vec![],
             }],
@@ -3787,6 +3962,8 @@ mod tests {
                     duration_ticks: 960,
                     spelling: None,
                     beam_info: vec![],
+                    staccato: false,
+                    dot_count: 0,
                 }],
                 rests: vec![],
             }],
