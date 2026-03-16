@@ -873,8 +873,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         let end_bar_type = {
             let last_measure = measure_infos
                 .iter()
-                .filter(|m| m.end_tick == system.tick_range.end_tick)
-                .last();
+                .rfind(|m| m.end_tick == system.tick_range.end_tick);
             match last_measure {
                 Some(m) => {
                     let next_start_repeat = measure_infos
@@ -922,7 +921,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             }
             let end_barline = BarLine {
                 segments,
-                bar_type: end_bar_type.clone(),
+                bar_type: end_bar_type,
                 dots: all_dots,
             };
             staff_group.staves[0].bar_lines.push(end_barline);
