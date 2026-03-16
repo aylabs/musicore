@@ -1588,8 +1588,6 @@ struct NoteEvent {
     note_id: String,
     /// If this note starts/continues a tie, the ID of the next tied note
     tie_next: Option<String>,
-    /// True if this note is a tie continuation (no new attack)
-    is_tie_continuation: bool,
 }
 
 /// Extract instruments from CompiledScore JSON
@@ -1717,9 +1715,6 @@ fn extract_instruments(
                                         tie_next: note_item["tie_next"]
                                             .as_str()
                                             .map(|s| s.to_string()),
-                                        is_tie_continuation: note_item["is_tie_continuation"]
-                                            .as_bool()
-                                            .unwrap_or(false),
                                     });
                                 }
                             }
@@ -4105,7 +4100,6 @@ mod tests {
                     dot_count: 0,
                     note_id: String::new(),
                     tie_next: None,
-                    is_tie_continuation: false,
                 }],
                 rests: vec![],
             }],
@@ -4151,7 +4145,6 @@ mod tests {
                     dot_count: 0,
                     note_id: String::new(),
                     tie_next: None,
-                    is_tie_continuation: false,
                 }],
                 rests: vec![],
             }],
