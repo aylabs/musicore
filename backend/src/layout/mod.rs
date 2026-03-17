@@ -748,7 +748,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                             // Build beamable notes for beam group analysis
                             let beamable_raw: Vec<beams::BeamableNote> = voice_notes
                                 .iter()
-                                .filter(|n| n.duration_ticks <= 480)
+                                .filter(|n| n.duration_ticks <= 480 || !n.beam_info.is_empty())
                                 .map(|n| {
                                     let clef = staff_data.get_clef_at_tick(n.start_tick);
                                     let y = positioner::pitch_to_y_with_spelling(
@@ -2112,7 +2112,11 @@ fn position_glyphs_for_staff(
         let beamable_for_analysis_raw: Vec<beams::BeamableNote> = voice_notes_in_range
             .iter()
             .enumerate()
-            .filter(|(_, note)| note.duration_ticks <= 480) // Only eighth notes and shorter
+            .filter(|(_, note)| {
+                // Include eighth notes and shorter, plus any note with explicit
+                // MusicXML beam annotations (e.g. dotted eighths in beam groups)
+                note.duration_ticks <= 480 || !note.beam_info.is_empty()
+            })
             .map(|(i, note)| {
                 let notehead_x = horizontal_offsets[i];
                 let notehead_y = positioner::pitch_to_y(note.pitch, note_clefs[i], units_per_space)
@@ -2177,8 +2181,13 @@ fn position_glyphs_for_staff(
         // Map tick → ALL note indices at that tick (chords have multiple notes per tick)
         let mut tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, duration_ticks, _, _, _)) in notes_in_range.iter().enumerate() {
-            if *duration_ticks <= 480 {
+        for (idx, note_data) in notes_in_range.iter().enumerate() {
+            let (_, start_tick, duration_ticks, _, _, _) = note_data;
+            // Include notes ≤ eighth duration or with explicit beam annotations
+            let has_beam = voice_notes_in_range
+                .iter()
+                .any(|n| n.start_tick == *start_tick && !n.beam_info.is_empty());
+            if *duration_ticks <= 480 || has_beam {
                 tick_to_indices.entry(*start_tick).or_default().push(idx);
             }
         }
