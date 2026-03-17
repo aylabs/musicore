@@ -1128,8 +1128,13 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                                 );
 
                                 // Arc from left edge of system to target note
-                                let arc_start_x = unified_left_margin;
                                 let arc_end_x = end_x - notehead_half_w;
+                                // Start before note area; if target is the first note,
+                                // ensure the arc has a minimum visible span.
+                                let incoming_offset = 3.0 * notehead_half_w;
+                                let arc_start_x = (unified_left_margin - incoming_offset)
+                                    .min(arc_end_x - 20.0)
+                                    .max(0.0);
                                 let arc_y = end_y;
 
                                 let span_x = (arc_end_x - arc_start_x).max(1.0);
@@ -1271,8 +1276,12 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                                     // Cross-system incoming slur
                                     let (end_x, end_y, _ep, _et) =
                                         *note_lookup.get(slur_target_id).unwrap();
-                                    let arc_start_x = unified_left_margin;
                                     let arc_end_x = end_x - notehead_half_w;
+                                    // Start before note area; ensure minimum visible span.
+                                    let incoming_offset = 3.0 * notehead_half_w;
+                                    let arc_start_x = (unified_left_margin - incoming_offset)
+                                        .min(arc_end_x - 20.0)
+                                        .max(0.0);
                                     let span_x = (arc_end_x - arc_start_x).max(1.0);
                                     let arc_height = span_x.mul_add(0.12, 0.0).clamp(6.0, 40.0);
                                     let y_offset = if above { -arc_height } else { arc_height };
