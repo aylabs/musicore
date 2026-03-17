@@ -961,6 +961,37 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                         }
                     }
 
+                    // Helper: determine tie arc direction (above/below notehead)
+                    let determine_tie_above =
+                        |pitch: u8,
+                         start_tick: u32,
+                         spelling: Option<(char, i8)>,
+                         tied_pitches: &std::collections::HashMap<u32, Vec<u8>>|
+                         -> bool {
+                            if let Some(pitches) = tied_pitches.get(&start_tick) {
+                                if pitches.len() > 1 {
+                                    let max_pitch = pitches.iter().copied().max().unwrap_or(0);
+                                    let min_pitch = pitches.iter().copied().min().unwrap_or(0);
+                                    if pitch == max_pitch {
+                                        return true;
+                                    } else if pitch == min_pitch {
+                                        return false;
+                                    }
+                                }
+                            }
+                            // Single tie or middle note: stem direction
+                            let clef = staff_data.get_clef_at_tick(start_tick);
+                            let y_raw = positioner::pitch_to_y_with_spelling(
+                                pitch,
+                                clef,
+                                config.units_per_space,
+                                spelling,
+                            ) + staff_vertical_offset;
+                            y_raw <= staff_middle_y
+                        };
+
+                    let system_right_edge = system.bounding_box.width;
+
                     // For each note with tie_next, find the target and compute arc
                     for voice in &staff_data.voices {
                         for n in &voice.notes {
@@ -981,92 +1012,152 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                                 Some(info) => *info,
                                 None => continue,
                             };
-                            let end_info = match note_lookup.get(tie_target_id) {
-                                Some(info) => *info,
-                                None => continue, // Target in a different system — skip for now
-                            };
 
                             let (start_x, start_y, _start_pitch, start_tick) = start_info;
-                            let (end_x, end_y, _end_pitch, _end_tick) = end_info;
 
-                            // Determine arc direction
-                            let above =
-                                if let Some(pitches) = tied_pitches_per_tick.get(&start_tick) {
-                                    if pitches.len() > 1 {
-                                        // Chord tie: top note above, bottom note below
-                                        let max_pitch = pitches.iter().copied().max().unwrap_or(0);
-                                        let min_pitch = pitches.iter().copied().min().unwrap_or(0);
-                                        if n.pitch == max_pitch {
-                                            true
-                                        } else if n.pitch == min_pitch {
-                                            false
-                                        } else {
-                                            // Middle note: use stem direction
-                                            let clef = staff_data.get_clef_at_tick(start_tick);
-                                            let y_raw = positioner::pitch_to_y_with_spelling(
-                                                n.pitch,
-                                                clef,
-                                                config.units_per_space,
-                                                n.spelling,
-                                            ) + staff_vertical_offset;
-                                            y_raw <= staff_middle_y
-                                        }
-                                    } else {
-                                        // Single tie: use stem direction (opposite to stem)
-                                        let clef = staff_data.get_clef_at_tick(start_tick);
-                                        let y_raw = positioner::pitch_to_y_with_spelling(
-                                            n.pitch,
-                                            clef,
-                                            config.units_per_space,
-                                            n.spelling,
-                                        ) + staff_vertical_offset;
-                                        y_raw <= staff_middle_y
-                                    }
-                                } else {
-                                    // Fallback: stem direction
-                                    let clef = staff_data.get_clef_at_tick(start_tick);
-                                    let y_raw = positioner::pitch_to_y_with_spelling(
-                                        n.pitch,
-                                        clef,
-                                        config.units_per_space,
-                                        n.spelling,
-                                    ) + staff_vertical_offset;
-                                    y_raw <= staff_middle_y
+                            let above = determine_tie_above(
+                                n.pitch,
+                                start_tick,
+                                n.spelling,
+                                &tied_pitches_per_tick,
+                            );
+
+                            match note_lookup.get(tie_target_id) {
+                                Some(&(end_x, end_y, _end_pitch, _end_tick)) => {
+                                    // Same-system tie: full arc
+                                    let arc_start_x = start_x + notehead_half_w;
+                                    let arc_end_x = end_x - notehead_half_w;
+                                    let arc_start_y = start_y;
+                                    let arc_end_y = end_y;
+
+                                    let span_x = (arc_end_x - arc_start_x).abs();
+                                    let arc_height = span_x.mul_add(0.15, 0.0).clamp(4.0, 30.0);
+
+                                    let y_offset = if above { -arc_height } else { arc_height };
+                                    let mid_y = (arc_start_y + arc_end_y) / 2.0 + y_offset;
+
+                                    tie_arcs.push(types::TieArc {
+                                        start: types::Point {
+                                            x: arc_start_x,
+                                            y: arc_start_y,
+                                        },
+                                        end: types::Point {
+                                            x: arc_end_x,
+                                            y: arc_end_y,
+                                        },
+                                        cp1: types::Point {
+                                            x: arc_start_x + span_x * 0.2,
+                                            y: mid_y,
+                                        },
+                                        cp2: types::Point {
+                                            x: arc_end_x - span_x * 0.2,
+                                            y: mid_y,
+                                        },
+                                        above,
+                                        note_id_start: n.note_id.clone(),
+                                        note_id_end: tie_target_id.to_string(),
+                                    });
+                                }
+                                None => {
+                                    // Cross-system outgoing tie: arc from start note to system right edge
+                                    let arc_start_x = start_x + notehead_half_w;
+                                    let arc_end_x = system_right_edge;
+                                    let arc_y = start_y;
+
+                                    let span_x = arc_end_x - arc_start_x;
+                                    let arc_height = span_x.mul_add(0.15, 0.0).clamp(4.0, 30.0);
+                                    let y_offset = if above { -arc_height } else { arc_height };
+                                    let mid_y = arc_y + y_offset;
+
+                                    tie_arcs.push(types::TieArc {
+                                        start: types::Point {
+                                            x: arc_start_x,
+                                            y: arc_y,
+                                        },
+                                        end: types::Point {
+                                            x: arc_end_x,
+                                            y: arc_y,
+                                        },
+                                        cp1: types::Point {
+                                            x: arc_start_x + span_x * 0.2,
+                                            y: mid_y,
+                                        },
+                                        cp2: types::Point {
+                                            x: arc_end_x - span_x * 0.2,
+                                            y: mid_y,
+                                        },
+                                        above,
+                                        note_id_start: n.note_id.clone(),
+                                        note_id_end: tie_target_id.to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Cross-system incoming ties: notes in previous systems with
+                    // tie_next targeting a note in this system
+                    {
+                        // Build a set of note IDs in this system for quick lookup
+                        let system_note_ids: std::collections::HashSet<&str> =
+                            note_lookup.keys().copied().collect();
+
+                        for voice in &staff_data.voices {
+                            for n in &voice.notes {
+                                let tie_target_id = match &n.tie_next {
+                                    Some(id) => id.as_str(),
+                                    None => continue,
                                 };
+                                // Only consider notes BEFORE this system
+                                if n.start_tick >= system.tick_range.start_tick {
+                                    continue;
+                                }
+                                // Target must be in this system
+                                if !system_note_ids.contains(tie_target_id) {
+                                    continue;
+                                }
+                                let (end_x, end_y, _end_pitch, end_tick) =
+                                    *note_lookup.get(tie_target_id).unwrap();
 
-                            // Arc geometry
-                            let arc_start_x = start_x + notehead_half_w;
-                            let arc_end_x = end_x - notehead_half_w;
-                            let arc_start_y = start_y;
-                            let arc_end_y = end_y;
+                                let above = determine_tie_above(
+                                    n.pitch,
+                                    end_tick,
+                                    n.spelling,
+                                    &tied_pitches_per_tick,
+                                );
 
-                            let span_x = (arc_end_x - arc_start_x).abs();
-                            let arc_height = span_x.mul_add(0.15, 0.0).clamp(4.0, 30.0);
+                                // Arc from left edge of system to target note
+                                let arc_start_x = unified_left_margin;
+                                let arc_end_x = end_x - notehead_half_w;
+                                let arc_y = end_y;
 
-                            let y_offset = if above { -arc_height } else { arc_height };
-                            let mid_y = (arc_start_y + arc_end_y) / 2.0 + y_offset;
+                                let span_x = (arc_end_x - arc_start_x).max(1.0);
+                                let arc_height = span_x.mul_add(0.15, 0.0).clamp(4.0, 30.0);
+                                let y_offset = if above { -arc_height } else { arc_height };
+                                let mid_y = arc_y + y_offset;
 
-                            tie_arcs.push(types::TieArc {
-                                start: types::Point {
-                                    x: arc_start_x,
-                                    y: arc_start_y,
-                                },
-                                end: types::Point {
-                                    x: arc_end_x,
-                                    y: arc_end_y,
-                                },
-                                cp1: types::Point {
-                                    x: arc_start_x + span_x * 0.2,
-                                    y: mid_y,
-                                },
-                                cp2: types::Point {
-                                    x: arc_end_x - span_x * 0.2,
-                                    y: mid_y,
-                                },
-                                above,
-                                note_id_start: n.note_id.clone(),
-                                note_id_end: tie_target_id.to_string(),
-                            });
+                                tie_arcs.push(types::TieArc {
+                                    start: types::Point {
+                                        x: arc_start_x,
+                                        y: arc_y,
+                                    },
+                                    end: types::Point {
+                                        x: arc_end_x,
+                                        y: arc_y,
+                                    },
+                                    cp1: types::Point {
+                                        x: arc_start_x + span_x * 0.2,
+                                        y: mid_y,
+                                    },
+                                    cp2: types::Point {
+                                        x: arc_end_x - span_x * 0.2,
+                                        y: mid_y,
+                                    },
+                                    above,
+                                    note_id_start: n.note_id.clone(),
+                                    note_id_end: tie_target_id.to_string(),
+                                });
+                            }
                         }
                     }
                 }
