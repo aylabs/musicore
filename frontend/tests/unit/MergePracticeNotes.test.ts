@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { PluginPracticeNoteEntry } from '../../src/plugin-api/types';
-import { mergePracticeNotesByTick } from '../../plugins/practice-view-plugin/PracticeViewPlugin';
+import { mergePracticeNotesByTick } from '../../plugins/practice-view-plugin/mergePracticeNotesByTick';
 
 describe('mergePracticeNotesByTick (Both Clefs)', () => {
   it('fuses entries from different staves at the same tick', () => {
