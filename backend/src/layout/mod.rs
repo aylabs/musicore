@@ -913,6 +913,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
 
                 // Compute tie arcs for tied notes
                 let mut tie_arcs: Vec<types::TieArc> = Vec::new();
+                let mut slur_arcs: Vec<types::TieArc> = Vec::new();
                 let notehead_half_w = stems::Stem::NOTEHEAD_WIDTH;
                 {
                     // Build a lookup: note_id → (x, visual_y, pitch, start_tick)
@@ -1160,6 +1161,148 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                             }
                         }
                     }
+
+                    // Compute slur arcs (phrase marks) — same 3-case logic as ties
+                    {
+                        let system_note_ids: std::collections::HashSet<&str> =
+                            note_lookup.keys().copied().collect();
+
+                        for voice in &staff_data.voices {
+                            for n in &voice.notes {
+                                let slur_target_id = match &n.slur_next {
+                                    Some(id) => id.as_str(),
+                                    None => continue,
+                                };
+                                if n.note_id.is_empty() {
+                                    continue;
+                                }
+
+                                // Slur direction: above if note is above staff middle
+                                let clef = staff_data.get_clef_at_tick(n.start_tick);
+                                let y_raw = positioner::pitch_to_y_with_spelling(
+                                    n.pitch,
+                                    clef,
+                                    config.units_per_space,
+                                    n.spelling,
+                                ) + staff_vertical_offset;
+                                let above = y_raw <= staff_middle_y;
+
+                                let in_range = n.start_tick >= system.tick_range.start_tick
+                                    && n.start_tick < system.tick_range.end_tick;
+
+                                if in_range {
+                                    let start_info = match note_lookup.get(n.note_id.as_str()) {
+                                        Some(info) => *info,
+                                        None => continue,
+                                    };
+                                    let (start_x, start_y, _sp, _st) = start_info;
+
+                                    match note_lookup.get(slur_target_id) {
+                                        Some(&(end_x, end_y, _ep, _et)) => {
+                                            // Same-system slur
+                                            let arc_start_x = start_x + notehead_half_w;
+                                            let arc_end_x = end_x - notehead_half_w;
+                                            let span_x = (arc_end_x - arc_start_x).abs().max(1.0);
+                                            let arc_height =
+                                                span_x.mul_add(0.12, 0.0).clamp(6.0, 40.0);
+                                            let y_offset =
+                                                if above { -arc_height } else { arc_height };
+                                            let mid_y = (start_y + end_y) / 2.0 + y_offset;
+
+                                            slur_arcs.push(types::TieArc {
+                                                start: types::Point {
+                                                    x: arc_start_x,
+                                                    y: start_y,
+                                                },
+                                                end: types::Point {
+                                                    x: arc_end_x,
+                                                    y: end_y,
+                                                },
+                                                cp1: types::Point {
+                                                    x: arc_start_x + span_x * 0.25,
+                                                    y: mid_y,
+                                                },
+                                                cp2: types::Point {
+                                                    x: arc_end_x - span_x * 0.25,
+                                                    y: mid_y,
+                                                },
+                                                above,
+                                                note_id_start: n.note_id.clone(),
+                                                note_id_end: slur_target_id.to_string(),
+                                            });
+                                        }
+                                        None => {
+                                            // Cross-system outgoing slur
+                                            let arc_start_x = start_x + notehead_half_w;
+                                            let arc_end_x = system_right_edge;
+                                            let span_x = arc_end_x - arc_start_x;
+                                            let arc_height =
+                                                span_x.mul_add(0.12, 0.0).clamp(6.0, 40.0);
+                                            let y_offset =
+                                                if above { -arc_height } else { arc_height };
+                                            let mid_y = start_y + y_offset;
+
+                                            slur_arcs.push(types::TieArc {
+                                                start: types::Point {
+                                                    x: arc_start_x,
+                                                    y: start_y,
+                                                },
+                                                end: types::Point {
+                                                    x: arc_end_x,
+                                                    y: start_y,
+                                                },
+                                                cp1: types::Point {
+                                                    x: arc_start_x + span_x * 0.25,
+                                                    y: mid_y,
+                                                },
+                                                cp2: types::Point {
+                                                    x: arc_end_x - span_x * 0.25,
+                                                    y: mid_y,
+                                                },
+                                                above,
+                                                note_id_start: n.note_id.clone(),
+                                                note_id_end: slur_target_id.to_string(),
+                                            });
+                                        }
+                                    }
+                                } else if n.start_tick < system.tick_range.start_tick
+                                    && system_note_ids.contains(slur_target_id)
+                                {
+                                    // Cross-system incoming slur
+                                    let (end_x, end_y, _ep, _et) =
+                                        *note_lookup.get(slur_target_id).unwrap();
+                                    let arc_start_x = unified_left_margin;
+                                    let arc_end_x = end_x - notehead_half_w;
+                                    let span_x = (arc_end_x - arc_start_x).max(1.0);
+                                    let arc_height = span_x.mul_add(0.12, 0.0).clamp(6.0, 40.0);
+                                    let y_offset = if above { -arc_height } else { arc_height };
+                                    let mid_y = end_y + y_offset;
+
+                                    slur_arcs.push(types::TieArc {
+                                        start: types::Point {
+                                            x: arc_start_x,
+                                            y: end_y,
+                                        },
+                                        end: types::Point {
+                                            x: arc_end_x,
+                                            y: end_y,
+                                        },
+                                        cp1: types::Point {
+                                            x: arc_start_x + span_x * 0.25,
+                                            y: mid_y,
+                                        },
+                                        cp2: types::Point {
+                                            x: arc_end_x - span_x * 0.25,
+                                            y: mid_y,
+                                        },
+                                        above,
+                                        note_id_start: n.note_id.clone(),
+                                        note_id_end: slur_target_id.to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Create staff with batched glyphs and structural glyphs
@@ -1171,6 +1314,7 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     ledger_lines,
                     notation_dots,
                     tie_arcs,
+                    slur_arcs,
                 };
 
                 staves.push(staff);
@@ -1759,6 +1903,8 @@ struct NoteEvent {
     note_id: String,
     /// If this note starts/continues a tie, the ID of the next tied note
     tie_next: Option<String>,
+    /// If a slur starts on this note, the ID of the note where it ends
+    slur_next: Option<String>,
 }
 
 /// Extract instruments from CompiledScore JSON
@@ -1884,6 +2030,9 @@ fn extract_instruments(
                                             as u8,
                                         note_id: note_item["id"].as_str().unwrap_or("").to_string(),
                                         tie_next: note_item["tie_next"]
+                                            .as_str()
+                                            .map(|s| s.to_string()),
+                                        slur_next: note_item["slur_next"]
                                             .as_str()
                                             .map(|s| s.to_string()),
                                     });
@@ -3509,6 +3658,7 @@ mod tests {
             ledger_lines: vec![],
             notation_dots: vec![],
             tie_arcs: vec![],
+            slur_arcs: vec![],
         };
 
         let staff_1 = Staff {
@@ -3519,6 +3669,7 @@ mod tests {
             ledger_lines: vec![],
             notation_dots: vec![],
             tie_arcs: vec![],
+            slur_arcs: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -3573,6 +3724,7 @@ mod tests {
             ledger_lines: vec![],
             notation_dots: vec![],
             tie_arcs: vec![],
+            slur_arcs: vec![],
         };
 
         let staff_1 = Staff {
@@ -3583,6 +3735,7 @@ mod tests {
             ledger_lines: vec![],
             notation_dots: vec![],
             tie_arcs: vec![],
+            slur_arcs: vec![],
         };
 
         let staves = vec![staff_0, staff_1];
@@ -4281,6 +4434,7 @@ mod tests {
                     dot_count: 0,
                     note_id: String::new(),
                     tie_next: None,
+                    slur_next: None,
                 }],
                 rests: vec![],
             }],
@@ -4326,6 +4480,7 @@ mod tests {
                     dot_count: 0,
                     note_id: String::new(),
                     tie_next: None,
+                    slur_next: None,
                 }],
                 rests: vec![],
             }],

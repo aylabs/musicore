@@ -21,7 +21,9 @@ use super::mapper::ElementMapper;
 use super::timing::Fraction;
 use super::types::BeamType;
 use super::types::EndingParseType;
-use super::types::{MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData, TieType};
+use super::types::{
+    MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData, SlurInfo, SlurType, TieType,
+};
 use std::collections::{BTreeMap, HashMap};
 
 #[cfg(target_arch = "wasm32")]
@@ -793,6 +795,7 @@ impl MusicXMLConverter {
     ) -> Result<NotesByVoice, ImportError> {
         let mut notes_by_voice: HashMap<usize, Vec<Note>> = HashMap::new();
         let mut tie_info_by_voice: HashMap<usize, Vec<Option<TieType>>> = HashMap::new();
+        let mut slur_info_by_voice: HashMap<usize, Vec<Vec<SlurInfo>>> = HashMap::new();
         let mut rests = Vec::new();
         let mut timing_context = TimingContext::new();
 
@@ -816,6 +819,10 @@ impl MusicXMLConverter {
                                     .entry(voice)
                                     .or_default()
                                     .push(note_data.tie_type.clone());
+                                slur_info_by_voice
+                                    .entry(voice)
+                                    .or_default()
+                                    .push(note_data.slurs.clone());
                                 notes_by_voice.entry(voice).or_default().push(note);
                             }
                             Err(e) => {
@@ -865,6 +872,9 @@ impl MusicXMLConverter {
         for (voice_num, notes) in notes_by_voice.iter_mut() {
             if let Some(tie_types) = tie_info_by_voice.get(voice_num) {
                 Self::resolve_tie_chains(notes, tie_types);
+            }
+            if let Some(slur_infos) = slur_info_by_voice.get(voice_num) {
+                Self::resolve_slur_chains(notes, slur_infos);
             }
         }
 
@@ -927,6 +937,7 @@ impl MusicXMLConverter {
     ) -> Result<NotesByVoice, ImportError> {
         let mut notes_by_voice: HashMap<usize, Vec<Note>> = HashMap::new();
         let mut tie_info_by_voice: HashMap<usize, Vec<Option<TieType>>> = HashMap::new();
+        let mut slur_info_by_voice: HashMap<usize, Vec<Vec<SlurInfo>>> = HashMap::new();
         let mut rests = Vec::new();
         let mut timing_context = TimingContext::new();
 
@@ -958,6 +969,10 @@ impl MusicXMLConverter {
                                         .entry(voice)
                                         .or_default()
                                         .push(note_data.tie_type.clone());
+                                    slur_info_by_voice
+                                        .entry(voice)
+                                        .or_default()
+                                        .push(note_data.slurs.clone());
                                     notes_by_voice.entry(voice).or_default().push(note);
                                     // Track the maximum tick reached for this staff in this measure
                                     max_tick_in_measure =
@@ -1014,6 +1029,9 @@ impl MusicXMLConverter {
         for (voice_num, notes) in notes_by_voice.iter_mut() {
             if let Some(tie_types) = tie_info_by_voice.get(voice_num) {
                 Self::resolve_tie_chains(notes, tie_types);
+            }
+            if let Some(slur_infos) = slur_info_by_voice.get(voice_num) {
+                Self::resolve_slur_chains(notes, slur_infos);
             }
         }
 
@@ -1145,6 +1163,34 @@ impl MusicXMLConverter {
 
                     notes[i].tie_next = Some(target_id);
                     notes[target_idx].is_tie_continuation = true;
+                }
+            }
+        }
+    }
+
+    /// Resolves slur chains within a voice's note list.
+    ///
+    /// For each note with a slur start, finds the next note with a matching
+    /// slur stop (same number) and sets slur_next on the start note.
+    fn resolve_slur_chains(notes: &mut [Note], slur_infos: &[Vec<SlurInfo>]) {
+        if notes.len() != slur_infos.len() {
+            return;
+        }
+        let len = notes.len();
+
+        for i in 0..len {
+            for slur in &slur_infos[i] {
+                if slur.slur_type == SlurType::Start {
+                    // Find next note with matching slur stop number
+                    for j in (i + 1)..len {
+                        if slur_infos[j]
+                            .iter()
+                            .any(|s| s.slur_type == SlurType::Stop && s.number == slur.number)
+                        {
+                            notes[i].slur_next = Some(notes[j].id);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1305,6 +1351,7 @@ mod tests {
                 dot_count: 0,
                 tie_type: None,
                 tie_placement: None,
+                slurs: Vec::new(),
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1378,6 +1425,7 @@ mod tests {
             dot_count: 0,
             tie_type: None,
             tie_placement: None,
+            slurs: Vec::new(),
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1425,6 +1473,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1442,6 +1491,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 }),
             ],
             start_repeat: false,
@@ -1500,6 +1550,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1518,6 +1569,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1536,6 +1588,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 }),
             ],
             start_repeat: false,
@@ -1638,6 +1691,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -1699,6 +1753,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -1760,6 +1815,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -1818,6 +1874,7 @@ mod tests {
                     dot_count: 0,
                     tie_type: None,
                     tie_placement: None,
+                    slurs: Vec::new(),
                 })],
                 start_repeat: false,
                 end_repeat: false,

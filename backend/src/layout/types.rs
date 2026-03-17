@@ -154,6 +154,9 @@ pub struct Staff {
     /// Tie arcs: cubic Bézier curves connecting tied notes
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tie_arcs: Vec<TieArc>,
+    /// Slur arcs: cubic Bézier curves connecting slurred notes (phrase marks)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub slur_arcs: Vec<TieArc>,
 }
 
 /// Short horizontal line for notes outside the 5-line staff range

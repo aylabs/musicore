@@ -145,6 +145,8 @@ export interface Staff {
   notation_dots?: NotationDot[];
   /** Tie arcs between tied noteheads */
   tie_arcs?: TieArc[];
+  /** Slur arcs (phrase marks) between slurred noteheads */
+  slur_arcs?: TieArc[];
 }
 
 /**
