@@ -194,6 +194,10 @@ export class PlaybackScheduler {
       if (this.scheduleTempoMultiplier !== 1.0) {
         durationSeconds = durationSeconds / this.scheduleTempoMultiplier;
       }
+      // Staccato: halve duration (standard musical convention)
+      if (note.staccato) {
+        durationSeconds *= 0.5;
+      }
       if (durationSeconds < MIN_NOTE_DURATION) {
         durationSeconds = MIN_NOTE_DURATION;
       }
@@ -242,6 +246,7 @@ export class PlaybackScheduler {
       pitch: r.pitch,
       start_tick: r.start_tick,
       duration_ticks: r.combinedDurationTicks,
+      staccato: r.staccato,
     }));
 
     // Filter out notes already past, then sort by start_tick

@@ -432,13 +432,14 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
 
       // Group by start_tick; collect ALL pitches + note IDs at each tick (full chord).
       // durationTicks: take the maximum across chord notes (v7, feature 042).
-      const tickMap = new Map<number, { midiPitches: number[]; noteIds: string[]; tick: number; durationTicks: number; sustainedPitches: number[]; sustainedNoteIds: string[] }>();
+      const tickMap = new Map<number, { midiPitches: number[]; noteIds: string[]; tick: number; durationTicks: number; sustainedPitches: number[]; sustainedNoteIds: string[]; hasStaccato: boolean }>();
       for (const note of attackNotes) {
         const existing = tickMap.get(note.start_tick);
         if (existing) {
           existing.midiPitches.push(note.pitch);
           existing.noteIds.push(note.id);
           existing.durationTicks = Math.max(existing.durationTicks, note.duration_ticks);
+          if (note.staccato) existing.hasStaccato = true;
         } else {
           tickMap.set(note.start_tick, {
             midiPitches: [note.pitch],
@@ -447,6 +448,7 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
             durationTicks: note.duration_ticks,
             sustainedPitches: [],
             sustainedNoteIds: [],
+            hasStaccato: !!note.staccato,
           });
         }
       }
@@ -478,6 +480,13 @@ export function useScorePlayerBridge(): ScorePlayerBridge {
         const gap = sorted[i + 1].tick - sorted[i].tick;
         if (gap > 0 && gap < sorted[i].durationTicks) {
           sorted[i].durationTicks = gap;
+        }
+      }
+
+      // Staccato: halve duration (standard musical convention)
+      for (const entry of sorted) {
+        if (entry.hasStaccato) {
+          entry.durationTicks = Math.round(entry.durationTicks * 0.5);
         }
       }
 
