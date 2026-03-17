@@ -16,6 +16,8 @@ export interface ResolvedNote {
   start_tick: number;
   /** Sum of all tied durations in the chain. */
   combinedDurationTicks: number;
+  /** Whether the note has a staccato articulation. */
+  staccato?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export function resolveTiedNotes(notes: Note[]): ResolvedNote[] {
       pitch: note.pitch,
       start_tick: note.start_tick,
       combinedDurationTicks: totalDuration,
+      staccato: note.staccato,
     });
   }
 

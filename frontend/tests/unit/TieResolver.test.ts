@@ -78,4 +78,17 @@ describe('TieResolver', () => {
     expect(resolved[0].combinedDurationTicks).toBe(480);
     expect(resolved[1].combinedDurationTicks).toBe(480);
   });
+
+  it('propagates staccato flag from the tie-start note', () => {
+    const notes: Note[] = [
+      makeNote({ id: 'n1', pitch: 60, start_tick: 0, duration_ticks: 480, staccato: true }),
+      makeNote({ id: 'n2', pitch: 62, start_tick: 480, duration_ticks: 480 }),
+    ];
+
+    const resolved = resolveTiedNotes(notes);
+
+    expect(resolved).toHaveLength(2);
+    expect(resolved[0].staccato).toBe(true);
+    expect(resolved[1].staccato).toBeUndefined();
+  });
 });
