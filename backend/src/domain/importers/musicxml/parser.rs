@@ -866,6 +866,7 @@ impl MusicXMLParser {
             dot_count: 0,
             tie_type: None,
             tie_placement: None,
+            slurs: Vec::new(),
         };
 
         let mut buf = Vec::new();
@@ -1021,6 +1022,60 @@ impl MusicXMLParser {
                                     _ => {}
                                 }
                             }
+                        }
+                    }
+                    b"slur" => {
+                        // <slur type="start|stop" number="N" placement="above|below"/> — phrase slur arc
+                        let mut slur_type_val = None;
+                        let mut slur_number: u8 = 1;
+                        let mut slur_placement = None;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"type" => {
+                                    slur_type_val = match attr.value.as_ref() {
+                                        b"start" => Some(SlurType::Start),
+                                        b"stop" => Some(SlurType::Stop),
+                                        _ => None,
+                                    };
+                                }
+                                b"number" => {
+                                    slur_number = std::str::from_utf8(&attr.value)
+                                        .unwrap_or("1")
+                                        .parse()
+                                        .unwrap_or(1);
+                                }
+                                b"placement" => {
+                                    slur_placement = match attr.value.as_ref() {
+                                        b"above" => Some(SlurPlacement::Above),
+                                        b"below" => Some(SlurPlacement::Below),
+                                        _ => None,
+                                    };
+                                }
+                                b"bezier-y" => {
+                                    // Infer placement from bezier-y when no explicit placement.
+                                    // MusicXML uses Y-up coordinates: positive = above, negative = below.
+                                    if slur_placement.is_none() {
+                                        if let Ok(val) = std::str::from_utf8(&attr.value)
+                                            .unwrap_or("0")
+                                            .parse::<f64>()
+                                        {
+                                            if val > 0.0 {
+                                                slur_placement = Some(SlurPlacement::Above);
+                                            } else if val < 0.0 {
+                                                slur_placement = Some(SlurPlacement::Below);
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(st) = slur_type_val {
+                            note.slurs.push(SlurInfo {
+                                slur_type: st,
+                                number: slur_number,
+                                placement: slur_placement,
+                            });
                         }
                     }
                     _ => {}

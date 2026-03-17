@@ -56,6 +56,12 @@ pub struct Note {
     /// True if this note is a continuation (no new attack in playback/practice).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_tie_continuation: bool,
+    /// If a slur starts on this note, the ID of the note where it ends.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slur_next: Option<NoteId>,
+    /// Slur direction from MusicXML: true=above, false=below, None=auto.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slur_above: Option<bool>,
 }
 
 fn is_zero_u8(v: &u8) -> bool {
@@ -79,6 +85,8 @@ impl Note {
             dot_count: 0,
             tie_next: None,
             is_tie_continuation: false,
+            slur_next: None,
+            slur_above: None,
         })
     }
 

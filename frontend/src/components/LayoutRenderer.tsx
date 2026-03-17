@@ -1018,6 +1018,22 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       staffElement.appendChild(path);
     }
 
+    // Render slur arcs (phrase marks) as filled tapered crescents
+    for (const arc of staff.slur_arcs ?? []) {
+      const path = createSVGElement('path');
+      // Tapered slur: outer Bézier + inner Bézier (CPs shifted toward staff)
+      const thickness = 2.5;
+      const dir = arc.above ? 1 : -1; // inner CPs shift toward staff
+      const outer = `M ${arc.start.x},${arc.start.y} C ${arc.cp1.x},${arc.cp1.y} ${arc.cp2.x},${arc.cp2.y} ${arc.end.x},${arc.end.y}`;
+      const inner = `C ${arc.cp2.x},${arc.cp2.y + thickness * dir} ${arc.cp1.x},${arc.cp1.y + thickness * dir} ${arc.start.x},${arc.start.y}`;
+      const d = `${outer} ${inner} Z`;
+      path.setAttribute('d', d);
+      path.setAttribute('fill', config.glyphColor);
+      path.setAttribute('stroke', 'none');
+      path.classList.add('slur-arc');
+      staffElement.appendChild(path);
+    }
+
     return staffElement;
   }
 

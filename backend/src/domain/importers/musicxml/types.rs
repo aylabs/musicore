@@ -212,6 +212,31 @@ pub enum TiePlacement {
     Below,
 }
 
+/// Slur start/stop info from <notations><slur>.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlurInfo {
+    /// "start" or "stop"
+    pub slur_type: SlurType,
+    /// Slur number (1-indexed, for nesting)
+    pub number: u8,
+    /// Visual placement from MusicXML placement attribute
+    pub placement: Option<SlurPlacement>,
+}
+
+/// Visual arc placement for a slur, sourced from <notations><slur placement="..."/>.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SlurPlacement {
+    Above,
+    Below,
+}
+
+/// Slur type from the MusicXML <slur type="..."/> element.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SlurType {
+    Start,
+    Stop,
+}
+
 /// Note from <note> element
 #[derive(Debug, Clone)]
 pub struct NoteData {
@@ -247,6 +272,9 @@ pub struct NoteData {
 
     /// Arc placement hint from <notations><tied placement="above|below">.
     pub tie_placement: Option<TiePlacement>,
+
+    /// Slur start/stop annotations from <notations><slur>.
+    pub slurs: Vec<SlurInfo>,
 }
 
 /// Pitch from <pitch> element
