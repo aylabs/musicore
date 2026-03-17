@@ -64,15 +64,18 @@ describe('mergePracticeNotesByTick (Both Clefs)', () => {
 
     const merged = mergePracticeNotesByTick([...treble, ...bass]);
 
-    // At tick 240: E5 is onset, bass chord is sustained
+    // At tick 240: E5 is onset, bass chord is sustained, G5 is NOT sustained
+    // (G5 eighth note dur=240 ends exactly at tick 240, so it should not carry)
     expect(merged[1].tick).toBe(240);
     expect(merged[1].midiPitches).toEqual([76]);
     expect(merged[1].sustainedPitches).toEqual(expect.arrayContaining([48, 52, 55]));
+    expect(merged[1].sustainedPitches).not.toContain(79); // G5 NOT sustained
 
-    // At tick 480: D5 is onset, bass chord is sustained
+    // At tick 480: D5 is onset, bass chord is sustained, G5 still not sustained
     expect(merged[2].tick).toBe(480);
     expect(merged[2].midiPitches).toEqual([74]);
     expect(merged[2].sustainedPitches).toEqual(expect.arrayContaining([48, 52, 55]));
+    expect(merged[2].sustainedPitches).not.toContain(79); // G5 NOT sustained
   });
 
   it('does not duplicate onset pitches in sustainedPitches', () => {

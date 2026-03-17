@@ -135,17 +135,19 @@ export function mergePracticeNotesByTick(
       tick, midiPitches: pitches as number[], sustainedPitches, noteIds, durationTicks,
     }));
 
-  // Cross-staff sustained-note pass: if an entry's duration extends past a
-  // later onset tick, propagate its pitches as sustainedPitches so the
-  // ChordDetector auto-pins them when the player is still holding (e.g.
-  // bass whole-note chord sustained while treble eighth notes play).
-  for (const outer of sorted) {
-    const end = outer.tick + outer.durationTicks;
-    for (const inner of sorted) {
-      if (outer.tick < inner.tick && end > inner.tick) {
-        for (const p of outer.midiPitches) {
-          if (!inner.midiPitches.includes(p) && !inner.sustainedPitches.includes(p)) {
-            (inner.sustainedPitches as number[]).push(p);
+  // Cross-staff sustained-note pass: use the ORIGINAL per-staff entries
+  // (not the merged entries) so each pitch sustains based on its own
+  // original duration, not the max across merged staves. E.g. treble G5
+  // (dur=240) at tick 0 should NOT be sustained at tick 240+, but bass C3
+  // (dur=1920) at tick 0 should be.
+  for (const original of allNotes) {
+    if (original.durationTicks <= 0) continue;
+    const end = original.tick + original.durationTicks;
+    for (const merged of sorted) {
+      if (original.tick < merged.tick && end > merged.tick) {
+        for (const p of original.midiPitches) {
+          if (!merged.midiPitches.includes(p) && !merged.sustainedPitches.includes(p)) {
+            (merged.sustainedPitches as number[]).push(p);
           }
         }
       }
