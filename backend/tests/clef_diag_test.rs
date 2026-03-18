@@ -114,12 +114,45 @@ fn check_system_boundaries_m16_m18() {
     let score_json = serde_json::to_value(&score).expect("serialize");
     let config = LayoutConfig::default();
     let layout = compute_layout(&score_json, &config);
+    // SMuFL clef codepoints
     for sys in &layout.systems {
         if sys.tick_range.start_tick <= 23040 && sys.tick_range.end_tick >= 20160 {
             eprintln!(
-                "System {} tick_range=[{}, {}) measure_number={:?}",
-                sys.index, sys.tick_range.start_tick, sys.tick_range.end_tick, sys.measure_number
+                "\nSystem {} tick_range=[{}, {}) measure_number={:?} width={:.0}",
+                sys.index,
+                sys.tick_range.start_tick,
+                sys.tick_range.end_tick,
+                sys.measure_number,
+                sys.bounding_box.width
             );
+            // Dump all glyphs in this system to find clef glyphs
+            for (sg_i, staff_group) in sys.staff_groups.iter().enumerate() {
+                for (st_i, staff) in staff_group.staves.iter().enumerate() {
+                    // Check structural_glyphs (clefs, key sigs, time sigs)
+                    for glyph in &staff.structural_glyphs {
+                        let cp_val = glyph.codepoint.chars().next().unwrap_or('\0') as u32;
+                        // SMuFL clefs range: E050-E07F
+                        if cp_val >= 0xE050 && cp_val <= 0xE07F {
+                            eprintln!(
+                                "  sg={sg_i} st={st_i} STRUCTURAL CLEF U+{:04X} x={:.1} y={:.1} font_size={:?}",
+                                cp_val, glyph.position.x, glyph.position.y, glyph.font_size,
+                            );
+                        }
+                    }
+                    // Also check glyph_runs in case
+                    for run in &staff.glyph_runs {
+                        for glyph in &run.glyphs {
+                            let cp_val = glyph.codepoint.chars().next().unwrap_or('\0') as u32;
+                            if cp_val >= 0xE050 && cp_val <= 0xE07F {
+                                eprintln!(
+                                    "  sg={sg_i} st={st_i} GLYPH_RUN CLEF U+{:04X} x={:.1} y={:.1} font_size={:?}",
+                                    cp_val, glyph.position.x, glyph.position.y, glyph.font_size,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
