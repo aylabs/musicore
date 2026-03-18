@@ -202,8 +202,13 @@ pub(crate) fn position_glyphs_for_staff(
         let has_beam_info = beamable_for_analysis
             .iter()
             .any(|n| !n.beam_types.is_empty());
+        let measure_starts: Vec<u32> = {
+            let mut starts: Vec<u32> = measure_x_bounds.keys().copied().collect();
+            starts.sort();
+            starts
+        };
         let beam_groups = if has_beam_info {
-            beams::build_beam_groups_from_musicxml(&beamable_for_analysis)
+            beams::build_beam_groups_from_musicxml(&beamable_for_analysis, &measure_starts)
         } else {
             let groups = beams::group_beamable_by_time_signature(
                 &beamable_for_analysis,
