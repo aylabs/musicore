@@ -66,6 +66,10 @@ fn collect_metrics(layout: &serde_json::Value) -> ScoreMetrics {
                     if let Some(fs) = run["font_size"].as_f64() {
                         font_sizes.push(fs);
                     }
+                    // Grace-note runs have reduced opacity — exclude their stems
+                    // from the consistency minimum (grace stems are intentionally shorter).
+                    let run_opacity = run["opacity"].as_f64().unwrap_or(1.0);
+                    let is_grace_run = run_opacity < 0.9;
                     for glyph in run["glyphs"].as_array().unwrap() {
                         let cp = glyph["codepoint"].as_str().unwrap_or("");
                         for ch in cp.chars() {
@@ -76,7 +80,8 @@ fn collect_metrics(layout: &serde_json::Value) -> ScoreMetrics {
                             }
                         }
                         // Stems (U+0000): measure stem length from bounding_box.height
-                        if cp == "\u{0000}" {
+                        // Skip grace-note stems (they are intentionally 60% shorter)
+                        if cp == "\u{0000}" && !is_grace_run {
                             if let Some(h) = glyph["bounding_box"]["height"].as_f64() {
                                 stem_lengths.push(h);
                             }

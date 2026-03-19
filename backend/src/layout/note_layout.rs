@@ -438,6 +438,13 @@ pub(crate) fn position_glyphs_for_staff(
             .map(|(i, _)| i)
             .collect();
 
+        // Grace note ticks: used to scale stems and beams for grace notes
+        let grace_note_ticks: std::collections::HashSet<u32> = voice_notes_in_range
+            .iter()
+            .filter(|n| n.is_grace)
+            .map(|n| n.start_tick)
+            .collect();
+
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &adjusted_horizontal_offsets,
@@ -456,6 +463,10 @@ pub(crate) fn position_glyphs_for_staff(
         all_glyphs.extend(glyphs);
 
         for &(stem_x, y_top, y_bottom, event_index) in &chord_stem_data {
+            let chord_tick = notes_in_range[event_index].1;
+            let is_grace_stem = grace_note_ticks.contains(&chord_tick);
+            let grace_scale: f32 = if is_grace_stem { 0.6 } else { 1.0 };
+            let thickness = stems::Stem::STEM_THICKNESS * grace_scale;
             let stem_height = y_bottom - y_top;
             let stem_glyph = Glyph {
                 codepoint: '\u{0000}'.to_string(),
@@ -464,9 +475,9 @@ pub(crate) fn position_glyphs_for_staff(
                     y: y_top,
                 },
                 bounding_box: BoundingBox {
-                    x: stem_x - (stems::Stem::STEM_THICKNESS / 2.0),
+                    x: stem_x - (thickness / 2.0),
                     y: y_top,
-                    width: stems::Stem::STEM_THICKNESS,
+                    width: thickness,
                     height: stem_height,
                 },
                 source_reference: SourceReference {
@@ -476,7 +487,7 @@ pub(crate) fn position_glyphs_for_staff(
                     event_index,
                 },
                 font_size: None,
-                opacity: None,
+                opacity: if is_grace_stem { Some(0.5) } else { None },
             };
             all_glyphs.push(stem_glyph);
         }
@@ -566,12 +577,17 @@ pub(crate) fn position_glyphs_for_staff(
                 beams::compute_group_stem_direction(&expanded, staff_middle_y)
             };
 
-            let notehead_width = stems::Stem::NOTEHEAD_WIDTH;
+            let is_grace_group = group
+                .notes
+                .iter()
+                .all(|n| grace_note_ticks.contains(&n.tick));
+            let grace_scale: f32 = if is_grace_group { 0.6 } else { 1.0 };
+            let notehead_width = stems::Stem::NOTEHEAD_WIDTH * grace_scale;
 
             // === PHASE 1: Compute initial stems and beam line ===
             let visual_y_offset = 0.5 * units_per_space;
             let mut initial_stems: Vec<stems::Stem> = Vec::new();
-            let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH;
+            let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH * grace_scale;
             for note in &group.notes {
                 // For chords, use the notehead closest to the beam
                 // direction as the stem origin, so the minimum stem length
@@ -631,7 +647,7 @@ pub(crate) fn position_glyphs_for_staff(
             let mut beam_offset = 0.0f32;
             for (i, stem) in initial_stems.iter().enumerate() {
                 let beam_y = beam_y_at_stems[i];
-                let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH;
+                let min_length = stems::Stem::MIN_BEAMED_STEM_LENGTH * grace_scale;
                 // For chords, enforce minimum clearance from the
                 // notehead closest to the beam, not the stem origin
                 // (which is at the far side of the chord).
@@ -673,6 +689,7 @@ pub(crate) fn position_glyphs_for_staff(
                 let stem_top_y = stem.y_start.min(final_stem_end);
                 let stem_height = (final_stem_end - stem.y_start).abs();
 
+                let thickness = stem.thickness * grace_scale;
                 let stem_glyph = Glyph {
                     codepoint: '\u{0000}'.to_string(),
                     position: Point {
@@ -680,9 +697,9 @@ pub(crate) fn position_glyphs_for_staff(
                         y: stem_top_y,
                     },
                     bounding_box: BoundingBox {
-                        x: stem.x - (stem.thickness / 2.0),
+                        x: stem.x - (thickness / 2.0),
                         y: stem_top_y,
-                        width: stem.thickness,
+                        width: thickness,
                         height: stem_height,
                     },
                     source_reference: SourceReference {
@@ -692,7 +709,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes[i].event_index,
                     },
                     font_size: None,
-                    opacity: None,
+                    opacity: if is_grace_group { Some(0.5) } else { None },
                 };
                 stem_glyphs.push(stem_glyph);
                 stem_end_ys.push(final_stem_end);
@@ -718,6 +735,7 @@ pub(crate) fn position_glyphs_for_staff(
 
             let slope = clamped_slope;
             if let Some(beam) = beams::create_beam(&beamable_with_stems, slope) {
+                let beam_thickness = beam.thickness * grace_scale;
                 let beam_glyph = Glyph {
                     codepoint: '\u{0001}'.to_string(),
                     position: Point {
@@ -728,7 +746,7 @@ pub(crate) fn position_glyphs_for_staff(
                         x: beam.x_start,
                         y: beam.y_end,
                         width: beam.x_end - beam.x_start,
-                        height: beam.thickness,
+                        height: beam_thickness,
                     },
                     source_reference: SourceReference {
                         instrument_id: instrument_id.to_string(),
@@ -737,7 +755,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
-                    opacity: None,
+                    opacity: if is_grace_group { Some(0.5) } else { None },
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -750,6 +768,7 @@ pub(crate) fn position_glyphs_for_staff(
             let multi_beams =
                 beams::create_multi_level_beams(&updated_group, slope, stem_direction_up);
             for beam in multi_beams {
+                let beam_thickness = beam.thickness * grace_scale;
                 let beam_glyph = Glyph {
                     codepoint: '\u{0001}'.to_string(),
                     position: Point {
@@ -760,7 +779,7 @@ pub(crate) fn position_glyphs_for_staff(
                         x: beam.x_start,
                         y: beam.y_end,
                         width: beam.x_end - beam.x_start,
-                        height: beam.thickness,
+                        height: beam_thickness,
                     },
                     source_reference: SourceReference {
                         instrument_id: instrument_id.to_string(),
@@ -769,7 +788,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: updated_group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
-                    opacity: None,
+                    opacity: if is_grace_group { Some(0.5) } else { None },
                 };
                 all_glyphs.push(beam_glyph);
             }
