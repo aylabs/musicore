@@ -50,6 +50,42 @@ pub(crate) fn compute_unified_note_positions(
     tick_durations.sort_by_key(|(tick, _)| *tick);
     tick_durations.dedup_by_key(|(tick, _)| *tick);
 
+    // Detect ticks where a chord contains a second (adjacent notes) that will
+    // need notehead displacement.  When stems point down, the lower note shifts
+    // LEFT by one notehead width, and its accidental extends even further left.
+    // Pre-allocate extra horizontal space at those ticks so nothing collides
+    // with the preceding event.
+    let mut chord_second_ticks: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    for staff_data in staves {
+        for voice in &staff_data.voices {
+            let mut tick_pitches: std::collections::HashMap<u32, Vec<u8>> =
+                std::collections::HashMap::new();
+            for note in &voice.notes {
+                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
+                {
+                    tick_pitches
+                        .entry(note.start_tick)
+                        .or_default()
+                        .push(note.pitch);
+                }
+            }
+            for (tick, pitches) in &tick_pitches {
+                if pitches.len() < 2 {
+                    continue;
+                }
+                let mut sorted = pitches.clone();
+                sorted.sort();
+                for w in sorted.windows(2) {
+                    // A second = 1 or 2 semitones apart
+                    if w[1] - w[0] <= 2 {
+                        chord_second_ticks.insert(*tick);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     let mut cumulative_spacing = Vec::new();
     let mut current_position = 0.0;
     let mut last_tick = tick_range.start_tick;
@@ -66,6 +102,10 @@ pub(crate) fn compute_unified_note_positions(
             }
             if clef_change_ticks.contains(start_tick) {
                 gap += 50.0;
+            }
+            // Extra space for chords with seconds (displaced noteheads + accidentals)
+            if chord_second_ticks.contains(start_tick) {
+                gap += 30.0;
             }
             current_position += gap;
         }
@@ -368,7 +408,13 @@ pub(crate) fn position_glyphs_for_staff(
 
                 if y_diff <= chord_adjacent_threshold {
                     if next_should_displace {
-                        chord_x_offsets[sorted[i]] += chord_displacement;
+                        if chord_stem_down {
+                            // Stem down: displace lower note to the left
+                            chord_x_offsets[sorted[i - 1]] -= chord_displacement;
+                        } else {
+                            // Stem up: displace upper note to the right
+                            chord_x_offsets[sorted[i]] += chord_displacement;
+                        }
                         next_should_displace = false;
                     } else {
                         next_should_displace = true;
