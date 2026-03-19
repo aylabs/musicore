@@ -312,6 +312,9 @@ pub struct Glyph {
     /// Optional font size override for this glyph (e.g., smaller courtesy clefs)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_size: Option<f32>,
+    /// Optional opacity override (0.0–1.0). None = fully opaque.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f32>,
 }
 
 /// 2D coordinate in logical units

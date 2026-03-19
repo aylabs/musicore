@@ -867,6 +867,7 @@ impl MusicXMLParser {
             tie_type: None,
             tie_placement: None,
             slurs: Vec::new(),
+            is_grace: false,
         };
 
         let mut buf = Vec::new();
@@ -905,6 +906,9 @@ impl MusicXMLParser {
                     }
                     b"chord" => {
                         note.is_chord = true;
+                    }
+                    b"grace" => {
+                        note.is_grace = true;
                     }
                     b"dot" => {
                         // <dot/> — augmentation dot (may appear multiple times)

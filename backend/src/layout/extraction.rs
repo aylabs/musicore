@@ -222,6 +222,8 @@ pub(crate) struct NoteEvent {
     pub(crate) slur_next: Option<String>,
     /// Slur direction from MusicXML: Some(true)=above, Some(false)=below, None=auto
     pub(crate) slur_above: Option<bool>,
+    /// Grace note (ornamental, no rhythmic duration)
+    pub(crate) is_grace: bool,
 }
 
 pub(crate) fn extract_measures(
@@ -498,6 +500,7 @@ pub(crate) fn extract_instruments(
                                             .as_str()
                                             .map(|s| s.to_string()),
                                         slur_above: note_item["slur_above"].as_bool(),
+                                        is_grace: note_item["is_grace"].as_bool().unwrap_or(false),
                                     });
                                 }
                             }

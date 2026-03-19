@@ -125,6 +125,7 @@ fn consistent_font_size_across_scores() {
     // Allowed render font sizes (with ±0.1 tolerance).
     let allowed: &[(f64, &str)] = &[
         (80.0, "standard"),
+        (80.0 * 0.6, "grace-note"),
         (80.0 * 332.0 / 295.0, "chord-black-notehead"),
         (80.0 * 345.0 / 300.0, "chord-half-notehead"),
     ];

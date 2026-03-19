@@ -275,6 +275,9 @@ pub struct NoteData {
 
     /// Slur start/stop annotations from <notations><slur>.
     pub slurs: Vec<SlurInfo>,
+
+    /// Grace note (no rhythmic duration, ornamental)
+    pub is_grace: bool,
 }
 
 /// Pitch from <pitch> element

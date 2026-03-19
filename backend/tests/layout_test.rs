@@ -985,6 +985,7 @@ mod batching_tests {
                     event_index: i,
                 },
                 font_size: None,
+                opacity: None,
             });
         }
 
@@ -1054,6 +1055,7 @@ mod batching_tests {
                     event_index: i,
                 },
                 font_size: None,
+                opacity: None,
             });
         }
 
@@ -1078,6 +1080,7 @@ mod batching_tests {
                     event_index: i,
                 },
                 font_size: None,
+                opacity: None,
             });
         }
 
@@ -1102,6 +1105,7 @@ mod batching_tests {
                     event_index: i,
                 },
                 font_size: None,
+                opacity: None,
             });
         }
 

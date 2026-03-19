@@ -1094,6 +1094,10 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     const fontFamily = run.font_family || 'Bravura';
     const fontSize = run.font_size || 40;
     const color = run.color ? `rgb(${run.color.r}, ${run.color.g}, ${run.color.b})` : '#000000';
+    const runOpacity = run.opacity != null && run.opacity < 1.0 ? run.opacity : undefined;
+    if (runOpacity !== undefined) {
+      glyphRunGroup.setAttribute('opacity', runOpacity.toString());
+    }
 
     // Render each glyph in the run (Task T020)
     // Feature 024: Do NOT bake highlight colors into SVG attributes.

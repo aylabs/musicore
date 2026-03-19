@@ -224,6 +224,8 @@ pub fn position_noteheads(
     chord_scale_map: &std::collections::HashMap<usize, f32>,
     // Multi-voice override: Some(true) = stems down, Some(false) = stems up, None = auto
     forced_stem_down: Option<bool>,
+    // Grace note indices: these render at 60% size with reduced opacity
+    grace_note_indices: &std::collections::HashSet<usize>,
 ) -> Vec<Glyph> {
     notes
         .iter()
@@ -294,9 +296,14 @@ pub fn position_noteheads(
                 ('\u{E1D9}', "note16thUp")
             };
 
+            // Grace notes render at 60% of normal size with reduced opacity.
+            let is_grace = grace_note_indices.contains(&i);
+            let grace_scale: f32 = if is_grace { 0.6 } else { 1.0 };
+
             // Use scaled font_size for chord noteheads; standard 80.0 for everything else.
             // The bounding box uses half the rendering font-size (40.0 baseline → scale by same ratio).
-            let render_font_size = chord_font_size.unwrap_or(80.0);
+            let base_font_size = chord_font_size.unwrap_or(80.0);
+            let render_font_size = base_font_size * grace_scale;
             let bbox_font_size = 40.0 * (render_font_size / 80.0);
             let bounding_box =
                 compute_glyph_bounding_box(glyph_name, &position, bbox_font_size, units_per_space);
@@ -311,7 +318,8 @@ pub fn position_noteheads(
                     voice_index,
                     event_index: i,
                 },
-                font_size: chord_font_size,
+                font_size: Some(render_font_size),
+                opacity: if is_grace { Some(0.5) } else { None },
             }
         })
         .collect()
@@ -382,6 +390,7 @@ pub fn position_clef(
             event_index: 0,
         },
         font_size: None,
+        opacity: None,
     }
 }
 
@@ -431,6 +440,7 @@ pub fn position_courtesy_clef(
             event_index: 0,
         },
         font_size: Some(courtesy_font_size),
+        opacity: None,
     }
 }
 
@@ -499,6 +509,7 @@ pub fn position_time_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -522,6 +533,7 @@ pub fn position_time_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -632,6 +644,7 @@ pub fn position_key_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -928,6 +941,7 @@ pub fn position_note_accidentals(
                 event_index: i,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -1221,6 +1235,7 @@ pub(super) fn position_rests_for_staff(
                 event_index,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -1366,6 +1381,7 @@ mod tests {
             &std::collections::HashSet::new(), // no beamed notes
             &std::collections::HashMap::new(), // no chord scale overrides
             None,                              // no multi-voice override
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         // Verify correct number of glyphs
@@ -1705,6 +1721,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 2);
@@ -1743,6 +1760,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 1);
@@ -1777,6 +1795,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 1);

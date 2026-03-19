@@ -431,6 +431,13 @@ pub(crate) fn position_glyphs_for_staff(
             .map(|(x, dx)| x + dx)
             .collect();
 
+        let grace_note_indices: std::collections::HashSet<usize> = voice_notes_in_range
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| n.is_grace)
+            .map(|(i, _)| i)
+            .collect();
+
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &adjusted_horizontal_offsets,
@@ -443,6 +450,7 @@ pub(crate) fn position_glyphs_for_staff(
             &beamed_note_indices,
             &chord_scale_map,
             forced_stem_down,
+            &grace_note_indices,
         );
 
         all_glyphs.extend(glyphs);
@@ -468,6 +476,7 @@ pub(crate) fn position_glyphs_for_staff(
                     event_index,
                 },
                 font_size: None,
+                opacity: None,
             };
             all_glyphs.push(stem_glyph);
         }
@@ -683,6 +692,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes[i].event_index,
                     },
                     font_size: None,
+                    opacity: None,
                 };
                 stem_glyphs.push(stem_glyph);
                 stem_end_ys.push(final_stem_end);
@@ -727,6 +737,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
+                    opacity: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -758,6 +769,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: updated_group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
+                    opacity: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -873,6 +885,7 @@ mod tests {
                     tie_next: None,
                     slur_next: None,
                     slur_above: None,
+                    is_grace: false,
                 }],
                 rests: vec![],
             }],
@@ -917,6 +930,7 @@ mod tests {
                     tie_next: None,
                     slur_next: None,
                     slur_above: None,
+                    is_grace: false,
                 }],
                 rests: vec![],
             }],
