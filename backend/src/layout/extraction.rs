@@ -122,6 +122,9 @@ pub(crate) struct StaffData {
     pub(crate) key_signature_events: Vec<(u32, i8)>,
     /// Clef changes sorted by tick. Empty if no mid-piece changes.
     pub(crate) clef_events: Vec<(u32, String)>,
+    /// Octave shift regions for this staff: (start_tick, end_tick, display_shift).
+    /// display_shift: -8 = 8va (display one octave lower), +8 = 8vb (display one octave higher).
+    pub(crate) octave_shift_regions: Vec<(u32, u32, i8)>,
 }
 
 impl StaffData {
@@ -156,6 +159,26 @@ impl StaffData {
             }
         }
         result
+    }
+
+    /// Return the display pitch for a note, applying octave shift transposition.
+    /// If the note at `tick` falls within an octave-shift region, the pitch is
+    /// shifted by the corresponding number of semitones.
+    #[allow(dead_code)]
+    pub(crate) fn display_pitch(&self, pitch: u8, tick: u32) -> u8 {
+        for &(start, end, shift) in &self.octave_shift_regions {
+            if tick >= start && tick < end {
+                let semitones: i16 = match shift {
+                    -8 => -12,
+                    8 => 12,
+                    -15 => -24,
+                    15 => 24,
+                    _ => 0,
+                };
+                return (pitch as i16 + semitones).clamp(0, 127) as u8;
+            }
+        }
+        pitch
     }
 
     /// Return the clef active strictly *before* `tick` (exclusive).
@@ -605,6 +628,7 @@ pub(crate) fn extract_instruments(
                         key_sharps,
                         key_signature_events,
                         clef_events,
+                        octave_shift_regions: Vec::new(),
                     });
                 }
             }

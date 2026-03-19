@@ -60,6 +60,7 @@ interface ConvertedScore {
   time_signature_changes: unknown[];
   repeat_barlines: unknown[];
   volta_brackets: unknown[];
+  octave_shift_regions?: unknown[];
   pickup_ticks: number;
   measure_end_ticks?: number[];
 }
@@ -228,6 +229,9 @@ export function convertScoreToLayoutFormat(score: Score): ConvertedScore {
       .map((e: any) => e.TimeSignature),
     repeat_barlines: score.repeat_barlines ?? [],
     volta_brackets: score.volta_brackets ?? [],
+    ...(score.octave_shift_regions && score.octave_shift_regions.length > 0
+      ? { octave_shift_regions: score.octave_shift_regions }
+      : {}),
     pickup_ticks: score.pickup_ticks ?? 0,
     ...(score.measure_end_ticks && score.measure_end_ticks.length > 0
       ? { measure_end_ticks: score.measure_end_ticks }
