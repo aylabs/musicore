@@ -554,11 +554,12 @@ impl MusicXMLParser {
         let mut buf = Vec::new();
         let mut staff: usize = 1;
         let mut octave_shift: Option<OctaveShiftData> = None;
+        let mut in_metronome = false;
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(e)) => {
-                    if e.name().as_ref() == b"staff" {
+                Ok(Event::Start(e)) => match e.name().as_ref() {
+                    b"staff" => {
                         if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
                             if let Ok(s) =
                                 text.unescape().unwrap_or_default().trim().parse::<usize>()
@@ -567,9 +568,22 @@ impl MusicXMLParser {
                             }
                         }
                     }
-                }
-                Ok(Event::Empty(e)) => {
-                    if e.name().as_ref() == b"octave-shift" {
+                    b"metronome" => {
+                        in_metronome = true;
+                    }
+                    b"per-minute" if in_metronome => {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            if let Ok(val) =
+                                text.unescape().unwrap_or_default().trim().parse::<f64>()
+                            {
+                                measure.metronome_tempo = Some(val);
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Ok(Event::Empty(e)) => match e.name().as_ref() {
+                    b"octave-shift" => {
                         let mut shift_type = String::new();
                         let mut size: u8 = 8;
                         for attr in e.attributes().flatten() {
@@ -593,7 +607,19 @@ impl MusicXMLParser {
                             });
                         }
                     }
-                }
+                    b"sound" => {
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == b"tempo" {
+                                if let Ok(tempo_str) = std::str::from_utf8(&attr.value) {
+                                    if let Ok(tempo) = tempo_str.parse::<f64>() {
+                                        measure.sound_tempo = Some(tempo);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                },
                 Ok(Event::End(e)) => {
                     if e.name().as_ref() == b"direction" {
                         break;
