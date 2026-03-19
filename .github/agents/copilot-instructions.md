@@ -105,6 +105,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-06
 - Score files in `scores/*.mxl`; review artifacts in `specs/050-fix-layout-preloaded-scores/reviews/`; reference images in `specs/050-fix-layout-preloaded-scores/references/` (050-fix-layout-preloaded-scores)
 - Rust (latest stable) — backend domain, layout engine, WASM bindings; TypeScript 5 (strict) + React 18 — frontend PWA + `quick-xml` (MusicXML SAX parsing), `wasm-pack` + `wasm-bindgen` (WASM bindings), Tone.js (playback synthesis), Bravura/SMuFL font (notation glyphs), Vitest (frontend unit), Playwright (e2e) (051-tied-notes)
 - N/A — in-memory score graph; preloaded `.mxl` bundles in `scores/` (051-tied-notes)
+- Rust 1.93.0 (stable) + `serde_json` (JSON parsing), `serde` (Serialize/Deserialize) — no new dependencies introduced (052-refactor-layout-engine)
+- N/A (pure computation module) (052-refactor-layout-engine)
 
 - Rust (latest stable 1.75+) + serde 1.0+, serde_json 1.0+ (serialization), thiserror 1.0+ (errors); web framework TBD in contracts phase (axum or actix-web) (001-score-model)
 
@@ -125,9 +127,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust (latest stable 1.75+): Follow standard conventions
 
 ## Recent Changes
+- 052-refactor-layout-engine: Added Rust 1.93.0 (stable) + `serde_json` (JSON parsing), `serde` (Serialize/Deserialize) — no new dependencies introduced
 - 051-tied-notes: Added Rust (latest stable) — backend domain, layout engine, WASM bindings; TypeScript 5 (strict) + React 18 — frontend PWA + `quick-xml` (MusicXML SAX parsing), `wasm-pack` + `wasm-bindgen` (WASM bindings), Tone.js (playback synthesis), Bravura/SMuFL font (notation glyphs), Vitest (frontend unit), Playwright (e2e)
 - 051-tied-notes: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 050-fix-layout-preloaded-scores: Added Rust 1.x stable (layout engine, WASM); TypeScript 5.x / React 18 (renderer)
 
 
 <!-- MANUAL ADDITIONS START -->

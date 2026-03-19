@@ -224,6 +224,8 @@ pub fn position_noteheads(
     chord_scale_map: &std::collections::HashMap<usize, f32>,
     // Multi-voice override: Some(true) = stems down, Some(false) = stems up, None = auto
     forced_stem_down: Option<bool>,
+    // Grace note indices: these render at 60% size with reduced opacity
+    grace_note_indices: &std::collections::HashSet<usize>,
 ) -> Vec<Glyph> {
     notes
         .iter()
@@ -294,9 +296,14 @@ pub fn position_noteheads(
                 ('\u{E1D9}', "note16thUp")
             };
 
+            // Grace notes render at 60% of normal size with reduced opacity.
+            let is_grace = grace_note_indices.contains(&i);
+            let grace_scale: f32 = if is_grace { 0.6 } else { 1.0 };
+
             // Use scaled font_size for chord noteheads; standard 80.0 for everything else.
             // The bounding box uses half the rendering font-size (40.0 baseline → scale by same ratio).
-            let render_font_size = chord_font_size.unwrap_or(80.0);
+            let base_font_size = chord_font_size.unwrap_or(80.0);
+            let render_font_size = base_font_size * grace_scale;
             let bbox_font_size = 40.0 * (render_font_size / 80.0);
             let bounding_box =
                 compute_glyph_bounding_box(glyph_name, &position, bbox_font_size, units_per_space);
@@ -311,7 +318,8 @@ pub fn position_noteheads(
                     voice_index,
                     event_index: i,
                 },
-                font_size: chord_font_size,
+                font_size: Some(render_font_size),
+                opacity: if is_grace { Some(0.5) } else { None },
             }
         })
         .collect()
@@ -382,6 +390,7 @@ pub fn position_clef(
             event_index: 0,
         },
         font_size: None,
+        opacity: None,
     }
 }
 
@@ -431,6 +440,7 @@ pub fn position_courtesy_clef(
             event_index: 0,
         },
         font_size: Some(courtesy_font_size),
+        opacity: None,
     }
 }
 
@@ -499,6 +509,7 @@ pub fn position_time_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -522,6 +533,7 @@ pub fn position_time_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -632,6 +644,7 @@ pub fn position_key_signature(
                 event_index: 0,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -928,7 +941,119 @@ pub fn position_note_accidentals(
                 event_index: i,
             },
             font_size: None,
+            opacity: None,
         });
+    }
+
+    // --- Post-process: fix accidental-notehead overlaps within chords ---
+    // When a chord has a second interval (adjacent noteheads), one head is
+    // displaced right.  Its accidental at (displaced_x - 25) can land on top
+    // of the undisplaced notehead.  Detect and resolve these overlaps.
+    {
+        use std::collections::BTreeMap;
+
+        // Group notehead xs by tick
+        let mut tick_to_note_xs: BTreeMap<u32, Vec<f32>> = BTreeMap::new();
+        for ((_, start_tick, _, _, _, _), &nx) in notes.iter().zip(horizontal_offsets.iter()) {
+            tick_to_note_xs.entry(*start_tick).or_default().push(nx);
+        }
+
+        let notehead_hw = super::stems::Stem::NOTEHEAD_WIDTH;
+        // Approximate rendered half-width of an accidental glyph (~0.5 staff spaces)
+        let accidental_hw = 0.5 * units_per_space;
+
+        for acc in &mut accidental_glyphs {
+            let note_idx = acc.source_reference.event_index;
+            let tick = notes[note_idx].1;
+            let my_nx = horizontal_offsets[note_idx];
+            if let Some(note_xs) = tick_to_note_xs.get(&tick) {
+                if note_xs.len() < 2 {
+                    continue;
+                }
+                let min_x = note_xs.iter().copied().fold(f32::INFINITY, f32::min);
+
+                // Check if accidental overlaps any OTHER notehead at same tick
+                for &nx in note_xs {
+                    if (nx - my_nx).abs() < 0.1 {
+                        continue; // same note
+                    }
+                    // Overlap when accidental center is within notehead half-width
+                    // + accidental half-width of the other notehead center
+                    if (acc.position.x - nx).abs() < notehead_hw + accidental_hw {
+                        // Push accidental to the left of the leftmost column
+                        acc.position.x = min_x + accidental_x_offset;
+                        let glyph_name = if acc.codepoint == "\u{E262}" {
+                            "accidentalSharp"
+                        } else if acc.codepoint == "\u{E260}" {
+                            "accidentalFlat"
+                        } else {
+                            "accidentalNatural"
+                        };
+                        acc.bounding_box = compute_glyph_bounding_box(
+                            glyph_name,
+                            &acc.position,
+                            40.0,
+                            units_per_space,
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Stagger accidentals at the same tick that overlap vertically.
+        // Group accidental indices by tick.
+        let mut tick_to_acc_indices: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
+        for (ai, acc) in accidental_glyphs.iter().enumerate() {
+            let tick = notes[acc.source_reference.event_index].1;
+            tick_to_acc_indices.entry(tick).or_default().push(ai);
+        }
+
+        for indices in tick_to_acc_indices.values() {
+            if indices.len() < 2 {
+                continue;
+            }
+            // Sort by y (top-to-bottom)
+            let mut sorted_indices: Vec<usize> = indices.clone();
+            sorted_indices.sort_by(|&a, &b| {
+                accidental_glyphs[a]
+                    .position
+                    .y
+                    .partial_cmp(&accidental_glyphs[b].position.y)
+                    .unwrap()
+            });
+
+            // Check consecutive pairs for vertical overlap.
+            // Accidentals at the same x that are closer than ~1.5 staff spaces
+            // apart vertically will visually collide.
+            let vertical_threshold = 1.5 * units_per_space;
+            for i in 1..sorted_indices.len() {
+                let prev = sorted_indices[i - 1];
+                let curr = sorted_indices[i];
+                let same_x =
+                    (accidental_glyphs[prev].position.x - accidental_glyphs[curr].position.x).abs()
+                        < 1.0;
+                let y_gap =
+                    (accidental_glyphs[curr].position.y - accidental_glyphs[prev].position.y).abs();
+                if same_x && y_gap < vertical_threshold {
+                    // Shift the lower accidental further left
+                    accidental_glyphs[curr].position.x -= accidental_hw * 2.0 + 3.0;
+                    let glyph_name = if accidental_glyphs[curr].codepoint == "\u{E262}" {
+                        "accidentalSharp"
+                    } else if accidental_glyphs[curr].codepoint == "\u{E260}" {
+                        "accidentalFlat"
+                    } else {
+                        "accidentalNatural"
+                    };
+                    accidental_glyphs[curr].bounding_box = compute_glyph_bounding_box(
+                        glyph_name,
+                        &accidental_glyphs[curr].position,
+                        40.0,
+                        units_per_space,
+                    );
+                }
+            }
+        }
     }
 
     accidental_glyphs
@@ -1221,6 +1346,7 @@ pub(super) fn position_rests_for_staff(
                 event_index,
             },
             font_size: None,
+            opacity: None,
         });
     }
 
@@ -1366,6 +1492,7 @@ mod tests {
             &std::collections::HashSet::new(), // no beamed notes
             &std::collections::HashMap::new(), // no chord scale overrides
             None,                              // no multi-voice override
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         // Verify correct number of glyphs
@@ -1705,6 +1832,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 2);
@@ -1743,6 +1871,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 1);
@@ -1777,6 +1906,7 @@ mod tests {
             &beamed,
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
+            &std::collections::HashSet::new(), // no grace notes
         );
 
         assert_eq!(glyphs.len(), 1);

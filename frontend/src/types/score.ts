@@ -88,6 +88,8 @@ export interface Note {
   slur_next?: string;
   /** Slur direction from MusicXML: true=above, false=below. */
   slur_above?: boolean;
+  /** Grace note (ornamental, reduced size and opacity) */
+  is_grace?: boolean;
 }
 
 // ============================================================================

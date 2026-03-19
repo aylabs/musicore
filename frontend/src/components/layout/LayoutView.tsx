@@ -44,6 +44,7 @@ interface ConvertedScore {
           pitch: number;
           articulation: null;
           spelling?: { step: string; alter: number };
+          is_grace?: boolean;
         }>;
         rest_events?: Array<{
           start_tick: number;
@@ -193,6 +194,8 @@ export function convertScoreToLayoutFormat(score: Score): ConvertedScore {
             // Forward slur data for slur arc rendering (Feature 053)
             ...(note.slur_next ? { slur_next: note.slur_next } : {}),
             ...(note.slur_above !== undefined ? { slur_above: note.slur_above } : {}),
+            // Forward grace note flag for reduced size/opacity rendering
+            ...(note.is_grace ? { is_grace: true } : {}),
           })),
           // Forward rest events so the layout engine can produce rest glyphs
           ...(voice.rest_events && voice.rest_events.length > 0

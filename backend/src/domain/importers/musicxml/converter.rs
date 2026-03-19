@@ -213,6 +213,10 @@ struct TimingContext {
     current_tick: u32,
     /// Tick position of the last non-chord note (for chord notes)
     last_note_tick: u32,
+    /// Count of consecutive grace notes (reset on regular note)
+    grace_count: u32,
+    /// Total tick advance from grace notes in current measure (for compensation)
+    grace_tick_advance: u32,
 }
 
 impl TimingContext {
@@ -221,6 +225,8 @@ impl TimingContext {
             divisions: 480, // Default divisions
             current_tick: 0,
             last_note_tick: 0,
+            grace_count: 0,
+            grace_tick_advance: 0,
         }
     }
 
@@ -1083,6 +1089,7 @@ impl MusicXMLConverter {
         for measure in measures {
             // Track measure start for backup/forward within THIS measure only
             let measure_start_tick = timing_context.current_tick;
+            timing_context.grace_tick_advance = 0;
 
             // Process attributes first (update divisions, ignore structural events)
             if let Some(attrs) = &measure.attributes {
@@ -1160,8 +1167,10 @@ impl MusicXMLConverter {
                 }
             }
 
-            // After processing the measure, ensure timing advances to the end of the measure
-            timing_context.current_tick = max_tick_in_measure;
+            // After processing the measure, ensure timing advances to the end of the measure.
+            // Compensate for grace note tick advances so they don't cascade to later measures.
+            timing_context.current_tick =
+                max_tick_in_measure.saturating_sub(timing_context.grace_tick_advance);
         }
 
         // Resolve tie chains within each voice
@@ -1190,6 +1199,7 @@ impl MusicXMLConverter {
         for measure in measures {
             // Track measure start for backup/forward within THIS measure only
             let measure_start_tick = timing_context.current_tick;
+            timing_context.grace_tick_advance = 0;
 
             // Process attributes first (update divisions, ignore structural events)
             if let Some(attrs) = &measure.attributes {
@@ -1242,8 +1252,10 @@ impl MusicXMLConverter {
             }
 
             // After processing the measure, ensure timing advances to the end of the measure
-            // This prevents backup from affecting the next measure's start position
-            timing_context.current_tick = max_tick_in_measure;
+            // This prevents backup from affecting the next measure's start position.
+            // Compensate for grace note tick advances so they don't cascade to later measures.
+            timing_context.current_tick =
+                max_tick_in_measure.saturating_sub(timing_context.grace_tick_advance);
         }
 
         Ok(voice)
@@ -1358,6 +1370,59 @@ impl MusicXMLConverter {
 
         // Map pitch to domain Pitch value object
         let pitch = ElementMapper::map_pitch(pitch_data.step, pitch_data.octave, pitch_data.alter)?;
+
+        // Grace notes have no rhythmic duration — assign a small visual duration
+        // and place them at the current tick, advancing forward. The total grace
+        // advance is compensated at the measure boundary to prevent cascading shifts.
+        if note_data.is_grace {
+            let grace_visual_duration: u32 = 60; // 1/16 of a quarter (960 PPQ)
+            timing_context.grace_count += 1;
+            let tick = timing_context.current_tick();
+            timing_context.current_tick += grace_visual_duration;
+            timing_context.grace_tick_advance += grace_visual_duration;
+            let mut note =
+                Note::new(tick, grace_visual_duration, pitch).map_err(|e: &'static str| {
+                    ImportError::ValidationError {
+                        errors: vec![e.to_string()],
+                    }
+                })?;
+            note.is_grace = true;
+
+            let spelling = crate::domain::value_objects::NoteSpelling {
+                step: pitch_data.step,
+                alter: pitch_data.alter as i8,
+            };
+            let note = note.with_spelling(spelling);
+
+            let beams: Vec<crate::domain::events::note::NoteBeamData> = note_data
+                .beams
+                .iter()
+                .map(|b| crate::domain::events::note::NoteBeamData {
+                    number: b.number,
+                    beam_type: match b.beam_type {
+                        BeamType::Begin => crate::domain::events::note::NoteBeamType::Begin,
+                        BeamType::Continue => crate::domain::events::note::NoteBeamType::Continue,
+                        BeamType::End => crate::domain::events::note::NoteBeamType::End,
+                        BeamType::ForwardHook => {
+                            crate::domain::events::note::NoteBeamType::ForwardHook
+                        }
+                        BeamType::BackwardHook => {
+                            crate::domain::events::note::NoteBeamType::BackwardHook
+                        }
+                    },
+                })
+                .collect();
+            let note = if beams.is_empty() {
+                note
+            } else {
+                note.with_beams(beams)
+            };
+
+            return Ok(note);
+        }
+
+        // Reset grace counter when a regular note arrives
+        timing_context.grace_count = 0;
 
         // Calculate tick position and duration
         // Chord notes use the same tick as the previous note
@@ -1499,6 +1564,7 @@ mod tests {
                 tie_type: None,
                 tie_placement: None,
                 slurs: Vec::new(),
+                is_grace: false,
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1573,6 +1639,7 @@ mod tests {
             tie_type: None,
             tie_placement: None,
             slurs: Vec::new(),
+            is_grace: false,
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1621,6 +1688,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1639,6 +1707,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 }),
             ],
             start_repeat: false,
@@ -1698,6 +1767,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1717,6 +1787,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1736,6 +1807,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 }),
             ],
             start_repeat: false,
@@ -1839,6 +1911,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -1901,6 +1974,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -1963,6 +2037,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2022,6 +2097,7 @@ mod tests {
                     tie_type: None,
                     tie_placement: None,
                     slurs: Vec::new(),
+                    is_grace: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,

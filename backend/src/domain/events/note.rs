@@ -62,6 +62,9 @@ pub struct Note {
     /// Slur direction from MusicXML: true=above, false=below, None=auto.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub slur_above: Option<bool>,
+    /// Grace note (ornamental, no rhythmic duration)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_grace: bool,
 }
 
 fn is_zero_u8(v: &u8) -> bool {
@@ -87,6 +90,7 @@ impl Note {
             is_tie_continuation: false,
             slur_next: None,
             slur_above: None,
+            is_grace: false,
         })
     }
 
