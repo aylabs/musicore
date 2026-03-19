@@ -75,6 +75,30 @@
     "timeSig9": {
       "bBoxNE": [1.02, 2.0],
       "bBoxSW": [0.0, 0.0]
+    },
+    "flag8thUp": {
+      "bBoxNE": [1.08, 0.13],
+      "bBoxSW": [0.0, -2.8]
+    },
+    "flag8thDown": {
+      "bBoxNE": [1.08, 2.8],
+      "bBoxSW": [0.0, -0.13]
+    },
+    "flag16thUp": {
+      "bBoxNE": [1.08, 0.13],
+      "bBoxSW": [0.0, -3.65]
+    },
+    "flag16thDown": {
+      "bBoxNE": [1.08, 3.65],
+      "bBoxSW": [0.0, -0.13]
+    },
+    "flag32ndUp": {
+      "bBoxNE": [1.08, 0.13],
+      "bBoxSW": [0.0, -4.55]
+    },
+    "flag32ndDown": {
+      "bBoxNE": [1.08, 4.55],
+      "bBoxSW": [0.0, -0.13]
     }
   },
   "engravingDefaults": {

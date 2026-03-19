@@ -1262,9 +1262,12 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
     // hangs below baseline, half-rest sits above baseline.  dominant-baseline:middle
     // centres the em-box and breaks this — use 'auto' (alphabetic) so the font's
     // designed origin is placed directly at Y.
+    // Flag glyphs (U+E240–U+E24F) also need 'auto' so the glyph origin (stem tip)
+    // sits at Y rather than being vertically centred.
     const cp = codepoint.codePointAt(0) ?? 0;
     const isRest = cp >= 0xE4E3 && cp <= 0xE4EB;
-    text.setAttribute('dominant-baseline', isRest ? 'auto' : 'middle');
+    const isFlag = cp >= 0xE240 && cp <= 0xE24F;
+    text.setAttribute('dominant-baseline', (isRest || isFlag) ? 'auto' : 'middle');
     
     // Set SMuFL codepoint as text content (Task T020)
     // Handle invalid codepoints (Task T023)

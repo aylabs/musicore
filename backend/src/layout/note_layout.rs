@@ -318,6 +318,7 @@ pub(crate) fn position_glyphs_for_staff(
         let mut chord_scale_map: std::collections::HashMap<usize, f32> =
             std::collections::HashMap::new();
         let mut chord_stem_data: Vec<(f32, f32, f32, usize)> = Vec::new();
+        let mut chord_flag_data: Vec<(f32, f32, bool, u32, usize)> = Vec::new();
 
         for indices in chord_tick_to_indices.values() {
             if indices.len() < 2 {
@@ -352,7 +353,7 @@ pub(crate) fn position_glyphs_for_staff(
             };
 
             let chord_duration = notes_in_range[sorted[0]].2;
-            let needs_explicit_stem = (960..3840).contains(&chord_duration);
+            let needs_explicit_stem = chord_duration < 3840;
             let any_beamed = sorted.iter().any(|idx| beamed_note_indices.contains(idx));
 
             let notehead_scale: f32 = if chord_duration >= 3840 {
@@ -377,20 +378,30 @@ pub(crate) fn position_glyphs_for_staff(
 
                 if chord_stem_down {
                     let stem_x = horizontal_offsets[anchor_idx] - scaled_half_width;
-                    chord_stem_data.push((
-                        stem_x,
-                        top_y,
-                        bottom_y + stems::Stem::STEM_LENGTH,
-                        anchor_idx,
-                    ));
+                    let stem_tip_y = bottom_y + stems::Stem::STEM_LENGTH;
+                    chord_stem_data.push((stem_x, top_y, stem_tip_y, anchor_idx));
+                    if chord_duration < 960 {
+                        chord_flag_data.push((
+                            stem_x,
+                            stem_tip_y,
+                            true,
+                            chord_duration,
+                            anchor_idx,
+                        ));
+                    }
                 } else {
                     let stem_x = horizontal_offsets[anchor_idx] + scaled_half_width;
-                    chord_stem_data.push((
-                        stem_x,
-                        top_y - stems::Stem::STEM_LENGTH,
-                        bottom_y,
-                        anchor_idx,
-                    ));
+                    let stem_tip_y = top_y - stems::Stem::STEM_LENGTH;
+                    chord_stem_data.push((stem_x, stem_tip_y, bottom_y, anchor_idx));
+                    if chord_duration < 960 {
+                        chord_flag_data.push((
+                            stem_x,
+                            stem_tip_y,
+                            false,
+                            chord_duration,
+                            anchor_idx,
+                        ));
+                    }
                 }
             } else {
                 for &idx in &sorted {
@@ -490,6 +501,61 @@ pub(crate) fn position_glyphs_for_staff(
                 opacity: if is_grace_stem { Some(0.5) } else { None },
             };
             all_glyphs.push(stem_glyph);
+        }
+
+        // Generate flag glyphs for short-duration chord stems (eighths, 16ths, 32nds)
+        for &(flag_x, flag_y, stem_down, duration, event_index) in &chord_flag_data {
+            let chord_tick = notes_in_range[event_index].1;
+            let is_grace = grace_note_ticks.contains(&chord_tick);
+            let grace_scale: f32 = if is_grace { 0.6 } else { 1.0 };
+
+            let (flag_codepoint, flag_glyph_name) = if stem_down {
+                if duration < 240 {
+                    ('\u{E245}', "flag32ndDown")
+                } else if duration < 480 {
+                    ('\u{E243}', "flag16thDown")
+                } else {
+                    ('\u{E241}', "flag8thDown")
+                }
+            } else if duration < 240 {
+                ('\u{E244}', "flag32ndUp")
+            } else if duration < 480 {
+                ('\u{E242}', "flag16thUp")
+            } else {
+                ('\u{E240}', "flag8thUp")
+            };
+
+            // Flag glyphs extend to the right from the stem tip. With
+            // text-anchor=middle rendering, offset x by half the flag's
+            // rendered width so the left edge aligns with the stem.
+            let flag_half_width = 0.54 * units_per_space * grace_scale;
+            let flag_position = Point {
+                x: flag_x + flag_half_width,
+                y: flag_y,
+            };
+            let flag_font_size = 80.0 * grace_scale;
+            let bbox_font_size = 40.0 * grace_scale;
+            let flag_bbox = positioner::compute_glyph_bounding_box(
+                flag_glyph_name,
+                &flag_position,
+                bbox_font_size,
+                units_per_space,
+            );
+
+            let flag_glyph = Glyph {
+                codepoint: flag_codepoint.to_string(),
+                position: flag_position,
+                bounding_box: flag_bbox,
+                source_reference: SourceReference {
+                    instrument_id: instrument_id.to_string(),
+                    staff_index,
+                    voice_index,
+                    event_index,
+                },
+                font_size: Some(flag_font_size),
+                opacity: if is_grace { Some(0.5) } else { None },
+            };
+            all_glyphs.push(flag_glyph);
         }
 
         let measure_starts_sorted: Vec<u32> = {
@@ -1624,6 +1690,87 @@ mod tests {
         assert_eq!(
             beams, 2,
             "Should produce 2 beams (broken by rest gap between beats)"
+        );
+    }
+
+    /// T110: Unbeamed eighth-note chord uses bare noteheads + explicit stem + flag
+    /// (Für Elise M33 LH: C4+E4 eighth-note chord, stems up)
+    #[test]
+    fn test_unbeamed_eighth_chord_uses_bare_noteheads_and_explicit_stem() {
+        // Two notes at the same tick forming an eighth-note chord, no beam info
+        let score = serde_json::json!({
+            "instruments": [{
+                "id": "piano",
+                "staves": [{
+                    "clef": "Treble",
+                    "time_signature": { "numerator": 3, "denominator": 8 },
+                    "key_signature": { "sharps": 0 },
+                    "voices": [{
+                        "notes": [
+                            { "pitch": 60, "tick": 0, "duration": 480 },
+                            { "pitch": 64, "tick": 0, "duration": 480 }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&score, &config);
+
+        let staff = &layout.systems[0].staff_groups[0].staves[0];
+        let all_glyphs: Vec<_> = staff
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .collect();
+
+        // Both notes should use bare noteheadBlack (U+E0A4), not combined eighth glyphs
+        let bare_noteheads = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E0A4}")
+            .count();
+        let combined_eighth_up = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D7}")
+            .count();
+        let combined_eighth_down = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{E1D8}")
+            .count();
+
+        assert_eq!(
+            bare_noteheads, 2,
+            "Both chord notes should use bare noteheadBlack (U+E0A4)"
+        );
+        assert_eq!(
+            combined_eighth_up, 0,
+            "Should not use combined note8thUp glyph in chord"
+        );
+        assert_eq!(
+            combined_eighth_down, 0,
+            "Should not use combined note8thDown glyph in chord"
+        );
+
+        // Should have exactly one explicit stem (U+0000)
+        let stems: Vec<_> = all_glyphs
+            .iter()
+            .filter(|g| g.codepoint == "\u{0000}")
+            .collect();
+        assert_eq!(stems.len(), 1, "Should have 1 explicit chord stem");
+
+        // Should have exactly one flag glyph (U+E240 = flag8thUp or U+E241 = flag8thDown)
+        let flags: Vec<_> = all_glyphs
+            .iter()
+            .filter(|g| {
+                let cp = g.codepoint.chars().next().unwrap_or('\0') as u32;
+                (0xE240..=0xE24F).contains(&cp)
+            })
+            .collect();
+        assert_eq!(
+            flags.len(),
+            1,
+            "Should have 1 flag glyph for the eighth-note chord"
         );
     }
 }
