@@ -249,10 +249,6 @@ impl TimingContext {
     fn last_note_tick(&self) -> Tick {
         Tick::new(self.last_note_tick)
     }
-
-    fn update_last_note_tick(&mut self) {
-        self.last_note_tick = self.current_tick;
-    }
 }
 
 /// Converts MusicXML documents to domain Score entities
@@ -1525,6 +1521,14 @@ impl MusicXMLConverter {
         let tick = if note_data.is_chord {
             timing_context.last_note_tick()
         } else {
+            // Grace notes preceding this note advanced current_tick by a
+            // visual-only amount.  Rewind the cursor so this real note
+            // (and every note after it) aligns with the correct beat.
+            let advance = timing_context.grace_tick_advance;
+            if advance > 0 {
+                timing_context.current_tick = timing_context.current_tick.saturating_sub(advance);
+                timing_context.grace_tick_advance = 0;
+            }
             timing_context.current_tick()
         };
 
@@ -1545,7 +1549,7 @@ impl MusicXMLConverter {
         // Advance timing cursor only for non-chord notes
         // Chord notes start at the same tick as the previous note
         if !note_data.is_chord {
-            timing_context.update_last_note_tick();
+            timing_context.last_note_tick = tick.value();
             timing_context.advance_by_duration(note_data.duration)?;
         }
 

@@ -293,6 +293,11 @@ pub(crate) fn extract_measures(
 
                             if let Some(notes) = notes_array {
                                 for note in notes {
+                                    // Grace notes don't occupy rhythmic space
+                                    if note["is_grace"].as_bool().unwrap_or(false) {
+                                        continue;
+                                    }
+
                                     // Support multiple field name formats:
                                     // Format 1 (Score): start_tick, duration_ticks
                                     // Format 2 (LayoutView): tick, duration

@@ -65,7 +65,11 @@ pub(crate) fn compute_unified_note_positions(
             for note in &voice.notes {
                 if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
                 {
-                    tick_durations.push((note.start_tick, note.duration_ticks));
+                    // Grace notes don't contribute to beat-level spacing.
+                    // A small prefix gap is added later at their target tick.
+                    if !note.is_grace {
+                        tick_durations.push((note.start_tick, note.duration_ticks));
+                    }
                 }
             }
             for rest in &voice.rests {
@@ -86,6 +90,33 @@ pub(crate) fn compute_unified_note_positions(
     tick_durations.sort_by_key(|(tick, _)| *tick);
     tick_durations.dedup_by_key(|(tick, _)| *tick);
 
+    // Count grace notes preceding each target tick so we can add a small
+    // horizontal prefix gap.  The gap is part of the unified position map,
+    // ensuring BOTH staves widen equally and stay aligned.
+    let grace_step: f32 = 12.0; // horizontal units per grace note
+    let mut grace_prefix_counts: HashMap<u32, usize> = HashMap::new();
+    for staff_data in staves {
+        for voice in &staff_data.voices {
+            let notes: Vec<&crate::layout::extraction::NoteEvent> = voice
+                .notes
+                .iter()
+                .filter(|n| {
+                    n.start_tick >= tick_range.start_tick && n.start_tick < tick_range.end_tick
+                })
+                .collect();
+            let mut grace_run = 0usize;
+            for note in &notes {
+                if note.is_grace {
+                    grace_run += 1;
+                } else if grace_run > 0 {
+                    let entry = grace_prefix_counts.entry(note.start_tick).or_insert(0);
+                    *entry = (*entry).max(grace_run);
+                    grace_run = 0;
+                }
+            }
+        }
+    }
+
     // Detect ticks where a chord contains a second (adjacent staff positions)
     // that will need notehead displacement.  When stems point down, the lower
     // note shifts LEFT by one notehead width, and its accidental extends even
@@ -104,7 +135,9 @@ pub(crate) fn compute_unified_note_positions(
                 Vec<(u8, Option<(char, i8)>)>,
             > = std::collections::HashMap::new();
             for note in &voice.notes {
-                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
+                if note.start_tick >= tick_range.start_tick
+                    && note.start_tick < tick_range.end_tick
+                    && !note.is_grace
                 {
                     tick_notes
                         .entry(note.start_tick)
@@ -153,6 +186,10 @@ pub(crate) fn compute_unified_note_positions(
             // Extra space for chords with seconds (displaced noteheads + staggered accidentals)
             if chord_second_ticks.contains(start_tick) {
                 gap += 55.0;
+            }
+            // Small prefix gap for grace notes (affects both staves)
+            if let Some(&gc) = grace_prefix_counts.get(start_tick) {
+                gap += gc as f32 * grace_step;
             }
             current_position += gap;
         }
@@ -235,11 +272,6 @@ pub(crate) fn position_glyphs_for_staff(
             continue;
         }
 
-        let horizontal_offsets: Vec<f32> = notes_in_range
-            .iter()
-            .map(|(_, start_tick, _, _, _, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
-            .collect();
-
         let voice_notes_in_range: Vec<&NoteEvent> = voice
             .notes
             .iter()
@@ -247,6 +279,53 @@ pub(crate) fn position_glyphs_for_staff(
                 note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
             })
             .collect();
+
+        let horizontal_offsets: Vec<f32> = {
+            // Grace notes are not in note_positions (excluded from unified
+            // spacing).  Position them at a fixed offset before their target.
+            let mut grace_tick_x: std::collections::HashMap<u32, f32> =
+                std::collections::HashMap::new();
+            {
+                let n = voice_notes_in_range.len();
+                let mut i = 0;
+                while i < n {
+                    if voice_notes_in_range[i].is_grace {
+                        let run_start = i;
+                        while i < n && voice_notes_in_range[i].is_grace {
+                            i += 1;
+                        }
+                        let run_end = i;
+                        let target_x = if run_end < n {
+                            *note_positions
+                                .get(&voice_notes_in_range[run_end].start_tick)
+                                .unwrap_or(&left_margin)
+                        } else {
+                            left_margin
+                        };
+                        let run_len = (run_end - run_start) as f32;
+                        for (k, idx) in (run_start..run_end).enumerate() {
+                            let offset = (run_len - k as f32) * 12.0;
+                            grace_tick_x
+                                .insert(voice_notes_in_range[idx].start_tick, target_x - offset);
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+
+            notes_in_range
+                .iter()
+                .enumerate()
+                .map(|(i, (_, start_tick, _, _, _, _, _))| {
+                    if voice_notes_in_range[i].is_grace {
+                        *grace_tick_x.get(start_tick).unwrap_or(&left_margin)
+                    } else {
+                        *note_positions.get(start_tick).unwrap_or(&0.0)
+                    }
+                })
+                .collect()
+        };
 
         let note_clefs: Vec<&str> = notes_in_range
             .iter()
@@ -356,10 +435,13 @@ pub(crate) fn position_glyphs_for_staff(
         let mut chord_tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
         for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
-            chord_tick_to_indices
-                .entry(*start_tick)
-                .or_default()
-                .push(idx);
+            // Exclude grace notes from chord grouping
+            if !voice_notes_in_range[idx].is_grace {
+                chord_tick_to_indices
+                    .entry(*start_tick)
+                    .or_default()
+                    .push(idx);
+            }
         }
 
         let mut chord_x_offsets: Vec<f32> = vec![0.0; notes_in_range.len()];
