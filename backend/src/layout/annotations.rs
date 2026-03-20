@@ -587,8 +587,9 @@ fn render_ties_and_slurs(
     {
         let system_note_ids: HashSet<&str> = note_lookup.keys().copied().collect();
         let notehead_half_h = units_per_space * 0.5;
+        let num_voices = staff_data.voices.len();
 
-        for voice in &staff_data.voices {
+        for (voice_idx, voice) in staff_data.voices.iter().enumerate() {
             for n in &voice.notes {
                 let slur_target_id = match &n.slur_next {
                     Some(id) => id.as_str(),
@@ -602,16 +603,40 @@ fn render_ties_and_slurs(
                     Some(v) => v,
                     None => {
                         // Standard engraving: slur on opposite side of stems.
-                        // Note above/on middle → stem down → slur above.
-                        // Note below middle → stem up → slur below.
-                        let clef = staff_data.get_clef_at_tick(n.start_tick);
-                        let y_raw = positioner::pitch_to_y_with_spelling(
-                            n.pitch,
-                            clef,
-                            units_per_space,
-                            n.spelling,
-                        ) + staff_vertical_offset;
-                        y_raw <= staff_middle_y
+                        // In multi-voice context, stem direction is forced:
+                        // voice 0 = stem up → slur below; voice 1+ = stem down → slur above.
+                        if num_voices > 1 {
+                            // voice_idx > 0 → stem down → slur above
+                            voice_idx > 0
+                        } else {
+                            // Single voice: stem direction determined by chord
+                            // (most extreme note from staff middle).
+                            let clef = staff_data.get_clef_at_tick(n.start_tick);
+                            let chord_ys: Vec<f32> = voice
+                                .notes
+                                .iter()
+                                .filter(|cn| cn.start_tick == n.start_tick)
+                                .map(|cn| {
+                                    positioner::pitch_to_y_with_spelling(
+                                        cn.pitch,
+                                        clef,
+                                        units_per_space,
+                                        cn.spelling,
+                                    ) + staff_vertical_offset
+                                })
+                                .collect();
+                            let most_extreme_y = chord_ys
+                                .iter()
+                                .copied()
+                                .max_by(|a, b| {
+                                    let da = (*a - staff_middle_y).abs();
+                                    let db = (*b - staff_middle_y).abs();
+                                    da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+                                })
+                                .unwrap_or(staff_middle_y);
+                            // most extreme above middle → stem down → slur above
+                            most_extreme_y <= staff_middle_y
+                        }
                     }
                 };
                 let y_edge = if above {
