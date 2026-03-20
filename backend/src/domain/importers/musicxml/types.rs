@@ -184,14 +184,26 @@ pub struct ClefData {
     pub line: i32,
 }
 
+/// Octave-shift (8va/8vb/15ma) direction from `<direction><direction-type><octave-shift>`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OctaveShiftData {
+    /// "down" (8va: display lower), "up" (8vb: display higher), "stop"
+    pub shift_type: String,
+    /// 8, 15, or 22
+    pub size: u8,
+    /// Staff number (1-indexed)
+    pub staff: usize,
+}
+
 /// Element within a measure (note, rest, or other)
 #[derive(Debug, Clone)]
 pub enum MeasureElement {
     Note(NoteData),
     Rest(RestData),
-    Backup(i32),                // Move timing backward by N duration units
-    Forward(i32),               // Move timing forward by N duration units (rest in voice)
-    Attributes(AttributesData), // Mid-measure attribute changes (clef, key, etc.)
+    Backup(i32),                  // Move timing backward by N duration units
+    Forward(i32),                 // Move timing forward by N duration units (rest in voice)
+    Attributes(AttributesData),   // Mid-measure attribute changes (clef, key, etc.)
+    OctaveShift(OctaveShiftData), // Octave transposition bracket start/stop
 }
 
 /// The role this note plays in a tie relationship.

@@ -10,7 +10,7 @@ use crate::domain::events::tempo::TempoEvent;
 use crate::domain::events::time_signature::TimeSignatureEvent;
 use crate::domain::instrument::Instrument;
 use crate::domain::repeat::{RepeatBarline, RepeatBarlineType, VoltaBracket, VoltaEndType};
-use crate::domain::score::Score;
+use crate::domain::score::{OctaveShiftRegion, Score};
 use crate::domain::staff::Staff;
 use crate::domain::value_objects::{BPM, Tick};
 use crate::domain::voice::Voice;
@@ -22,7 +22,8 @@ use super::timing::Fraction;
 use super::types::BeamType;
 use super::types::EndingParseType;
 use super::types::{
-    MeasureData, MeasureElement, MusicXMLDocument, NoteData, PartData, SlurInfo, SlurType, TieType,
+    MeasureData, MeasureElement, MusicXMLDocument, NoteData, OctaveShiftData, PartData, SlurInfo,
+    SlurType, TieType,
 };
 use std::collections::{BTreeMap, HashMap};
 
@@ -343,6 +344,20 @@ impl MusicXMLConverter {
             })
             .unwrap_or_default();
 
+        // Collect octave-shift regions from the first part
+        let octave_shift_regions = doc
+            .parts
+            .first()
+            .map(|first_part| {
+                Self::collect_octave_shift_regions(
+                    &first_part.measures,
+                    ticks_per_measure,
+                    pickup_ticks,
+                    &measure_end_ticks,
+                )
+            })
+            .unwrap_or_default();
+
         // Convert each part to an Instrument
         for part_data in doc.parts {
             let instrument = Self::convert_part(
@@ -357,6 +372,7 @@ impl MusicXMLConverter {
 
         score.repeat_barlines = repeat_barlines;
         score.volta_brackets = volta_brackets;
+        score.octave_shift_regions = octave_shift_regions;
 
         score.pickup_ticks = pickup_ticks;
         score.measure_end_ticks = measure_end_ticks;
@@ -407,7 +423,7 @@ impl MusicXMLConverter {
                     let _ = timing.advance_by_duration(*duration);
                     max_tick = max_tick.max(timing.current_tick);
                 }
-                MeasureElement::Attributes(_) => {}
+                MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
             }
         }
 
@@ -469,7 +485,7 @@ impl MusicXMLConverter {
                         let _ = timing.advance_by_duration(*duration);
                         max_tick = max_tick.max(timing.current_tick);
                     }
-                    MeasureElement::Attributes(_) => {}
+                    MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
                 }
             }
 
@@ -564,6 +580,85 @@ impl MusicXMLConverter {
                                 end_tick,
                                 end_type,
                             });
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Collects octave-shift regions (8va/8vb/15ma brackets) from measure data.
+    fn collect_octave_shift_regions(
+        measures: &[MeasureData],
+        ticks_per_measure: u32,
+        pickup_ticks: u32,
+        measure_end_ticks: &[u32],
+    ) -> Vec<OctaveShiftRegion> {
+        let mut result = Vec::new();
+        // Track open shifts: (staff) -> (start_tick, OctaveShiftData)
+        let mut open: HashMap<usize, (u32, OctaveShiftData)> = HashMap::new();
+
+        let mut timing = TimingContext::new();
+
+        for (i, measure) in measures.iter().enumerate() {
+            let measure_start =
+                actual_measure_start(i, measure_end_ticks, pickup_ticks, ticks_per_measure);
+            timing.current_tick = measure_start;
+
+            if let Some(attrs) = &measure.attributes {
+                if let Some(divisions) = attrs.divisions {
+                    timing.set_divisions(divisions);
+                }
+            }
+
+            for element in &measure.elements {
+                match element {
+                    MeasureElement::Note(note_data) => {
+                        if !note_data.is_chord {
+                            let _ = timing.advance_by_duration(note_data.duration);
+                        }
+                    }
+                    MeasureElement::Rest(rest_data) => {
+                        let _ = timing.advance_by_duration(rest_data.duration);
+                    }
+                    MeasureElement::Backup(dur) => {
+                        if let Ok(ticks) = Fraction::from_musicxml(*dur, timing.divisions)
+                            .to_ticks()
+                            .map(|t| t as u32)
+                        {
+                            timing.current_tick = timing.current_tick.saturating_sub(ticks);
+                        }
+                    }
+                    MeasureElement::Forward(dur) => {
+                        let _ = timing.advance_by_duration(*dur);
+                    }
+                    MeasureElement::Attributes(attrs) => {
+                        if let Some(divisions) = attrs.divisions {
+                            timing.set_divisions(divisions);
+                        }
+                    }
+                    MeasureElement::OctaveShift(os) => {
+                        let staff_index = os.staff.saturating_sub(1); // 1-indexed → 0-indexed
+                        if os.shift_type == "stop" {
+                            if let Some((start_tick, start_data)) = open.remove(&staff_index) {
+                                let display_shift: i8 = match start_data.shift_type.as_str() {
+                                    "down" => -(start_data.size as i8), // 8va: display lower
+                                    "up" => start_data.size as i8,      // 8vb: display higher
+                                    _ => 0,
+                                };
+                                if display_shift != 0 {
+                                    result.push(OctaveShiftRegion {
+                                        start_tick,
+                                        end_tick: timing.current_tick,
+                                        display_shift,
+                                        staff_index,
+                                    });
+                                }
+                            }
+                        } else {
+                            open.insert(staff_index, (timing.current_tick, os.clone()));
                         }
                     }
                 }
@@ -911,6 +1006,7 @@ impl MusicXMLConverter {
                             let _ = staff.add_clef_event(clef_event);
                         }
                     }
+                    MeasureElement::OctaveShift(_) => {}
                 }
             }
         }
@@ -1008,7 +1104,7 @@ impl MusicXMLConverter {
                         // Move timing cursor forward
                         timing_context.advance_by_duration(*duration)?;
                     }
-                    MeasureElement::Attributes(_) => {}
+                    MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
                 }
             }
         }
@@ -1066,7 +1162,7 @@ impl MusicXMLConverter {
                         // Move timing cursor forward
                         timing_context.advance_by_duration(*duration)?;
                     }
-                    MeasureElement::Attributes(_) => {}
+                    MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
                 }
             }
         }
@@ -1163,7 +1259,7 @@ impl MusicXMLConverter {
                         timing_context.advance_by_duration(*duration)?;
                         max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
                     }
-                    MeasureElement::Attributes(_) => {}
+                    MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
                 }
             }
 
@@ -1247,7 +1343,7 @@ impl MusicXMLConverter {
                         timing_context.advance_by_duration(*duration)?;
                         max_tick_in_measure = max_tick_in_measure.max(timing_context.current_tick);
                     }
-                    MeasureElement::Attributes(_) => {}
+                    MeasureElement::Attributes(_) | MeasureElement::OctaveShift(_) => {}
                 }
             }
 

@@ -639,6 +639,67 @@ export class LayoutRenderer extends Component<LayoutRendererProps> {
       }
     }
 
+    // Render ottava bracket layouts (8va/8vb)
+    if (system.ottava_bracket_layouts) {
+      for (const obl of system.ottava_bracket_layouts) {
+        const bracketGroup = createSVGGroup();
+        bracketGroup.setAttribute('data-ottava', obl.label);
+        const strokeColor = this.props.config.staffLineColor;
+        const strokeWidth = '1.5';
+        const hookLength = 12; // length of closing vertical stroke
+        const dashArray = obl.closed_right ? '' : '4 3'; // dashed where bracket continues
+
+        // Horizontal dashed line from x_start to x_end
+        const hLine = createSVGElement('line');
+        hLine.setAttribute('x1', obl.x_start.toString());
+        hLine.setAttribute('y1', obl.y.toString());
+        hLine.setAttribute('x2', obl.x_end.toString());
+        hLine.setAttribute('y2', obl.y.toString());
+        hLine.setAttribute('stroke', strokeColor);
+        hLine.setAttribute('stroke-width', strokeWidth);
+        if (dashArray) hLine.setAttribute('stroke-dasharray', dashArray);
+        bracketGroup.appendChild(hLine);
+
+        // Left vertical hook (descending for above staff, ascending for below)
+        const hookDir = obl.above ? 1 : -1; // 1 = down (toward staff), -1 = up
+        const leftHook = createSVGElement('line');
+        leftHook.setAttribute('x1', obl.x_start.toString());
+        leftHook.setAttribute('y1', obl.y.toString());
+        leftHook.setAttribute('x2', obl.x_start.toString());
+        leftHook.setAttribute('y2', (obl.y + hookDir * hookLength).toString());
+        leftHook.setAttribute('stroke', strokeColor);
+        leftHook.setAttribute('stroke-width', strokeWidth);
+        bracketGroup.appendChild(leftHook);
+
+        // Right vertical hook (only when closed_right)
+        if (obl.closed_right) {
+          const rightHook = createSVGElement('line');
+          rightHook.setAttribute('x1', obl.x_end.toString());
+          rightHook.setAttribute('y1', obl.y.toString());
+          rightHook.setAttribute('x2', obl.x_end.toString());
+          rightHook.setAttribute('y2', (obl.y + hookDir * hookLength).toString());
+          rightHook.setAttribute('stroke', strokeColor);
+          rightHook.setAttribute('stroke-width', strokeWidth);
+          bracketGroup.appendChild(rightHook);
+        }
+
+        // Label (e.g. "8va") near the left end
+        const label = createSVGElement('text');
+        label.setAttribute('x', (obl.x_start + 4).toString());
+        // For above: place label above the line; for below: place below
+        const labelY = obl.above ? obl.y - 4 : obl.y + 20;
+        label.setAttribute('y', labelY.toString());
+        label.setAttribute('font-family', this.props.config.fontFamily);
+        label.setAttribute('font-size', '28');
+        label.setAttribute('font-style', 'italic');
+        label.setAttribute('fill', strokeColor);
+        label.textContent = obl.label;
+        bracketGroup.appendChild(label);
+
+        systemGroup.appendChild(bracketGroup);
+      }
+    }
+
     // Render each staff group (Task T018)
     for (const staffGroup of system.staff_groups) {
       const staffGroupElement = this.renderStaffGroup(staffGroup, system.index, system.staff_groups.length);

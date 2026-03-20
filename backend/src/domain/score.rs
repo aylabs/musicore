@@ -10,6 +10,19 @@ use crate::domain::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Octave-shift region (8va, 8vb, 15ma, etc.) for display transposition
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OctaveShiftRegion {
+    /// Start tick (inclusive)
+    pub start_tick: u32,
+    /// End tick (exclusive)
+    pub end_tick: u32,
+    /// Semitones to shift display pitch: -12 for 8va, +12 for 8vb, -24 for 15ma
+    pub display_shift: i8,
+    /// Staff index (0-based) within the instrument
+    pub staff_index: usize,
+}
+
 /// Score is the aggregate root containing all musical elements
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Score {
@@ -30,6 +43,9 @@ pub struct Score {
     /// Empty = fall back to formula-based calculation.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub measure_end_ticks: Vec<u32>,
+    /// Octave-shift regions (8va/8vb brackets) per staff
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub octave_shift_regions: Vec<OctaveShiftRegion>,
 }
 
 impl Score {
@@ -43,6 +59,7 @@ impl Score {
             volta_brackets: Vec::new(),
             pickup_ticks: 0,
             measure_end_ticks: Vec::new(),
+            octave_shift_regions: Vec::new(),
         };
 
         // Add default tempo (120 BPM) at tick 0

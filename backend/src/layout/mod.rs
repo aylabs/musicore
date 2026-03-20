@@ -31,9 +31,9 @@ pub use breaker::MeasureInfo;
 pub use extraction::NoteData;
 pub use types::{
     BarLine, BarLineSegment, BarLineType, BoundingBox, BracketGlyph, BracketType, Color,
-    GlobalLayout, Glyph, GlyphRun, LayoutConfig, LedgerLine, MeasureNumber, NameLabel, Point,
-    RepeatDotPosition, SourceReference, Staff, StaffGroup, StaffLine, System, TickRange,
-    VoltaBracketLayout,
+    GlobalLayout, Glyph, GlyphRun, LayoutConfig, LedgerLine, MeasureNumber, NameLabel,
+    OttavaBracketLayout, Point, RepeatDotPosition, SourceReference, Staff, StaffGroup, StaffLine,
+    System, TickRange, VoltaBracketLayout,
 };
 
 use extraction::{
@@ -192,7 +192,77 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
         .collect();
 
     // Extract instruments from score (needed before breaking to compute system height)
-    let instruments = extract_instruments(score, time_numerator, time_denominator);
+    let mut instruments = extract_instruments(score, time_numerator, time_denominator);
+
+    // Inject octave-shift regions into appropriate StaffData
+    #[derive(Clone)]
+    struct OttavaRegionData {
+        start_tick: u32,
+        end_tick: u32,
+        display_shift: i8,
+        staff_index: usize,
+    }
+    let mut ottava_regions: Vec<OttavaRegionData> = Vec::new();
+    if let Some(regions) = score["octave_shift_regions"].as_array() {
+        for r in regions {
+            if let (Some(start), Some(end), Some(shift), Some(si)) = (
+                r["start_tick"].as_u64(),
+                r["end_tick"].as_u64(),
+                r["display_shift"].as_i64(),
+                r["staff_index"].as_u64(),
+            ) {
+                let data = OttavaRegionData {
+                    start_tick: start as u32,
+                    end_tick: end as u32,
+                    display_shift: shift as i8,
+                    staff_index: si as usize,
+                };
+                ottava_regions.push(data.clone());
+                // Inject into the matching instrument's staff
+                // Currently assumes single instrument (piano); staff_index maps directly
+                if let Some(inst) = instruments.first_mut() {
+                    if let Some(staff) = inst.staves.get_mut(data.staff_index) {
+                        staff.octave_shift_regions.push((
+                            data.start_tick,
+                            data.end_tick,
+                            data.display_shift,
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Apply display-pitch transposition: shift note pitches within ottava regions
+    // so all downstream layout code uses the display pitch automatically.
+    for inst in &mut instruments {
+        for staff in &mut inst.staves {
+            if staff.octave_shift_regions.is_empty() {
+                continue;
+            }
+            // Clone the regions to avoid borrow conflict when mutating notes below
+            let regions = staff.octave_shift_regions.clone();
+            for voice in &mut staff.voices {
+                for note in &mut voice.notes {
+                    for &(start, end, shift) in &regions {
+                        if note.start_tick >= start && note.start_tick < end {
+                            let semitones: i16 = match shift {
+                                -8 => -12,
+                                8 => 12,
+                                -15 => -24,
+                                15 => 24,
+                                _ => 0,
+                            };
+                            if semitones != 0 {
+                                note.pitch = (note.pitch as i16 + semitones).clamp(0, 127) as u8;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Compute effective system height based on total staves across ALL instruments.
     // A single staff occupies 4 * units_per_space (5 lines, 4 gaps of 1 space each).
@@ -708,6 +778,82 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 x_end,
                 y: system.bounding_box.y - 20.0, // Above measure number
                 closed_right,
+            });
+        }
+
+        // Compute ottava bracket layouts for this system (8va/8vb)
+        for r in &ottava_regions {
+            // Check if this region overlaps with this system's tick range
+            if r.start_tick >= system.tick_range.end_tick
+                || r.end_tick <= system.tick_range.start_tick
+            {
+                continue;
+            }
+
+            let effective_start = r.start_tick.max(system.tick_range.start_tick);
+            let effective_end = r.end_tick.min(system.tick_range.end_tick);
+
+            let x_start = measure_x_bounds
+                .get(&effective_start)
+                .map(|(start, _)| *start)
+                .unwrap_or_else(|| {
+                    // Find the closest measure start <= effective_start
+                    measure_x_bounds
+                        .iter()
+                        .filter(|(t, _)| **t <= effective_start)
+                        .max_by_key(|(t, _)| **t)
+                        .map(|(_, (s, _))| *s)
+                        .unwrap_or(unified_left_margin)
+                });
+
+            let x_end = {
+                // End at the barline of the measure containing the end tick
+                measure_x_bounds
+                    .iter()
+                    .filter(|(t, _)| **t < effective_end)
+                    .max_by_key(|(t, _)| **t)
+                    .map(|(_, (_, e))| *e)
+                    .unwrap_or(x_start + 100.0)
+            };
+
+            // For 8va (above): place bracket above the topmost staff line of the relevant staff.
+            // Determine staff y by looking at this system's staff groups.
+            let above = r.display_shift < 0; // 8va is display_shift = -8, so display lower = above the staff
+
+            // Find the vertical position of the target staff
+            let bracket_y = if let Some(staff_group) = system.staff_groups.first() {
+                if let Some(staff) = staff_group.staves.get(r.staff_index) {
+                    let top_staff_y = staff.staff_lines[0].y_position;
+                    if above {
+                        top_staff_y - 25.0 // Above the top staff line
+                    } else {
+                        let bottom_staff_y = staff.staff_lines[4].y_position;
+                        bottom_staff_y + 25.0 // Below the bottom staff line
+                    }
+                } else {
+                    system.bounding_box.y - 25.0
+                }
+            } else {
+                system.bounding_box.y - 25.0
+            };
+
+            let closed_right = r.end_tick <= system.tick_range.end_tick;
+            let label = match r.display_shift {
+                -8 => "8va".to_string(),
+                8 => "8vb".to_string(),
+                -15 => "15ma".to_string(),
+                15 => "15mb".to_string(),
+                _ => format!("{}va", r.display_shift.unsigned_abs()),
+            };
+
+            system.ottava_bracket_layouts.push(OttavaBracketLayout {
+                label,
+                x_start,
+                x_end,
+                y: bracket_y,
+                above,
+                closed_right,
+                staff_index: r.staff_index,
             });
         }
 

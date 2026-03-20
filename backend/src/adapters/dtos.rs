@@ -5,7 +5,7 @@ use crate::domain::{
     events::{global::GlobalStructuralEvent, staff::StaffStructuralEvent},
     instrument::Instrument,
     repeat::{RepeatBarline, VoltaBracket},
-    score::Score,
+    score::{OctaveShiftRegion, Score},
     staff::Staff,
     value_objects::Clef,
     voice::Voice,
@@ -72,7 +72,8 @@ impl From<&Instrument> for InstrumentDto {
 /// v5: rest_events added to Voice (043-score-rests)
 /// v6: pickup_ticks added to ScoreDto (044-time-signatures)
 /// v7: volta_brackets added to ScoreDto (047-repeat-volta-playback)
-const SCORE_SCHEMA_VERSION: u32 = 7;
+/// v8: octave_shift_regions added to ScoreDto (050-fix-layout-preloaded-scores)
+const SCORE_SCHEMA_VERSION: u32 = 8;
 
 /// DTO for Score containing InstrumentDtos with schema versioning
 #[derive(Debug, Serialize, Deserialize)]
@@ -102,6 +103,9 @@ pub struct ScoreDto {
     /// Empty = fall back to formula-based calculation.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub measure_end_ticks: Vec<u32>,
+    /// Octave-shift regions (8va/8vb brackets) per staff (Feature 050)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub octave_shift_regions: Vec<OctaveShiftRegion>,
 }
 
 impl From<&Score> for ScoreDto {
@@ -115,6 +119,7 @@ impl From<&Score> for ScoreDto {
             volta_brackets: score.volta_brackets.clone(),
             pickup_ticks: score.pickup_ticks,
             measure_end_ticks: score.measure_end_ticks.clone(),
+            octave_shift_regions: score.octave_shift_regions.clone(),
         }
     }
 }

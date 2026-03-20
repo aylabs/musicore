@@ -46,6 +46,8 @@ export interface System {
   measure_number?: MeasureNumber;
   /** Volta bracket layouts positioned over this system (Feature 047) */
   volta_bracket_layouts?: VoltaBracketLayout[];
+  /** Ottava bracket layouts (8va/8vb) positioned over this system */
+  ottava_bracket_layouts?: OttavaBracketLayout[];
 }
 
 /**
@@ -75,6 +77,24 @@ export interface VoltaBracketLayout {
   y: number;
   /** true = vertical closing stroke at right end; false = open (discontinue) */
   closed_right: boolean;
+}
+
+/** A positioned ottava bracket in layout coordinates (8va/8vb) */
+export interface OttavaBracketLayout {
+  /** Display label, e.g. "8va" or "8vb" */
+  label: string;
+  /** x-position of the left edge */
+  x_start: number;
+  /** x-position of the right edge */
+  x_end: number;
+  /** y-position of the bracket line */
+  y: number;
+  /** true = bracket above staff (8va), false = below (8vb) */
+  above: boolean;
+  /** true = vertical closing stroke at right end */
+  closed_right: boolean;
+  /** Staff index within the instrument (0 = treble, 1 = bass) */
+  staff_index: number;
 }
 
 /**

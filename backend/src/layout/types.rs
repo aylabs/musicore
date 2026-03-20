@@ -51,6 +51,9 @@ pub struct System {
     /// Volta bracket layouts positioned over this system (Feature 047)
     #[serde(default)]
     pub volta_bracket_layouts: Vec<VoltaBracketLayout>,
+    /// Ottava bracket layouts positioned over this system (8va/8vb)
+    #[serde(default)]
+    pub ottava_bracket_layouts: Vec<OttavaBracketLayout>,
 }
 
 /// Positioned measure number at the start of a system
@@ -83,6 +86,28 @@ pub struct VoltaBracketLayout {
     pub y: f32,
     /// true = vertical closing stroke at right end; false = open (discontinue)
     pub closed_right: bool,
+}
+
+/// A positioned ottava bracket in layout coordinates (8va/8vb)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OttavaBracketLayout {
+    /// Display label ("8va", "8vb", "15ma", etc.)
+    pub label: String,
+    /// x-position of the left edge
+    #[serde(serialize_with = "round_f32")]
+    pub x_start: f32,
+    /// x-position of the right edge
+    #[serde(serialize_with = "round_f32")]
+    pub x_end: f32,
+    /// y-position of the bracket line
+    #[serde(serialize_with = "round_f32")]
+    pub y: f32,
+    /// true = bracket above staff (8va), false = below (8vb)
+    pub above: bool,
+    /// true = vertical closing stroke at right end; false = continues to next system
+    pub closed_right: bool,
+    /// Staff index within the instrument (0 = treble, 1 = bass)
+    pub staff_index: usize,
 }
 
 /// Groups related staves for multi-staff instruments

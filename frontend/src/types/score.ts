@@ -146,11 +146,26 @@ export interface Score {
   /** Volta brackets / first-second endings (Feature 047) */
   volta_brackets?: VoltaBracket[];
 
+  /** Octave-shift regions (8va/8vb) for display transposition */
+  octave_shift_regions?: OctaveShiftRegion[];
+
   /** Duration of pickup/anacrusis measure in ticks (0 = no pickup) */
   pickup_ticks?: number;
 
   /** Actual cumulative tick at end of each measure, for shortened measures */
   measure_end_ticks?: number[];
+}
+
+/** An octave-shift region (8va/8vb) for display pitch transposition */
+export interface OctaveShiftRegion {
+  /** Start tick (inclusive) */
+  start_tick: number;
+  /** End tick (exclusive) */
+  end_tick: number;
+  /** Semitones to shift: -8 = 8va (display lower), +8 = 8vb (display higher) */
+  display_shift: number;
+  /** 0-based staff index within the instrument */
+  staff_index: number;
 }
 
 /** Type of repeat barline (Feature 041) */

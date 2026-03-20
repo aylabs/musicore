@@ -487,6 +487,10 @@ impl MusicXMLParser {
                             measure.endings.push(ending_data);
                         }
                     }
+                    b"direction" => {
+                        // Parse <direction> for octave-shift elements
+                        Self::parse_direction(reader, &mut measure)?;
+                    }
                     b"metronome" => {
                         in_metronome = true;
                     }
@@ -540,6 +544,100 @@ impl MusicXMLParser {
         }
 
         Ok(measure)
+    }
+
+    /// Parses a `<direction>` element, looking for `<octave-shift>` children.
+    fn parse_direction<B: BufRead>(
+        reader: &mut Reader<B>,
+        measure: &mut MeasureData,
+    ) -> Result<(), ImportError> {
+        let mut buf = Vec::new();
+        let mut staff: usize = 1;
+        let mut octave_shift: Option<OctaveShiftData> = None;
+        let mut in_metronome = false;
+
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(e)) => match e.name().as_ref() {
+                    b"staff" => {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            if let Ok(s) =
+                                text.unescape().unwrap_or_default().trim().parse::<usize>()
+                            {
+                                staff = s;
+                            }
+                        }
+                    }
+                    b"metronome" => {
+                        in_metronome = true;
+                    }
+                    b"per-minute" if in_metronome => {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            if let Ok(val) =
+                                text.unescape().unwrap_or_default().trim().parse::<f64>()
+                            {
+                                measure.metronome_tempo = Some(val);
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Ok(Event::Empty(e)) => match e.name().as_ref() {
+                    b"octave-shift" => {
+                        let mut shift_type = String::new();
+                        let mut size: u8 = 8;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"type" => {
+                                    shift_type = String::from_utf8_lossy(&attr.value).to_string();
+                                }
+                                b"size" => {
+                                    if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                        size = s.parse().unwrap_or(8);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        if !shift_type.is_empty() {
+                            octave_shift = Some(OctaveShiftData {
+                                shift_type,
+                                size,
+                                staff: 1, // placeholder, updated with staff below
+                            });
+                        }
+                    }
+                    b"sound" => {
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == b"tempo" {
+                                if let Ok(tempo_str) = std::str::from_utf8(&attr.value) {
+                                    if let Ok(tempo) = tempo_str.parse::<f64>() {
+                                        measure.sound_tempo = Some(tempo);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Ok(Event::End(e)) => {
+                    if e.name().as_ref() == b"direction" {
+                        break;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
+            }
+            buf.clear();
+        }
+
+        if let Some(mut os) = octave_shift {
+            os.staff = staff;
+            measure.elements.push(MeasureElement::OctaveShift(os));
+        }
+
+        Ok(())
     }
 
     /// Parses children of a `<barline>` element to detect `<repeat>` and `<ending>` markers.

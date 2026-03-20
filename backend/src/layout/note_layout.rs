@@ -1004,6 +1004,7 @@ mod tests {
             key_sharps: 0,
             key_signature_events: vec![],
             clef_events: vec![],
+            octave_shift_regions: vec![],
             voices: vec![VoiceData {
                 notes: vec![NoteEvent {
                     pitch: 67,
@@ -1049,6 +1050,7 @@ mod tests {
             key_sharps: 0,
             key_signature_events: vec![],
             clef_events: vec![],
+            octave_shift_regions: vec![],
             voices: vec![VoiceData {
                 notes: vec![NoteEvent {
                     pitch: 60,

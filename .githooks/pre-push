@@ -54,15 +54,40 @@ if [ "$current_branch" = "main" ] || echo "$current_branch" | grep -qE '^[0-9]+-
   fi
 
   # Run E2E tests with a 3-minute hard limit.
-  # Correct tests finish in < 2 min. Hanging past 3 min means a test is timing
-  # out due to a broken selector or missing element -- those show up as failures
-  # in the captured output. If we hit the limit with zero failures recorded,
-  # the suite was passing cleanly and CI will finish the run.
-  echo "  - Running E2E tests (3 min limit)..."
+  # On feature branches: only run specs relevant to changed files (fast path).
+  # On main: run the full suite. CI always finishes the full run.
   lsof -i :4173 -t 2>/dev/null | xargs kill -9 2>/dev/null || true
 
+  # Determine which E2E specs to run based on changed files vs main
+  changed_files=$(git diff --name-only origin/main...HEAD 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null)
+  e2e_specs=""
+
+  if echo "$changed_files" | grep -qE "wasm/|dtos\.rs|parser\.rs|layout/"; then
+    e2e_specs="e2e/play-score-plugin.spec.ts e2e/demo-flow.spec.ts"
+  fi
+  if echo "$changed_files" | grep -qE "metronome|tempo|BPM"; then
+    e2e_specs="$e2e_specs e2e/metronome.spec.ts"
+  fi
+  if echo "$changed_files" | grep -qE "persist|storage|IndexedDB|local-storage"; then
+    e2e_specs="$e2e_specs e2e/persist-uploaded-scores.spec.ts"
+  fi
+  if echo "$changed_files" | grep -qE "train|practice|complexity"; then
+    e2e_specs="$e2e_specs e2e/train-view.spec.ts e2e/train-from-score.spec.ts e2e/train-complexity-levels.spec.ts"
+  fi
+
+  # Deduplicate and trim
+  e2e_specs=$(echo "$e2e_specs" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+
+  if [ -n "$e2e_specs" ]; then
+    echo "  - Running E2E tests (impacted specs, 3 min limit): $e2e_specs"
+    e2e_cmd="npx playwright test --config playwright.config.prod.ts --reporter=list $e2e_specs"
+  else
+    echo "  - Running E2E tests (full suite, 3 min limit)..."
+    e2e_cmd="npx playwright test --config playwright.config.prod.ts --reporter=list"
+  fi
+
   # Background process + manual wait loop (portable; 'timeout' is not on macOS)
-  npx playwright test --config playwright.config.prod.ts --reporter=list > /tmp/e2e-prepush.log 2>&1 &
+  $e2e_cmd > /tmp/e2e-prepush.log 2>&1 &
   playwright_pid=$!
   e2e_exit=0
   waited=0
