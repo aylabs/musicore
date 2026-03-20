@@ -816,8 +816,8 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                     .unwrap_or(x_start + 100.0)
             };
 
-            // For 8va (above): place bracket above the topmost staff line of the relevant staff.
-            // Determine staff y by looking at this system's staff groups.
+            // For 8va (above): place bracket just above the highest note in the region,
+            // hugging the note heads like Musescore (not fixed distance from staff top).
             let above = r.display_shift < 0; // 8va is display_shift = -8, so display lower = above the staff
 
             // Find the vertical position of the target staff
@@ -825,7 +825,27 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
                 if let Some(staff) = staff_group.staves.get(r.staff_index) {
                     let top_staff_y = staff.staff_lines[0].y_position;
                     if above {
-                        top_staff_y - 25.0 // Above the top staff line
+                        // Find the topmost glyph in the bracket x range (excluding stems/beams)
+                        let top_note_y = staff
+                            .glyph_runs
+                            .iter()
+                            .flat_map(|gr| gr.glyphs.iter())
+                            .filter(|g| {
+                                g.position.x >= x_start - 5.0
+                                    && g.position.x <= x_end + 5.0
+                                    && g.codepoint != "\u{0000}"
+                                    && g.codepoint != "\u{0001}"
+                            })
+                            .map(|g| g.position.y)
+                            .fold(f32::INFINITY, f32::min);
+
+                        let clearance = 10.0;
+                        if top_note_y.is_finite() {
+                            // Sit just above the highest note, but never below staff top
+                            (top_note_y - clearance).min(top_staff_y - clearance)
+                        } else {
+                            top_staff_y - 25.0
+                        }
                     } else {
                         let bottom_staff_y = staff.staff_lines[4].y_position;
                         bottom_staff_y + 25.0 // Below the bottom staff line
