@@ -27,9 +27,6 @@ use super::types::{
 };
 use std::collections::{BTreeMap, HashMap};
 
-#[cfg(target_arch = "wasm32")]
-use web_sys::console;
-
 /// Compute the start tick of a measure, accounting for pickup/anacrusis.
 fn measure_start_tick(measure_index: usize, pickup_ticks: u32, ticks_per_measure: u32) -> u32 {
     if pickup_ticks == 0 || measure_index == 0 {
@@ -248,10 +245,6 @@ impl TimingContext {
 
     fn last_note_tick(&self) -> Tick {
         Tick::new(self.last_note_tick)
-    }
-
-    fn update_last_note_tick(&mut self) {
-        self.last_note_tick = self.current_tick;
     }
 }
 
@@ -1525,6 +1518,14 @@ impl MusicXMLConverter {
         let tick = if note_data.is_chord {
             timing_context.last_note_tick()
         } else {
+            // Grace notes preceding this note advanced current_tick by a
+            // visual-only amount.  Rewind the cursor so this real note
+            // (and every note after it) aligns with the correct beat.
+            let advance = timing_context.grace_tick_advance;
+            if advance > 0 {
+                timing_context.current_tick = timing_context.current_tick.saturating_sub(advance);
+                timing_context.grace_tick_advance = 0;
+            }
             timing_context.current_tick()
         };
 
@@ -1545,7 +1546,8 @@ impl MusicXMLConverter {
         // Advance timing cursor only for non-chord notes
         // Chord notes start at the same tick as the previous note
         if !note_data.is_chord {
-            timing_context.update_last_note_tick();
+            // Store the tick assigned to this note so chord notes can share it
+            timing_context.last_note_tick = tick.value();
             timing_context.advance_by_duration(note_data.duration)?;
         }
 
@@ -1594,6 +1596,11 @@ impl MusicXMLConverter {
         };
         let note = if note_data.dot_count > 0 {
             note.with_dot_count(note_data.dot_count)
+        } else {
+            note
+        };
+        let note = if note_data.has_explicit_accidental {
+            note.with_explicit_accidental()
         } else {
             note
         };
@@ -1661,6 +1668,7 @@ mod tests {
                 tie_placement: None,
                 slurs: Vec::new(),
                 is_grace: false,
+                has_explicit_accidental: false,
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1736,6 +1744,7 @@ mod tests {
             tie_placement: None,
             slurs: Vec::new(),
             is_grace: false,
+            has_explicit_accidental: false,
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1785,6 +1794,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1804,6 +1814,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
             ],
             start_repeat: false,
@@ -1864,6 +1875,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1884,6 +1896,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1904,6 +1917,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
             ],
             start_repeat: false,
@@ -2008,6 +2022,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2071,6 +2086,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2134,6 +2150,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2194,6 +2211,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,

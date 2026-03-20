@@ -75,11 +75,35 @@ fn test_m63_chord_produces_four_distinct_dots() {
     let layout = compute_layout(&json, &CONFIG);
     let layout_json = serde_json::to_value(&layout).unwrap();
 
-    // M63 is in System 11 (0-indexed).  The chord has 4 dotted quarter notes
-    // so there must be exactly 4 dots at the same x with 4 distinct y values.
-    let system = &layout_json["systems"][11];
+    // M63 is 3/8 time → 1440 ticks/measure, 1-based measure 63 → start tick ~89280.
+    // Find the system whose tick_range contains M63 instead of hardcoding an index.
+    let systems = layout_json["systems"].as_array().expect("systems");
+    let m63_tick = 89280u64; // approximate start tick for M63
+    let system = systems
+        .iter()
+        .find(|s| {
+            let st = s["tick_range"]["start_tick"].as_u64().unwrap_or(0);
+            let et = s["tick_range"]["end_tick"].as_u64().unwrap_or(0);
+            m63_tick >= st && m63_tick < et
+        })
+        .expect("No system contains M63");
     let staff = &system["staff_groups"][0]["staves"][0];
-    let dots = staff["notation_dots"].as_array().expect("notation_dots");
+    let all_dots = staff["notation_dots"].as_array().expect("notation_dots");
+
+    // Group dots by their x position (rounded to 1 decimal) and find the cluster
+    // with exactly 4 dots — that's the M63 4-note dotted chord.
+    let mut x_groups: std::collections::HashMap<i32, Vec<&serde_json::Value>> =
+        std::collections::HashMap::new();
+    for d in all_dots {
+        let xk = (d["x"].as_f64().unwrap_or(0.0) * 10.0) as i32;
+        x_groups.entry(xk).or_default().push(d);
+    }
+    let dots: Vec<&&serde_json::Value> = x_groups
+        .values()
+        .find(|g| g.len() == 4)
+        .expect("Expected a group of 4 dots at the same x (M63 chord)")
+        .iter()
+        .collect();
     assert_eq!(dots.len(), 4, "Expected 4 dots for the 4-note chord in M63");
 
     let ys: Vec<i32> = dots

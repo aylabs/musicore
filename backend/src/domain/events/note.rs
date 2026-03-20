@@ -65,6 +65,9 @@ pub struct Note {
     /// Grace note (ornamental, no rhythmic duration)
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_grace: bool,
+    /// Explicit accidental from MusicXML (courtesy/editorial — always display)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub has_explicit_accidental: bool,
 }
 
 fn is_zero_u8(v: &u8) -> bool {
@@ -91,6 +94,7 @@ impl Note {
             slur_next: None,
             slur_above: None,
             is_grace: false,
+            has_explicit_accidental: false,
         })
     }
 
@@ -127,6 +131,12 @@ impl Note {
     /// Mark as tie continuation (builder pattern)
     pub fn with_tie_continuation(mut self) -> Self {
         self.is_tie_continuation = true;
+        self
+    }
+
+    /// Mark as having an explicit MusicXML accidental (builder pattern)
+    pub fn with_explicit_accidental(mut self) -> Self {
+        self.has_explicit_accidental = true;
         self
     }
 

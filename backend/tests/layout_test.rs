@@ -448,7 +448,7 @@ mod spacing_tests {
 
         // Measure with 4 quarter notes (typical 4/4 measure)
         let durations = [960, 960, 960, 960];
-        let width = compute_measure_width(&durations, &[], &config);
+        let width = compute_measure_width(&durations, &[], &config, 0);
         assert!(
             width > 100.0,
             "4-quarter-note measure should have reasonable width: {}",
@@ -457,7 +457,7 @@ mod spacing_tests {
 
         // Measure with mixed durations
         let durations = [1920, 960, 480, 480]; // half + quarter + two eighths
-        let mixed_width = compute_measure_width(&durations, &[], &config);
+        let mixed_width = compute_measure_width(&durations, &[], &config, 0);
         assert!(
             mixed_width > 80.0,
             "Mixed duration measure should have reasonable width: {}",
@@ -465,7 +465,7 @@ mod spacing_tests {
         );
 
         // Empty measure
-        let empty_width = compute_measure_width(&[], &[], &config);
+        let empty_width = compute_measure_width(&[], &[], &config, 0);
         assert_eq!(
             empty_width, 200.0,
             "Empty measure should have default width"
@@ -2116,7 +2116,7 @@ mod canon_d_spacing_tests {
         // — rests are passed separately and do not affect flag count).
         let eighth: u32 = 480;
         let note_durations: Vec<u32> = vec![eighth; 8];
-        let measure_width = compute_measure_width(&note_durations, &[], &config);
+        let measure_width = compute_measure_width(&note_durations, &[], &config, 0);
 
         // max_system_width mirrors LayoutView.tsx at a 1200 px container:
         //   1200 / 0.5 (BASE_SCALE) − 150 (LABEL_MARGIN) = 2250 units
@@ -2151,7 +2151,7 @@ mod canon_d_spacing_tests {
         // 22 measures of 16 sixteenth notes each
         let sixteenth: u32 = 240;
         let note_durations: Vec<u32> = vec![sixteenth; 16];
-        let measure_width = compute_measure_width(&note_durations, &[], &config);
+        let measure_width = compute_measure_width(&note_durations, &[], &config, 0);
 
         let max_system_width = 2250.0_f32;
         let measures_per_system = (max_system_width / measure_width).floor().max(1.0) as usize;
@@ -2183,7 +2183,7 @@ mod canon_d_spacing_tests {
         // 38 measures, each dominated by 12 eighth notes (the typical treble beat pattern)
         let eighth: u32 = 480;
         let note_durations: Vec<u32> = vec![eighth; 12];
-        let measure_width = compute_measure_width(&note_durations, &[], &config);
+        let measure_width = compute_measure_width(&note_durations, &[], &config, 0);
 
         let max_system_width = 2250.0_f32;
         let measures_per_system = (max_system_width / measure_width).floor().max(1.0) as usize;

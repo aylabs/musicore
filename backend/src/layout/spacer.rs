@@ -62,6 +62,7 @@ pub fn compute_measure_width(
     note_durations: &[u32],
     rest_durations: &[u32],
     config: &SpacingConfig,
+    chord_second_count: u32,
 ) -> f32 {
     if note_durations.is_empty() && rest_durations.is_empty() {
         // Empty measure: return default minimum width
@@ -85,11 +86,15 @@ pub fn compute_measure_width(
     // This expands the entire measure while preserving note spacing proportions
     let flag_padding = (flagged_note_count as f32) * 5.0;
 
+    // Extra width for chord-second displacements (staggered noteheads + accidentals)
+    // Matches the +55.0 per chord-second tick in compute_unified_note_positions
+    let chord_second_padding = (chord_second_count as f32) * 55.0;
+
     // Add padding for clef/key/time signatures at measure start (20 logical units)
     // and end barline (10 logical units)
     let structural_padding = 30.0;
 
-    total_note_spacing + flag_padding + structural_padding
+    total_note_spacing + flag_padding + chord_second_padding + structural_padding
 }
 
 /// Compute rightmost content position for a system

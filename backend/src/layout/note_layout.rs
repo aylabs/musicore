@@ -65,7 +65,11 @@ pub(crate) fn compute_unified_note_positions(
             for note in &voice.notes {
                 if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
                 {
-                    tick_durations.push((note.start_tick, note.duration_ticks));
+                    // Grace notes don't contribute to beat-level spacing.
+                    // A small prefix gap is added later at their target tick.
+                    if !note.is_grace {
+                        tick_durations.push((note.start_tick, note.duration_ticks));
+                    }
                 }
             }
             for rest in &voice.rests {
@@ -86,6 +90,33 @@ pub(crate) fn compute_unified_note_positions(
     tick_durations.sort_by_key(|(tick, _)| *tick);
     tick_durations.dedup_by_key(|(tick, _)| *tick);
 
+    // Count grace notes preceding each target tick so we can add a small
+    // horizontal prefix gap.  The gap is part of the unified position map,
+    // ensuring BOTH staves widen equally and stay aligned.
+    let grace_step: f32 = 30.0; // horizontal units per grace note
+    let mut grace_prefix_counts: HashMap<u32, usize> = HashMap::new();
+    for staff_data in staves {
+        for voice in &staff_data.voices {
+            let notes: Vec<&crate::layout::extraction::NoteEvent> = voice
+                .notes
+                .iter()
+                .filter(|n| {
+                    n.start_tick >= tick_range.start_tick && n.start_tick < tick_range.end_tick
+                })
+                .collect();
+            let mut grace_run = 0usize;
+            for note in &notes {
+                if note.is_grace {
+                    grace_run += 1;
+                } else if grace_run > 0 {
+                    let entry = grace_prefix_counts.entry(note.start_tick).or_insert(0);
+                    *entry = (*entry).max(grace_run);
+                    grace_run = 0;
+                }
+            }
+        }
+    }
+
     // Detect ticks where a chord contains a second (adjacent staff positions)
     // that will need notehead displacement.  When stems point down, the lower
     // note shifts LEFT by one notehead width, and its accidental extends even
@@ -104,7 +135,9 @@ pub(crate) fn compute_unified_note_positions(
                 Vec<(u8, Option<(char, i8)>)>,
             > = std::collections::HashMap::new();
             for note in &voice.notes {
-                if note.start_tick >= tick_range.start_tick && note.start_tick < tick_range.end_tick
+                if note.start_tick >= tick_range.start_tick
+                    && note.start_tick < tick_range.end_tick
+                    && !note.is_grace
                 {
                     tick_notes
                         .entry(note.start_tick)
@@ -137,6 +170,16 @@ pub(crate) fn compute_unified_note_positions(
     let mut current_position = 0.0;
     let mut last_tick = tick_range.start_tick;
 
+    // Grace prefix gap for the very first tick in the system.
+    // The loop below only adds gaps when start_tick > last_tick, so the
+    // first event is skipped.  Handle it here so the principal note shifts
+    // right in note_positions (shared across staves → keeps LH/RH aligned).
+    if let Some((first_tick, _)) = tick_durations.first() {
+        if let Some(&gc) = grace_prefix_counts.get(first_tick) {
+            current_position += gc as f32 * grace_step;
+        }
+    }
+
     for (start_tick, duration_ticks) in &tick_durations {
         if *start_tick > last_tick {
             let gap_duration = (*start_tick - last_tick).min(*duration_ticks);
@@ -153,6 +196,10 @@ pub(crate) fn compute_unified_note_positions(
             // Extra space for chords with seconds (displaced noteheads + staggered accidentals)
             if chord_second_ticks.contains(start_tick) {
                 gap += 55.0;
+            }
+            // Small prefix gap for grace notes (affects both staves)
+            if let Some(&gc) = grace_prefix_counts.get(start_tick) {
+                gap += gc as f32 * grace_step;
             }
             current_position += gap;
         }
@@ -226,6 +273,7 @@ pub(crate) fn position_glyphs_for_staff(
                     note.spelling,
                     note.staccato,
                     note.dot_count,
+                    note.has_explicit_accidental,
                 )
             })
             .collect();
@@ -233,11 +281,6 @@ pub(crate) fn position_glyphs_for_staff(
         if notes_in_range.is_empty() {
             continue;
         }
-
-        let horizontal_offsets: Vec<f32> = notes_in_range
-            .iter()
-            .map(|(_, start_tick, _, _, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
-            .collect();
 
         let voice_notes_in_range: Vec<&NoteEvent> = voice
             .notes
@@ -247,9 +290,79 @@ pub(crate) fn position_glyphs_for_staff(
             })
             .collect();
 
+        let horizontal_offsets: Vec<f32> = {
+            // Grace notes are not in note_positions (excluded from unified
+            // spacing).  Position them at a fixed offset before their target.
+            let mut grace_tick_x: std::collections::HashMap<u32, f32> =
+                std::collections::HashMap::new();
+            {
+                let n = voice_notes_in_range.len();
+                let mut i = 0;
+                while i < n {
+                    if voice_notes_in_range[i].is_grace {
+                        let run_start = i;
+                        while i < n && voice_notes_in_range[i].is_grace {
+                            i += 1;
+                        }
+                        let run_end = i;
+                        let target_x = if run_end < n {
+                            *note_positions
+                                .get(&voice_notes_in_range[run_end].start_tick)
+                                .unwrap_or(&left_margin)
+                        } else {
+                            left_margin
+                        };
+                        let run_len = (run_end - run_start) as f32;
+                        // If placing grace notes before target_x would push the
+                        // first one past the left margin, anchor the run at
+                        // left_margin and space rightward instead of clamping
+                        // all noteheads onto each other.
+                        let first_x = target_x - run_len * 30.0;
+                        if first_x >= left_margin {
+                            // Normal case: enough room before target_x
+                            for (k, idx) in (run_start..run_end).enumerate() {
+                                let offset = (run_len - k as f32) * 30.0;
+                                let x = target_x - offset;
+                                grace_tick_x.insert(voice_notes_in_range[idx].start_tick, x);
+                            }
+                        } else {
+                            // System-start case: anchor at left_margin, space
+                            // rightward by 30 units each.
+                            for (k, idx) in (run_start..run_end).enumerate() {
+                                let x = left_margin + k as f32 * 30.0;
+                                grace_tick_x.insert(voice_notes_in_range[idx].start_tick, x);
+                            }
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+
+            notes_in_range
+                .iter()
+                .enumerate()
+                .map(|(i, (_, start_tick, _, _, _, _, _))| {
+                    if voice_notes_in_range[i].is_grace {
+                        *grace_tick_x.get(start_tick).unwrap_or(&left_margin)
+                    } else {
+                        *note_positions.get(start_tick).unwrap_or(&0.0)
+                    }
+                })
+                .collect()
+        };
+
         let note_clefs: Vec<&str> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _, _, _, _)| staff_data.get_clef_at_tick(*start_tick))
+            .map(|(_, start_tick, _, _, _, _, _)| staff_data.get_clef_at_tick(*start_tick))
+            .collect();
+
+        // Grace note event indices for event-based grace detection
+        let grace_note_indices: std::collections::HashSet<usize> = voice_notes_in_range
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| n.is_grace)
+            .map(|(i, _)| i)
             .collect();
 
         let beamable_for_analysis_raw: Vec<beams::BeamableNote> = voice_notes_in_range
@@ -279,9 +392,11 @@ pub(crate) fn position_glyphs_for_staff(
             .collect();
 
         let mut beamable_for_analysis: Vec<beams::BeamableNote> = Vec::new();
-        let mut seen_ticks: std::collections::HashSet<u32> = std::collections::HashSet::new();
+        let mut seen_tick_grace: std::collections::HashSet<(u32, bool)> =
+            std::collections::HashSet::new();
         for note in beamable_for_analysis_raw {
-            if seen_ticks.insert(note.tick) {
+            let is_grace = grace_note_indices.contains(&note.event_index);
+            if seen_tick_grace.insert((note.tick, is_grace)) {
                 beamable_for_analysis.push(note);
             }
         }
@@ -315,7 +430,7 @@ pub(crate) fn position_glyphs_for_staff(
         let mut tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
         for (idx, note_data) in notes_in_range.iter().enumerate() {
-            let (_, start_tick, duration_ticks, _, _, _) = note_data;
+            let (_, start_tick, duration_ticks, _, _, _, _) = note_data;
             let has_beam = voice_notes_in_range
                 .iter()
                 .any(|n| n.start_tick == *start_tick && !n.beam_info.is_empty());
@@ -327,10 +442,18 @@ pub(crate) fn position_glyphs_for_staff(
             if group.notes.len() < 2 {
                 continue;
             }
+            let is_grace_group = group
+                .notes
+                .iter()
+                .all(|n| grace_note_indices.contains(&n.event_index));
             for note in &group.notes {
                 if let Some(indices) = tick_to_indices.get(&note.tick) {
                     for &idx in indices {
-                        beamed_note_indices.insert(idx);
+                        // Only mark indices whose grace status matches the group
+                        let idx_is_grace = grace_note_indices.contains(&idx);
+                        if idx_is_grace == is_grace_group {
+                            beamed_note_indices.insert(idx);
+                        }
                     }
                 }
             }
@@ -340,7 +463,7 @@ pub(crate) fn position_glyphs_for_staff(
         let chord_note_y_positions: Vec<f32> = notes_in_range
             .iter()
             .enumerate()
-            .map(|(i, (pitch, _, _, spelling, _, _))| {
+            .map(|(i, (pitch, _, _, spelling, _, _, _))| {
                 positioner::pitch_to_y_with_spelling(
                     *pitch,
                     note_clefs[i],
@@ -354,11 +477,14 @@ pub(crate) fn position_glyphs_for_staff(
         let chord_adjacent_threshold = 0.5 * units_per_space + 0.01;
         let mut chord_tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, _, _, _, _)) in notes_in_range.iter().enumerate() {
-            chord_tick_to_indices
-                .entry(*start_tick)
-                .or_default()
-                .push(idx);
+        for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
+            // Exclude grace notes from chord grouping
+            if !voice_notes_in_range[idx].is_grace {
+                chord_tick_to_indices
+                    .entry(*start_tick)
+                    .or_default()
+                    .push(idx);
+            }
         }
 
         let mut chord_x_offsets: Vec<f32> = vec![0.0; notes_in_range.len()];
@@ -489,20 +615,6 @@ pub(crate) fn position_glyphs_for_staff(
             .map(|(x, dx)| x + dx)
             .collect();
 
-        let grace_note_indices: std::collections::HashSet<usize> = voice_notes_in_range
-            .iter()
-            .enumerate()
-            .filter(|(_, n)| n.is_grace)
-            .map(|(i, _)| i)
-            .collect();
-
-        // Grace note ticks: used to scale stems and beams for grace notes
-        let grace_note_ticks: std::collections::HashSet<u32> = voice_notes_in_range
-            .iter()
-            .filter(|n| n.is_grace)
-            .map(|n| n.start_tick)
-            .collect();
-
         let glyphs = positioner::position_noteheads(
             &notes_in_range,
             &adjusted_horizontal_offsets,
@@ -521,9 +633,8 @@ pub(crate) fn position_glyphs_for_staff(
         all_glyphs.extend(glyphs);
 
         for &(stem_x, y_top, y_bottom, event_index) in &chord_stem_data {
-            let chord_tick = notes_in_range[event_index].1;
-            let is_grace_stem = grace_note_ticks.contains(&chord_tick);
-            let grace_scale: f32 = if is_grace_stem { 0.6 } else { 1.0 };
+            let is_grace_stem = grace_note_indices.contains(&event_index);
+            let grace_scale: f32 = if is_grace_stem { 0.75 } else { 1.0 };
             let thickness = stems::Stem::STEM_THICKNESS * grace_scale;
             let stem_height = y_bottom - y_top;
             let stem_glyph = Glyph {
@@ -545,16 +656,15 @@ pub(crate) fn position_glyphs_for_staff(
                     event_index,
                 },
                 font_size: None,
-                opacity: if is_grace_stem { Some(0.5) } else { None },
+                opacity: None,
             };
             all_glyphs.push(stem_glyph);
         }
 
         // Generate flag glyphs for short-duration chord stems (eighths, 16ths, 32nds)
         for &(flag_x, flag_y, stem_down, duration, event_index) in &chord_flag_data {
-            let chord_tick = notes_in_range[event_index].1;
-            let is_grace = grace_note_ticks.contains(&chord_tick);
-            let grace_scale: f32 = if is_grace { 0.6 } else { 1.0 };
+            let is_grace = grace_note_indices.contains(&event_index);
+            let grace_scale: f32 = if is_grace { 0.75 } else { 1.0 };
 
             let (flag_codepoint, flag_glyph_name) = if stem_down {
                 if duration < 240 {
@@ -600,7 +710,7 @@ pub(crate) fn position_glyphs_for_staff(
                     event_index,
                 },
                 font_size: Some(flag_font_size),
-                opacity: if is_grace { Some(0.5) } else { None },
+                opacity: None,
             };
             all_glyphs.push(flag_glyph);
         }
@@ -624,6 +734,7 @@ pub(crate) fn position_glyphs_for_staff(
             &staff_data.key_signature_events,
             pickup_ticks,
             &measure_starts_sorted,
+            &grace_note_indices,
         );
 
         all_glyphs.extend(accidental_glyphs);
@@ -633,12 +744,16 @@ pub(crate) fn position_glyphs_for_staff(
         // Build a map of tick → (min_y, max_y) for chord noteheads so that
         // beamed stems span the full chord extent and the beam has adequate
         // clearance from the nearest notehead.
-        let mut chord_y_range: std::collections::HashMap<u32, (f32, f32)> =
+        // Key by (tick, is_grace) so grace notes sharing a tick with their
+        // principal note don't pollute each other's y-range (the principal's
+        // y would pull the grace beam to the wrong height).
+        let mut chord_y_range: std::collections::HashMap<(u32, bool), (f32, f32)> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, _, _, _, _)) in notes_in_range.iter().enumerate() {
+        for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
+            let is_grace = grace_note_indices.contains(&idx);
             let y = chord_note_y_positions[idx];
             chord_y_range
-                .entry(*start_tick)
+                .entry((*start_tick, is_grace))
                 .and_modify(|(min_y, max_y)| {
                     if y < *min_y {
                         *min_y = y;
@@ -657,7 +772,15 @@ pub(crate) fn position_glyphs_for_staff(
                 continue;
             }
 
-            let group_direction = if let Some(forced) = forced_stem_down {
+            let is_grace_group = group
+                .notes
+                .iter()
+                .all(|n| grace_note_indices.contains(&n.event_index));
+
+            let group_direction = if is_grace_group {
+                // Grace notes always get stems up (music convention).
+                stems::StemDirection::Up
+            } else if let Some(forced) = forced_stem_down {
                 if forced {
                     stems::StemDirection::Down
                 } else {
@@ -671,7 +794,8 @@ pub(crate) fn position_glyphs_for_staff(
                     .notes
                     .iter()
                     .flat_map(|n| {
-                        if let Some(&(min_y, max_y)) = chord_y_range.get(&n.tick) {
+                        if let Some(&(min_y, max_y)) = chord_y_range.get(&(n.tick, is_grace_group))
+                        {
                             vec![
                                 beams::BeamableNote {
                                     y: min_y,
@@ -689,12 +813,7 @@ pub(crate) fn position_glyphs_for_staff(
                     .collect();
                 beams::compute_group_stem_direction(&expanded, staff_middle_y)
             };
-
-            let is_grace_group = group
-                .notes
-                .iter()
-                .all(|n| grace_note_ticks.contains(&n.tick));
-            let grace_scale: f32 = if is_grace_group { 0.6 } else { 1.0 };
+            let grace_scale: f32 = if is_grace_group { 0.75 } else { 1.0 };
             let notehead_width = stems::Stem::NOTEHEAD_WIDTH * grace_scale;
 
             // === PHASE 1: Compute initial stems and beam line ===
@@ -705,17 +824,18 @@ pub(crate) fn position_glyphs_for_staff(
                 // For chords, use the notehead closest to the beam
                 // direction as the stem origin, so the minimum stem length
                 // is measured from the chord edge nearest the beam.
-                let (beam_side_y, far_side_y) =
-                    if let Some(&(min_y, max_y)) = chord_y_range.get(&note.tick) {
-                        match group_direction {
-                            // Stem up → beam above → origin at top note (min_y)
-                            stems::StemDirection::Up => (min_y, max_y),
-                            // Stem down → beam below → origin at bottom note (max_y)
-                            stems::StemDirection::Down => (max_y, min_y),
-                        }
-                    } else {
-                        (note.y, note.y)
-                    };
+                let (beam_side_y, far_side_y) = if let Some(&(min_y, max_y)) =
+                    chord_y_range.get(&(note.tick, is_grace_group))
+                {
+                    match group_direction {
+                        // Stem up → beam above → origin at top note (min_y)
+                        stems::StemDirection::Up => (min_y, max_y),
+                        // Stem down → beam below → origin at bottom note (max_y)
+                        stems::StemDirection::Down => (max_y, min_y),
+                    }
+                } else {
+                    (note.y, note.y)
+                };
 
                 let beam_visual_y = beam_side_y + visual_y_offset;
                 let far_visual_y = far_side_y + visual_y_offset;
@@ -764,16 +884,17 @@ pub(crate) fn position_glyphs_for_staff(
                 // For chords, enforce minimum clearance from the
                 // notehead closest to the beam, not the stem origin
                 // (which is at the far side of the chord).
-                let beam_side_y =
-                    if let Some(&(min_y, max_y)) = chord_y_range.get(&group.notes[i].tick) {
-                        let vy_offset = 0.5 * units_per_space;
-                        match group_direction {
-                            stems::StemDirection::Up => min_y + vy_offset,
-                            stems::StemDirection::Down => max_y + vy_offset,
-                        }
-                    } else {
-                        stem.y_start
-                    };
+                let beam_side_y = if let Some(&(min_y, max_y)) =
+                    chord_y_range.get(&(group.notes[i].tick, is_grace_group))
+                {
+                    let vy_offset = 0.5 * units_per_space;
+                    match group_direction {
+                        stems::StemDirection::Up => min_y + vy_offset,
+                        stems::StemDirection::Down => max_y + vy_offset,
+                    }
+                } else {
+                    stem.y_start
+                };
                 match group_direction {
                     stems::StemDirection::Up => {
                         let required_beam_y = beam_side_y - min_length;
@@ -822,7 +943,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes[i].event_index,
                     },
                     font_size: None,
-                    opacity: if is_grace_group { Some(0.5) } else { None },
+                    opacity: None,
                 };
                 stem_glyphs.push(stem_glyph);
                 stem_end_ys.push(final_stem_end);
@@ -868,7 +989,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
-                    opacity: if is_grace_group { Some(0.5) } else { None },
+                    opacity: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -901,7 +1022,7 @@ pub(crate) fn position_glyphs_for_staff(
                         event_index: updated_group.notes.first().map_or(0, |n| n.event_index),
                     },
                     font_size: None,
-                    opacity: if is_grace_group { Some(0.5) } else { None },
+                    opacity: None,
                 };
                 all_glyphs.push(beam_glyph);
             }
@@ -1019,6 +1140,7 @@ mod tests {
                     slur_next: None,
                     slur_above: None,
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }],
                 rests: vec![],
             }],
@@ -1065,6 +1187,7 @@ mod tests {
                     slur_next: None,
                     slur_above: None,
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }],
                 rests: vec![],
             }],

@@ -1,8 +1,12 @@
-//! Grace note layout test: verifies that grace notes in Für Elise M26
-//! are rendered at reduced font_size (60% of normal) and reduced opacity (0.5).
+//! Grace note layout tests.
+//! Covers visual rendering properties (font_size, opacity) and
+//! cross-staff tick alignment (regression for T124).
 
 use musicore_backend::adapters::dtos::ScoreDto;
 use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
+use musicore_backend::domain::importers::musicxml::{
+    CompressionHandler, ImportContext, MusicXMLConverter, MusicXMLParser,
+};
 use musicore_backend::layout::{LayoutConfig, compute_layout};
 use musicore_backend::ports::importers::IMusicXMLImporter;
 use std::path::Path;
@@ -27,8 +31,9 @@ fn layout_fur_elise() -> serde_json::Value {
 
 /// Für Elise M26 contains two grace notes (F4, A4) before the principal C5.
 /// These grace notes MUST have:
-///   - font_size ≈ 48.0 (60% of standard 80.0)
-///   - opacity ≈ 0.5
+/// - font_size ≈ 60.0 (75% of standard 80.0)
+/// - full opacity (same as normal notes)
+///
 /// Normal notes MUST have font_size ≈ 80.0 and opacity 1.0 (or absent).
 #[test]
 fn test_grace_notes_have_reduced_font_size_and_opacity() {
@@ -37,22 +42,18 @@ fn test_grace_notes_have_reduced_font_size_and_opacity() {
     // Collect all glyph runs across all systems/staff_groups/staves
     let systems = layout["systems"].as_array().expect("systems array");
     let mut grace_font_sizes: Vec<f64> = Vec::new();
-    let mut grace_opacities: Vec<f64> = Vec::new();
     let mut normal_font_sizes: Vec<f64> = Vec::new();
-    let mut normal_opacities: Vec<f64> = Vec::new();
 
     for system in systems {
         for sg in system["staff_groups"].as_array().unwrap_or(&vec![]) {
             for staff in sg["staves"].as_array().unwrap_or(&vec![]) {
                 for run in staff["glyph_runs"].as_array().unwrap_or(&vec![]) {
                     let run_font_size = run["font_size"].as_f64().unwrap_or(80.0);
-                    let run_opacity = run["opacity"].as_f64().unwrap_or(1.0);
 
-                    // Grace-note runs: font_size < 60 (48 = 80*0.6)
-                    if run_font_size < 60.0 && run_opacity < 0.9 {
+                    // Grace-note runs: font_size ≈ 60.0 (80*0.75)
+                    if run_font_size < 70.0 && run_font_size > 50.0 {
                         grace_font_sizes.push(run_font_size);
-                        grace_opacities.push(run_opacity);
-                    } else if run_font_size >= 60.0 {
+                    } else if run_font_size >= 70.0 {
                         // Check only noteheads (not stems/beams which use special codepoints)
                         for glyph in run["glyphs"].as_array().unwrap_or(&vec![]) {
                             let cp = glyph["codepoint"].as_str().unwrap_or("");
@@ -62,7 +63,6 @@ fn test_grace_notes_have_reduced_font_size_and_opacity() {
                                 || (0xE1D0..=0xE1FF).contains(&code)
                             {
                                 normal_font_sizes.push(run_font_size);
-                                normal_opacities.push(run_opacity);
                             }
                         }
                     }
@@ -74,49 +74,35 @@ fn test_grace_notes_have_reduced_font_size_and_opacity() {
     // There must be grace-note runs (Für Elise has grace notes in M26 and M29)
     assert!(
         !grace_font_sizes.is_empty(),
-        "Expected grace-note GlyphRuns with font_size < 60 and opacity < 0.9, found none. \
+        "Expected grace-note GlyphRuns with font_size ≈ 60, found none. \
          Grace notes are not being rendered at reduced size."
     );
 
-    // Grace notes should be ~48.0 (80*0.6)
+    // Grace notes should be ~60.0 (80*0.75)
     for &fs in &grace_font_sizes {
         assert!(
-            (fs - 48.0).abs() < 2.0,
-            "Grace note font_size should be ~48.0 (60% of 80), got {fs}"
+            (fs - 60.0).abs() < 2.0,
+            "Grace note font_size should be ~60.0 (75% of 80), got {fs}"
         );
     }
 
-    // Grace notes should have opacity 0.5
-    for &op in &grace_opacities {
-        assert!(
-            (op - 0.5).abs() < 0.1,
-            "Grace note opacity should be ~0.5, got {op}"
-        );
-    }
-
-    // Normal notes should be ~80.0 with full opacity
+    // Normal notes should be ~80.0
     assert!(
         !normal_font_sizes.is_empty(),
         "Expected normal note GlyphRuns"
     );
     for &fs in &normal_font_sizes {
         assert!(
-            fs >= 60.0,
-            "Normal note font_size should be >= 60.0, got {fs}"
-        );
-    }
-    for &op in &normal_opacities {
-        assert!(
-            op >= 0.9,
-            "Normal note opacity should be >= 0.9 (fully opaque), got {op}"
+            fs >= 70.0,
+            "Normal note font_size should be >= 70.0, got {fs}"
         );
     }
 }
 
-/// Grace note stems (U+0000) and beams (U+0001) must also have reduced opacity
-/// and thinner dimensions (0.6x scaling).
+/// Grace note stems (U+0000) and beams (U+0001) must have thinner
+/// dimensions (0.75x scaling) while retaining full opacity.
 #[test]
-fn test_grace_note_stems_and_beams_have_reduced_opacity() {
+fn test_grace_note_stems_and_beams_have_reduced_thickness() {
     let layout = layout_fur_elise();
     let systems = layout["systems"].as_array().expect("systems array");
 
@@ -129,34 +115,28 @@ fn test_grace_note_stems_and_beams_have_reduced_opacity() {
         for sg in system["staff_groups"].as_array().unwrap_or(&vec![]) {
             for staff in sg["staves"].as_array().unwrap_or(&vec![]) {
                 for run in staff["glyph_runs"].as_array().unwrap_or(&vec![]) {
-                    let run_opacity = run["opacity"].as_f64().unwrap_or(1.0);
                     for glyph in run["glyphs"].as_array().unwrap_or(&vec![]) {
                         let cp = glyph["codepoint"].as_str().unwrap_or("");
-                        let is_stem = cp == "\u{0000}" || cp == "\0";
-                        let is_beam = cp == "\u{0001}" || cp == "\x01";
+                        let is_stem = cp == "\u{0000}";
+                        let is_beam = cp == "\u{0001}";
 
-                        if is_stem && run_opacity < 0.9 {
-                            grace_stem_runs += 1;
-                            // Grace stem thickness should be ~0.9 (1.5 * 0.6)
+                        if is_stem {
                             let w = glyph["bounding_box"]["width"].as_f64().unwrap_or(0.0);
-                            assert!(
-                                w < 1.2,
-                                "Grace stem width should be ~0.9 (1.5*0.6), got {w}"
-                            );
-                        } else if is_stem && run_opacity >= 0.9 {
-                            let w = glyph["bounding_box"]["width"].as_f64().unwrap_or(0.0);
-                            normal_stem_thickness_sum += w;
-                            normal_stem_count += 1;
+                            // Grace stems: ~1.125 (1.5 * 0.75); normal: ~1.5
+                            if w < 1.3 && w > 0.5 {
+                                grace_stem_runs += 1;
+                            } else if w >= 1.3 {
+                                normal_stem_thickness_sum += w;
+                                normal_stem_count += 1;
+                            }
                         }
 
-                        if is_beam && run_opacity < 0.9 {
-                            grace_beam_runs += 1;
-                            // Grace beam thickness should be ~6.0 (10.0 * 0.6)
+                        if is_beam {
                             let h = glyph["bounding_box"]["height"].as_f64().unwrap_or(0.0);
-                            assert!(
-                                h < 8.0,
-                                "Grace beam thickness should be ~6.0 (10*0.6), got {h}"
-                            );
+                            // Grace beams: ~7.5 (10.0 * 0.75); normal: ~10.0
+                            if h < 9.0 && h > 4.0 {
+                                grace_beam_runs += 1;
+                            }
                         }
                     }
                 }
@@ -166,11 +146,11 @@ fn test_grace_note_stems_and_beams_have_reduced_opacity() {
 
     assert!(
         grace_stem_runs > 0,
-        "Expected grace-note stem GlyphRuns with opacity < 0.9, found none"
+        "Expected grace-note stems with reduced thickness, found none"
     );
     assert!(
         grace_beam_runs > 0,
-        "Expected grace-note beam GlyphRuns with opacity < 0.9, found none"
+        "Expected grace-note beams with reduced thickness, found none"
     );
     // Normal stems should be full thickness (1.5)
     if normal_stem_count > 0 {
@@ -179,5 +159,158 @@ fn test_grace_note_stems_and_beams_have_reduced_opacity() {
             avg_thickness > 1.3,
             "Normal stem thickness should be ~1.5, avg was {avg_thickness}"
         );
+    }
+}
+
+/// Regression test for T124: grace note tick drift causing LH/RH misalignment.
+///
+/// `convert_note()` must rewind `current_tick` by `grace_tick_advance` when
+/// processing the first principal note after a run of grace notes.  Failing
+/// to do so leaves the cursor `grace_tick_advance` ticks too high, causing
+/// every subsequent note in the same voice to accumulate a forward offset.
+///
+/// The Chopin Nocturne Op. 9 No. 2 has 2 grace notes in M8 (treble staff
+/// only).  After M8, beat 1 of M9 must land at the same tick in both treble
+/// and bass staves.  With the bug, treble M9 notes were ~120 ticks too high
+/// (2 grace notes × 60-tick visual duration each).
+#[test]
+fn test_grace_notes_do_not_cause_tick_drift_between_staves() {
+    let fixture_path = std::path::Path::new("../scores/Chopin_NocturneOp9No2.mxl");
+    let xml = CompressionHandler::load_content(fixture_path).expect("load Nocturne");
+    let mut ctx = ImportContext::new();
+    let doc = MusicXMLParser::parse(&xml, &mut ctx).expect("parse Nocturne");
+    let score = MusicXMLConverter::convert(doc, &mut ctx).expect("convert Nocturne");
+
+    let inst = &score.instruments[0];
+    assert!(
+        inst.staves.len() >= 2,
+        "Nocturne must have treble and bass staves"
+    );
+
+    // measure_end_ticks[i] = end of measure i+1 (0-indexed):
+    //   M9 start = measure_end_ticks[7]  (= end of M8)
+    //   M9 end   = measure_end_ticks[8]  (= end of M9)
+    assert!(
+        score.measure_end_ticks.len() >= 9,
+        "Need at least 9 entries in measure_end_ticks"
+    );
+    let m9_start = score.measure_end_ticks[7];
+    let m9_end = score.measure_end_ticks[8];
+
+    // Collect the earliest non-grace note tick in M9 for each staff.
+    let first_tick_in_m9 = |staff_idx: usize| -> Option<u32> {
+        inst.staves[staff_idx]
+            .voices
+            .iter()
+            .flat_map(|v| v.interval_events.iter())
+            .filter(|n| {
+                let t = n.start_tick.value();
+                !n.is_grace && t >= m9_start && t < m9_end
+            })
+            .map(|n| n.start_tick.value())
+            .min()
+    };
+
+    let treble_first = first_tick_in_m9(0).expect("Treble staff must have notes in M9");
+    let bass_first = first_tick_in_m9(1).expect("Bass staff must have notes in M9");
+
+    assert_eq!(
+        treble_first, bass_first,
+        "M9 beat 1: treble tick {treble_first} ≠ bass tick {bass_first}. \
+         Grace note tick drift detected — convert_note() likely failed to \
+         rewind current_tick after processing grace notes in M8."
+    );
+}
+
+/// Regression test: grace notes at the start of a system must not overlap
+/// with the principal note.  When a grace run begins at the system's first
+/// tick, the grace prefix gap in `compute_unified_note_positions` must push
+/// the principal note (and the corresponding LH note) right so that grace
+/// noteheads occupy distinct x-positions before the principal.
+///
+/// The Chopin Nocturne M22 has 3 grace notes (G4, Bb4, Eb5) before the
+/// principal G5.  Depending on page breaks, M22 can start a system.  Before
+/// the fix, `(target_x - offset).max(left_margin)` collapsed all grace
+/// noteheads onto `left_margin`, identical to the principal.
+#[test]
+fn test_grace_notes_at_system_start_have_distinct_x_positions() {
+    let fixture_path = std::path::Path::new("../scores/Chopin_NocturneOp9No2.mxl");
+    let importer = MusicXMLImporter::new();
+    let result = importer.import_file(fixture_path).unwrap();
+    let dto: ScoreDto = (&result.score).into();
+    let json = serde_json::to_value(&dto).unwrap();
+    let layout = compute_layout(&json, &CONFIG);
+    let layout_json = serde_json::to_value(&layout).unwrap();
+
+    let systems = layout_json["systems"].as_array().expect("systems array");
+
+    // For each system, check that grace noteheads have distinct x from their
+    // principal note in the first staff (treble).
+    for (sys_idx, system) in systems.iter().enumerate() {
+        let staves = system["staff_groups"]
+            .as_array()
+            .and_then(|sgs| sgs.first())
+            .and_then(|sg| sg["staves"].as_array());
+        let staves = match staves {
+            Some(s) => s,
+            None => continue,
+        };
+        if staves.is_empty() {
+            continue;
+        }
+
+        // Collect noteheads from the treble staff (index 0).
+        let treble = &staves[0];
+        let mut grace_xs: Vec<f64> = Vec::new();
+        let mut normal_xs: Vec<f64> = Vec::new();
+
+        for run in treble["glyph_runs"].as_array().unwrap_or(&vec![]) {
+            let fs = run["font_size"].as_f64().unwrap_or(80.0);
+            let is_grace_run = fs < 70.0 && fs > 50.0;
+            for glyph in run["glyphs"].as_array().unwrap_or(&vec![]) {
+                let cp = glyph["codepoint"].as_str().unwrap_or("");
+                let code = cp.chars().next().unwrap_or('\0') as u32;
+                // SMuFL noteheads U+E0A0..U+E0FF, combined notes U+E1D0..U+E1FF
+                if (0xE0A0..=0xE0FF).contains(&code) || (0xE1D0..=0xE1FF).contains(&code) {
+                    let x = glyph["position"]["x"].as_f64().unwrap_or(0.0);
+                    if is_grace_run {
+                        grace_xs.push(x);
+                    } else {
+                        normal_xs.push(x);
+                    }
+                }
+            }
+        }
+
+        if grace_xs.is_empty() || normal_xs.is_empty() {
+            continue;
+        }
+
+        // When multiple grace noteheads exist in the same system, they must
+        // not all collapse to the same x-position (the original bug clamped
+        // them all to left_margin).
+        if grace_xs.len() >= 2 {
+            let mut sorted_grace = grace_xs.clone();
+            sorted_grace.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let distinct_count = {
+                let mut prev = sorted_grace[0];
+                let mut cnt = 1usize;
+                for &gx in &sorted_grace[1..] {
+                    if (gx - prev).abs() > 1.0 {
+                        cnt += 1;
+                        prev = gx;
+                    }
+                }
+                cnt
+            };
+            assert!(
+                distinct_count >= 2,
+                "sys={sys_idx}: {n} grace noteheads all at x≈{x:.1} — they \
+                 should have distinct x-positions (spaced ~30 apart). \
+                 Grace notes likely collapsed to left_margin.",
+                n = grace_xs.len(),
+                x = sorted_grace[0],
+            );
+        }
     }
 }

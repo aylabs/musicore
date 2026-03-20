@@ -217,11 +217,11 @@ pub(crate) struct RestLayoutEvent {
     pub(crate) voice: usize,
 }
 
-/// Note data tuple: (pitch, start_tick, duration_ticks, spelling, staccato, dot_count)
+/// Note data tuple: (pitch, start_tick, duration_ticks, spelling, staccato, dot_count, has_explicit_accidental)
 ///
 /// Spelling is an optional (step_letter, alter) pair from MusicXML,
 /// e.g. ('E', -1) for Eb, ('D', 1) for D#.
-pub type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8);
+pub type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8, bool);
 
 /// Represents a single note event
 #[derive(Debug, Clone)]
@@ -247,6 +247,8 @@ pub(crate) struct NoteEvent {
     pub(crate) slur_above: Option<bool>,
     /// Grace note (ornamental, no rhythmic duration)
     pub(crate) is_grace: bool,
+    /// Explicit accidental from MusicXML (courtesy/editorial — always display)
+    pub(crate) has_explicit_accidental: bool,
 }
 
 pub(crate) fn extract_measures(
@@ -254,9 +256,15 @@ pub(crate) fn extract_measures(
     ticks_per_measure: u32,
     pickup_ticks: u32,
     measure_end_ticks: &[u32],
-) -> Vec<(Vec<u32>, Vec<u32>)> {
+) -> Vec<(Vec<u32>, Vec<u32>, u32)> {
     let mut note_measures: Vec<Vec<u32>> = Vec::new();
     let mut rest_measures: Vec<Vec<u32>> = Vec::new();
+    // Collect (pitch, spelling) per tick per measure for chord-second detection
+    #[allow(clippy::type_complexity)]
+    let mut pitches_by_measure: std::collections::HashMap<
+        usize,
+        std::collections::HashMap<u32, Vec<(u8, Option<(char, i8)>)>>,
+    > = std::collections::HashMap::new();
 
     // Extract notes from all instruments
     if let Some(instruments) = score["instruments"].as_array() {
@@ -285,6 +293,11 @@ pub(crate) fn extract_measures(
 
                             if let Some(notes) = notes_array {
                                 for note in notes {
+                                    // Grace notes don't occupy rhythmic space
+                                    if note["is_grace"].as_bool().unwrap_or(false) {
+                                        continue;
+                                    }
+
                                     // Support multiple field name formats:
                                     // Format 1 (Score): start_tick, duration_ticks
                                     // Format 2 (LayoutView): tick, duration
@@ -317,6 +330,27 @@ pub(crate) fn extract_measures(
                                         .entry(start_tick)
                                         .or_insert(0);
                                     *entry = (*entry).max(duration);
+
+                                    // Collect pitch+spelling for chord-second detection
+                                    let pitch = if let Some(p) = note["pitch"].as_u64() {
+                                        p as u8
+                                    } else {
+                                        note["pitch"]["value"].as_u64().unwrap_or(60) as u8
+                                    };
+                                    let spelling = note["spelling"]["step"]
+                                        .as_str()
+                                        .and_then(|s| s.chars().next())
+                                        .and_then(|step| {
+                                            note["spelling"]["alter"]
+                                                .as_i64()
+                                                .map(|alter| (step, alter as i8))
+                                        });
+                                    pitches_by_measure
+                                        .entry(measure_index)
+                                        .or_default()
+                                        .entry(start_tick)
+                                        .or_default()
+                                        .push((pitch, spelling));
                                 }
                             }
 
@@ -385,12 +419,77 @@ pub(crate) fn extract_measures(
     // If no measures found, return empty default measures
     if note_measures.is_empty() && rest_measures.is_empty() {
         // 10 measures with 4 quarter notes each (no rests)
-        (0..10).map(|_| (vec![960; 4], Vec::new())).collect()
+        (0..10).map(|_| (vec![960; 4], Vec::new(), 0u32)).collect()
     } else {
         let len = note_measures.len().max(rest_measures.len());
         note_measures.resize(len, Vec::new());
         rest_measures.resize(len, Vec::new());
-        note_measures.into_iter().zip(rest_measures).collect()
+
+        // Count chord-second ticks per measure (matching note_layout chord-second detection)
+        let chord_seconds: Vec<u32> = (0..len)
+            .map(|mi| {
+                let tick_pitches = match pitches_by_measure.get(&mi) {
+                    Some(tp) => tp,
+                    None => return 0,
+                };
+                let mut count = 0u32;
+                for notes in tick_pitches.values() {
+                    if notes.len() < 2 {
+                        continue;
+                    }
+                    let mut diatonic: Vec<i32> = notes
+                        .iter()
+                        .map(|&(pitch, ref spelling)| {
+                            if let Some((step, alter)) = spelling {
+                                let step_pos: i32 = match step {
+                                    'C' => 0,
+                                    'D' => 1,
+                                    'E' => 2,
+                                    'F' => 3,
+                                    'G' => 4,
+                                    'A' => 5,
+                                    'B' => 6,
+                                    _ => 0,
+                                };
+                                let base_pitch = pitch as i32 - *alter as i32;
+                                let octave = base_pitch / 12 - 1;
+                                octave * 7 + step_pos
+                            } else {
+                                let octave = (pitch / 12) as i32 - 1;
+                                let pc = pitch % 12;
+                                let step_pos: i32 = match pc {
+                                    0 => 0,
+                                    1 | 2 => 1,
+                                    3 | 4 => 2,
+                                    5 => 3,
+                                    6 | 7 => 4,
+                                    8 | 9 => 5,
+                                    10 | 11 => 6,
+                                    _ => 0,
+                                };
+                                octave * 7 + step_pos
+                            }
+                        })
+                        .collect();
+                    diatonic.sort();
+                    diatonic.dedup();
+                    for w in diatonic.windows(2) {
+                        if w[1] - w[0] <= 1 {
+                            count += 1;
+                            break;
+                        }
+                    }
+                }
+                count
+            })
+            .collect();
+
+        note_measures
+            .into_iter()
+            .zip(rest_measures)
+            .zip(chord_seconds)
+            .map(|((n, r), cs)| (n, r, cs))
+            .collect()
     }
 }
 
@@ -524,6 +623,10 @@ pub(crate) fn extract_instruments(
                                             .map(|s| s.to_string()),
                                         slur_above: note_item["slur_above"].as_bool(),
                                         is_grace: note_item["is_grace"].as_bool().unwrap_or(false),
+                                        has_explicit_accidental:
+                                            note_item["has_explicit_accidental"]
+                                                .as_bool()
+                                                .unwrap_or(false),
                                     });
                                 }
                             }

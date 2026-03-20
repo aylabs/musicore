@@ -13,7 +13,7 @@ use crate::layout::stems;
 use crate::layout::types;
 use crate::layout::types::{LedgerLine, TickRange};
 
-type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8);
+type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8, bool);
 
 /// Result of annotation rendering for a single staff.
 pub(crate) struct AnnotationResult {
@@ -101,16 +101,17 @@ fn render_ledger_lines(
                     note.spelling,
                     note.staccato,
                     note.dot_count,
+                    note.has_explicit_accidental,
                 )
             })
             .collect();
         let offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, tick, _, _, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
+            .map(|(_, tick, _, _, _, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
             .collect();
         let ledger_clefs: Vec<&str> = notes_in_range
             .iter()
-            .map(|(_, tick, _, _, _, _)| staff_data.get_clef_at_tick(*tick))
+            .map(|(_, tick, _, _, _, _, _)| staff_data.get_clef_at_tick(*tick))
             .collect();
         ledger_lines.extend(positioner::position_ledger_lines(
             &notes_in_range,
@@ -376,6 +377,50 @@ fn render_ties_and_slurs(
     // Build a lookup: note_id → (x, visual_y, pitch, start_tick)
     let mut note_lookup: HashMap<&str, (f32, f32, u8, u32)> = HashMap::new();
 
+    // Compute grace note x positions per voice (mirrors note_layout logic).
+    let mut grace_x_by_tick: HashMap<u32, f32> = HashMap::new();
+    for voice in &staff_data.voices {
+        let notes_in_range: Vec<&crate::layout::extraction::NoteEvent> = voice
+            .notes
+            .iter()
+            .filter(|n| n.start_tick >= tick_range.start_tick && n.start_tick < tick_range.end_tick)
+            .collect();
+        let n = notes_in_range.len();
+        let mut i = 0;
+        while i < n {
+            if notes_in_range[i].is_grace {
+                let run_start = i;
+                while i < n && notes_in_range[i].is_grace {
+                    i += 1;
+                }
+                let run_end = i;
+                let target_x = if run_end < n {
+                    *note_positions
+                        .get(&notes_in_range[run_end].start_tick)
+                        .unwrap_or(&unified_left_margin)
+                } else {
+                    unified_left_margin
+                };
+                let run_len = (run_end - run_start) as f32;
+                let first_x = target_x - run_len * 30.0;
+                if first_x >= unified_left_margin {
+                    for (k, idx) in (run_start..run_end).enumerate() {
+                        let offset = (run_len - k as f32) * 30.0;
+                        let x = target_x - offset;
+                        grace_x_by_tick.insert(notes_in_range[idx].start_tick, x);
+                    }
+                } else {
+                    for (k, idx) in (run_start..run_end).enumerate() {
+                        let x = unified_left_margin + k as f32 * 30.0;
+                        grace_x_by_tick.insert(notes_in_range[idx].start_tick, x);
+                    }
+                }
+            } else {
+                i += 1;
+            }
+        }
+    }
+
     for voice in &staff_data.voices {
         for n in &voice.notes {
             if n.note_id.is_empty() {
@@ -391,7 +436,11 @@ fn render_ties_and_slurs(
                 positioner::pitch_to_y_with_spelling(n.pitch, clef, units_per_space, n.spelling)
                     + staff_vertical_offset;
             let visual_y = y_raw + 0.5 * units_per_space;
-            let note_x = *note_positions.get(&n.start_tick).unwrap_or(&0.0);
+            let note_x = if n.is_grace {
+                *grace_x_by_tick.get(&n.start_tick).unwrap_or(&0.0)
+            } else {
+                *note_positions.get(&n.start_tick).unwrap_or(&0.0)
+            };
             note_lookup.insert(&n.note_id, (note_x, visual_y, n.pitch, n.start_tick));
         }
     }
@@ -656,7 +705,7 @@ fn render_ties_and_slurs(
                     let (start_x, start_y, _sp, _st) = start_info;
 
                     match note_lookup.get(slur_target_id) {
-                        Some(&(end_x, end_y, _ep, _et)) => {
+                        Some(&(end_x, end_y, _ep, end_tick)) => {
                             // Same-system slur
                             let arc_start_x = start_x + notehead_half_w * 0.3;
                             let arc_end_x = end_x - notehead_half_w * 0.3;
@@ -665,7 +714,36 @@ fn render_ties_and_slurs(
                             let span_x = (arc_end_x - arc_start_x).abs().max(1.0);
                             let arc_height = (3.5 * span_x.sqrt()).clamp(12.0, 50.0);
                             let y_offset = if above { -arc_height } else { arc_height };
-                            let mid_y = (adj_start_y + adj_end_y) / 2.0 + y_offset;
+                            let baseline_mid_y = (adj_start_y + adj_end_y) / 2.0 + y_offset;
+
+                            // Scan intermediate notes to ensure the slur arc clears them.
+                            // Collect the most extreme Y (in the slur direction) among
+                            // notes between start and end ticks (exclusive).
+                            let start_tick = n.start_tick;
+                            let clearance = notehead_half_h + 4.0;
+                            let mut mid_y = baseline_mid_y;
+                            for &(nx, ny, _np, nt) in note_lookup.values() {
+                                if nt > start_tick
+                                    && nt < end_tick
+                                    && nx > arc_start_x
+                                    && nx < arc_end_x
+                                {
+                                    let edge_y = ny + y_edge;
+                                    if above {
+                                        // Slur above: mid_y must be above the highest intermediate note
+                                        let required = edge_y - clearance;
+                                        if required < mid_y {
+                                            mid_y = required;
+                                        }
+                                    } else {
+                                        // Slur below: mid_y must be below the lowest intermediate note
+                                        let required = edge_y + clearance;
+                                        if required > mid_y {
+                                            mid_y = required;
+                                        }
+                                    }
+                                }
+                            }
 
                             slur_arcs.push(types::TieArc {
                                 start: types::Point {
