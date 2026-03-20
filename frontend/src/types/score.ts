@@ -90,6 +90,8 @@ export interface Note {
   slur_above?: boolean;
   /** Grace note (ornamental, reduced size and opacity) */
   is_grace?: boolean;
+  /** Explicit accidental from MusicXML (courtesy/editorial — always display) */
+  has_explicit_accidental?: boolean;
 }
 
 // ============================================================================

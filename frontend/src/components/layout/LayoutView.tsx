@@ -45,6 +45,7 @@ interface ConvertedScore {
           articulation: null;
           spelling?: { step: string; alter: number };
           is_grace?: boolean;
+          has_explicit_accidental?: boolean;
         }>;
         rest_events?: Array<{
           start_tick: number;
@@ -197,6 +198,8 @@ export function convertScoreToLayoutFormat(score: Score): ConvertedScore {
             ...(note.slur_above !== undefined ? { slur_above: note.slur_above } : {}),
             // Forward grace note flag for reduced size/opacity rendering
             ...(note.is_grace ? { is_grace: true } : {}),
+            // Forward explicit accidental flag (courtesy/editorial — always display)
+            ...(note.has_explicit_accidental ? { has_explicit_accidental: true } : {}),
           })),
           // Forward rest events so the layout engine can produce rest glyphs
           ...(voice.rest_events && voice.rest_events.length > 0
