@@ -744,12 +744,16 @@ pub(crate) fn position_glyphs_for_staff(
         // Build a map of tick → (min_y, max_y) for chord noteheads so that
         // beamed stems span the full chord extent and the beam has adequate
         // clearance from the nearest notehead.
-        let mut chord_y_range: std::collections::HashMap<u32, (f32, f32)> =
+        // Key by (tick, is_grace) so grace notes sharing a tick with their
+        // principal note don't pollute each other's y-range (the principal's
+        // y would pull the grace beam to the wrong height).
+        let mut chord_y_range: std::collections::HashMap<(u32, bool), (f32, f32)> =
             std::collections::HashMap::new();
         for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
+            let is_grace = grace_note_indices.contains(&idx);
             let y = chord_note_y_positions[idx];
             chord_y_range
-                .entry(*start_tick)
+                .entry((*start_tick, is_grace))
                 .and_modify(|(min_y, max_y)| {
                     if y < *min_y {
                         *min_y = y;
@@ -790,7 +794,8 @@ pub(crate) fn position_glyphs_for_staff(
                     .notes
                     .iter()
                     .flat_map(|n| {
-                        if let Some(&(min_y, max_y)) = chord_y_range.get(&n.tick) {
+                        if let Some(&(min_y, max_y)) = chord_y_range.get(&(n.tick, is_grace_group))
+                        {
                             vec![
                                 beams::BeamableNote {
                                     y: min_y,
@@ -819,17 +824,18 @@ pub(crate) fn position_glyphs_for_staff(
                 // For chords, use the notehead closest to the beam
                 // direction as the stem origin, so the minimum stem length
                 // is measured from the chord edge nearest the beam.
-                let (beam_side_y, far_side_y) =
-                    if let Some(&(min_y, max_y)) = chord_y_range.get(&note.tick) {
-                        match group_direction {
-                            // Stem up → beam above → origin at top note (min_y)
-                            stems::StemDirection::Up => (min_y, max_y),
-                            // Stem down → beam below → origin at bottom note (max_y)
-                            stems::StemDirection::Down => (max_y, min_y),
-                        }
-                    } else {
-                        (note.y, note.y)
-                    };
+                let (beam_side_y, far_side_y) = if let Some(&(min_y, max_y)) =
+                    chord_y_range.get(&(note.tick, is_grace_group))
+                {
+                    match group_direction {
+                        // Stem up → beam above → origin at top note (min_y)
+                        stems::StemDirection::Up => (min_y, max_y),
+                        // Stem down → beam below → origin at bottom note (max_y)
+                        stems::StemDirection::Down => (max_y, min_y),
+                    }
+                } else {
+                    (note.y, note.y)
+                };
 
                 let beam_visual_y = beam_side_y + visual_y_offset;
                 let far_visual_y = far_side_y + visual_y_offset;
@@ -878,16 +884,17 @@ pub(crate) fn position_glyphs_for_staff(
                 // For chords, enforce minimum clearance from the
                 // notehead closest to the beam, not the stem origin
                 // (which is at the far side of the chord).
-                let beam_side_y =
-                    if let Some(&(min_y, max_y)) = chord_y_range.get(&group.notes[i].tick) {
-                        let vy_offset = 0.5 * units_per_space;
-                        match group_direction {
-                            stems::StemDirection::Up => min_y + vy_offset,
-                            stems::StemDirection::Down => max_y + vy_offset,
-                        }
-                    } else {
-                        stem.y_start
-                    };
+                let beam_side_y = if let Some(&(min_y, max_y)) =
+                    chord_y_range.get(&(group.notes[i].tick, is_grace_group))
+                {
+                    let vy_offset = 0.5 * units_per_space;
+                    match group_direction {
+                        stems::StemDirection::Up => min_y + vy_offset,
+                        stems::StemDirection::Down => max_y + vy_offset,
+                    }
+                } else {
+                    stem.y_start
+                };
                 match group_direction {
                     stems::StemDirection::Up => {
                         let required_beam_y = beam_side_y - min_length;
