@@ -1,8 +1,12 @@
-//! Grace note layout test: verifies that grace notes in Für Elise M26
-//! are rendered at reduced font_size (75% of normal) and full opacity.
+//! Grace note layout tests.
+//! Covers visual rendering properties (font_size, opacity) and
+//! cross-staff tick alignment (regression for T124).
 
 use musicore_backend::adapters::dtos::ScoreDto;
 use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
+use musicore_backend::domain::importers::musicxml::{
+    CompressionHandler, ImportContext, MusicXMLConverter, MusicXMLParser,
+};
 use musicore_backend::layout::{LayoutConfig, compute_layout};
 use musicore_backend::ports::importers::IMusicXMLImporter;
 use std::path::Path;
@@ -156,4 +160,64 @@ fn test_grace_note_stems_and_beams_have_reduced_thickness() {
             "Normal stem thickness should be ~1.5, avg was {avg_thickness}"
         );
     }
+}
+
+/// Regression test for T124: grace note tick drift causing LH/RH misalignment.
+///
+/// `convert_note()` must rewind `current_tick` by `grace_tick_advance` when
+/// processing the first principal note after a run of grace notes.  Failing
+/// to do so leaves the cursor `grace_tick_advance` ticks too high, causing
+/// every subsequent note in the same voice to accumulate a forward offset.
+///
+/// The Chopin Nocturne Op. 9 No. 2 has 2 grace notes in M8 (treble staff
+/// only).  After M8, beat 1 of M9 must land at the same tick in both treble
+/// and bass staves.  With the bug, treble M9 notes were ~120 ticks too high
+/// (2 grace notes × 60-tick visual duration each).
+#[test]
+fn test_grace_notes_do_not_cause_tick_drift_between_staves() {
+    let fixture_path = std::path::Path::new("../scores/Chopin_NocturneOp9No2.mxl");
+    let xml = CompressionHandler::load_content(fixture_path).expect("load Nocturne");
+    let mut ctx = ImportContext::new();
+    let doc = MusicXMLParser::parse(&xml, &mut ctx).expect("parse Nocturne");
+    let score = MusicXMLConverter::convert(doc, &mut ctx).expect("convert Nocturne");
+
+    let inst = &score.instruments[0];
+    assert!(
+        inst.staves.len() >= 2,
+        "Nocturne must have treble and bass staves"
+    );
+
+    // measure_end_ticks[i] = end of measure i+1 (0-indexed):
+    //   M9 start = measure_end_ticks[7]  (= end of M8)
+    //   M9 end   = measure_end_ticks[8]  (= end of M9)
+    assert!(
+        score.measure_end_ticks.len() >= 9,
+        "Need at least 9 entries in measure_end_ticks"
+    );
+    let m9_start = score.measure_end_ticks[7];
+    let m9_end = score.measure_end_ticks[8];
+
+    // Collect the earliest non-grace note tick in M9 for each staff.
+    let first_tick_in_m9 = |staff_idx: usize| -> Option<u32> {
+        inst.staves[staff_idx]
+            .voices
+            .iter()
+            .flat_map(|v| v.interval_events.iter())
+            .filter(|n| {
+                let t = n.start_tick.value();
+                !n.is_grace && t >= m9_start && t < m9_end
+            })
+            .map(|n| n.start_tick.value())
+            .min()
+    };
+
+    let treble_first = first_tick_in_m9(0).expect("Treble staff must have notes in M9");
+    let bass_first = first_tick_in_m9(1).expect("Bass staff must have notes in M9");
+
+    assert_eq!(
+        treble_first, bass_first,
+        "M9 beat 1: treble tick {treble_first} ≠ bass tick {bass_first}. \
+         Grace note tick drift detected — convert_note() likely failed to \
+         rewind current_tick after processing grace notes in M8."
+    );
 }
