@@ -1,7 +1,7 @@
 //! Slur direction test: verifies that slur arcs have correct concavity
-//! based on standard engraving rules (opposite side of stems).
-//! Regression test for T111: bezier-y inference was overriding the standard
-//! rule with incorrect direction for M52 ascending runs.
+//! based on MusicXML bezier-y hints and standard engraving rules.
+//! Updated for T119: bezier-y sign is now used to infer slur direction
+//! when no explicit placement="above|below" is present.
 
 use musicore_backend::adapters::dtos::ScoreDto;
 use musicore_backend::domain::importers::musicxml::MusicXMLImporter;
@@ -17,10 +17,10 @@ const CONFIG: LayoutConfig = LayoutConfig {
 };
 
 /// When MusicXML has bezier-y but no explicit placement="above|below",
-/// slur_above should be None so the layout engine auto-determines direction
-/// from note position (standard engraving rule: opposite side of stems).
+/// slur_above should be inferred from the bezier-y sign
+/// (positive → above, negative → below).
 #[test]
-fn test_slur_above_not_inferred_from_bezier_y() {
+fn test_slur_above_inferred_from_bezier_y() {
     let importer = MusicXMLImporter::new();
     let result = importer
         .import_file(Path::new("../scores/Beethoven_FurElise.mxl"))
@@ -28,22 +28,25 @@ fn test_slur_above_not_inferred_from_bezier_y() {
 
     let instrument = &result.score.instruments[0];
     let mut slur_count = 0;
+    let mut with_direction = 0;
     for staff in &instrument.staves {
         for voice in &staff.voices {
             for note in &voice.interval_events {
                 if note.slur_next.is_some() {
-                    // Without explicit placement attribute, slur_above should be None
-                    assert_eq!(
-                        note.slur_above, None,
-                        "Slur on {:?} should have slur_above=None (auto-determine), got {:?}",
-                        note.pitch, note.slur_above
-                    );
                     slur_count += 1;
+                    if note.slur_above.is_some() {
+                        with_direction += 1;
+                    }
                 }
             }
         }
     }
     assert!(slur_count > 0, "Should find slur starts in Für Elise");
+    // Most slurs should now have direction from bezier-y
+    assert!(
+        with_direction > 0,
+        "Some slurs should have direction inferred from bezier-y"
+    );
 }
 
 /// In the layout output, slur arcs must be present and use the standard
