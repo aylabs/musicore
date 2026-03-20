@@ -1518,14 +1518,15 @@ impl MusicXMLConverter {
         let tick = if note_data.is_chord {
             timing_context.last_note_tick()
         } else {
-            // Grace notes preceding this note advanced current_tick by a visual-only
-            // amount. Subtract that offset so this real note aligns with the correct
-            // beat position (shared with notes in the other staff at the same beat).
-            let real_u32 = timing_context
-                .current_tick
-                .saturating_sub(timing_context.grace_tick_advance);
-            timing_context.grace_tick_advance = 0; // consumed; reset for next group
-            Tick::new(real_u32)
+            // Grace notes preceding this note advanced current_tick by a
+            // visual-only amount.  Rewind the cursor so this real note
+            // (and every note after it) aligns with the correct beat.
+            let advance = timing_context.grace_tick_advance;
+            if advance > 0 {
+                timing_context.current_tick = timing_context.current_tick.saturating_sub(advance);
+                timing_context.grace_tick_advance = 0;
+            }
+            timing_context.current_tick()
         };
 
         let fraction = Fraction::from_musicxml(note_data.duration, timing_context.divisions);
