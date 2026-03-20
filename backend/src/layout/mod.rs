@@ -793,17 +793,27 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
             let effective_start = r.start_tick.max(system.tick_range.start_tick);
             let effective_end = r.end_tick.min(system.tick_range.end_tick);
 
-            let x_start = measure_x_bounds
+            // Use the exact note x-position for the start tick (covers mid-measure starts).
+            // Fall back to the closest note before effective_start, then to measure boundary.
+            let x_start = note_positions
                 .get(&effective_start)
-                .map(|(start, _)| *start)
+                .copied()
                 .unwrap_or_else(|| {
-                    // Find the closest measure start <= effective_start
-                    measure_x_bounds
+                    // Find the closest note tick <= effective_start
+                    note_positions
                         .iter()
                         .filter(|(t, _)| **t <= effective_start)
                         .max_by_key(|(t, _)| **t)
-                        .map(|(_, (s, _))| *s)
-                        .unwrap_or(unified_left_margin)
+                        .map(|(_, &x)| x)
+                        .unwrap_or_else(|| {
+                            // Last resort: measure boundary
+                            measure_x_bounds
+                                .iter()
+                                .filter(|(t, _)| **t <= effective_start)
+                                .max_by_key(|(t, _)| **t)
+                                .map(|(_, (s, _))| *s)
+                                .unwrap_or(unified_left_margin)
+                        })
                 });
 
             let x_end = {
