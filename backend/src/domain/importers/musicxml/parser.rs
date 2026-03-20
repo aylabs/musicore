@@ -1131,6 +1131,7 @@ impl MusicXMLParser {
                         let mut slur_type_val = None;
                         let mut slur_number: u8 = 1;
                         let mut slur_placement = None;
+                        let mut bezier_y: Option<f32> = None;
                         for attr in e.attributes().flatten() {
                             match attr.key.as_ref() {
                                 b"type" => {
@@ -1154,11 +1155,23 @@ impl MusicXMLParser {
                                     };
                                 }
                                 b"bezier-y" => {
-                                    // bezier-y describes control-point offset, not overall
-                                    // slur direction.  Only explicit placement="above|below"
-                                    // should override auto-determination.
+                                    bezier_y = std::str::from_utf8(&attr.value)
+                                        .ok()
+                                        .and_then(|s| s.parse::<f32>().ok());
                                 }
                                 _ => {}
+                            }
+                        }
+                        // Use bezier-y sign as direction hint when no
+                        // explicit placement="above|below" is given.
+                        // In MusicXML, positive bezier-y = above, negative = below.
+                        if slur_placement.is_none() {
+                            if let Some(by) = bezier_y {
+                                if by > 0.0 {
+                                    slur_placement = Some(SlurPlacement::Above);
+                                } else if by < 0.0 {
+                                    slur_placement = Some(SlurPlacement::Below);
+                                }
                             }
                         }
                         if let Some(st) = slur_type_val {
