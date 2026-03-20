@@ -208,7 +208,7 @@ pub fn compute_glyph_bounding_box(
 /// Vector of positioned glyph structs
 #[allow(clippy::too_many_arguments)]
 pub fn position_noteheads(
-    notes: &[super::NoteData], // (pitch, start_tick, duration, spelling, staccato, dot_count)
+    notes: &[super::NoteData], // (pitch, start_tick, duration, spelling, staccato, dot_count, has_explicit_accidental)
     horizontal_offsets: &[f32],
     clef_types: &[&str],
     units_per_space: f32,
@@ -231,7 +231,7 @@ pub fn position_noteheads(
         .iter()
         .zip(horizontal_offsets.iter())
         .enumerate()
-        .map(|(i, ((pitch, _start, duration, spelling, _, _), &x))| {
+        .map(|(i, ((pitch, _start, duration, spelling, _, _, _), &x))| {
             // Use explicit spelling for Y position when available (e.g., Eb vs D#)
             let clef_type = clef_types[i];
             let y = pitch_to_y_with_spelling(*pitch, clef_type, units_per_space, *spelling)
@@ -773,8 +773,10 @@ pub fn position_note_accidentals(
     // standard gap ~3 units.  Total center-to-center offset: -(12 + 3 + 10) = -25.
     let accidental_x_offset = -25.0;
 
-    for (i, ((pitch, start_tick, _duration, spelling, _, _), &notehead_x)) in
-        notes.iter().zip(horizontal_offsets.iter()).enumerate()
+    for (
+        i,
+        ((pitch, start_tick, _duration, spelling, _, _, has_explicit_accidental), &notehead_x),
+    ) in notes.iter().zip(horizontal_offsets.iter()).enumerate()
     {
         let pitch = *pitch;
         let start_tick = *start_tick;
@@ -864,11 +866,16 @@ pub fn position_note_accidentals(
         // 1. It has an alteration not covered by the key signature, OR
         // 2. It matches the key signature BUT a different chromatic variant of the
         //    same letter name was stated earlier in this measure (courtesy/cancellation).
+        // 3. The MusicXML source has an explicit <accidental> element (courtesy/editorial).
 
         let needs_accidental;
         let accidental_type: i8; // +1=sharp, -1=flat, 0=natural
 
-        if note_alteration != key_says {
+        if *has_explicit_accidental {
+            // MusicXML explicitly requests this accidental (courtesy/editorial)
+            needs_accidental = true;
+            accidental_type = note_alteration;
+        } else if note_alteration != key_says {
             // Note differs from key signature → show accidental
             needs_accidental = true;
             accidental_type = note_alteration;
@@ -954,7 +961,7 @@ pub fn position_note_accidentals(
 
         // Group notehead xs by tick
         let mut tick_to_note_xs: BTreeMap<u32, Vec<f32>> = BTreeMap::new();
-        for ((_, start_tick, _, _, _, _), &nx) in notes.iter().zip(horizontal_offsets.iter()) {
+        for ((_, start_tick, _, _, _, _, _), &nx) in notes.iter().zip(horizontal_offsets.iter()) {
             tick_to_note_xs.entry(*start_tick).or_default().push(nx);
         }
 
@@ -1102,7 +1109,7 @@ pub fn position_ledger_lines(
     // (multiple notes at the same tick/pitch shouldn't duplicate ledger lines)
     let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
 
-    for (i, ((pitch, _start_tick, _duration, spelling, _, _), &notehead_x)) in
+    for (i, ((pitch, _start_tick, _duration, spelling, _, _, _), &notehead_x)) in
         notes.iter().zip(horizontal_offsets.iter()).enumerate()
     {
         let clef_type = clef_types[i];
@@ -1474,9 +1481,9 @@ mod tests {
     fn test_position_noteheads_integration() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 960, None, false, 0),    // Middle C, quarter note
-            (62, 960, 960, None, false, 0),  // D4, quarter note
-            (64, 1920, 960, None, false, 0), // E4, quarter note
+            (60, 0, 960, None, false, 0, false),    // Middle C, quarter note
+            (62, 960, 960, None, false, 0, false),  // D4, quarter note
+            (64, 1920, 960, None, false, 0, false), // E4, quarter note
         ];
         let horizontal_offsets = vec![0.0, 100.0, 200.0];
 
@@ -1812,8 +1819,8 @@ mod tests {
     fn test_beamed_eighth_uses_bare_notehead() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 480, None, false, 0),   // C4 eighth note
-            (62, 480, 480, None, false, 0), // D4 eighth note
+            (60, 0, 480, None, false, 0, false),   // C4 eighth note
+            (62, 480, 480, None, false, 0, false), // D4 eighth note
         ];
         let offsets = vec![0.0, 100.0];
         let mut beamed = std::collections::HashSet::new();
@@ -1854,7 +1861,7 @@ mod tests {
     fn test_unbeamed_eighth_uses_combined_glyph() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 480, None, false, 0), // C4 eighth note, NOT in beamed set
+            (60, 0, 480, None, false, 0, false), // C4 eighth note, NOT in beamed set
         ];
         let offsets = vec![0.0];
         let beamed = std::collections::HashSet::new(); // empty
@@ -1888,7 +1895,7 @@ mod tests {
     fn test_quarter_note_unchanged_by_beam_set() {
         let units_per_space = 20.0;
         let notes = vec![
-            (60, 0, 960, None, false, 0), // C4 quarter note
+            (60, 0, 960, None, false, 0, false), // C4 quarter note
         ];
         let offsets = vec![0.0];
         let mut beamed = std::collections::HashSet::new();

@@ -966,6 +966,7 @@ impl MusicXMLParser {
             tie_placement: None,
             slurs: Vec::new(),
             is_grace: false,
+            has_explicit_accidental: false,
         };
 
         let mut buf = Vec::new();
@@ -1007,6 +1008,13 @@ impl MusicXMLParser {
                     }
                     b"grace" => {
                         note.is_grace = true;
+                    }
+                    b"accidental" => {
+                        // <accidental>flat|sharp|natural|...</accidental>
+                        // Presence means "display this accidental" (courtesy/editorial)
+                        note.has_explicit_accidental = true;
+                        // Consume the text content
+                        let _ = reader.read_event_into(&mut buf);
                     }
                     b"dot" => {
                         // <dot/> — augmentation dot (may appear multiple times)

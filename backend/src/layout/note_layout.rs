@@ -226,6 +226,7 @@ pub(crate) fn position_glyphs_for_staff(
                     note.spelling,
                     note.staccato,
                     note.dot_count,
+                    note.has_explicit_accidental,
                 )
             })
             .collect();
@@ -236,7 +237,7 @@ pub(crate) fn position_glyphs_for_staff(
 
         let horizontal_offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _, _, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
+            .map(|(_, start_tick, _, _, _, _, _)| *note_positions.get(start_tick).unwrap_or(&0.0))
             .collect();
 
         let voice_notes_in_range: Vec<&NoteEvent> = voice
@@ -249,7 +250,7 @@ pub(crate) fn position_glyphs_for_staff(
 
         let note_clefs: Vec<&str> = notes_in_range
             .iter()
-            .map(|(_, start_tick, _, _, _, _)| staff_data.get_clef_at_tick(*start_tick))
+            .map(|(_, start_tick, _, _, _, _, _)| staff_data.get_clef_at_tick(*start_tick))
             .collect();
 
         let beamable_for_analysis_raw: Vec<beams::BeamableNote> = voice_notes_in_range
@@ -315,7 +316,7 @@ pub(crate) fn position_glyphs_for_staff(
         let mut tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
         for (idx, note_data) in notes_in_range.iter().enumerate() {
-            let (_, start_tick, duration_ticks, _, _, _) = note_data;
+            let (_, start_tick, duration_ticks, _, _, _, _) = note_data;
             let has_beam = voice_notes_in_range
                 .iter()
                 .any(|n| n.start_tick == *start_tick && !n.beam_info.is_empty());
@@ -340,7 +341,7 @@ pub(crate) fn position_glyphs_for_staff(
         let chord_note_y_positions: Vec<f32> = notes_in_range
             .iter()
             .enumerate()
-            .map(|(i, (pitch, _, _, spelling, _, _))| {
+            .map(|(i, (pitch, _, _, spelling, _, _, _))| {
                 positioner::pitch_to_y_with_spelling(
                     *pitch,
                     note_clefs[i],
@@ -354,7 +355,7 @@ pub(crate) fn position_glyphs_for_staff(
         let chord_adjacent_threshold = 0.5 * units_per_space + 0.01;
         let mut chord_tick_to_indices: std::collections::HashMap<u32, Vec<usize>> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, _, _, _, _)) in notes_in_range.iter().enumerate() {
+        for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
             chord_tick_to_indices
                 .entry(*start_tick)
                 .or_default()
@@ -635,7 +636,7 @@ pub(crate) fn position_glyphs_for_staff(
         // clearance from the nearest notehead.
         let mut chord_y_range: std::collections::HashMap<u32, (f32, f32)> =
             std::collections::HashMap::new();
-        for (idx, (_, start_tick, _, _, _, _)) in notes_in_range.iter().enumerate() {
+        for (idx, (_, start_tick, _, _, _, _, _)) in notes_in_range.iter().enumerate() {
             let y = chord_note_y_positions[idx];
             chord_y_range
                 .entry(*start_tick)
@@ -1019,6 +1020,7 @@ mod tests {
                     slur_next: None,
                     slur_above: None,
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }],
                 rests: vec![],
             }],
@@ -1065,6 +1067,7 @@ mod tests {
                     slur_next: None,
                     slur_above: None,
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }],
                 rests: vec![],
             }],

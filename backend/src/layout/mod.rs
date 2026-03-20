@@ -176,19 +176,26 @@ pub fn compute_layout(score: &serde_json::Value, config: &LayoutConfig) -> Globa
     let measure_infos: Vec<breaker::MeasureInfo> = measures
         .iter()
         .enumerate()
-        .map(|(i, (note_durations, rest_durations))| {
-            let width =
-                spacer::compute_measure_width(note_durations, rest_durations, &spacing_config);
-            let start = actual_start(i, &measure_end_ticks_vec, pickup_ticks, ticks_per_measure);
-            let end = actual_end(i, &measure_end_ticks_vec, pickup_ticks, ticks_per_measure);
-            breaker::MeasureInfo {
-                width,
-                start_tick: start,
-                end_tick: end,
-                start_repeat: start_repeat_set.contains(&(i as u32)),
-                end_repeat: end_repeat_set.contains(&(i as u32)),
-            }
-        })
+        .map(
+            |(i, (note_durations, rest_durations, chord_second_count))| {
+                let width = spacer::compute_measure_width(
+                    note_durations,
+                    rest_durations,
+                    &spacing_config,
+                    *chord_second_count,
+                );
+                let start =
+                    actual_start(i, &measure_end_ticks_vec, pickup_ticks, ticks_per_measure);
+                let end = actual_end(i, &measure_end_ticks_vec, pickup_ticks, ticks_per_measure);
+                breaker::MeasureInfo {
+                    width,
+                    start_tick: start,
+                    end_tick: end,
+                    start_repeat: start_repeat_set.contains(&(i as u32)),
+                    end_repeat: end_repeat_set.contains(&(i as u32)),
+                }
+            },
+        )
         .collect();
 
     // Extract instruments from score (needed before breaking to compute system height)

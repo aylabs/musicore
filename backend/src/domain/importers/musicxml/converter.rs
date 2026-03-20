@@ -1597,6 +1597,11 @@ impl MusicXMLConverter {
         } else {
             note
         };
+        let note = if note_data.has_explicit_accidental {
+            note.with_explicit_accidental()
+        } else {
+            note
+        };
 
         Ok(note)
     }
@@ -1661,6 +1666,7 @@ mod tests {
                 tie_placement: None,
                 slurs: Vec::new(),
                 is_grace: false,
+                has_explicit_accidental: false,
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1736,6 +1742,7 @@ mod tests {
             tie_placement: None,
             slurs: Vec::new(),
             is_grace: false,
+            has_explicit_accidental: false,
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1785,6 +1792,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1804,6 +1812,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
             ],
             start_repeat: false,
@@ -1864,6 +1873,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1884,6 +1894,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1904,6 +1915,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 }),
             ],
             start_repeat: false,
@@ -2008,6 +2020,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2071,6 +2084,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2134,6 +2148,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2194,6 +2209,7 @@ mod tests {
                     tie_placement: None,
                     slurs: Vec::new(),
                     is_grace: false,
+                    has_explicit_accidental: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,

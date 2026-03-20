@@ -290,6 +290,9 @@ pub struct NoteData {
 
     /// Grace note (no rhythmic duration, ornamental)
     pub is_grace: bool,
+
+    /// Explicit accidental from MusicXML `<accidental>` element (courtesy/editorial)
+    pub has_explicit_accidental: bool,
 }
 
 /// Pitch from <pitch> element

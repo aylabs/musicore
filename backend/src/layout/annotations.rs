@@ -13,7 +13,7 @@ use crate::layout::stems;
 use crate::layout::types;
 use crate::layout::types::{LedgerLine, TickRange};
 
-type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8);
+type NoteData = (u8, u32, u32, Option<(char, i8)>, bool, u8, bool);
 
 /// Result of annotation rendering for a single staff.
 pub(crate) struct AnnotationResult {
@@ -101,16 +101,17 @@ fn render_ledger_lines(
                     note.spelling,
                     note.staccato,
                     note.dot_count,
+                    note.has_explicit_accidental,
                 )
             })
             .collect();
         let offsets: Vec<f32> = notes_in_range
             .iter()
-            .map(|(_, tick, _, _, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
+            .map(|(_, tick, _, _, _, _, _)| *note_positions.get(tick).unwrap_or(&0.0))
             .collect();
         let ledger_clefs: Vec<&str> = notes_in_range
             .iter()
-            .map(|(_, tick, _, _, _, _)| staff_data.get_clef_at_tick(*tick))
+            .map(|(_, tick, _, _, _, _, _)| staff_data.get_clef_at_tick(*tick))
             .collect();
         ledger_lines.extend(positioner::position_ledger_lines(
             &notes_in_range,
@@ -656,7 +657,7 @@ fn render_ties_and_slurs(
                     let (start_x, start_y, _sp, _st) = start_info;
 
                     match note_lookup.get(slur_target_id) {
-                        Some(&(end_x, end_y, _ep, _et)) => {
+                        Some(&(end_x, end_y, _ep, end_tick)) => {
                             // Same-system slur
                             let arc_start_x = start_x + notehead_half_w * 0.3;
                             let arc_end_x = end_x - notehead_half_w * 0.3;
@@ -665,7 +666,36 @@ fn render_ties_and_slurs(
                             let span_x = (arc_end_x - arc_start_x).abs().max(1.0);
                             let arc_height = (3.5 * span_x.sqrt()).clamp(12.0, 50.0);
                             let y_offset = if above { -arc_height } else { arc_height };
-                            let mid_y = (adj_start_y + adj_end_y) / 2.0 + y_offset;
+                            let baseline_mid_y = (adj_start_y + adj_end_y) / 2.0 + y_offset;
+
+                            // Scan intermediate notes to ensure the slur arc clears them.
+                            // Collect the most extreme Y (in the slur direction) among
+                            // notes between start and end ticks (exclusive).
+                            let start_tick = n.start_tick;
+                            let clearance = notehead_half_h + 4.0;
+                            let mut mid_y = baseline_mid_y;
+                            for &(nx, ny, _np, nt) in note_lookup.values() {
+                                if nt > start_tick
+                                    && nt < end_tick
+                                    && nx > arc_start_x
+                                    && nx < arc_end_x
+                                {
+                                    let edge_y = ny + y_edge;
+                                    if above {
+                                        // Slur above: mid_y must be above the highest intermediate note
+                                        let required = edge_y - clearance;
+                                        if required < mid_y {
+                                            mid_y = required;
+                                        }
+                                    } else {
+                                        // Slur below: mid_y must be below the lowest intermediate note
+                                        let required = edge_y + clearance;
+                                        if required > mid_y {
+                                            mid_y = required;
+                                        }
+                                    }
+                                }
+                            }
 
                             slur_arcs.push(types::TieArc {
                                 start: types::Point {
