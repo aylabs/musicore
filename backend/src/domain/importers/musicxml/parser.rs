@@ -454,6 +454,7 @@ impl MusicXMLParser {
                                 voice: note.voice,
                                 staff: note.staff,
                                 note_type: note.note_type.clone(),
+                                is_measure_rest: note.is_measure_rest,
                             };
                             measure.elements.push(MeasureElement::Rest(rest));
                         }
@@ -967,6 +968,7 @@ impl MusicXMLParser {
             slurs: Vec::new(),
             is_grace: false,
             has_explicit_accidental: false,
+            is_measure_rest: false,
         };
 
         let mut buf = Vec::new();
@@ -979,6 +981,15 @@ impl MusicXMLParser {
                     }
                     b"rest" => {
                         note.pitch = None; // Rest has no pitch
+                        // Check for measure="yes" attribute
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == b"measure" {
+                                let val = attr.unescape_value().unwrap_or_default();
+                                if val == "yes" {
+                                    note.is_measure_rest = true;
+                                }
+                            }
+                        }
                     }
                     b"duration" => {
                         if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {

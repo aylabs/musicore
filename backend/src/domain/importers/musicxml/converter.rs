@@ -1076,13 +1076,23 @@ impl MusicXMLConverter {
                         let end_tick = timing_context.current_tick;
                         let duration_ticks = end_tick - start_tick.value();
                         if duration_ticks > 0 {
-                            rests.push(RestEvent::new(
-                                start_tick,
-                                duration_ticks,
-                                rest_data.note_type.clone(),
-                                rest_data.voice,
-                                rest_data.staff,
-                            ));
+                            if rest_data.is_measure_rest {
+                                rests.push(RestEvent::new_measure_rest(
+                                    start_tick,
+                                    duration_ticks,
+                                    rest_data.note_type.clone(),
+                                    rest_data.voice,
+                                    rest_data.staff,
+                                ));
+                            } else {
+                                rests.push(RestEvent::new(
+                                    start_tick,
+                                    duration_ticks,
+                                    rest_data.note_type.clone(),
+                                    rest_data.voice,
+                                    rest_data.staff,
+                                ));
+                            }
                         }
                     }
                     MeasureElement::Backup(duration) => {
@@ -1235,13 +1245,23 @@ impl MusicXMLConverter {
                             let duration_ticks = end_tick - start_tick.value();
                             max_tick_in_measure = max_tick_in_measure.max(end_tick);
                             if duration_ticks > 0 {
-                                rests.push(RestEvent::new(
-                                    start_tick,
-                                    duration_ticks,
-                                    rest_data.note_type.clone(),
-                                    rest_data.voice,
-                                    rest_data.staff,
-                                ));
+                                if rest_data.is_measure_rest {
+                                    rests.push(RestEvent::new_measure_rest(
+                                        start_tick,
+                                        duration_ticks,
+                                        rest_data.note_type.clone(),
+                                        rest_data.voice,
+                                        rest_data.staff,
+                                    ));
+                                } else {
+                                    rests.push(RestEvent::new(
+                                        start_tick,
+                                        duration_ticks,
+                                        rest_data.note_type.clone(),
+                                        rest_data.voice,
+                                        rest_data.staff,
+                                    ));
+                                }
                             }
                         }
                     }
@@ -1669,6 +1689,7 @@ mod tests {
                 slurs: Vec::new(),
                 is_grace: false,
                 has_explicit_accidental: false,
+                is_measure_rest: false,
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1745,6 +1766,7 @@ mod tests {
             slurs: Vec::new(),
             is_grace: false,
             has_explicit_accidental: false,
+            is_measure_rest: false,
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1795,6 +1817,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1815,6 +1838,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 }),
             ],
             start_repeat: false,
@@ -1876,6 +1900,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1897,6 +1922,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1918,6 +1944,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 }),
             ],
             start_repeat: false,
@@ -2023,6 +2050,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2087,6 +2115,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2151,6 +2180,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2212,6 +2242,7 @@ mod tests {
                     slurs: Vec::new(),
                     is_grace: false,
                     has_explicit_accidental: false,
+                    is_measure_rest: false,
                 })],
                 start_repeat: false,
                 end_repeat: false,

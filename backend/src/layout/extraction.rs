@@ -215,6 +215,8 @@ pub(crate) struct RestLayoutEvent {
     pub(crate) note_type: Option<String>,
     /// MusicXML voice number (1-indexed): odd = Voice 1 (up), even = Voice 2 (down)
     pub(crate) voice: usize,
+    /// True when the MusicXML source has `<rest measure="yes"/>`.
+    pub(crate) is_measure_rest: bool,
 }
 
 /// Note data tuple: (pitch, start_tick, duration_ticks, spelling, staccato, dot_count, has_explicit_accidental)
@@ -652,11 +654,15 @@ pub(crate) fn extract_instruments(
                                                 .map(|s| s.to_string());
                                             let voice_num =
                                                 rest_item["voice"].as_u64().unwrap_or(1) as usize;
+                                            let is_measure_rest = rest_item["is_measure_rest"]
+                                                .as_bool()
+                                                .unwrap_or(false);
                                             rests.push(RestLayoutEvent {
                                                 start_tick,
                                                 duration_ticks,
                                                 note_type,
                                                 voice: voice_num,
+                                                is_measure_rest,
                                             });
                                         }
                                     }
