@@ -296,6 +296,10 @@ pub struct NoteData {
 
     /// `<rest measure="yes"/>` — a rest that fills the entire measure regardless of duration.
     pub is_measure_rest: bool,
+
+    /// Explicit stem direction from `<stem>down</stem>` or `<stem>up</stem>`.
+    /// `Some(true)` = stem down, `Some(false)` = stem up, `None` = not specified.
+    pub stem_down: Option<bool>,
 }
 
 /// Pitch from <pitch> element

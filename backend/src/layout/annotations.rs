@@ -239,8 +239,12 @@ fn render_notation_dots(
             note_ys.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
             // Determine stem direction for the chord/note
+            let explicit_stem_down = group.iter().find_map(|n| n.stem_down);
             let stem_down = if let Some(forced) = forced_stem_down {
                 forced
+            } else if let Some(explicit) = explicit_stem_down {
+                // Use stem direction explicitly encoded in MusicXML <stem> element
+                explicit
             } else if let Some(&beamed_down) = beam_tick_stem_down.get(_tick) {
                 beamed_down
             } else {

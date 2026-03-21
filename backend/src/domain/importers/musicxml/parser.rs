@@ -969,6 +969,7 @@ impl MusicXMLParser {
             is_grace: false,
             has_explicit_accidental: false,
             is_measure_rest: false,
+            stem_down: None,
         };
 
         let mut buf = Vec::new();
@@ -1056,6 +1057,16 @@ impl MusicXMLParser {
                                     _ => {}
                                 }
                             }
+                        }
+                    }
+                    b"stem" => {
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut buf) {
+                            let val = text.unescape().unwrap_or_default();
+                            note.stem_down = match val.as_ref() {
+                                "down" => Some(true),
+                                "up" => Some(false),
+                                _ => None,
+                            };
                         }
                     }
                     b"notations" => {

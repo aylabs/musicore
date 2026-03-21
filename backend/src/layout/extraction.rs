@@ -251,6 +251,9 @@ pub(crate) struct NoteEvent {
     pub(crate) is_grace: bool,
     /// Explicit accidental from MusicXML (courtesy/editorial — always display)
     pub(crate) has_explicit_accidental: bool,
+    /// Explicit stem direction from MusicXML `<stem>` element.
+    /// `Some(true)` = stem down, `Some(false)` = stem up, `None` = not specified.
+    pub(crate) stem_down: Option<bool>,
 }
 
 pub(crate) fn extract_measures(
@@ -629,6 +632,7 @@ pub(crate) fn extract_instruments(
                                             note_item["has_explicit_accidental"]
                                                 .as_bool()
                                                 .unwrap_or(false),
+                                        stem_down: note_item["stem_down"].as_bool(),
                                     });
                                 }
                             }

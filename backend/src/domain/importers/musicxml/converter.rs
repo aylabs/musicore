@@ -1624,6 +1624,11 @@ impl MusicXMLConverter {
         } else {
             note
         };
+        let note = if let Some(stem_down) = note_data.stem_down {
+            note.with_stem_down(stem_down)
+        } else {
+            note
+        };
 
         Ok(note)
     }
@@ -1690,6 +1695,7 @@ mod tests {
                 is_grace: false,
                 has_explicit_accidental: false,
                 is_measure_rest: false,
+                stem_down: None,
             })],
             start_repeat: false,
             end_repeat: false,
@@ -1767,6 +1773,7 @@ mod tests {
             is_grace: false,
             has_explicit_accidental: false,
             is_measure_rest: false,
+            stem_down: None,
         };
 
         let result = MusicXMLConverter::convert_note(&note_data, &mut timing_ctx);
@@ -1818,6 +1825,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 }),
                 MeasureElement::Note(NoteData {
                     pitch: Some(PitchData {
@@ -1839,6 +1847,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 }),
             ],
             start_repeat: false,
@@ -1901,6 +1910,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 }),
                 // Second note of chord: F#5 (should start at same tick)
                 MeasureElement::Note(NoteData {
@@ -1923,6 +1933,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 }),
                 // Third note: C#5 (sequential, after the chord)
                 MeasureElement::Note(NoteData {
@@ -1945,6 +1956,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 }),
             ],
             start_repeat: false,
@@ -2051,6 +2063,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2116,6 +2129,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2181,6 +2195,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 })],
                 start_repeat: false,
                 end_repeat: false,
@@ -2243,6 +2258,7 @@ mod tests {
                     is_grace: false,
                     has_explicit_accidental: false,
                     is_measure_rest: false,
+                    stem_down: None,
                 })],
                 start_repeat: false,
                 end_repeat: false,
