@@ -371,5 +371,8 @@ fn test_nocturne_m32_m34_no_overlaps() {
         }
     }
 
-    assert!(found_measures, "Could not find systems with glyph data for overlap check");
+    assert!(
+        found_measures,
+        "Could not find systems with glyph data for overlap check"
+    );
 }

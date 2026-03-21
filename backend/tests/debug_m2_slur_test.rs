@@ -40,8 +40,13 @@ fn test_debug_m2_slur() {
                                         if tick < 12000 {
                                             eprintln!(
                                                 "SLUR START: inst={} staff={} voice={} tick={} pitch={} slur_above={} slur_next={}",
-                                                inst_idx, staff_idx, voice_idx, tick, pitch,
-                                                slur_above, slur_next
+                                                inst_idx,
+                                                staff_idx,
+                                                voice_idx,
+                                                tick,
+                                                pitch,
+                                                slur_above,
+                                                slur_next
                                             );
                                         }
                                     }
@@ -61,7 +66,9 @@ fn test_debug_m2_slur() {
 
     // System 0 should contain M1-M2
     for (si, system) in systems.iter().enumerate() {
-        if si > 0 { break; } // Only system 0
+        if si > 0 {
+            break;
+        } // Only system 0
         let st = system["tick_range"]["start_tick"].as_u64().unwrap_or(0);
         let et = system["tick_range"]["end_tick"].as_u64().unwrap_or(0);
         eprintln!("\nSystem {} tick range: {}..{}", si, st, et);
@@ -84,7 +91,10 @@ fn test_debug_m2_slur() {
                             // whole U+E0A2, eighth uses same as quarter
                             if ch == '\u{E0A4}' || ch == '\u{E0A3}' || ch == '\u{E0A2}' {
                                 note_count += 1;
-                                eprintln!("  NOTEHEAD staff=0: x={:.1} y={:.1} glyph=U+{:04X}", x, y, ch as u32);
+                                eprintln!(
+                                    "  NOTEHEAD staff=0: x={:.1} y={:.1} glyph=U+{:04X}",
+                                    x, y, ch as u32
+                                );
                             }
                         }
                     }
@@ -113,8 +123,14 @@ fn test_debug_m2_slur() {
                             for i in 0..=10 {
                                 let t = i as f64 / 10.0;
                                 let u = 1.0 - t;
-                                let bx = u*u*u*sx + 3.0*u*u*t*cp1x + 3.0*u*t*t*cp2x + t*t*t*ex;
-                                let by = u*u*u*sy + 3.0*u*u*t*cp1y + 3.0*u*t*t*cp2y + t*t*t*ey;
+                                let bx = u * u * u * sx
+                                    + 3.0 * u * u * t * cp1x
+                                    + 3.0 * u * t * t * cp2x
+                                    + t * t * t * ex;
+                                let by = u * u * u * sy
+                                    + 3.0 * u * u * t * cp1y
+                                    + 3.0 * u * t * t * cp2y
+                                    + t * t * t * ey;
                                 eprintln!("    t={:.1}: ({:.1}, {:.1})", t, bx, by);
                             }
                         }
@@ -134,7 +150,10 @@ fn test_debug_m2_slur() {
                                 let y = glyph["position"]["y"].as_f64().unwrap_or(0.0);
                                 if ch == '\u{E0A4}' || ch == '\u{E0A3}' || ch == '\u{E0A2}' {
                                     bass_note_count += 1;
-                                    eprintln!("  NOTEHEAD staff=1(bass): x={:.1} y={:.1} glyph=U+{:04X}", x, y, ch as u32);
+                                    eprintln!(
+                                        "  NOTEHEAD staff=1(bass): x={:.1} y={:.1} glyph=U+{:04X}",
+                                        x, y, ch as u32
+                                    );
                                 }
                             }
                         }
@@ -156,7 +175,10 @@ fn test_debug_m2_slur() {
                                 for i in 0..=10 {
                                     let t = i as f64 / 10.0;
                                     let u = 1.0 - t;
-                                    let by = u*u*u*sy + 3.0*u*u*t*cp1y + 3.0*u*t*t*cp2y + t*t*t*ey;
+                                    let by = u * u * u * sy
+                                        + 3.0 * u * u * t * cp1y
+                                        + 3.0 * u * t * t * cp2y
+                                        + t * t * t * ey;
                                     eprintln!("    t={:.1}: y={:.1}", t, by);
                                 }
                             }

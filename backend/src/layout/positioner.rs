@@ -226,6 +226,8 @@ pub fn position_noteheads(
     forced_stem_down: Option<bool>,
     // Grace note indices: these render at 75% of normal size
     grace_note_indices: &std::collections::HashSet<usize>,
+    // Explicit stem direction per note from MusicXML <stem> element
+    explicit_stem_downs: &[Option<bool>],
 ) -> Vec<Glyph> {
     notes
         .iter()
@@ -257,6 +259,8 @@ pub fn position_noteheads(
                 false
             } else if let Some(forced) = forced_stem_down {
                 forced
+            } else if let Some(Some(explicit)) = explicit_stem_downs.get(i) {
+                *explicit
             } else {
                 let stem_middle_y = staff_vertical_offset + 1.5 * units_per_space;
                 y <= stem_middle_y
@@ -1531,6 +1535,7 @@ mod tests {
             &std::collections::HashMap::new(), // no chord scale overrides
             None,                              // no multi-voice override
             &std::collections::HashSet::new(), // no grace notes
+            &vec![None; notes.len()],          // no explicit stem directions
         );
 
         // Verify correct number of glyphs
@@ -1871,6 +1876,7 @@ mod tests {
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
             &std::collections::HashSet::new(), // no grace notes
+            &vec![None; notes.len()],          // no explicit stem directions
         );
 
         assert_eq!(glyphs.len(), 2);
@@ -1910,6 +1916,7 @@ mod tests {
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
             &std::collections::HashSet::new(), // no grace notes
+            &vec![None; notes.len()],          // no explicit stem directions
         );
 
         assert_eq!(glyphs.len(), 1);
@@ -1945,6 +1952,7 @@ mod tests {
             &std::collections::HashMap::new(), // no chord scale overrides
             None,
             &std::collections::HashSet::new(), // no grace notes
+            &vec![None; notes.len()],          // no explicit stem directions
         );
 
         assert_eq!(glyphs.len(), 1);

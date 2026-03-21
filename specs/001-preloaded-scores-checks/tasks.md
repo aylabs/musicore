@@ -16,8 +16,8 @@
 
 **Purpose**: Commit all in-progress Nocturne M29–M37 work so the repository is clean and `cargo test` reflects the current state. Two blocking issues from research.md (OI-001, OI-002) must be resolved here.
 
-- [ ] T001 Stage and commit all Nocturne M29–M37 implementation and regression test files: `git add backend/src/domain/events/rest.rs backend/src/domain/importers/musicxml/converter.rs backend/src/domain/importers/musicxml/parser.rs backend/src/domain/importers/musicxml/types.rs backend/src/layout/annotations.rs backend/src/layout/extraction.rs backend/src/layout/positioner.rs backend/tests/nocturne_m29_m37_test.rs backend/tests/debug_m2_slur_test.rs frontend/e2e/nocturne-m29-m37-layout.spec.ts .github/agents/copilot-instructions.md && git commit -m "fix(layout): Nocturne Op.9 M29-M37 defects — bb/nat, 8va M30, accidentals, rests, slurs, LH-RH alignment"`
-- [ ] T002 Stage and commit updated WASM artifact: `git add frontend/public/wasm/musicore_backend_bg.wasm && git commit -m "chore(wasm): rebuild WASM for Nocturne M29-M37 fixes"`
+- [x] T001 Stage and commit all Nocturne M29–M37 implementation and regression test files: `git add backend/src/domain/events/rest.rs backend/src/domain/importers/musicxml/converter.rs backend/src/domain/importers/musicxml/parser.rs backend/src/domain/importers/musicxml/types.rs backend/src/layout/annotations.rs backend/src/layout/extraction.rs backend/src/layout/positioner.rs backend/tests/nocturne_m29_m37_test.rs backend/tests/debug_m2_slur_test.rs frontend/e2e/nocturne-m29-m37-layout.spec.ts .github/agents/copilot-instructions.md && git commit -m "fix(layout): Nocturne Op.9 M29-M37 defects — bb/nat, 8va M30, accidentals, rests, slurs, LH-RH alignment"`
+- [x] T002 Stage and commit updated WASM artifact: `git add frontend/public/wasm/musicore_backend_bg.wasm && git commit -m "chore(wasm): rebuild WASM for Nocturne M29-M37 fixes"`
 
 **Checkpoint**: `git status` shows no untracked files and no modified files from the Nocturne fix. Repository is clean.
 
@@ -29,10 +29,10 @@
 
 **⚠️ CRITICAL**: If any test fails here, investigate and fix before proceeding. Constitution VII applies: write a failing test first if a new bug is discovered.
 
-- [ ] T003 Run full Rust regression suite: `cd backend && cargo test` — zero failures required; if any fail, document in `specs/001-preloaded-scores-checks/research.md` as a new open issue before fixing
-- [ ] T004 [P] Run full frontend test suite: `cd frontend && npm run test -- --run` — zero failures required
-- [ ] T005 Build WASM for review session: `cd backend && wasm-pack build --target web --out-dir ../frontend/src/wasm/pkg`
-- [ ] T006 Start dev server and verify all 6 preloaded scores load without console errors: `cd frontend && npm run dev`; open `http://localhost:5173`; navigate to each of the 6 scores and confirm no rendering errors in the browser console
+- [x] T003 Run full Rust regression suite: `cd backend && cargo test` — zero failures required; if any fail, document in `specs/001-preloaded-scores-checks/research.md` as a new open issue before fixing
+- [x] T004 [P] Run full frontend test suite: `cd frontend && npm run test -- --run` — zero failures required
+- [x] T005 Build WASM for review session: `cd backend && wasm-pack build --target web --out-dir ../frontend/src/wasm/pkg`
+- [x] T006 Start dev server and verify all 6 preloaded scores load without console errors: `cd frontend && npm run dev`; open `http://localhost:5173`; navigate to each of the 6 scores and confirm no rendering errors in the browser console
 
 **Checkpoint**: `cargo test` ✅, `vitest` ✅, WASM built ✅, all 6 scores open without errors ✅. Review session may now begin.
 
