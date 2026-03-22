@@ -21,6 +21,7 @@ pub(crate) struct AnnotationResult {
     pub notation_dots: Vec<types::NotationDot>,
     pub tie_arcs: Vec<types::TieArc>,
     pub slur_arcs: Vec<types::TieArc>,
+    pub fingering_glyphs: Vec<types::FingeringGlyph>,
 }
 
 /// Render all annotation elements for a single staff:
@@ -70,11 +71,20 @@ pub(crate) fn render_annotations(
         note_positions,
     );
 
+    let fingering_glyphs = render_fingering_glyphs(
+        staff_data,
+        tick_range,
+        staff_vertical_offset,
+        units_per_space,
+        note_positions,
+    );
+
     AnnotationResult {
         ledger_lines,
         notation_dots,
         tie_arcs,
         slur_arcs,
+        fingering_glyphs,
     }
 }
 
@@ -357,6 +367,56 @@ fn render_notation_dots(
         }
     }
     notation_dots
+}
+
+/// Render fingering glyphs for notes that have `<fingering>` annotations.
+///
+/// Each fingering annotation produces a `FingeringGlyph` positioned vertically
+/// outside the staff lines (above or below the notehead). Multiple fingerings on
+/// the same note are stacked with 1.5 × units_per_space increments.
+fn render_fingering_glyphs(
+    staff_data: &StaffData,
+    tick_range: &TickRange,
+    staff_vertical_offset: f32,
+    units_per_space: f32,
+    note_positions: &HashMap<u32, f32>,
+) -> Vec<types::FingeringGlyph> {
+    let mut glyphs = Vec::new();
+    for voice in &staff_data.voices {
+        for note in &voice.notes {
+            if note.start_tick < tick_range.start_tick || note.start_tick >= tick_range.end_tick {
+                continue;
+            }
+            if note.fingering.is_empty() {
+                continue;
+            }
+            let note_x = *note_positions.get(&note.start_tick).unwrap_or(&0.0);
+            let clef = staff_data.get_clef_at_tick(note.start_tick);
+            let notehead_y = positioner::pitch_to_y_with_spelling(
+                note.pitch,
+                clef,
+                units_per_space,
+                note.spelling,
+            ) + staff_vertical_offset;
+            let visual_y = notehead_y + 0.5 * units_per_space;
+
+            for (idx, fa) in note.fingering.iter().enumerate() {
+                let offset = (1.8 + idx as f32 * 1.5) * units_per_space;
+                let y = if fa.above {
+                    visual_y - offset
+                } else {
+                    visual_y + offset
+                };
+                glyphs.push(types::FingeringGlyph {
+                    x: note_x,
+                    y,
+                    digit: fa.digit,
+                    above: fa.above,
+                });
+            }
+        }
+    }
+    glyphs
 }
 
 /// Shift dot y-position to nearest space if it sits on a staff line.

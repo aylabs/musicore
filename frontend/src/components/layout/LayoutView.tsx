@@ -206,6 +206,8 @@ export function convertScoreToLayoutFormat(score: Score): ConvertedScore {
             ...(note.has_explicit_accidental ? { has_explicit_accidental: true } : {}),
             // Forward explicit stem direction from MusicXML for staccato placement
             ...(note.stem_down !== undefined ? { stem_down: note.stem_down } : {}),
+            // Forward fingering annotations for fingering glyph rendering
+            ...(note.fingering && note.fingering.length > 0 ? { fingering: note.fingering } : {}),
           })),
           // Forward rest events so the layout engine can produce rest glyphs
           ...(voice.rest_events && voice.rest_events.length > 0
