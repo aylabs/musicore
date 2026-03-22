@@ -80,7 +80,9 @@ describe('convertScoreToLayoutFormat — note field forwarding', () => {
       slur_above: true,
       is_grace: true,
       has_explicit_accidental: true,
-      stem_down: true,
+      // NOTE: stem_down is intentionally NOT forwarded — the layout engine
+      // computes stem direction from pitch position and voice index, which is
+      // more reliable than MusicXML editor-specific engraving choices.
       fingering: [{ digit: 3, above: true }],
     };
 
@@ -117,8 +119,8 @@ describe('convertScoreToLayoutFormat — note field forwarding', () => {
     // Accidental flag
     expect(outputNote).toHaveProperty('has_explicit_accidental', true);
 
-    // Stem direction
-    expect(outputNote).toHaveProperty('stem_down', true);
+    // stem_down is intentionally NOT forwarded (layout engine auto-computes)
+    expect(outputNote).not.toHaveProperty('stem_down');
 
     // Fingering annotations (the field that caused the 2026-03 bug)
     expect(outputNote).toHaveProperty('fingering');
@@ -177,22 +179,6 @@ describe('convertScoreToLayoutFormat — note field forwarding', () => {
       { digit: 1, above: true },
       { digit: 5, above: true },
     ]);
-  });
-
-  it('forwards stem_down=false (not just truthy values)', () => {
-    const noteUp = {
-      id: 'up-1',
-      start_tick: 0,
-      duration_ticks: 960,
-      pitch: 60,
-      stem_down: false,
-    };
-
-    const score = wrapNotes([noteUp]);
-    const result = convertScoreToLayoutFormat(score);
-    const outputNote = result.instruments[0].staves[0].voices[0].notes[0];
-
-    expect(outputNote).toHaveProperty('stem_down', false);
   });
 
   it('forwards slur_above=false (not just truthy values)', () => {
